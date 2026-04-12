@@ -5,7 +5,7 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 ## Known Issues
 
 - **Gemma 4 26B/31B** — Multimodal processor registry missing in v0.5.10 base. Needs custom calibrated checkpoint. See [Gemma 4 quantization notes](#gemma-4-quantization-notes) below.
-- **Qwen3.5-27B** — Community AWQ quantizes DeltaNet layers causing Triton bf16/fp16 mismatch. Needs self-calibrated checkpoint (DeltaNet layers kept BF16). Calibration pipeline ready.
+- **Qwen3.5-27B** — Self-calibrated AWQ checkpoint ready (`Qwen3.5-27B-AWQ-4bit-calibrated`), DeltaNet layers kept BF16. Blocked by Triton DeltaNet kernel bf16/fp16 mismatch on Ampere (sm_86). FlashInfer GDN backend needs SM90+ (Hopper). Waiting on upstream Triton kernel fix.
 - **CUDA graphs** — Disabled. Graph capture OOMs with custom all-reduce on 24GB GPUs with TP=2.
 
 ### Gemma 4 quantization notes
