@@ -1,0 +1,19 @@
+diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
+index 67cce0e63..9d9f0cb39 100644
+--- a/python/sglang/srt/configs/model_config.py
++++ b/python/sglang/srt/configs/model_config.py
+@@ -185,7 +185,13 @@ class ModelConfig:
+             or hasattr(self.hf_config, "vision_config")
+             or hasattr(self.hf_config, "audio_config")
+         )
+-        self.is_multimodal = enable_multimodal and (
++        # CausalLM architectures are text-only even if the config class has
++        # vision/audio attributes (e.g. Gemma4ForCausalLM uses Gemma4Config
++        # which always defines vision_config/audio_config as class defaults)
++        is_causal_lm_only = any(
++            "ForCausalLM" in arch for arch in self.hf_config.architectures
++        ) and not is_multimodal_model(self.hf_config.architectures)
++        self.is_multimodal = enable_multimodal and not is_causal_lm_only and (
+             is_multimodal_model(self.hf_config.architectures)
+             or has_multimodal_subconfig
+         )
