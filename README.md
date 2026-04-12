@@ -56,7 +56,7 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 
 | Model | Type | Max context | 1-user tok/s | TPOT | Launch | Status |
 |-------|------|:----------:|:------------:|:----:|:------:|:------:|
-| Devstral-24B AWQ | Dense | 32K | 63 | 16ms | `launch.sh devstral` | Working |
+| Devstral-24B AWQ | Dense | 131K | 63 | 16ms | `launch.sh devstral` | Working |
 | Coder-30B AWQ | MoE (128 experts) | 16K | 43 | 23ms | `launch.sh coder-30b` | Working |
 | Coder-Next-REAM-60B AWQ | MoE (384 experts) | 4K | — | — | `launch.sh coder-next-ream` | Not yet tested |
 | GLM-4.5-Air-REAP AWQ | MoE (96 experts) | 4K | — | — | `launch.sh glm45-air` | Not yet tested |
@@ -85,9 +85,11 @@ All numbers measured with `bench_all_unified.py` (tok/s = completion tokens / el
 
 **Methodology:** All numbers use `bench_all_unified.py` which runs single-user context sweeps and concurrent throughput sweeps. See [benchmarks/README.md](benchmarks/README.md) for full methodology.
 
-### Devstral-24B AWQ (32K context)
+### Devstral-24B AWQ (up to 131K context)
 
-24B dense transformer. ~14 GB/GPU. Best single-user speed.
+24B dense transformer. ~14 GB/GPU. FP8 KV cache enables long context.
+- **131K context, batch=1**: 183K token KV cache at 0.90 mem fraction
+- **32K context, batch=64**: `launch.sh devstral-32k` for max throughput
 
 ![Devstral context scaling](benchmarks/devstral-24b-awq/context_vs_toks.png)
 

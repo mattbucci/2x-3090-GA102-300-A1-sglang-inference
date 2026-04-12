@@ -46,6 +46,10 @@ apply_preset() {
     case "$1" in
         devstral)
             MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-4bit}"
+            CTX=131072; MEM=0.90; MAX_RUNNING=1; CHUNKED=8192
+            ;;
+        devstral-32k)
+            MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-4bit}"
             CTX=32768; MEM=0.90; MAX_RUNNING=64; CHUNKED=8192
             ;;
         coder-30b)
