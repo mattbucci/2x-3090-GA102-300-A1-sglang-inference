@@ -40,20 +40,7 @@ Requirements for Marlin compatibility:
 - `quant_method: "awq"`, `bits: 4`, `group_size: 128` (standard config)
 - Output dim divisible by 64, input dim divisible by 128 (fallback to generic AWQ for non-conforming layers)
 
-## Key Differences from AMD (RDNA4) Setup
-
-- **AWQ Marlin kernels** — optimized CUDA kernels (AMD uses Triton AWQ GEMM)
-- **CUDA graphs work** — no `--disable-cuda-graph`
-- **FlashInfer attention** — default backend, no need to force `--attention-backend triton`
-- **Custom all-reduce works** — no `--disable-custom-all-reduce`
-- **Overlap schedule works** — no `--disable-overlap-schedule`
-- **NCCL native** — no RCCL, no custom builds
-- **FP8 KV cache** — works via type casting on Ampere (sm_86)
-- Patches may still be needed for performance tuning or model-specific fixes
-
 ## Quantization Rules
-
-These apply identically to the AMD setup:
 
 - **MoE quantization is hard** — standard GPTQ under-calibrates rare experts
 - **DeltaNet/SSM layers cannot be INT4** — recurrent state error accumulation destroys quality

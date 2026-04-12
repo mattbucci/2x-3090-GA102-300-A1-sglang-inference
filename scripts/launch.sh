@@ -45,26 +45,25 @@ EXTRA_ARGS=""
 apply_preset() {
     case "$1" in
         devstral)
-            MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-4bit-calibrated}"
+            MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-4bit}"
             CTX=32768; MEM=0.90; MAX_RUNNING=64; CHUNKED=8192
             ;;
         coder-30b)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ}"
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ-4bit}"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             ;;
         gemma4)
-            MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed}"
-            TOKENIZER="--tokenizer-path $MODELS_DIR/gemma-4-26B-A4B-it-BF16"
+            MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-4bit}"
             CTX=4096; MAX_RUNNING=1; CHUNKED=2048
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4-31b)
-            MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AWQ-GPTQ}"
+            MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AWQ-4bit}"
             CTX=4096; MEM=0.85; MAX_RUNNING=1; CHUNKED=2048
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         qwen35)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-27B-AWQ-4bit-calibrated}"
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-27B-AWQ-4bit}"
             CTX=32768; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
