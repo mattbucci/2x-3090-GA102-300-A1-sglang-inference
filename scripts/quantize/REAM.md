@@ -13,20 +13,29 @@ With 48GB VRAM (2x RTX 3090), the full Qwen3-Coder-30B (128 experts, ~16GB AWQ w
 
 ## Candidate models
 
-### Fits 48GB after compression + AWQ INT4
+### Pure MoE — fits 48GB after compression + AWQ INT4, easiest to run
 
 | Model | Params | Experts | After | AWQ est. | Method | Status |
 |-------|--------|:-------:|:-----:|:--------:|--------|--------|
 | Qwen3-Coder-30B | 30B | 128 | 96 (23B) | ~12 GB | REAM/REAP | Need to compress |
 | Qwen3-30B-Instruct-2507 | 30B | 128 | 96 (23B) | ~12 GB | REAM | [Pre-made (SamsungSAIL)](https://huggingface.co/SamsungSAILMontreal/Qwen3-30B-A3B-Instruct-2507-REAM) |
+| Qwen3-30B-A3B-Base | 30B | 128 | 96 (23B) | ~12 GB | REAM/REAP | Need to compress |
 | Gemma 4 26B MoE | 26B | 128 | 103 (21B) | ~10 GB | REAP | [Pre-made (0xSero)](https://huggingface.co/0xSero/gemma-4-21b-a4b-it-REAP) |
-| Qwen3-Coder-REAP-25B | 25B | 103 | — | ~13 GB | REAP | [Pre-made (cerebras)](https://huggingface.co/cerebras/Qwen3-Coder-REAP-25B-A3B), already running at 134 tok/s |
+| Qwen3-Coder-REAP-25B | 25B | 103 | — | ~13 GB | REAP | [Pre-made (cerebras)](https://huggingface.co/cerebras/Qwen3-Coder-REAP-25B-A3B), running at 134 tok/s |
+
+### DeltaNet hybrid MoE — fits but needs BF16 DeltaNet layers in calibration
+
+| Model | Params | Experts | After | AWQ est. | Notes |
+|-------|--------|:-------:|:-----:|:--------:|-------|
+| Qwen3.5-27B | 27B | dense+DeltaNet | — | ~15 GB | Calibrating now, exclude DeltaNet from INT4 |
+| Qwen3.5-35B-A3B | 35B | 256 | 192 (27B) | ~14 GB | DeltaNet hybrid, needs same treatment |
 
 ### Too large even after compression
 
 | Model | Params | After | Why |
 |-------|--------|:-----:|-----|
-| Qwen3-Coder-Next (80B) | 80B | 60B | 384 experts still too large |
+| Qwen3-Coder-Next (80B) | 80B | 60B | 384 experts, ~33GB AWQ |
+| Qwen3-Next-80B-A3B | 80B | 60B | Same |
 | GLM-4.5-Air (106B) | 106B | 82B | Still exceeds 48GB |
 | Qwen3-235B | 235B | 180B | Way too large |
 
