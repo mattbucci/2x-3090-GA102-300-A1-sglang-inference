@@ -4,9 +4,18 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 ## Known Issues
 
-- **Gemma 4 26B/31B** — Multimodal processor registry missing in v0.5.10 base. Needs custom calibrated checkpoint. See [Gemma 4 quantization notes](#gemma-4-quantization-notes) below.
-- **Qwen3.5-27B** — Self-calibrated AWQ checkpoint ready (`Qwen3.5-27B-AWQ-4bit-calibrated`), DeltaNet layers kept BF16. Blocked by Triton DeltaNet kernel bf16/fp16 mismatch on Ampere (sm_86). FlashInfer GDN backend needs SM90+ (Hopper). Waiting on upstream Triton kernel fix.
-- **CUDA graphs** — Disabled. Graph capture OOMs with custom all-reduce on 24GB GPUs with TP=2.
+- **Gemma 4 CT→AWQ conversion quality bug** — The unpack→transpose→repack pipeline produces poor cosine similarity for large output dimensions (q_proj 0.845, gate_proj 0.920). Models load but generate garbage. Using `compressed-tensors` directly (skipping CT→AWQ) may work with Marlin. See [Gemma 4 quantization notes](#gemma-4-quantization-notes) below.
+- **Gemma 4 31B Dense FP16 overflow** — MLP values exceed FP16 max by layer 2. Marlin (FP32 accumulation) is unaffected, but non-Marlin paths crash. Verify with `--enable-nan-detection`.
+- **Qwen3.5-27B DeltaNet is slow** — 7 tok/s due to BF16 DeltaNet weight reads (bandwidth-limited). This is architectural, not fixable with patches.
+- **CUDA graphs** — Only bs=1 works. Full graph capture OOMs with custom all-reduce on 24GB GPUs with TP=2. `--cuda-graph-max-bs 1 --disable-custom-all-reduce` is the working config.
+- **60B+ models** — Coder-Next-REAM (35GB), GLM-4.5-Air-REAP (43GB) don't fit in 48GB VRAM.
+
+### Fixed issues (via our patches)
+
+- ~~Gemma 4 "No processor registered"~~ — Fixed in patch 004 (CausalLM multimodal bypass)
+- ~~Qwen3.5 Triton DeltaNet bf16/fp16 mismatch~~ — Fixed in patch 003 (dtype cast in conv_state)
+- ~~Qwen3.5 Marlin repack dim=48~~ — Fixed in patch 002 (fallback to torch dequant)
+- ~~MemoryPoolConfig import error~~ — Fixed in patch 002 (runtime import)
 
 ### Gemma 4 quantization notes
 
@@ -59,9 +68,8 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 | Devstral-24B AWQ | Dense | 131K | 79 | 13ms | `launch.sh devstral` | Working |
 | Coder-REAP-25B W4A16 | MoE (103 experts) | 131K | 134 | 7ms | `launch.sh coder-reap` | Working |
 | Coder-30B AWQ | MoE (128 experts) | 16K | 43 | 23ms | `launch.sh coder-30b` | Working |
-| Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | — | — | `launch.sh qwen35` | Needs calibration |
-| Gemma 4 26B AWQ | MoE (128 experts) | 4K | — | — | `launch.sh gemma4` | Blocked |
-| Gemma 4 31B AWQ | Dense | 4K | — | — | `launch.sh gemma4-31b` | Blocked |
+| Qwen3.5-27B AWQ | DeltaNet hybrid | 16K | 7 | 143ms | `launch.sh qwen35` | Working (slow — DeltaNet) |
+| Gemma 4 21B REAP | MoE (103 experts) | 131K | — | — | — | Calibrating |
 
 All numbers measured with `bench_all_unified.py` (tok/s = completion tokens / elapsed time, single user).
 
@@ -154,7 +162,7 @@ Uses `auto-round` quantization (not AWQ/Marlin). Converting to AWQ/Marlin could 
 
 ## Patches
 
-2 patches on top of SGLang v0.5.10. Apply in order:
+4 patches on top of SGLang v0.5.10. Apply in order:
 
 ### 001-upstream-sync (3,000 LOC)
 Cherry-picks from upstream main for model support. No NVIDIA-specific changes.
@@ -172,6 +180,16 @@ NVIDIA-specific fixes and model compatibility.
 - Gemma4: text_config unwrap, top_k_experts config lookup
 - Qwen3.5: mamba cache params, DeltaNet TP replication
 - Devstral/LLaVA: chat template BOS fix, text-only VLM warmup
+
+### 003-deltanet-triton-dtype-fix (51 LOC)
+Fix DeltaNet Triton kernel bf16/fp16 dtype mismatch in causal_conv1d.
+- conv_state loads cast to input dtype via `.to(x_ptr.dtype.element_ty)`
+- Unblocks Qwen3.5-27B and any DeltaNet model on Ampere (sm_86)
+
+### 004-gemma4-causal-lm-fix (19 LOC)
+Fix Gemma4ForCausalLM being incorrectly detected as multimodal.
+- CausalLM architectures skip multimodal processor registration
+- Gemma4Config always has vision/audio attrs as class defaults — now ignored for text-only
 
 ## Setup
 
