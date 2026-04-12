@@ -4,19 +4,19 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 ## Known Issues
 
-- _No known issues yet — initial setup, benchmarks pending._
+- **Gemma 4 26B/31B** — Multimodal processor registry missing in v0.5.10 base. Needs custom calibrated checkpoint.
+- **Qwen3.5-27B** — Community AWQ quantizes DeltaNet layers causing Triton bf16/fp16 mismatch. Needs self-calibrated checkpoint (DeltaNet layers kept BF16). Calibration pipeline ready.
+- **CUDA graphs** — Disabled. Graph capture OOMs with custom all-reduce on 24GB GPUs with TP=2.
 
 ## Quick Start
 
 ```bash
-# 1. Setup: create conda env, install SGLang
+# 1. Setup: clone SGLang v0.5.10, apply patches, create conda env
 ./scripts/setup.sh
 
 # 2. Run any model:
 ./scripts/launch.sh devstral            # Devstral-24B AWQ — best all-round
 ./scripts/launch.sh coder-30b           # Coder-30B MoE AWQ — best throughput
-./scripts/launch.sh gemma4              # Gemma 4 26B MoE AWQ
-./scripts/launch.sh qwen35              # Qwen3.5-27B DeltaNet AWQ
 
 # 3. Test quality
 python scripts/eval/eval_comprehensive.py --port 23334 --parallel 4
@@ -30,52 +30,110 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 - 2x NVIDIA RTX 3090 (24GB GDDR6X each, 48GB total)
 - NVIDIA drivers (550+) + CUDA toolkit 12.x
 - Miniforge3/Conda
-- ~80GB disk for models
+- ~150GB disk for models
 
 ## Model Support (SGLang)
 
-All models run on SGLang with AWQ Marlin kernels (fused dequant+matmul, optimized for sm_80+).
-
 ### Agent / coding workloads (single-user, max context)
-
-Primary use case: agent and coding workflows with maximum context at fast decode speeds.
 
 | Model | Type | Max context | 1-user tok/s | TPOT | Launch | Status |
 |-------|------|:----------:|:------------:|:----:|:------:|:------:|
-| Devstral-24B AWQ | Dense | 32K | — | — | `launch.sh devstral` | Not yet tested |
-| Coder-30B AWQ | MoE (128 experts) | 16K | — | — | `launch.sh coder-30b` | Not yet tested |
-| Gemma 4 26B AWQ | MoE (128 experts) | 4K | — | — | `launch.sh gemma4` | Not yet tested |
-| Gemma 4 31B AWQ | Dense | 4K | — | — | `launch.sh gemma4-31b` | Not yet tested |
-| Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | — | — | `launch.sh qwen35` | Not yet tested |
+| Devstral-24B AWQ | Dense | 32K | 63 | 16ms | `launch.sh devstral` | Working |
+| Coder-30B AWQ | MoE (128 experts) | 16K | 43 | 23ms | `launch.sh coder-30b` | Working |
+| Coder-Next-REAM-60B AWQ | MoE (384 experts) | 4K | — | — | `launch.sh coder-next-ream` | Not yet tested |
+| GLM-4.5-Air-REAP AWQ | MoE (96 experts) | 4K | — | — | `launch.sh glm45-air` | Not yet tested |
+| Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | — | — | `launch.sh qwen35` | Needs calibration |
+| Gemma 4 26B AWQ | MoE (128 experts) | 4K | — | — | `launch.sh gemma4` | Blocked |
+| Gemma 4 31B AWQ | Dense | 4K | — | — | `launch.sh gemma4-31b` | Blocked |
 
-All numbers measured with `sglang.bench_serving` (TPOT = Time Per Output Token, decode only).
+All numbers measured with `bench_all_unified.py` (tok/s = completion tokens / elapsed time, single user).
 
 ### Batch throughput (multi-user)
 
-| Model | Peak total tok/s | Max conc | Context | Status |
+| Model | Peak total tok/s | Best conc | Context | Status |
 |-------|:----------------:|:--------:|:-------:|:------:|
-| — | — | — | — | Not yet tested |
+| Devstral-24B AWQ | 1,647 | @32 | 32K | Working |
+| Coder-30B AWQ | 1,201 | @32 | 16K | Working |
 
 ### Models that don't fit (48GB limit)
 
 | Model | Params | Why |
 |-------|--------|-----|
-| Qwen3-Coder-Next-80B | 80B MoE | ~44GB weights alone, no room for KV cache |
-| GLM-4.5-Air-82B | 82B MoE | Same — exceeds VRAM |
+| Qwen3-Coder-Next-80B | 80B MoE (512 experts) | ~44GB weights, no room for KV cache |
 
-**Quantization:** AWQ INT4 with Marlin kernel backend (`--quantization awq_marlin`). SGLang auto-promotes standard AWQ checkpoints to Marlin at load time. Standard community AWQ models (group_size=128, 4-bit) work directly — Marlin repacking happens at runtime.
+## Performance (2x RTX 3090, TP=2, SGLang v0.5.10 + patches)
 
-**DeltaNet hybrid models (Qwen3.5):** DeltaNet/attention layers kept in BF16 — INT4 quantization destroys quality due to recurrent state error accumulation.
+**Methodology:** All numbers use `bench_all_unified.py` which runs single-user context sweeps and concurrent throughput sweeps. See [benchmarks/README.md](benchmarks/README.md) for full methodology.
 
-**MoE quantization:** Standard GPTQ under-calibrates rare experts (inter-expert imbalance). Use expert-balanced calibration. See `rules-for-agents.md`.
+### Devstral-24B AWQ (32K context)
 
-**FP8 KV cache:** Enabled by default (`--kv-cache-dtype fp8_e4m3`). Works on Ampere via type casting. Saves ~50% KV memory vs FP16.
+24B dense transformer. ~14 GB/GPU. Best single-user speed.
 
-## Performance (2x RTX 3090, TP=2, SGLang)
+![Devstral context scaling](benchmarks/devstral-24b-awq/context_vs_toks.png)
 
-_Not yet benchmarked. Results will be populated after running benchmarks._
+| Context Length | tok/s |
+|:--------------:|:-----:|
+| 128 | 63.4 |
+| 1K | 62.4 |
+| 4K | 51.9 |
+| 8K | 44.0 |
+| 16K | 32.8 |
+| **32K** | **21.1** |
 
-**Methodology:** All numbers use `sglang.bench_serving` which measures TPOT (decode latency per token) and TTFT (prefill latency) separately. See [benchmarks/README.md](benchmarks/README.md) for full methodology. Regression tests: `./scripts/bench/bench_regression.sh <model>`.
+![Devstral concurrency](benchmarks/devstral-24b-awq/concurrency_vs_toks.png)
+
+| Concurrency | tok/s |
+|:-----------:|:-----:|
+| 1 | 64 |
+| 4 | 241 |
+| 8 | 476 |
+| 16 | 955 |
+| **32** | **1,647** |
+
+### Coder-30B MoE AWQ (16K context, 128 experts)
+
+30B total / 3B active MoE. ~16 GB/GPU. Best throughput scaling.
+
+![Coder-30B context scaling](benchmarks/coder-30b-awq/context_vs_toks.png)
+
+| Context Length | tok/s |
+|:--------------:|:-----:|
+| 128 | 42.9 |
+| 1K | 41.0 |
+| 4K | 37.7 |
+| 8K | 33.8 |
+| **16K** | **27.4** |
+
+![Coder-30B concurrency](benchmarks/coder-30b-awq/concurrency_vs_toks.png)
+
+| Concurrency | tok/s |
+|:-----------:|:-----:|
+| 1 | 42 |
+| 4 | 146 |
+| 8 | 308 |
+| 16 | 607 |
+| **32** | **1,201** |
+
+## Patches
+
+2 patches on top of SGLang v0.5.10. Apply in order:
+
+### 001-upstream-sync (3,000 LOC)
+Cherry-picks from upstream main for model support. No NVIDIA-specific changes.
+- Gemma 4 model + fused ops + config transformer
+- Qwen3.5/Qwen3-Next model updates
+- Triton attention backend + prefill improvements
+- pool_configurator.py (MemoryPoolConfig refactor)
+
+### 002-nvidia-model-fixes (923 LOC)
+NVIDIA-specific fixes and model compatibility.
+- MemoryPoolConfig: runtime import (not TYPE_CHECKING only)
+- Marlin shape fallback: torch dequant for layers where dim not divisible by 64
+- sharded_weight_loader: override_tp_rank for replicated DeltaNet layers
+- pool_configurator: is_dflash guard
+- Gemma4: text_config unwrap, top_k_experts config lookup
+- Qwen3.5: mamba cache params, DeltaNet TP replication
+- Devstral/LLaVA: chat template BOS fix, text-only VLM warmup
 
 ## Setup
 
@@ -85,51 +143,38 @@ _Not yet benchmarked. Results will be populated after running benchmarks._
 
 Or manually:
 ```bash
-# Clone SGLang
-git clone --branch v0.5.10 --depth 1 https://github.com/sgl-project/sglang.git components/sglang
-
-# Create conda env, install dependencies
-conda create -n sglang python=3.12
-conda activate sglang
-pip install -e components/sglang/python[srt]
-pip install transformers>=5.0 gguf
+cd components/sglang && git checkout v0.5.10
+git apply ../../patches/001-upstream-sync.patch
+git apply ../../patches/002-nvidia-model-fixes.patch
+cd python && pip install -e ".[srt]"
 ```
 
 | Component | Version | Notes |
 |-----------|---------|-------|
-| SGLang | v0.5.10 | stock, no patches |
-| PyTorch | 2.8.0+cu128 | CUDA 12.8 |
+| SGLang | v0.5.10 + 2 patches | editable install from source |
+| PyTorch | 2.9.1+cu128 | CUDA 12.8 |
 | CUDA | 12.8 | driver 595+ |
-| NCCL | system | P2P over PCIe |
+| NCCL | 2.27.5 | P2P over PCIe |
+| transformers | 5.5.3 | Gemma4 support |
 
-## Architecture
+## Quantization
 
-- **Quantization**: AWQ Marlin (fused dequant+matmul, async memory access, L2 cache optimized)
-- **Attention**: FlashInfer (default SGLang backend for NVIDIA)
-- **Multi-GPU**: NCCL TP=2 over PCIe, P2P enabled
-- **CUDA graphs**: Enabled (decode acceleration)
-- **KV cache**: FP8 E4M3 (saves VRAM for larger context windows)
-- **Overlap schedule**: Enabled (prefill/decode overlap)
+Self-calibrated AWQ models use a separate conda env (`quant`):
 
-## MoE Quantization Notes
+```bash
+conda activate quant
+CUDA_VISIBLE_DEVICES="" python scripts/quantize/quantize_qwen35_llmcompressor.py
+python scripts/quantize/convert_qwen35_ct_to_awq.py
+```
 
-Standard GPTQ/AWQ **fails** for MoE models (MoEQuant, ICML 2025). Two critical issues:
-
-1. **Inter-expert imbalance**: Router unevenly distributes calibration data — rare experts get
-   zero/garbage calibration.
-2. **DeltaNet/SSM sensitivity**: Recurrent state `S(t) = g*S(t-1) + delta` accumulates INT4
-   noise across tokens. DeltaNet layers MUST stay BF16.
-
-**Solutions**: Expert-balanced sampling (MoEQuant EBSS, GPTQModel FailSafe), skip recurrent layers.
-See [rules-for-agents.md](rules-for-agents.md) for full quantization rules.
+See [rules-for-agents.md](rules-for-agents.md) for full quantization pipeline and rules.
 
 ## Test System
 
 ```
 OS:     EndeavourOS (Arch Linux)
 Kernel: 6.19.11-arch1-1
-CPU:    AMD (system CPU)
-RAM:    64 GB DDR5
+RAM:    92 GB
 GPU:    2x NVIDIA RTX 3090 (GA102-300-A1, 24GB GDDR6X each)
 Driver: 595.58.03
 CUDA:   12.8
@@ -139,6 +184,9 @@ Python: 3.12
 ## Structure
 
 ```
+patches/                           # SGLang v0.5.10 patches
+  001-upstream-sync.patch         #   Upstream cherry-picks (Gemma4, Qwen3.5, etc.)
+  002-nvidia-model-fixes.patch    #   NVIDIA-specific fixes
 benchmarks/                        # Benchmark results (per-model directories)
   {model}/results.json            #   Structured data from bench_all_unified.py
   baselines.json                  #   Regression test baselines
@@ -148,5 +196,6 @@ scripts/
   setup.sh                        #   Full setup (conda, SGLang install)
   bench/                          #   Benchmark scripts
   eval/                           #   Quality evaluation + warmup
-components/sglang/                 # SGLang v0.5.10 (cloned by setup.sh)
+  quantize/                       #   Quantization pipeline (GPTQ → CT → AWQ)
+components/sglang/                 # SGLang v0.5.10 + patches (cloned by setup.sh)
 ```
