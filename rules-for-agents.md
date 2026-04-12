@@ -99,6 +99,25 @@ Standard GPTQ fails for MoE due to expert routing imbalance:
 - For fused expert Parameters: monkey-patch to per-expert nn.Linear before calibration
 - Consider GPTQModel with MoE.Routing FailSafe mode
 
+### Chat templates — ALWAYS verify
+SGLang reads chat templates from the tokenizer, NOT from standalone jinja files.
+Many HuggingFace models ship `chat_template.jinja` as a separate file that SGLang ignores.
+
+**After downloading or calibrating any model, verify:**
+```python
+from transformers import AutoTokenizer
+tok = AutoTokenizer.from_pretrained("path/to/model", trust_remote_code=True)
+assert tok.chat_template is not None, "Missing chat template!"
+```
+
+If `chat_template` is None:
+1. Check for `chat_template.jinja` in the model directory
+2. Embed its contents into `tokenizer_config.json` as the `chat_template` field
+3. Or pass `--chat-template path/to/template.jinja` to SGLang launch
+
+Without a chat template, SGLang falls back to a generic format that produces
+wrong outputs (no system prompt handling, wrong special tokens, etc.).
+
 ### AWQ checkpoint format
 - Marlin requires: output dim divisible by 64, input dim divisible by 128
 - Layers that don't meet alignment fall back to torch dequant (our 002 patch)
