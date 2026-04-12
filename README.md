@@ -56,7 +56,7 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 
 | Model | Type | Max context | 1-user tok/s | TPOT | Launch | Status |
 |-------|------|:----------:|:------------:|:----:|:------:|:------:|
-| Devstral-24B AWQ | Dense | 131K | 63 | 16ms | `launch.sh devstral` | Working |
+| Devstral-24B AWQ | Dense | 131K | 79 | 13ms | `launch.sh devstral` | Working |
 | Coder-30B AWQ | MoE (128 experts) | 16K | 43 | 23ms | `launch.sh coder-30b` | Working |
 | Coder-Next-REAM-60B AWQ | MoE (384 experts) | 4K | — | — | `launch.sh coder-next-ream` | Not yet tested |
 | GLM-4.5-Air-REAP AWQ | MoE (96 experts) | 4K | — | — | `launch.sh glm45-air` | Not yet tested |
