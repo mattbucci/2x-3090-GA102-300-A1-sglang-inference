@@ -57,9 +57,11 @@ All numbers measured with `bench_all_unified.py` (tok/s = completion tokens / el
 
 ### Models that don't fit (48GB limit)
 
-| Model | Params | Why |
-|-------|--------|-----|
-| Qwen3-Coder-Next-80B | 80B MoE (512 experts) | ~44GB weights, no room for KV cache |
+| Model | Params | Weight size | Why |
+|-------|--------|:-----------:|-----|
+| Coder-Next-REAM-60B | 60B MoE (384 experts) | 35 GB | ~17.5GB/GPU, OOM on init overhead |
+| GLM-4.5-Air-REAP-82B | 82B MoE (96 experts) | 43 GB | ~21.5GB/GPU, no room for KV cache |
+| Qwen3-Coder-Next-80B | 80B MoE (512 experts) | ~44 GB | Exceeds 48GB total |
 
 ## Performance (2x RTX 3090, TP=2, SGLang v0.5.10 + patches)
 
