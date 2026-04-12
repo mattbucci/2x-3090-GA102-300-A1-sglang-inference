@@ -1,0 +1,48 @@
+diff --git a/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py b/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py
+index 9ecc0c414..2b14615be 100644
+--- a/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py
++++ b/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py
+@@ -36,9 +36,10 @@ from sglang.srt.utils.common import (
+     is_npu,
+ )
+ 
++from sglang.srt.model_executor.pool_configurator import MemoryPoolConfig
++
+ if TYPE_CHECKING:
+     from sglang.srt.model_executor.model_runner import ModelRunner
+-    from sglang.srt.model_executor.pool_configurator import MemoryPoolConfig
+ 
+ 
+ # the ratio of mamba cache pool size to max_running_requests
+diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
+index 544406119..c70363bef 100644
+--- a/python/sglang/srt/models/gemma4_causal.py
++++ b/python/sglang/srt/models/gemma4_causal.py
+@@ -825,10 +825,13 @@ class Gemma4ForCausalLM(PreTrainedModel):
+ 
+     def __init__(
+         self,
+-        config: Gemma4TextConfig,
++        config,
+         quant_config: Optional[QuantizationConfig] = None,
+         prefix: str = "",
+     ) -> None:
++        # Handle multimodal config wrapper: extract text_config for the language model
++        if hasattr(config, "text_config") and getattr(config, "model_type", "") == "gemma4":
++            config = config.text_config
+         super().__init__(config=config)
+         self.config = config
+         self.quant_config = quant_config
+diff --git a/python/sglang/srt/models/transformers.py b/python/sglang/srt/models/transformers.py
+index d928870b9..9988ef9d4 100644
+--- a/python/sglang/srt/models/transformers.py
++++ b/python/sglang/srt/models/transformers.py
+@@ -1194,7 +1194,7 @@ class MoEMixin:
+         )
+         assert num_experts is not None, "Cannot determine num_experts from config."
+ 
+-        top_k = _getattr_first(text_config, ("num_experts_per_tok", "top_k"))
++        top_k = _getattr_first(text_config, ("num_experts_per_tok", "top_k", "top_k_experts"))
+         assert top_k is not None, "Cannot determine top_k from config."
+ 
+         hidden_size = text_config.hidden_size
