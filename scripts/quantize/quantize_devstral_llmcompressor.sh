@@ -18,7 +18,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common.sh"
 
-QUANT_ENV="${QUANT_ENV:-sglang-triton36}"
+QUANT_ENV="${QUANT_ENV:-quant}"
 QUANT_PYTHON="$CONDA_BASE/envs/$QUANT_ENV/bin/python"
 MODELS_DIR="${MODELS_DIR:-$HOME/AI/models}"
 CT_OUTPUT="$MODELS_DIR/Devstral-24B-AWQ-CT"
@@ -26,8 +26,13 @@ AWQ_OUTPUT="$MODELS_DIR/Devstral-24B-AWQ-4bit-calibrated"
 
 if [ ! -f "$QUANT_PYTHON" ]; then
     echo "ERROR: conda env '$QUANT_ENV' not found at $QUANT_PYTHON"
+    echo "Create it: conda create -n quant python=3.12 && conda activate quant && pip install llmcompressor transformers compressed-tensors accelerate datasets"
     exit 1
 fi
+
+# Drop filesystem cache before calibration
+echo "Dropping filesystem caches..."
+echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null 2>&1 || echo "  (requires sudo — skipping cache drop)"
 
 echo "=============================================="
 echo "Devstral-24B AWQ 4-bit Quantization Pipeline"
