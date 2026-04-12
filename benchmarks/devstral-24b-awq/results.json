@@ -1,0 +1,116 @@
+{
+  "model": "Devstral-24B AWQ",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "timestamp": "2026-04-12 10:19:18",
+  "output_tokens": 100,
+  "context_sweep": [
+    {
+      "context": 128,
+      "prompt_tokens": 60,
+      "completion_tokens": 100,
+      "elapsed": 1.58,
+      "tok_per_sec": 63.4
+    },
+    {
+      "context": 256,
+      "prompt_tokens": 124,
+      "completion_tokens": 100,
+      "elapsed": 1.58,
+      "tok_per_sec": 63.1
+    },
+    {
+      "context": 512,
+      "prompt_tokens": 252,
+      "completion_tokens": 100,
+      "elapsed": 1.6,
+      "tok_per_sec": 62.4
+    },
+    {
+      "context": 1024,
+      "prompt_tokens": 508,
+      "completion_tokens": 100,
+      "elapsed": 2.02,
+      "tok_per_sec": 49.6
+    },
+    {
+      "context": 2048,
+      "prompt_tokens": 1020,
+      "completion_tokens": 100,
+      "elapsed": 1.73,
+      "tok_per_sec": 57.8
+    },
+    {
+      "context": 4096,
+      "prompt_tokens": 2044,
+      "completion_tokens": 100,
+      "elapsed": 1.93,
+      "tok_per_sec": 51.9
+    },
+    {
+      "context": 8192,
+      "prompt_tokens": 4092,
+      "completion_tokens": 100,
+      "elapsed": 2.27,
+      "tok_per_sec": 44.0
+    },
+    {
+      "context": 16384,
+      "prompt_tokens": 8188,
+      "completion_tokens": 100,
+      "elapsed": 3.05,
+      "tok_per_sec": 32.8
+    },
+    {
+      "context": 32768,
+      "prompt_tokens": 16380,
+      "completion_tokens": 100,
+      "elapsed": 4.74,
+      "tok_per_sec": 21.1
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "total_tokens": 100,
+      "elapsed": 1.56,
+      "tok_per_sec": 64.2,
+      "errors": 0
+    },
+    {
+      "concurrency": 2,
+      "total_tokens": 200,
+      "elapsed": 1.99,
+      "tok_per_sec": 100.5,
+      "errors": 0
+    },
+    {
+      "concurrency": 4,
+      "total_tokens": 400,
+      "elapsed": 1.66,
+      "tok_per_sec": 241.4,
+      "errors": 0
+    },
+    {
+      "concurrency": 8,
+      "total_tokens": 800,
+      "elapsed": 1.68,
+      "tok_per_sec": 476.3,
+      "errors": 0
+    },
+    {
+      "concurrency": 16,
+      "total_tokens": 1600,
+      "elapsed": 1.68,
+      "tok_per_sec": 955.2,
+      "errors": 0
+    },
+    {
+      "concurrency": 32,
+      "total_tokens": 3200,
+      "elapsed": 1.94,
+      "tok_per_sec": 1646.8,
+      "errors": 0
+    }
+  ]
+}
