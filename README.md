@@ -4,9 +4,27 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 ## Known Issues
 
-- **Gemma 4 26B/31B** — Multimodal processor registry missing in v0.5.10 base. Needs custom calibrated checkpoint.
+- **Gemma 4 26B/31B** — Multimodal processor registry missing in v0.5.10 base. Needs custom calibrated checkpoint. See [Gemma 4 quantization notes](#gemma-4-quantization-notes) below.
 - **Qwen3.5-27B** — Community AWQ quantizes DeltaNet layers causing Triton bf16/fp16 mismatch. Needs self-calibrated checkpoint (DeltaNet layers kept BF16). Calibration pipeline ready.
 - **CUDA graphs** — Disabled. Graph capture OOMs with custom all-reduce on 24GB GPUs with TP=2.
+
+### Gemma 4 quantization notes
+
+Findings from cross-testing on a sister RDNA4 project (2x R9700):
+
+1. **FP16 overflow on Gemma 31B Dense (hidden_size=5376)**. The MLP layers produce values exceeding FP16 max (65504) by layer 2, causing NaN → GPU crash. This affects ANY non-Marlin AWQ path (PyTorch dequant+matmul, Triton GEMM) because they accumulate in FP16. Marlin kernels accumulate in FP32 internally so NVIDIA is likely unaffected, but **verify with `--enable-nan-detection` if Gemma 31B produces garbage output.** Fix: use `--dtype bfloat16` (requires AWQ BF16 activation support patch).
+
+2. **CT→AWQ conversion quality is poor for Gemma 4**. Cosine similarity between AWQ-dequantized and BF16 reference weights:
+   - `q_proj` (out=8192): **0.845** — unacceptable
+   - `gate_proj` (out=21504): **0.920** — poor
+   - `v_proj` (out=4096): **0.993** — OK
+   - `o_proj` (out=5376): **0.991** — OK
+
+   Projections with larger output dimensions degrade more, suggesting a bug in the unpack→transpose→repack pipeline when `group_size` interacts with certain dimension ratios. The conversion scripts in both this repo and the RDNA4 repo produce the same issue. **Models load and run but generate garbage text** (repetitive tokens like "que que que").
+
+3. **Missing chat template**. The Gemma 4 `tokenizer_config.json` from HuggingFace does NOT include the `chat_template` field — it's in a separate `chat_template.jinja` file. SGLang reads from the tokenizer, not the jinja file, so it falls back to a generic template. **Fix: embed the jinja file contents into `tokenizer_config.json`** as the `chat_template` field. Always verify: `AutoTokenizer.from_pretrained(...).chat_template is not None`.
+
+4. **`num_experts` is None for Dense variant**. The Gemma 4 31B Dense config has `num_experts: null`. SGLang's `load_weights` does `if num_experts > 0` which throws `TypeError: '>' not supported between instances of 'NoneType' and 'int'`. **Fix: `num_experts = getattr(config, "num_experts", 0) or 0`**.
 
 ## Quick Start
 
