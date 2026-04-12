@@ -12,7 +12,7 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 ### Fixed issues (via our patches)
 
-- ~~Gemma 4 "No processor registered"~~ — Fixed in patch 004 (CausalLM multimodal bypass)
+- ~~Gemma 4 "No processor registered"~~ — Fixed in patch 004 (text-only CausalLM bypass). Full multimodal Gemma 4 (vision+audio) would need the gemma4_mm processor from upstream main — not needed for our REAP'd text-only MoE models.
 - ~~Qwen3.5 Triton DeltaNet bf16/fp16 mismatch~~ — Fixed in patch 003 (dtype cast in conv_state)
 - ~~Qwen3.5 Marlin repack dim=48~~ — Fixed in patch 002 (fallback to torch dequant)
 - ~~MemoryPoolConfig import error~~ — Fixed in patch 002 (runtime import)
