@@ -57,9 +57,8 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 | Model | Type | Max context | 1-user tok/s | TPOT | Launch | Status |
 |-------|------|:----------:|:------------:|:----:|:------:|:------:|
 | Devstral-24B AWQ | Dense | 131K | 79 | 13ms | `launch.sh devstral` | Working |
+| Coder-REAP-25B W4A16 | MoE (103 experts) | 131K | 134 | 7ms | `launch.sh coder-reap` | Working |
 | Coder-30B AWQ | MoE (128 experts) | 16K | 43 | 23ms | `launch.sh coder-30b` | Working |
-| Coder-Next-REAM-60B AWQ | MoE (384 experts) | 4K | — | — | `launch.sh coder-next-ream` | Not yet tested |
-| GLM-4.5-Air-REAP AWQ | MoE (96 experts) | 4K | — | — | `launch.sh glm45-air` | Not yet tested |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | — | — | `launch.sh qwen35` | Needs calibration |
 | Gemma 4 26B AWQ | MoE (128 experts) | 4K | — | — | `launch.sh gemma4` | Blocked |
 | Gemma 4 31B AWQ | Dense | 4K | — | — | `launch.sh gemma4-31b` | Blocked |
@@ -71,6 +70,7 @@ All numbers measured with `bench_all_unified.py` (tok/s = completion tokens / el
 | Model | Peak total tok/s | Best conc | Context | Status |
 |-------|:----------------:|:--------:|:-------:|:------:|
 | Devstral-24B AWQ | 1,647 | @32 | 32K | Working |
+| Coder-REAP-25B W4A16 | — | — | 131K | Working (single-user only so far) |
 | Coder-30B AWQ | 1,201 | @32 | 16K | Working |
 
 ### Models that don't fit (48GB limit)
@@ -111,6 +111,22 @@ All numbers measured with `bench_all_unified.py` (tok/s = completion tokens / el
 | 8 | 476 |
 | 16 | 955 |
 | **32** | **1,647** |
+
+### Coder-REAP-25B W4A16 (131K context, 103 experts)
+
+25B total / 3B active MoE. REAP-pruned from Coder-30B (128→103 experts). ~6.5 GB/GPU.
+571K token FP8 KV cache — enough for 131K+ context single-user. CUDA graphs at bs=1.
+
+Uses `auto-round` quantization (not AWQ/Marlin). Converting to AWQ/Marlin could further improve speed.
+
+| Context Length | tok/s |
+|:--------------:|:-----:|
+| 128 | 134 |
+| 1K | 126 |
+| 4K | 98 |
+| 8K | 63 |
+| 16K | 57 |
+| **32K** | **46** |
 
 ### Coder-30B MoE AWQ (16K context, 128 experts)
 

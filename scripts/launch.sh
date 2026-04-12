@@ -54,6 +54,12 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-4bit}"
             CTX=32768; MEM=0.90; MAX_RUNNING=64; CHUNKED=8192
             ;;
+        coder-reap)
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-REAP-25B-A3B-W4A16}"
+            QUANT="auto-round"
+            CTX=131072; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
+            CUDA_GRAPH="--cuda-graph-max-bs 1"
+            ;;
         coder-30b)
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ-4bit}"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
