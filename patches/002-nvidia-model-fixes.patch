@@ -70,6 +70,78 @@ index c05aa091a..e5688610f 100644
  
      def apply(
          self,
+diff --git a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16.py b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16.py
+index 15375212c..d7781b09c 100644
+--- a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16.py
++++ b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16.py
+@@ -217,12 +217,22 @@ class CompressedTensorsWNA16(CompressedTensorsLinearScheme):
+         device = getattr(layer, self.w_q_name).device
+         c = self.kernel_config
+ 
+-        check_marlin_supports_shape(
++        marlin_ok, marlin_err = check_marlin_supports_shape(
+             c.partition_weight_shape[1],  # out_features
+             c.partition_weight_shape[0],  # in_features
+             c.full_weight_shape[0],  # in_features
+             c.group_size,
+         )
++        if not marlin_ok:
++            import logging
++            logging.getLogger(__name__).warning(
++                f"Marlin shape incompatible (n={c.partition_weight_shape[1]}, "
++                f"k={c.partition_weight_shape[0]}): {marlin_err}. "
++                f"Using torch dequant fallback for this layer."
++            )
++            self._use_marlin = False
++            return
++        self._use_marlin = True
+ 
+         row_parallel = c.partition_weight_shape[0] != c.full_weight_shape[0]
+         self.is_k_full = marlin_is_k_full(c.has_g_idx, row_parallel)
+@@ -300,8 +310,43 @@ class CompressedTensorsWNA16(CompressedTensorsLinearScheme):
+         _transform_param(layer, self.w_q_name, transform_w_q)
+         _transform_param(layer, self.w_s_name, transform_w_s)
+ 
++    def _dequant_fallback(self, layer, x, bias):
++        """Torch dequant fallback for layers where Marlin shape is incompatible."""
++        c = self.kernel_config
++        w_q = getattr(layer, self.w_q_name)
++        w_s = getattr(layer, self.w_s_name)
++        num_bits = c.weight_type.size_bits
++        group_size = c.group_size
++
++        # Unpack INT4 weights to FP16
++        pack_factor = 32 // num_bits
++        in_features = c.full_weight_shape[0]
++        out_features = c.partition_weight_shape[1]
++
++        # w_q is packed: [in_features // pack_factor, out_features]
++        shifts = torch.arange(0, 32, num_bits, device=w_q.device, dtype=torch.int32)
++        unpacked = (w_q.unsqueeze(-1) >> shifts) & ((1 << num_bits) - 1)
++        unpacked = unpacked.reshape(-1, out_features).to(x.dtype)
++
++        # Apply scales per group
++        if group_size > 0 and w_s.numel() > 0:
++            num_groups = (in_features + group_size - 1) // group_size
++            scales = w_s[:num_groups, :out_features].to(x.dtype)
++            scales_expanded = scales.repeat_interleave(group_size, dim=0)[:in_features]
++            weight_fp = unpacked[:in_features] * scales_expanded
++        else:
++            weight_fp = unpacked[:in_features]
++
++        out = x @ weight_fp
++        if bias is not None:
++            out = out + bias
++        return out
++
+     def apply_weights(self, layer: torch.nn.Module, x: torch.Tensor,
+                       bias: Optional[torch.Tensor]) -> torch.Tensor:
++        if not getattr(self, '_use_marlin', True):
++            return self._dequant_fallback(layer, x, bias)
++
+         c = self.kernel_config
+ 
+         def _get_weight_params(
 diff --git a/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py b/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py
 index 9ecc0c414..2b14615be 100644
 --- a/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py
@@ -86,6 +158,39 @@ index 9ecc0c414..2b14615be 100644
  
  
  # the ratio of mamba cache pool size to max_running_requests
+diff --git a/python/sglang/srt/model_executor/pool_configurator.py b/python/sglang/srt/model_executor/pool_configurator.py
+index 659b65fd3..9780b86b4 100644
+--- a/python/sglang/srt/model_executor/pool_configurator.py
++++ b/python/sglang/srt/model_executor/pool_configurator.py
+@@ -93,7 +93,7 @@ class DefaultPoolConfigurator(MemoryPoolConfigurator):
+         self._cell_size = self._compute_cell_size(mr, num_layers)
+ 
+         # DFLASH: scale cell_size to account for draft model KV cache
+-        if mr.spec_algorithm.is_dflash() and not mr.is_draft_worker:
++        if hasattr(mr.spec_algorithm, 'is_dflash') and mr.spec_algorithm.is_dflash() and not mr.is_draft_worker:
+             from sglang.srt.speculative.dflash_utils import (
+                 scale_kv_cell_size_per_token_for_dflash,
+             )
+diff --git a/python/sglang/srt/model_loader/weight_utils.py b/python/sglang/srt/model_loader/weight_utils.py
+index d978eefdf..bae7db710 100644
+--- a/python/sglang/srt/model_loader/weight_utils.py
++++ b/python/sglang/srt/model_loader/weight_utils.py
+@@ -1044,11 +1044,12 @@ def row_parallel_weight_loader(
+ LoaderFunction = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
+ 
+ 
+-def sharded_weight_loader(shard_axis: int) -> LoaderFunction:
+-    """Create a weight loader that shards the weights along the given axis"""
++def sharded_weight_loader(shard_axis: int, override_tp_rank: int = None) -> LoaderFunction:
++    """Create a weight loader that shards the weights along the given axis.
++    If override_tp_rank is set, all TP workers use that rank (for replicated layers)."""
+ 
+     def loader(param: torch.Tensor, loaded_weight: torch.Tensor) -> None:
+-        tp_rank = get_attention_tp_rank()
++        tp_rank = override_tp_rank if override_tp_rank is not None else get_attention_tp_rank()
+ 
+         shard_size = param.data.shape[shard_axis]
+         start_idx = tp_rank * shard_size
 diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
 index 544406119..c1776cf62 100644
 --- a/python/sglang/srt/models/gemma4_causal.py
