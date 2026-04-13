@@ -1,6 +1,6 @@
 # SGLang Inference: 2x RTX 3090
 
-High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with CUDA 12.8.
+High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with CUDA 13.2 / PyTorch cu128.
 
 ## Known Issues
 
@@ -55,7 +55,7 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 ## Prerequisites
 
 - 2x NVIDIA RTX 3090 (24GB GDDR6X each, 48GB total)
-- NVIDIA drivers (550+) + CUDA toolkit 12.x
+- NVIDIA drivers (595+) + CUDA 13.x
 - Miniforge3/Conda
 - ~150GB disk for models
 
@@ -208,8 +208,8 @@ cd python && pip install -e ".[srt]"
 | Component | Version | Notes |
 |-----------|---------|-------|
 | SGLang | v0.5.10 + 2 patches | editable install from source |
-| PyTorch | 2.9.1+cu128 | CUDA 12.8 |
-| CUDA | 12.8 | driver 595+ |
+| PyTorch | 2.9.1+cu128 | CUDA toolkit 12.8 |
+| CUDA | 13.2 | driver 595.58 |
 | NCCL | 2.27.5 | P2P over PCIe |
 | transformers | 5.5.3 | Gemma4 support |
 
@@ -233,7 +233,7 @@ Kernel: 6.19.11-arch1-1
 RAM:    92 GB
 GPU:    2x NVIDIA RTX 3090 (GA102-300-A1, 24GB GDDR6X each)
 Driver: 595.58.03
-CUDA:   12.8
+CUDA:   13.2 (PyTorch uses cu128 toolkit)
 Python: 3.12
 ```
 
