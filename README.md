@@ -4,7 +4,7 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 ## Known Issues
 
-- **Gemma 4 26B REAP** — GPTQ calibration and CT→AWQ conversion complete. **Blocked by hardware limitation**: Gemma 4's full-attention layers use `global_head_dim=512` which FlashInfer doesn't support on Ampere (sm_86). Triton attention works but lacks FP8 KV on Ampere, making it VRAM-prohibitive. No workaround until FlashInfer adds head_dim=512 support or a per-layer attention backend dispatch is implemented.
+- **All Gemma 4 models (26B MoE, 31B Dense)** — **Blocked by FlashInfer limitation on Ampere**. Gemma 4's full-attention layers use `global_head_dim=512` which FlashInfer doesn't support on sm_86 (only 64/128/256). Triton attention backend works but lacks FP8 KV on Ampere, making it VRAM-prohibitive. Calibrated checkpoints ready for when FlashInfer adds support. All other model families (Qwen, Devstral) use head_dim=128 and work fine.
 - **Gemma 4 CT→AWQ conversion quality bug** — The unpack→transpose→repack pipeline produces poor cosine similarity for large output dimensions. See [Gemma 4 quantization notes](#gemma-4-quantization-notes).
 - **Gemma 4 31B Dense FP16 overflow** — MLP values exceed FP16 max by layer 2. Marlin (FP32 accumulation) is unaffected. Verify with `--enable-nan-detection`.
 - **Qwen3.5-27B DeltaNet is slow** — 7 tok/s, well below the 3090's 936 GB/s bandwidth limit (~67 tok/s theoretical). Likely caused by unoptimized Triton DeltaNet kernel on Ampere (sm_86) and/or our dtype cast patch overhead. RDNA4 gets 26 tok/s, M4 (MLX) also outperforms. Needs profiling to identify the actual bottleneck.
