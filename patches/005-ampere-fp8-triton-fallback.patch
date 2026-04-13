@@ -1,0 +1,37 @@
+diff --git a/python/sglang/srt/entrypoints/engine.py b/python/sglang/srt/entrypoints/engine.py
+index aca1adc26..4ee02b50a 100644
+--- a/python/sglang/srt/entrypoints/engine.py
++++ b/python/sglang/srt/entrypoints/engine.py
+@@ -1128,7 +1128,7 @@ def _set_envs_and_config(server_args: ServerArgs):
+         if server_args.attention_backend == "flashinfer":
+             assert_pkg_version(
+                 "flashinfer_python",
+-                "0.6.7.post2",
++                "0.6.7",  # Allow custom FlashInfer builds
+                 "Please uninstall the old version and "
+                 "reinstall the latest version by following the instructions "
+                 "at https://docs.flashinfer.ai/installation.html.",
+diff --git a/python/sglang/srt/layers/attention/triton_ops/trtllm_fp8_kv_kernel.py b/python/sglang/srt/layers/attention/triton_ops/trtllm_fp8_kv_kernel.py
+index 41cc9c9dc..3987c69b1 100644
+--- a/python/sglang/srt/layers/attention/triton_ops/trtllm_fp8_kv_kernel.py
++++ b/python/sglang/srt/layers/attention/triton_ops/trtllm_fp8_kv_kernel.py
+@@ -19,6 +19,10 @@ import torch
+ import triton
+ import triton.language as tl
+ 
++# Detect FP8 variant: fp8e4nv needs sm_89+ (Ada). Ampere (sm_86) uses naive fallback.
++_cc = torch.cuda.get_device_capability() if torch.cuda.is_available() else (0, 0)
++_USE_FP8E4NV: bool = _cc >= (8, 9)
++
+ logger = logging.getLogger(__name__)
+ 
+ 
+@@ -212,7 +216,7 @@ def fused_fp8_set_kv_buffer(
+     ] = None,  # Scalar scale (matching original set_kv_buffer signature)
+     v_scale: Optional[float] = None,
+     page_size: int = 16,
+-    use_triton: bool = True,  # Whether to use Triton kernel (set to False to force naive fallback)
++    use_triton: bool = _USE_FP8E4NV,  # False on Ampere (sm_86) — fp8e4nv not available in Triton
+ ) -> None:
+     """
+     Python wrapper for the fused FP8 quantization + paged KV cache write kernel.
