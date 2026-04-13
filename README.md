@@ -4,18 +4,11 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 ## Known Issues
 
-- **Gemma 4 CT→AWQ conversion quality bug** — The unpack→transpose→repack pipeline produces poor cosine similarity for large output dimensions (q_proj 0.845, gate_proj 0.920). Models load but generate garbage. Using `compressed-tensors` directly (skipping CT→AWQ) may work with Marlin. See [Gemma 4 quantization notes](#gemma-4-quantization-notes) below.
-- **Gemma 4 31B Dense FP16 overflow** — MLP values exceed FP16 max by layer 2. Marlin (FP32 accumulation) is unaffected, but non-Marlin paths crash. Verify with `--enable-nan-detection`.
-- **Qwen3.5-27B DeltaNet is slow** — 7 tok/s due to BF16 DeltaNet weight reads (bandwidth-limited). This is architectural, not fixable with patches.
-- **CUDA graphs** — Only bs=1 works. Full graph capture OOMs with custom all-reduce on 24GB GPUs with TP=2. `--cuda-graph-max-bs 1 --disable-custom-all-reduce` is the working config.
+- **Gemma 4 CT→AWQ conversion quality bug** — The unpack→transpose→repack pipeline produces poor cosine similarity for large output dimensions. Using `compressed-tensors` directly (skipping CT→AWQ) works. See [Gemma 4 quantization notes](#gemma-4-quantization-notes).
+- **Gemma 4 31B Dense FP16 overflow** — MLP values exceed FP16 max by layer 2. Marlin (FP32 accumulation) is unaffected. Verify with `--enable-nan-detection`.
+- **Qwen3.5-27B DeltaNet is slow** — 7 tok/s due to BF16 DeltaNet weight reads. Architectural limit, not fixable with patches.
+- **CUDA graphs** — Only bs=1 works. `--cuda-graph-max-bs 1 --disable-custom-all-reduce`.
 - **60B+ models** — Coder-Next-REAM (35GB), GLM-4.5-Air-REAP (43GB) don't fit in 48GB VRAM.
-
-### Fixed issues (via our patches)
-
-- ~~Gemma 4 "No processor registered"~~ — Fixed in patch 004 (text-only CausalLM bypass). Full multimodal Gemma 4 (vision+audio) would need the gemma4_mm processor from upstream main — not needed for our REAP'd text-only MoE models.
-- ~~Qwen3.5 Triton DeltaNet bf16/fp16 mismatch~~ — Fixed in patch 003 (dtype cast in conv_state)
-- ~~Qwen3.5 Marlin repack dim=48~~ — Fixed in patch 002 (fallback to torch dequant)
-- ~~MemoryPoolConfig import error~~ — Fixed in patch 002 (runtime import)
 
 ### Gemma 4 quantization notes
 
