@@ -59,10 +59,10 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 | Model | Type | Max context | 1-user tok/s | TPOT | Launch | Status |
 |-------|------|:----------:|:------------:|:----:|:------:|:------:|
 | Devstral-24B AWQ | Dense | 131K | 79 | 13ms | `launch.sh devstral` | Working |
-| Coder-REAP-25B (30B pruned) W4A16 | MoE (103 experts) | 131K | 134 | 7ms | `launch.sh coder-reap` | Working |
+| Coder-30B REAP W4A16 | MoE (103 experts) | 131K | 134 | 7ms | `launch.sh coder-reap` | Working |
 | Coder-30B AWQ | MoE (128 experts) | 16K | 43 | 23ms | `launch.sh coder-30b` | Working |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 16K | 7 | 143ms | `launch.sh qwen35` | Working (slow — DeltaNet) |
-| Gemma 4 21B REAP (26B pruned) | MoE (103 experts) | 131K | — | — | — | Calibrating |
+| Gemma 4 26B REAP | MoE (103 experts) | 131K | — | — | — | Calibrating |
 
 All numbers measured with `bench_all_unified.py` (tok/s = completion tokens / elapsed time, single user).
 
