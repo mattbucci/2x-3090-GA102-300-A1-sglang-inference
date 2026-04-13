@@ -4,7 +4,7 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 ## Known Issues
 
-- **All Gemma 4 models (26B MoE, 31B Dense)** — **Blocked by FlashInfer limitation on Ampere**. Gemma 4's full-attention layers use `global_head_dim=512` which FlashInfer doesn't support on sm_86 (only 64/128/256). Triton attention backend works but lacks FP8 KV on Ampere, making it VRAM-prohibitive. Calibrated checkpoints ready for when FlashInfer adds support. All other model families (Qwen, Devstral) use head_dim=128 and work fine.
+- **All Gemma 4 models (26B MoE, 31B Dense)** — **Blocked by FlashInfer `BatchPrefillWithPagedKVCache` on sm_86 (Ampere)**. Gemma 4's full-attention layers use `global_head_dim=512` which this kernel doesn't support (only 64/128/256). See [FlashInfer execution path details](#flashinfer-execution-path) below. Calibrated checkpoints ready. Gemma 4 runs fine on 3090 via llama.cpp (80-110 tok/s).
 - **Gemma 4 CT→AWQ conversion quality bug** — The unpack→transpose→repack pipeline produces poor cosine similarity for large output dimensions. See [Gemma 4 quantization notes](#gemma-4-quantization-notes).
 - **Gemma 4 31B Dense FP16 overflow** — MLP values exceed FP16 max by layer 2. Marlin (FP32 accumulation) is unaffected. Verify with `--enable-nan-detection`.
 - **Qwen3.5-27B DeltaNet is slow** — 7 tok/s, well below the 3090's 936 GB/s bandwidth limit (~67 tok/s theoretical). Likely caused by unoptimized Triton DeltaNet kernel on Ampere (sm_86) and/or our dtype cast patch overhead. RDNA4 gets 26 tok/s, M4 (MLX) also outperforms. Needs profiling to identify the actual bottleneck.
@@ -253,6 +253,41 @@ Python: 3.12
 - [ ] Investigate CT→AWQ conversion quality bug for Gemma 4 (cosine sim drops on large dims)
 - [ ] Convert Coder-30B REAP from auto-round to AWQ/Marlin for faster kernels
 
+## FlashInfer execution path
+
+SGLang uses FlashInfer's **`BatchPrefillWithPagedKVCache`** and **`BatchDecodeWithPagedKVCache`** kernels for attention. These are FlashInfer's native JIT-compiled kernels, distinct from the TRTLLM FMHA kernels also available in the FlashInfer library.
+
+### head_dim support on sm_86 (RTX 3090, Ampere)
+
+| head_dim | `BatchPrefill` (SGLang uses this) | TRTLLM FMHA (SGLang does NOT use) |
+|:--------:|:---------------------------------:|:----------------------------------:|
+| 64 | Supported | Supported |
+| 128 | Supported | Supported |
+| 192 | Supported | Supported |
+| 256 | Supported | Supported |
+| **512** | **NOT supported** | Being added ([PR #2959](https://github.com/flashinfer-ai/flashinfer/pull/2959)) |
+
+**Impact on models:**
+- Qwen family (head_dim=128): Works fine
+- Devstral (head_dim=128): Works fine
+- **Gemma 4 (global_head_dim=512)**: Blocked — full-attention layers crash FlashInfer
+
+### Fallback attention backends
+
+| Backend | FP8 KV cache on sm_86 | head_dim=512 | Status |
+|---------|:---------------------:|:------------:|--------|
+| FlashInfer | Yes | No | Default, fastest for supported configs |
+| Triton | No (`fp8e4nv` not supported) | Yes | Works but VRAM-prohibitive without FP8 KV |
+| SDPA (torch) | No | Yes | Not integrated as SGLang backend |
+
+### Possible fixes
+
+1. **Patch SGLang to use SDPA fallback** for head_dim > 256 layers — works but slow and no FP8 KV
+2. **Integrate TRTLLM FMHA path** into SGLang for head_dim=512 — requires verifying sm_86 cubin support
+3. **Integrate [FFPA kernels](https://github.com/DefTruth/ffpa-attn-mma)** — supports head_dim up to 1024, tested on RTX 3080 (sm_86)
+4. **Wait for FlashInfer** to add head_dim=512 to `BatchPrefill` on sm_86
+5. **Use llama.cpp** for Gemma 4 instead of SGLang (80-110 tok/s proven, see [gemma4-turboquant-bench](https://github.com/conorseabrook/gemma4-turboquant-bench))
+
 ## Structure
 
 ```
@@ -271,5 +306,3 @@ scripts/
   quantize/                       #   Quantization pipeline (GPTQ → CT → AWQ)
 components/sglang/                 # SGLang v0.5.10 + patches (cloned by setup.sh)
 ```
-
-**Note:** Gemma 4 26B runs at 80-110 tok/s on RTX 3090 via llama.cpp (GGUF Q5_K_M + TurboQuant KV cache). The FlashInfer head_dim=512 limitation is SGLang-specific, not a general Ampere limitation. See [gemma4-turboquant-bench](https://github.com/conorseabrook/gemma4-turboquant-bench) for the llama.cpp approach.
