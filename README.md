@@ -271,3 +271,5 @@ scripts/
   quantize/                       #   Quantization pipeline (GPTQ → CT → AWQ)
 components/sglang/                 # SGLang v0.5.10 + patches (cloned by setup.sh)
 ```
+
+**Note:** Gemma 4 26B runs at 80-110 tok/s on RTX 3090 via llama.cpp (GGUF Q5_K_M + TurboQuant KV cache). The FlashInfer head_dim=512 limitation is SGLang-specific, not a general Ampere limitation. See [gemma4-turboquant-bench](https://github.com/conorseabrook/gemma4-turboquant-bench) for the llama.cpp approach.
