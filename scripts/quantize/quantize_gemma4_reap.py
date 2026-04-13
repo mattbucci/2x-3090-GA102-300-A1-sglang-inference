@@ -46,8 +46,15 @@ ds = ds.map(tokenize, remove_columns=ds.column_names)
 
 recipe = GPTQModifier(
     targets="Linear",
-    scheme="W4A16",
-    group_size=32,  # Gemma 4 moe_intermediate_size=704 not divisible by 128
+    scheme={
+        "weights": {
+            "num_bits": 4,
+            "type": "int",
+            "symmetric": True,
+            "strategy": "group",
+            "group_size": 32,  # Gemma 4 moe_intermediate_size=704 not divisible by 128
+        }
+    },
     ignore=["lm_head"],
     offload_hessians=True,
 )
