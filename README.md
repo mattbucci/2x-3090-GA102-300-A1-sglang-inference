@@ -54,7 +54,7 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 
 ## Prerequisites
 
-- 2x NVIDIA RTX 3090 (24GB GDDR6X each, 48GB total)
+- 2x NVIDIA RTX 3090 (24GB GDDR6X each, 48GB total) with NVLink bridge
 - NVIDIA drivers (595+) + CUDA 13.x
 - Miniforge3/Conda
 - ~150GB disk for models
@@ -230,8 +230,9 @@ See [rules-for-agents.md](rules-for-agents.md) for full quantization pipeline an
 ```
 OS:     EndeavourOS (Arch Linux)
 Kernel: 6.19.11-arch1-1
-RAM:    92 GB
+RAM:    96 GB (92 GB usable, ~4 GB reserved by iGPU)
 GPU:    2x NVIDIA RTX 3090 (GA102-300-A1, 24GB GDDR6X each)
+GPU interconnect: NVLink (NV4, 4 lanes × 14 GB/s = 56 GB/s bidirectional)
 Driver: 595.58.03
 CUDA:   13.2 (PyTorch uses cu128 toolkit)
 Python: 3.12
