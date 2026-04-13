@@ -231,6 +231,27 @@ CUDA:   13.2 (PyTorch uses cu128 toolkit)
 Python: 3.12
 ```
 
+## Roadmap
+
+### In progress
+- [ ] Gemma 4 26B REAP — GPTQ calibration running (layer 22/31, ~4h remaining)
+
+### Next up
+- [ ] Benchmark Gemma 4 26B REAP on SGLang (compressed-tensors, 131K context)
+- [ ] REAM Qwen3-Coder-30B (128→96 experts) for Marlin-optimized coding model at 128K
+- [ ] Profile Qwen3.5-27B DeltaNet slowness (7 tok/s vs 67 tok/s theoretical)
+- [ ] Benchmark Coder-30B REAP at higher concurrency (only tested single-user)
+- [ ] Try CUDA graphs bs=1 on Coder-30B (same trick that boosted Devstral 25%)
+- [ ] Push self-calibrated checkpoints to HuggingFace for RDNA4 system to use
+
+### Future
+- [ ] REAM Qwen3.5-35B-A3B (256→192 experts) — DeltaNet hybrid MoE
+- [ ] Add Gemma 4 to REAM (port from REAP's MODEL_ATTRS)
+- [ ] Full multimodal Gemma 4 (needs gemma4_mm processor + vision/audio models from upstream)
+- [ ] Re-enable CUDA graphs at higher batch sizes (needs custom all-reduce fix or smaller KV cache)
+- [ ] Investigate CT→AWQ conversion quality bug for Gemma 4 (cosine sim drops on large dims)
+- [ ] Convert Coder-30B REAP from auto-round to AWQ/Marlin for faster kernels
+
 ## Structure
 
 ```
