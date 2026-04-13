@@ -6,7 +6,7 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 - **Gemma 4 CT→AWQ conversion quality bug** — The unpack→transpose→repack pipeline produces poor cosine similarity for large output dimensions. Using `compressed-tensors` directly (skipping CT→AWQ) works. See [Gemma 4 quantization notes](#gemma-4-quantization-notes).
 - **Gemma 4 31B Dense FP16 overflow** — MLP values exceed FP16 max by layer 2. Marlin (FP32 accumulation) is unaffected. Verify with `--enable-nan-detection`.
-- **Qwen3.5-27B DeltaNet is slow** — 7 tok/s due to BF16 DeltaNet weight reads. Architectural limit, not fixable with patches.
+- **Qwen3.5-27B DeltaNet is slow** — 7 tok/s, well below the 3090's 936 GB/s bandwidth limit (~67 tok/s theoretical). Likely caused by unoptimized Triton DeltaNet kernel on Ampere (sm_86) and/or our dtype cast patch overhead. RDNA4 gets 26 tok/s, M4 (MLX) also outperforms. Needs profiling to identify the actual bottleneck.
 - **CUDA graphs** — Only bs=1 works. `--cuda-graph-max-bs 1 --disable-custom-all-reduce`.
 - **60B+ models** — Coder-Next-REAM (35GB), GLM-4.5-Air-REAP (43GB) don't fit in 48GB VRAM.
 
