@@ -265,7 +265,7 @@ SGLang uses FlashInfer's **`BatchPrefillWithPagedKVCache`** and **`BatchDecodeWi
 | 128 | Supported | Supported |
 | 192 | Supported | Supported |
 | 256 | Supported | Supported |
-| **512** | **NOT supported** | Being added ([PR #2959](https://github.com/flashinfer-ai/flashinfer/pull/2959)) |
+| **512** | **NOT supported** | Being added for SM100+ only ([PR #2959](https://github.com/flashinfer-ai/flashinfer/pull/2959), not Ampere) |
 
 **Impact on models:**
 - Qwen family (head_dim=128): Works fine
@@ -274,10 +274,10 @@ SGLang uses FlashInfer's **`BatchPrefillWithPagedKVCache`** and **`BatchDecodeWi
 
 ### Fallback attention backends
 
-| Backend | FP8 KV cache on sm_86 | head_dim=512 | Status |
-|---------|:---------------------:|:------------:|--------|
-| FlashInfer | Yes | No | Default, fastest for supported configs |
-| Triton | No (`fp8e4nv` not supported) | Yes | Works but VRAM-prohibitive without FP8 KV |
+| Backend | FP8 KV on sm_86 | head_dim=512 | Status |
+|---------|:---------------:|:------------:|--------|
+| FlashInfer | Yes (head_dim ≤256) | No | Default. FP8 KV works for Qwen/Devstral (128), crashes on Gemma4 (512) |
+| Triton | No (`fp8e4nv` unsupported on sm_86) | Yes | Works but no FP8 KV = VRAM-prohibitive |
 | SDPA (torch) | No | Yes | Not integrated as SGLang backend |
 
 ### Possible fixes
