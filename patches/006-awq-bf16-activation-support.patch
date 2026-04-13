@@ -1,0 +1,15 @@
+diff --git a/python/sglang/srt/layers/quantization/awq.py b/python/sglang/srt/layers/quantization/awq.py
+index e5688610f..44e6cbad1 100644
+--- a/python/sglang/srt/layers/quantization/awq.py
++++ b/python/sglang/srt/layers/quantization/awq.py
+@@ -137,7 +137,9 @@ class AWQConfig(QuantizationConfig):
+         return "awq"
+ 
+     def get_supported_act_dtypes(self) -> List[torch.dtype]:
+-        return [torch.float16] if not _is_npu else [torch.float16, torch.bfloat16]
++        # BF16 needed for Gemma 4 (hidden_size > 4096, FP16 overflows)
++        # Marlin kernels accumulate in FP32 so BF16 activations are safe
++        return [torch.float16, torch.bfloat16]
+ 
+     @classmethod
+     def get_min_capability(cls) -> int:
