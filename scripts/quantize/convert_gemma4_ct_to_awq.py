@@ -79,6 +79,11 @@ def pack_4bit_to_int32_awq(values: torch.Tensor) -> torch.Tensor:
 
 # Build cross-shard index: map each key to its shard file
 shard_files = sorted(glob.glob(f"{SRC_DIR}/model-*.safetensors"))
+if not shard_files:
+    # Single-file model (not sharded)
+    single = os.path.join(SRC_DIR, "model.safetensors")
+    if os.path.exists(single):
+        shard_files = [single]
 print(f"\nBuilding cross-shard index for {len(shard_files)} shards...")
 key_to_shard = {}
 for sp in shard_files:
@@ -132,6 +137,18 @@ for shard_idx, shard_path in enumerate(shard_files):
             # Step 2: Transpose [out, in] -> [in, out]
             unpacked_t = unpacked.T.contiguous()
             # Step 3: Repack AWQ interleaved
+            if unpacked_t.shape[-1] % PACK_FACTOR != 0:
+                print(f"  DEQUANT {base}: out_features={unpacked_t.shape[-1]} not divisible by {PACK_FACTOR}, dequantizing to FP16")
+                # Dequant: expand scales to match unpacked weight shape
+                # unpacked is [out, in], scale is [out, in//group_size]
+                scales_expanded = scale.float().repeat_interleave(GROUP_SIZE, dim=1)[:, :unpacked.shape[1]]
+                full_weight = (unpacked.float() - 8) * scales_expanded
+                converted[f"{base}.weight"] = full_weight.to(torch.float16)
+                processed.add(key)
+                processed.add(scale_key)
+                processed.add(f"{base}.weight_shape")
+                skipped_count += 1
+                continue
             qweight = pack_4bit_to_int32_awq(unpacked_t)
             # Step 4: Transpose scales
             scales = scale.T.contiguous().clamp(-65504, 65504).to(torch.float16)
