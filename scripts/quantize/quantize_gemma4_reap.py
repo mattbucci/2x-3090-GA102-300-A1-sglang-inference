@@ -44,16 +44,17 @@ def tokenize(sample):
                      truncation=True, add_special_tokens=False)
 ds = ds.map(tokenize, remove_columns=ds.column_names)
 
+from compressed_tensors.quantization import QuantizationArgs, QuantizationScheme
 recipe = GPTQModifier(
     targets="Linear",
-    scheme={
-        "weights": {
-            "num_bits": 4,
-            "type": "int",
-            "symmetric": True,
-            "strategy": "group",
-            "group_size": 32,  # Gemma 4 moe_intermediate_size=704 not divisible by 128
-        }
+    config_groups={
+        "group_0": QuantizationScheme(
+            targets=["Linear"],
+            weights=QuantizationArgs(
+                num_bits=4, type="int", symmetric=True,
+                strategy="group", group_size=32,  # Gemma 4 moe_intermediate_size=704 not div by 128
+            ),
+        ),
     },
     ignore=["lm_head"],
     offload_hessians=True,
