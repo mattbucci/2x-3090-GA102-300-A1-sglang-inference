@@ -62,7 +62,10 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 | Devstral-24B AWQ | Dense | 131K | 79 | 13ms | `launch.sh devstral` | Working |
 | Coder-30B REAP W4A16 | MoE (103 experts) | 131K | 134 | 7ms | `launch.sh coder-reap` | Working |
 | Coder-30B AWQ | MoE (128 experts) | 16K | 43 | 23ms | `launch.sh coder-30b` | Working |
+| Qwen3-VL-30B MoE AWQ | MoE (60 experts) | 16K | — | — | `launch.sh qwen3-vl-moe` | Not yet tested |
+| Qwen3-VL-32B Dense AWQ | Dense (vision+text) | 16K | — | — | `launch.sh qwen3-vl-32b` | Not yet tested |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 16K | 7 | 143ms | `launch.sh qwen35` | Working (slow — DeltaNet) |
+| Qwen3.5-28B MoE REAP | DeltaNet+MoE (205 exp) | 4K | — | — | — | Calibrating |
 | Gemma 4 26B REAP | MoE (103 experts) | — | — | — | — | Blocked (see below) |
 
 All numbers measured with `bench_all_unified.py` (tok/s = completion tokens / elapsed time, single user).

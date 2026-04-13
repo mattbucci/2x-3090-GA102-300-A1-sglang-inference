@@ -74,6 +74,14 @@ apply_preset() {
             CTX=4096; MEM=0.85; MAX_RUNNING=1; CHUNKED=2048
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
+        qwen3-vl-moe)
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3-VL-30B-A3B-Instruct-AWQ-4bit}"
+            CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
+            ;;
+        qwen3-vl-32b)
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3-VL-32B-Instruct-AWQ-4bit}"
+            CTX=16384; MEM=0.85; MAX_RUNNING=16; CHUNKED=4096
+            ;;
         qwen35)
             MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-27B-AWQ-4bit}"
             CTX=32768; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
