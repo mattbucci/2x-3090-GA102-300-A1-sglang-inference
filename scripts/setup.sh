@@ -30,7 +30,7 @@ done
 echo "=============================================="
 echo "2x RTX 3090 Inference — Setup"
 echo "=============================================="
-echo "SGLang:  $SGLANG_TAG (stock, no patches)"
+echo "SGLang:  $SGLANG_TAG + local patches"
 echo "Env:     $ENV_NAME"
 echo "=============================================="
 
@@ -57,6 +57,24 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     git clone --branch "$SGLANG_TAG" --depth 1 "$SGLANG_REPO" "$SGLANG_DIR"
 else
     echo "[1/3] Using existing SGLang source at $SGLANG_DIR"
+fi
+
+# Apply local patches (idempotent — skips already-applied)
+PATCH_DIR="$REPO_DIR/patches"
+if [ -d "$PATCH_DIR" ] && ls "$PATCH_DIR"/*.patch &>/dev/null; then
+    echo ""
+    echo "Applying patches from $PATCH_DIR..."
+    cd "$SGLANG_DIR"
+    for p in "$PATCH_DIR"/*.patch; do
+        pname="$(basename "$p")"
+        if git apply --check "$p" 2>/dev/null; then
+            git apply "$p"
+            echo "  Applied: $pname"
+        else
+            echo "  Skipped (already applied or conflict): $pname"
+        fi
+    done
+    cd "$REPO_DIR"
 fi
 
 # -------------------------------------------------------------------
