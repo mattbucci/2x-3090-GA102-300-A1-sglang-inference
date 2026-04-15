@@ -117,6 +117,7 @@ recipe = GPTQModifier(
     scheme="W4A16",
     ignore=[
         "lm_head",
+        "re:.*visual.*",              # Vision encoder (not needed for text-only, has non-divisible dims)
         "re:.*in_proj_b$",            # DeltaNet beta gate (tiny, precision-sensitive)
         "re:.*in_proj_a$",            # DeltaNet alpha gate (tiny, precision-sensitive)
         "re:.*mlp\\.gate$",           # MoE router gates (full precision for routing)
