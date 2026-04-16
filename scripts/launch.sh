@@ -39,6 +39,7 @@ REASONING=""
 OVERLAP=""
 WARMUP=""
 WATCHDOG=600
+TP=2
 EXTRA_ARGS=""
 
 # --- Model presets (tuned for 48GB total VRAM) ---
@@ -89,6 +90,14 @@ apply_preset() {
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
             ;;
+        qwen35-moe)
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-28B-A3B-REAP-CT}"
+            QUANT="compressed-tensors"
+            CTX=4096; MEM=0.80; MAX_RUNNING=8; CHUNKED=2048; DECODE_STEPS=4
+            MAMBA_CACHE="--max-mamba-cache-size 8"
+            REASONING="--reasoning-parser qwen3"
+            CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            ;;
         *)
             echo "Unknown model: $1"
             echo "Run with -h for available models."
@@ -112,6 +121,7 @@ while [[ $# -gt 0 ]]; do
         --decode-steps) DECODE_STEPS="$2"; shift 2 ;;
         --chunked-prefill) CHUNKED="$2"; shift 2 ;;
         --watchdog) WATCHDOG="$2"; shift 2 ;;
+        --tp) TP="$2"; shift 2 ;;
         -*)
             echo "Unknown option: $1"; exit 1 ;;
         *)
@@ -140,7 +150,7 @@ activate_conda
 setup_nvidia_env
 
 echo "=============================================="
-echo "$PRESET — SGLang on 2x RTX 3090"
+echo "$PRESET — SGLang TP=$TP on RTX 3090"
 echo "PyTorch $(python -c 'import torch; print(torch.__version__)')"
 echo "Model:  $MODEL"
 echo "Quant:  ${QUANT:-none}  Context: $CTX  Port: $PORT"
@@ -149,7 +159,7 @@ echo "=============================================="
 # --- Build command ---
 CMD=(python -m sglang.launch_server
     --model-path "$MODEL"
-    --tensor-parallel-size 2
+    --tensor-parallel-size "$TP"
     --dtype "$DTYPE"
     --kv-cache-dtype "$KV_DTYPE"
     --context-length "$CTX"

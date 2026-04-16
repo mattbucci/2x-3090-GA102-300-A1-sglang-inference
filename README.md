@@ -1,33 +1,38 @@
-# SGLang Inference: 2x RTX 3090
+# NVIDIA Inference: SGLang on 2x RTX 3090
 
 High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with CUDA 13.2 / PyTorch cu128.
 
 ## Known Issues
 
-- **All Gemma 4 models (26B MoE, 31B Dense)** — **Blocked by FlashInfer `BatchPrefillWithPagedKVCache` on sm_86 (Ampere)**. Gemma 4's full-attention layers use `global_head_dim=512` which this kernel doesn't support (only 64/128/256). See [FlashInfer execution path details](#flashinfer-execution-path) below. Calibrated checkpoints ready. Gemma 4 runs fine on 3090 via llama.cpp (80-110 tok/s).
-- **Gemma 4 CT→AWQ conversion quality bug** — The unpack→transpose→repack pipeline produces poor cosine similarity for large output dimensions. See [Gemma 4 quantization notes](#gemma-4-quantization-notes).
-- **Gemma 4 31B Dense FP16 overflow** — MLP values exceed FP16 max by layer 2. Marlin (FP32 accumulation) is unaffected. Verify with `--enable-nan-detection`.
-- **Qwen3.5-27B DeltaNet is slow** — 7 tok/s despite GPUs at 98-100% SM utilization. The Triton GDN kernel is compute-bound on sm_86 — not bandwidth-limited. TP=1 same speed as TP=2, CUDA graphs don't help. Potential improvements: CuTe DSL backend (needs CUTLASS), flash-linear-attention (FLA) optimized kernels, or custom fused kernels ([Luce Megakernel](https://github.com/Luce-Org/luce-megakernel) achieves 413 tok/s on 3090 for 0.8B). Needs `ncu` kernel profiling to identify register pressure / instruction bottleneck.
+- **Gemma 4 (26B MoE, 31B Dense)** — Blocked by FlashInfer `BatchPrefillWithPagedKVCache` on sm_86. Gemma 4's full-attention layers use `global_head_dim=512` which FlashInfer doesn't support on Ampere (only 64/128/256). See [FlashInfer details](#flashinfer-head_dim-support).
+- **Qwen3-VL-30B MoE AWQ** — Two issues. (1) `--quantization awq` (base AWQConfig) has [no FusedMoE handler](https://github.com/sgl-project/sglang/blob/v0.5.10/python/sglang/srt/layers/quantization/awq.py#L187-L191) — MoE expert layers fall back to unquantized fp16 weights (384 MB/layer × 48 layers → 23 GB/GPU OOM). Fix: use `--quantization awq_marlin`. (2) Even with `awq_marlin`, the [community vLLM checkpoint](https://huggingface.co/cyankiwi/Qwen3-VL-30B-A3B-Instruct-AWQ) produces garbage output — likely a weight-name mapping mismatch between vLLM and SGLang for `Qwen3VLMoeForConditionalGeneration`. Workaround: use `SGLANG_FORCE_MOE_WNA16=1` to skip Marlin MoE repack (saves ~7 GB peak VRAM), but needs a compressed-tensors checkpoint since AWQ packing ≠ WNA16 packing. Self-calibrating a CT checkpoint via llmcompressor would fix both issues.
+- **Qwen3.5-27B DeltaNet context limited to 32K** — DeltaNet layers replicated across GPUs (19 GB/GPU), leaving only 2.2 GB for KV cache. REAM/REAP MoE variants would reduce weights and unlock longer context.
+- **AWQ Marlin MoE peak VRAM** — `awq_marlin_moe_repack` doubles weight memory during repacking (old + new tensors coexist). For 128-expert MoE models this adds ~7 GB peak per GPU. Patch adds `SGLANG_FORCE_MOE_WNA16=1` env var to bypass Marlin repack and use [MoeWNA16 Triton kernels](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/layers/quantization/moe_wna16.py) instead (only works with compressed-tensors format, not native AWQ).
+- **Triton attention BF16 precision** — RDNA4 team found that SGLang's Triton attention kernels do BF16 accumulation in online softmax, causing catastrophic precision loss on deep models (60+ layers). [Patch 011](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/blob/main/patches/011-rdna4-triton-attention-fp32.patch) fixes it with FP32 casts in QK dot product + value accumulation. We use FlashInfer (which does FP32 internally) for most models, but this affects any model forced to Triton attention (e.g. Gemma 4 if head_dim=512 workaround is found). The Qwen3-VL-32B Dense (64 layers) may also be affected.
+- **Qwen3.5-28B MoE REAP** — **Working** (patch 009). Required extensive integration: CausalLM wrapper with lm_head/logits_processor/mrope, FusedMoE TP overflow guards, GPTQ calibration with in-memory expert fusion (BF16 source has per-expert weights but HF class expects fused FusedMoE format — calibrating without fusion silently produces garbage), config flattening (text_config fields to top level), FlashInfer architectures None guard. 33 tok/s decode, constant across context lengths.
 - **CUDA graphs** — Only bs=1 works. `--cuda-graph-max-bs 1 --disable-custom-all-reduce`.
-- **60B+ models** — Coder-Next-REAM (35GB), GLM-4.5-Air-REAP (43GB) don't fit in 48GB VRAM.
+- **60B+ models** — Coder-Next-REAM (35GB), GLM-4.5-Air-REAP (43GB) don't fit in 48GB.
 
-### Gemma 4 quantization notes
+## Next to Try
 
-Findings from cross-testing on a sister RDNA4 project (2x R9700):
+- **Qwen3.5-28B MoE REAP** — ✅ Working at 33 tok/s. Enable piecewise CUDA graphs for speed. Extend context beyond 4K.
+- **Qwen3-VL-30B MoE** — AutoRound calibration running in background (`/tmp/autoround-qwen3vl-30b.log`). Will produce native AWQ format.
+- **Qwen3-VL-32B Dense AWQ** — Working at 24 tok/s, 8K context. Needs full benchmark suite.
+- **Coder-30B REAP → AWQ/Marlin** — Currently `auto-round` format. AWQ/Marlin would use faster kernels.
+- **REAM Qwen3-Coder-30B** — Prune 128→96 experts for Marlin-optimized coding at 128K.
 
-1. **FP16 overflow on Gemma 31B Dense (hidden_size=5376)**. The MLP layers produce values exceeding FP16 max (65504) by layer 2, causing NaN → GPU crash. This affects ANY non-Marlin AWQ path (PyTorch dequant+matmul, Triton GEMM) because they accumulate in FP16. Marlin kernels accumulate in FP32 internally so NVIDIA is likely unaffected, but **verify with `--enable-nan-detection` if Gemma 31B produces garbage output.** Fix: use `--dtype bfloat16` (requires AWQ BF16 activation support patch).
+### Findings from RDNA4 R9700 system
 
-2. **CT→AWQ conversion quality is poor for Gemma 4**. Cosine similarity between AWQ-dequantized and BF16 reference weights:
-   - `q_proj` (out=8192): **0.845** — unacceptable
-   - `gate_proj` (out=21504): **0.920** — poor
-   - `v_proj` (out=4096): **0.993** — OK
-   - `o_proj` (out=5376): **0.991** — OK
+The sister [2x R9700 repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference) found:
 
-   Projections with larger output dimensions degrade more, suggesting a bug in the unpack→transpose→repack pipeline when `group_size` interacts with certain dimension ratios. The conversion scripts in both this repo and the RDNA4 repo produce the same issue. **Models load and run but generate garbage text** (repetitive tokens like "que que que").
-
-3. **Missing chat template**. The Gemma 4 `tokenizer_config.json` from HuggingFace does NOT include the `chat_template` field — it's in a separate `chat_template.jinja` file. SGLang reads from the tokenizer, not the jinja file, so it falls back to a generic template. **Fix: embed the jinja file contents into `tokenizer_config.json`** as the `chat_template` field. Always verify: `AutoTokenizer.from_pretrained(...).chat_template is not None`.
-
-4. **`num_experts` is None for Dense variant**. The Gemma 4 31B Dense config has `num_experts: null`. SGLang's `load_weights` does `if num_experts > 0` which throws `TypeError: '>' not supported between instances of 'NoneType' and 'int'`. **Fix: `num_experts = getattr(config, "num_experts", 0) or 0`**.
+- **ROOT CAUSE: Triton attention BF16 precision bug** — Online softmax accumulates `e_max`/`e_sum`/`re_scale` in BF16 and `tl.dot()` lacks `out_dtype=tl.float32`. Causes 15% mean error vs FP32 after 128 KV tokens. Compounds catastrophically over 60 layers (Gemma 31B). `--attention-backend torch_native` produces perfect output. [Patch 011](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/blob/main/patches/011-rdna4-triton-attention-fp32.patch) adds FP32 casts throughout decode + extend kernels.
+- **Gemma 31B Dense quality FIXED** — Near-perfect output with FP32 triton attention + Intel AutoRound GPTQ + FP8 KV cache. Currently ~2 tok/s via GPTQ torch fallback; need AWQ conversion or native GPTQ HIP kernels for speed.
+- **AutoRound > GPTQ > AWQ for INT4 quality** — Intel AutoRound uses SignSGD (200 iterations) to jointly optimize rounding + clipping, directly minimizing `||WX - W_qX||`. Can export to both GPTQ and AWQ formats. [RedHatAI reports 99.4%+ quality](https://huggingface.co/RedHatAI/gemma-3-27b-it-quantized.w4a16) with uniform GPTQ INT4 on CUDA.
+- **BF16 precision affects all new architectures** — Both RDNA4 and [Blackwell SM12.x](https://forums.developer.nvidia.com/t/qwen3-5-27b-optimisation-thread-starting-at-30-t-s-tp-1/366009) hit attention precision issues that Ampere/Hopper tolerate. Fix: FP32 accumulation in online softmax.
+- **Qwen3.5-27B at 26 tok/s** on RDNA4 (vs our 13.5 tok/s). Same replication strategy.
+- **Community AWQ fails for DeltaNet** — both teams confirmed. GPTQ calibration + CT→AWQ conversion required.
+- **DeltaNet layers must stay BF16** — INT4 destroys recurrent state quality. Architectural limit.
+- **Coder-Next 80B fits on R9700 (32GB/GPU)** — but not on 3090 (24GB/GPU).
 
 ## Quick Start
 
@@ -38,6 +43,8 @@ Findings from cross-testing on a sister RDNA4 project (2x R9700):
 # 2. Run any model:
 ./scripts/launch.sh devstral            # Devstral-24B AWQ — best all-round
 ./scripts/launch.sh coder-30b           # Coder-30B MoE AWQ — best throughput
+./scripts/launch.sh coder-reap          # Coder-REAP-25B — fastest single-user
+./scripts/launch.sh qwen35              # Qwen3.5-27B DeltaNet AWQ
 
 # 3. Test quality
 python scripts/eval/eval_comprehensive.py --port 23334 --parallel 4
@@ -60,43 +67,49 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 | Model | Type | Max context | 1-user tok/s | TPOT | Launch | Status |
 |-------|------|:----------:|:------------:|:----:|:------:|:------:|
 | Devstral-24B AWQ | Dense | 131K | 79 | 13ms | `launch.sh devstral` | Working |
-| Coder-30B REAP W4A16 | MoE (103 experts) | 131K | 134 | 7ms | `launch.sh coder-reap` | Working |
+| Coder-REAP-25B W4A16 | MoE (103 experts) | 131K | 134 | 7ms | `launch.sh coder-reap` | Working |
 | Coder-30B AWQ | MoE (128 experts) | 16K | 43 | 23ms | `launch.sh coder-30b` | Working |
-| Qwen3-VL-30B MoE AWQ | MoE (60 experts) | 16K | — | — | `launch.sh qwen3-vl-moe` | Not yet tested |
-| Qwen3-VL-32B Dense AWQ | Dense (vision+text) | 16K | — | — | `launch.sh qwen3-vl-32b` | Not yet tested |
-| Qwen3.5-27B AWQ | DeltaNet hybrid | 16K | 7 | 143ms | `launch.sh qwen35` | Working (slow — DeltaNet) |
-| Qwen3.5-28B MoE REAP | DeltaNet+MoE (205 exp) | 4K | — | — | — | Calibrating |
-| Gemma 4 26B REAP | MoE (103 experts) | — | — | — | — | Blocked (see below) |
+| Qwen3-VL-30B MoE AWQ | MoE (128 experts) | 16K | — | — | `launch.sh qwen3-vl-moe` | Garbage output (vLLM checkpoint, weight mapping issue) |
+| Qwen3-VL-32B Dense AWQ | Dense (vision+text) | 8K | 24 | 45ms | `launch.sh qwen3-vl-32b` | Working |
+| Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | 13.5 | 74ms | `launch.sh qwen35` | Working |
+| **Qwen3.5-28B MoE REAP** | **DeltaNet+MoE (205 exp)** | **4K** | **33** | **31ms** | `launch.sh qwen35-moe` | **Working** |
+| Gemma 4 26B REAP | MoE (103 experts) | — | — | — | — | Blocked (FlashInfer) |
 
-All numbers measured with `bench_all_unified.py` (tok/s = completion tokens / elapsed time, single user).
+### VRAM context length limits (FP8 KV cache, TP=2, 48GB total)
+
+KV cache is the dominant VRAM constraint. REAM/REAP MoE models have smaller weights, leaving more room for context.
+
+| Model | Wt/GPU | KV/token | Free VRAM | **Max context** |
+|-------|:------:|:--------:|:---------:|:---------------:|
+| Devstral-24B AWQ | 7.0 GB | 80 KB | 15.5 GB | **131K** |
+| Coder-REAP-25B W4A16 | 6.5 GB | 72 KB | 16.0 GB | **131K** |
+| Coder-30B AWQ | 8.0 GB | 36 KB | 14.5 GB | **262K** |
+| **Qwen3.5-27B AWQ** | **19.0 GB** | 24 KB | **2.2 GB** | **32K** |
+| Qwen3-VL-30B MoE AWQ | 8.0 GB | 36 KB | 14.5 GB | **262K** |
+
+Future: [TurboQuant](https://github.com/sgl-project/sglang/issues/21618) (3-bit KV, ICLR 2026) would give ~3x more context, but SGLang integration is WIP/unmerged.
 
 ### Batch throughput (multi-user)
 
-| Model | Peak total tok/s | Best conc | Context | Status |
-|-------|:----------------:|:--------:|:-------:|:------:|
-| Devstral-24B AWQ | 1,647 | @32 | 32K | Working |
-| Coder-REAP-25B W4A16 | — | — | 131K | Working (single-user only so far) |
-| Coder-30B AWQ | 1,201 | @32 | 16K | Working |
+| Model | Peak total tok/s | Best conc | Context |
+|-------|:----------------:|:--------:|:-------:|
+| Devstral-24B AWQ | 1,647 | @32 | 32K |
+| Coder-30B AWQ | 1,201 | @32 | 16K |
 
-### Models that don't fit (48GB limit)
+**Weights:** Community AWQ works for standard architectures (Devstral, Coder-30B) but fails for:
+- **Qwen3.5** — community AWQ produces garbage on DeltaNet layers; we calibrate with GPTQ, keep DeltaNet/SSM in BF16
+- **Gemma 4** — standard GPTQ only calibrates 1/128 experts; needs forced-routing calibration
+- **Devstral** — community AWQ works but needs custom chat template (BOS token fix)
 
-| Model | Params | Weight size | Why |
-|-------|--------|:-----------:|-----|
-| Coder-Next-REAM-60B | 60B MoE (384 experts) | 35 GB | ~17.5GB/GPU, OOM on init overhead |
-| GLM-4.5-Air-REAP-82B | 82B MoE (96 experts) | 43 GB | ~21.5GB/GPU, no room for KV cache |
-| Qwen3-Coder-Next-80B | 80B MoE (512 experts) | ~44 GB | Exceeds 48GB total |
+Self-calibrated models use the pipeline in `scripts/quantize/` (GPTQ calibration → CT→AWQ conversion).
 
 ## Performance (2x RTX 3090, TP=2, SGLang v0.5.10 + patches)
 
-**Methodology:** All numbers use `bench_all_unified.py` which runs single-user context sweeps and concurrent throughput sweeps. See [benchmarks/README.md](benchmarks/README.md) for full methodology.
+**Methodology:** `bench_all_unified.py` uses `sglang.bench_serving` for proper TPOT/TTFT measurement.
 
 ### Devstral-24B AWQ (up to 131K context)
 
-24B dense transformer. ~14 GB/GPU. FP8 KV cache enables long context.
-- **131K context, batch=1**: 183K token KV cache at 0.90 mem fraction
-- **32K context, batch=64**: `launch.sh devstral-32k` for max throughput
-
-![Devstral context scaling](benchmarks/devstral-24b-awq/context_vs_toks.png)
+24B dense transformer. ~7 GB/GPU. FP8 KV cache enables long context.
 
 | Context Length | tok/s |
 |:--------------:|:-----:|
@@ -106,8 +119,6 @@ All numbers measured with `bench_all_unified.py` (tok/s = completion tokens / el
 | 8K | 44.0 |
 | 16K | 32.8 |
 | **32K** | **21.1** |
-
-![Devstral concurrency](benchmarks/devstral-24b-awq/concurrency_vs_toks.png)
 
 | Concurrency | tok/s |
 |:-----------:|:-----:|
@@ -119,10 +130,7 @@ All numbers measured with `bench_all_unified.py` (tok/s = completion tokens / el
 
 ### Coder-REAP-25B W4A16 (131K context, 103 experts)
 
-25B total / 3B active MoE. REAP-pruned from Coder-30B (128→103 experts). ~6.5 GB/GPU.
-571K token FP8 KV cache — enough for 131K+ context single-user. CUDA graphs at bs=1.
-
-Uses `auto-round` quantization (not AWQ/Marlin). Converting to AWQ/Marlin could further improve speed.
+25B / 3B active MoE. REAP-pruned (128→103 experts). ~6.5 GB/GPU. Uses `auto-round` quantization.
 
 | Context Length | tok/s |
 |:--------------:|:-----:|
@@ -135,9 +143,7 @@ Uses `auto-round` quantization (not AWQ/Marlin). Converting to AWQ/Marlin could 
 
 ### Coder-30B MoE AWQ (16K context, 128 experts)
 
-30B total / 3B active MoE. ~16 GB/GPU. Best throughput scaling.
-
-![Coder-30B context scaling](benchmarks/coder-30b-awq/context_vs_toks.png)
+30B / 3B active MoE. ~8 GB/GPU. Best throughput scaling.
 
 | Context Length | tok/s |
 |:--------------:|:-----:|
@@ -147,8 +153,6 @@ Uses `auto-round` quantization (not AWQ/Marlin). Converting to AWQ/Marlin could 
 | 8K | 33.8 |
 | **16K** | **27.4** |
 
-![Coder-30B concurrency](benchmarks/coder-30b-awq/concurrency_vs_toks.png)
-
 | Concurrency | tok/s |
 |:-----------:|:-----:|
 | 1 | 42 |
@@ -157,36 +161,38 @@ Uses `auto-round` quantization (not AWQ/Marlin). Converting to AWQ/Marlin could 
 | 16 | 607 |
 | **32** | **1,201** |
 
-## Patches
+### Qwen3.5-27B AWQ DeltaNet (32K context)
 
-4 patches on top of SGLang v0.5.10. Apply in order:
+27B DeltaNet hybrid. ~19 GB/GPU (replicated). Decode speed is constant regardless of context length (no KV attention scaling).
 
-### 001-upstream-sync (3,000 LOC)
-Cherry-picks from upstream main for model support. No NVIDIA-specific changes.
-- Gemma 4 model + fused ops + config transformer
-- Qwen3.5/Qwen3-Next model updates
-- Triton attention backend + prefill improvements
-- pool_configurator.py (MemoryPoolConfig refactor)
+| Context Length | tok/s | TTFT | TPOT |
+|:--------------:|:-----:|:----:|:----:|
+| 128 | 13.3 | 175ms | 75ms |
+| 512 | 13.5 | 511ms | 74ms |
+| 1K | 13.5 | 986ms | 74ms |
+| 4K | 13.6 | 3.9s | 74ms |
+| 16K | 12.9 | 5.0s | 78ms |
 
-### 002-nvidia-model-fixes (923 LOC)
-NVIDIA-specific fixes and model compatibility.
-- MemoryPoolConfig: runtime import (not TYPE_CHECKING only)
-- Marlin shape fallback: torch dequant for layers where dim not divisible by 64
-- sharded_weight_loader: override_tp_rank for replicated DeltaNet layers
-- pool_configurator: is_dflash guard
-- Gemma4: text_config unwrap, top_k_experts config lookup
-- Qwen3.5: mamba cache params, DeltaNet TP replication
-- Devstral/LLaVA: chat template BOS fix, text-only VLM warmup
+Previously 7 tok/s — patches 005-007 (FP8 KV, BF16 AWQ, DeltaNet kernel tuning) improved to 13.5 tok/s.
 
-### 003-deltanet-triton-dtype-fix (51 LOC)
-Fix DeltaNet Triton kernel bf16/fp16 dtype mismatch in causal_conv1d.
-- conv_state loads cast to input dtype via `.to(x_ptr.dtype.element_ty)`
-- Unblocks Qwen3.5-27B and any DeltaNet model on Ampere (sm_86)
+### Qwen3.5-28B MoE REAP (4K context, 205 experts)
 
-### 004-gemma4-causal-lm-fix (19 LOC)
-Fix Gemma4ForCausalLM being incorrectly detected as multimodal.
-- CausalLM architectures skip multimodal processor registration
-- Gemma4Config always has vision/audio attrs as class defaults — now ignored for text-only
+28B / 3B active DeltaNet+MoE hybrid. REAP-pruned (256→205 experts). ~8 GB/GPU. Constant decode speed (DeltaNet advantage: no KV attention scaling).
+
+| Context Length | tok/s | TTFT | TPOT |
+|:--------------:|:-----:|:----:|:----:|
+| 128 | 33 | 85ms | 31ms |
+| 512 | 33 | 82ms | 30ms |
+| 1K | 33 | 80ms | 31ms |
+| **4K** | **33** | **147ms** | **31ms** |
+
+| Concurrency | tok/s |
+|:-----------:|:-----:|
+| 1 | 33 |
+| 4 | 65 |
+| 8 | 60 |
+
+First working INT4 quantization of Qwen3.5 DeltaNet+MoE. Required: GPTQ calibration with in-memory expert fusion (BF16 source has per-expert weights, HF model class expects fused FusedMoE format), DeltaNet/gate/vision layers excluded from INT4, custom CausalLM wrapper with logits processor + mrope handling (patch 009).
 
 ## Setup
 
@@ -197,18 +203,48 @@ Fix Gemma4ForCausalLM being incorrectly detected as multimodal.
 Or manually:
 ```bash
 cd components/sglang && git checkout v0.5.10
-git apply ../../patches/001-upstream-sync.patch
-git apply ../../patches/002-nvidia-model-fixes.patch
+for p in ../../patches/*.patch; do git apply "$p"; done
 cd python && pip install -e ".[srt]"
 ```
 
 | Component | Version | Notes |
 |-----------|---------|-------|
-| SGLang | v0.5.10 + 2 patches | editable install from source |
+| SGLang | v0.5.10 + 12 patches | editable install from source |
 | PyTorch | 2.9.1+cu128 | CUDA toolkit 12.8 |
 | CUDA | 13.2 | driver 595.58 |
-| NCCL | 2.27.5 | P2P over PCIe |
-| transformers | 5.5.3 | Gemma4 support |
+| NCCL | 2.27.5 | P2P over NVLink |
+| FlashInfer | 0.6.7.post3 | JIT cubins for sm_86 |
+| transformers | 5.5.3 | Gemma4/Qwen3.5 support |
+
+## Patches
+
+8 patches on top of SGLang v0.5.10. Apply in order:
+
+1. **001-upstream-sync** (3,000 LOC) — Upstream cherry-picks: Gemma 4, Qwen3.5/3-Next, Triton attention, pool_configurator
+2. **002-nvidia-model-fixes** (923 LOC) — Marlin shape fallback, DeltaNet TP replication, Gemma4 config fixes
+3. **003-deltanet-triton-dtype-fix** (51 LOC) — DeltaNet conv_state bf16/fp16 cast fix
+4. **004-gemma4-causal-lm-fix** (19 LOC) — CausalLM multimodal detection bypass
+5. **005-ampere-fp8-triton-fallback** (59 LOC) — FP8 KV cache on sm_86 (PyTorch fallback for `fp8e4nv`)
+6. **006-awq-bf16-activation-support** (15 LOC) — BF16 activations with AWQ dequant
+7. **007-ampere-deltanet-kernel-tuning** (48 LOC) — DeltaNet BV=64 tuning for sm_86 (1.57x kernel speedup)
+8. **008-awq-moe-wna16-fallback** (64 LOC) — `SGLANG_FORCE_MOE_WNA16=1` env var to bypass Marlin MoE repack (saves ~7 GB peak VRAM for 128-expert models)
+
+## Key Findings
+
+1. **AWQ Marlin is the fast path on Ampere** — compressed-tensors auto-promotes to Marlin on sm_80+. FP32 accumulation avoids FP16 overflow.
+2. **DeltaNet replication mandatory for TP=2** — FP16 rounding accumulation through recurrent state destroys quality. Full model per GPU.
+3. **FP8 KV cache works on Ampere via fallback** — patch 005 routes `fp8e4nv` to PyTorch. FlashInfer handles FP8 KV for head_dim ≤ 256.
+4. **DeltaNet decode is framework-overhead-bound** — 312 kernel launches/token at ~316us each. Raw compute 44ms, actual 143ms (pre-patches). Kernel fusion or CUDA graphs would close the gap.
+5. **REAM/REAP MoE unlocks longer context** — smaller weights = more VRAM for KV cache. Critical for 48GB.
+
+## MoE Quantization Lessons
+
+Standard GPTQ/AWQ **fails** for MoE models (MoEQuant, ICML 2025):
+
+1. **Inter-expert imbalance**: Router unevenly distributes calibration data — rare experts get zero/garbage calibration.
+2. **DeltaNet/SSM sensitivity**: Recurrent state `S(t) = g*S(t-1) + delta` accumulates INT4 noise. DeltaNet layers MUST stay BF16.
+
+**Solutions**: Expert-balanced sampling (MoEQuant EBSS, GPTQModel FailSafe), skip recurrent layers. See `scripts/quantize/`.
 
 ## Quantization
 
@@ -220,7 +256,59 @@ CUDA_VISIBLE_DEVICES="" python scripts/quantize/quantize_qwen35_llmcompressor.py
 python scripts/quantize/convert_qwen35_ct_to_awq.py
 ```
 
-See [rules-for-agents.md](rules-for-agents.md) for full quantization pipeline and rules.
+See [rules-for-agents.md](rules-for-agents.md) for full pipeline and [REAM.md](scripts/quantize/REAM.md) for MoE expert pruning.
+
+## Qwen3.5-27B Technical Details
+
+Hybrid DeltaNet (linear attention) + full attention. TP=2 requires replicating all layers to avoid FP16 precision errors accumulating through DeltaNet recurrence.
+
+**Root cause:** TP RowParallelLinear splits matmul: `W_0@x_0 + W_1@x_1` differs from `W@x` by ~1 ULP in FP16. DeltaNet's `S(t) = g*S(t-1) + delta` compounds this across 48 layers x N tokens.
+
+**Fix:** Replicate all DeltaNet + MLP layers (`tp_size=1`), SSM state `tp_world_size=1`.
+
+VRAM per GPU: ~19 GB model (replicated) + 1.27 GB DeltaNet state + 0.92 GB KV cache (FP8) = ~21 GB. Only 32K context fits.
+
+### Triton kernel tuning (patch 007)
+
+DeltaNet decode kernel defaults (`BV=32`, `num_warps=1`) under-utilize RTX 3090. Our sweep found BV=64 gives 1.57x:
+
+| Config | BV | ms/layer | Speedup |
+|--------|:--:|:--------:|:-------:|
+| baseline | 32 | 0.018 | 1.00x |
+| **BV64-w1** | **64** | **0.011** | **1.57x** |
+
+### Pipeline bottleneck analysis
+
+| Operation | ms/model | % |
+|-----------|:--------:|:-:|
+| MLP forward | 19.9 | 45% |
+| Recurrent update | 8.3 | 19% |
+| QKV projection | 7.9 | 18% |
+| Output projection | 2.9 | 7% |
+| RMSNorm + gating | 2.1 | 5% |
+| Conv1d | 1.3 | 3% |
+| **Theoretical** | **44.1** | **22.7 tok/s** |
+| **Actual** | **74** | **13.5 tok/s** |
+
+MoE kernel configs generated for RTX 3090 (Triton 3.5.1): `E=128,N=768` (Coder-30B, Qwen3-VL-30B), `E=128,N=704` (Gemma 4), `E=103,N=768` (Coder-REAP). Auto-loaded by `device_name=NVIDIA_GeForce_RTX_3090`.
+
+## Gemma 4 Notes
+
+Blocked on SGLang. RDNA4 team working on mixed precision + softmax patch for accuracy. Cross-team findings:
+
+1. **FP16 overflow at layer 2** (hidden_size=5376). Fix: `--dtype bfloat16` + patch 006.
+2. **CT→AWQ conversion quality poor** — cosine similarity 0.845 on q_proj. Models generate garbage.
+3. **Missing chat template** — embed jinja into `tokenizer_config.json`.
+4. **`num_experts` is None for Dense** — fix: `getattr(config, "num_experts", 0) or 0`.
+
+## FlashInfer head_dim support
+
+| head_dim | FlashInfer (sm_86) | Models |
+|:--------:|:------------------:|--------|
+| 64-256 | Supported | Qwen, Devstral |
+| **512** | **Not supported** | **Gemma 4** (blocked) |
+
+Possible fixes: SDPA fallback, TRTLLM FMHA path, [FFPA kernels](https://github.com/DefTruth/ffpa-attn-mma), or llama.cpp (80-110 tok/s for Gemma 4).
 
 ## Test System
 
@@ -229,83 +317,24 @@ OS:     EndeavourOS (Arch Linux)
 Kernel: 6.19.11-arch1-1
 RAM:    96 GB (92 GB usable, ~4 GB reserved by iGPU)
 GPU:    2x NVIDIA RTX 3090 (GA102-300-A1, 24GB GDDR6X each)
-GPU interconnect: NVLink (NV4, 4 lanes × 14 GB/s = 56 GB/s bidirectional)
+GPU interconnect: NVLink (NV4, 4 lanes x 14 GB/s = 56 GB/s bidirectional)
 Driver: 595.58.03
 CUDA:   13.2 (PyTorch uses cu128 toolkit)
 Python: 3.12
 ```
 
-## Roadmap
-
-### In progress
-- [ ] Gemma 4 26B REAP — GPTQ calibration running (layer 22/31, ~4h remaining)
-
-### Next up
-- [ ] Benchmark Gemma 4 26B REAP on SGLang (compressed-tensors, 131K context)
-- [ ] REAM Qwen3-Coder-30B (128→96 experts) for Marlin-optimized coding model at 128K
-- [ ] Profile Qwen3.5-27B DeltaNet slowness (7 tok/s vs 67 tok/s theoretical)
-- [ ] Benchmark Coder-30B REAP at higher concurrency (only tested single-user)
-- [ ] Try CUDA graphs bs=1 on Coder-30B (same trick that boosted Devstral 25%)
-- [ ] Push self-calibrated checkpoints to HuggingFace for RDNA4 system to use
-
-### Future
-- [ ] REAM Qwen3.5-35B-A3B (256→192 experts) — DeltaNet hybrid MoE
-- [ ] Add Gemma 4 to REAM (port from REAP's MODEL_ATTRS)
-- [ ] Full multimodal Gemma 4 (needs gemma4_mm processor + vision/audio models from upstream)
-- [ ] Re-enable CUDA graphs at higher batch sizes (needs custom all-reduce fix or smaller KV cache)
-- [ ] Investigate CT→AWQ conversion quality bug for Gemma 4 (cosine sim drops on large dims)
-- [ ] Convert Coder-30B REAP from auto-round to AWQ/Marlin for faster kernels
-
-## FlashInfer execution path
-
-SGLang uses FlashInfer's **`BatchPrefillWithPagedKVCache`** and **`BatchDecodeWithPagedKVCache`** kernels for attention. These are FlashInfer's native JIT-compiled kernels, distinct from the TRTLLM FMHA kernels also available in the FlashInfer library.
-
-### head_dim support on sm_86 (RTX 3090, Ampere)
-
-| head_dim | `BatchPrefill` (SGLang uses this) | TRTLLM FMHA (SGLang does NOT use) |
-|:--------:|:---------------------------------:|:----------------------------------:|
-| 64 | Supported | Supported |
-| 128 | Supported | Supported |
-| 192 | Supported | Supported |
-| 256 | Supported | Supported |
-| **512** | **NOT supported** | Being added for SM100+ only ([PR #2959](https://github.com/flashinfer-ai/flashinfer/pull/2959), not Ampere) |
-
-**Impact on models:**
-- Qwen family (head_dim=128): Works fine
-- Devstral (head_dim=128): Works fine
-- **Gemma 4 (global_head_dim=512)**: Blocked — full-attention layers crash FlashInfer
-
-### Fallback attention backends
-
-| Backend | FP8 KV on sm_86 | head_dim=512 | Status |
-|---------|:---------------:|:------------:|--------|
-| FlashInfer | Yes (head_dim ≤256) | No | Default. FP8 KV works for Qwen/Devstral (128), crashes on Gemma4 (512) |
-| Triton | No (`fp8e4nv` unsupported on sm_86) | Yes | Works but no FP8 KV = VRAM-prohibitive |
-| SDPA (torch) | No | Yes | Not integrated as SGLang backend |
-
-### Possible fixes
-
-1. **Patch SGLang to use SDPA fallback** for head_dim > 256 layers — works but slow and no FP8 KV
-2. **Integrate TRTLLM FMHA path** into SGLang for head_dim=512 — requires verifying sm_86 cubin support
-3. **Integrate [FFPA kernels](https://github.com/DefTruth/ffpa-attn-mma)** — supports head_dim up to 1024, tested on RTX 3080 (sm_86)
-4. **Wait for FlashInfer** to add head_dim=512 to `BatchPrefill` on sm_86
-5. **Use llama.cpp** for Gemma 4 instead of SGLang (80-110 tok/s proven, see [gemma4-turboquant-bench](https://github.com/conorseabrook/gemma4-turboquant-bench))
-
 ## Structure
 
 ```
-patches/                           # SGLang v0.5.10 patches
-  001-upstream-sync.patch         #   Upstream cherry-picks (Gemma4, Qwen3.5, etc.)
-  002-nvidia-model-fixes.patch    #   NVIDIA-specific fixes
+patches/                           # SGLang v0.5.10 patches (7 total)
 benchmarks/                        # Benchmark results (per-model directories)
-  {model}/results.json            #   Structured data from bench_all_unified.py
-  baselines.json                  #   Regression test baselines
 scripts/
   launch.sh                       #   Unified model launcher (launch.sh <model>)
   common.sh                       #   Shared NVIDIA environment setup
   setup.sh                        #   Full setup (conda, SGLang install)
   bench/                          #   Benchmark scripts
   eval/                           #   Quality evaluation + warmup
-  quantize/                       #   Quantization pipeline (GPTQ → CT → AWQ)
+  quantize/                       #   Quantization pipeline (GPTQ -> CT -> AWQ)
+  test/                           #   Kernel microbenchmarks + profiling
 components/sglang/                 # SGLang v0.5.10 + patches (cloned by setup.sh)
 ```

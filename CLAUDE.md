@@ -19,6 +19,7 @@ scripts/launch.sh coder-30b            # Coder-30B MoE AWQ
 scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ
 scripts/launch.sh gemma4-31b           # Gemma 4 31B Dense AWQ
 scripts/launch.sh qwen35               # Qwen3.5-27B DeltaNet AWQ
+scripts/launch.sh qwen35-moe           # Qwen3.5-28B MoE REAP CT (205 experts)
 ```
 
 ## Critical Rules
