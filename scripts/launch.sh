@@ -93,8 +93,8 @@ apply_preset() {
         qwen35-moe)
             MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-28B-A3B-REAP-CT}"
             QUANT="compressed-tensors"
-            CTX=4096; MEM=0.80; MAX_RUNNING=8; CHUNKED=2048; DECODE_STEPS=4
-            MAMBA_CACHE="--max-mamba-cache-size 8"
+            CTX=262144; MEM=0.80; MAX_RUNNING=4; CHUNKED=8192; DECODE_STEPS=4
+            MAMBA_CACHE="--max-mamba-cache-size 4"
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
             ;;

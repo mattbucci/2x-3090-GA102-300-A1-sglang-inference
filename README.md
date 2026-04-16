@@ -72,7 +72,7 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 | Qwen3-VL-30B MoE AWQ | MoE (128 experts) | 16K | — | — | `launch.sh qwen3-vl-moe` | Garbage output (vLLM checkpoint, weight mapping issue) |
 | Qwen3-VL-32B Dense AWQ | Dense (vision+text) | 8K | 24 | 45ms | `launch.sh qwen3-vl-32b` | Working |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | 13.5 | 74ms | `launch.sh qwen35` | Working |
-| **Qwen3.5-28B MoE REAP** | **DeltaNet+MoE (205 exp)** | **4K** | **33** | **31ms** | `launch.sh qwen35-moe` | **Working** |
+| **Qwen3.5-28B MoE REAP** | **DeltaNet+MoE (205 exp)** | **262K** | **33** | **31ms** | `launch.sh qwen35-moe` | **Working** |
 | Gemma 4 26B REAP | MoE (103 experts) | — | — | — | — | Blocked (FlashInfer) |
 
 ### VRAM context length limits (FP8 KV cache, TP=2, 48GB total)
@@ -85,6 +85,7 @@ KV cache is the dominant VRAM constraint. REAM/REAP MoE models have smaller weig
 | Coder-REAP-25B W4A16 | 6.5 GB | 72 KB | 16.0 GB | **131K** |
 | Coder-30B AWQ | 8.0 GB | 36 KB | 14.5 GB | **262K** |
 | **Qwen3.5-27B AWQ** | **19.0 GB** | 24 KB | **2.2 GB** | **32K** |
+| **Qwen3.5-28B MoE REAP CT** | **8.1 GB** | **5 KB** | **15.2 GB** | **262K** |
 | Qwen3-VL-30B MoE AWQ | 8.0 GB | 36 KB | 14.5 GB | **262K** |
 
 Future: [TurboQuant](https://github.com/sgl-project/sglang/issues/21618) (3-bit KV, ICLR 2026) would give ~3x more context, but SGLang integration is WIP/unmerged.
