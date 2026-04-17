@@ -9,11 +9,13 @@
 #   MODEL=/path/to/weights ./scripts/launch.sh devstral
 #
 # Models:
-#   devstral       Devstral-24B AWQ (32K context, best all-round)
-#   coder-30b      Qwen3-Coder-30B MoE AWQ (16K, best throughput)
+#   qwen3-ream     Qwen3-30B REAM AWQ (262K, 197 tok/s, fastest)
+#   devstral       Devstral-24B AWQ (131K, best all-round)
+#   coder-30b      Qwen3-Coder-30B MoE AWQ (16K)
+#   qwen35-moe     Qwen3.5-28B MoE REAP CT (262K, DeltaNet)
+#   qwen35         Qwen3.5-27B DeltaNet AWQ (32K)
 #   gemma4         Gemma 4 26B MoE AWQ (4K)
 #   gemma4-31b     Gemma 4 31B Dense AWQ (4K)
-#   qwen35         Qwen3.5-27B DeltaNet AWQ (32K)
 #
 # Note: 80B+ models (coder-next, glm45-air) do NOT fit in 48GB VRAM.
 
@@ -97,6 +99,11 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 4"
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            ;;
+        qwen3-ream)
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3-30B-Instruct-2507-REAM-AWQ}"
+            CTX=262144; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
+            REASONING="--reasoning-parser qwen3"
             ;;
         *)
             echo "Unknown model: $1"

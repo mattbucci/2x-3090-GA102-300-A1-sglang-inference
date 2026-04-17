@@ -66,13 +66,13 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 
 | Model | Type | Max context | 1-user tok/s | TPOT | Launch | Status |
 |-------|------|:----------:|:------------:|:----:|:------:|:------:|
-| Devstral-24B AWQ | Dense | 131K | 79 | 13ms | `launch.sh devstral` | Working |
+| **Qwen3-30B REAM AWQ** | **MoE (96 experts)** | **262K** | **197** | **5ms** | `launch.sh qwen3-ream` | **Working** |
 | Coder-REAP-25B W4A16 | MoE (103 experts) | 131K | 134 | 7ms | `launch.sh coder-reap` | Working |
+| Devstral-24B AWQ | Dense | 131K | 79 | 13ms | `launch.sh devstral` | Working |
 | Coder-30B AWQ | MoE (128 experts) | 16K | 43 | 23ms | `launch.sh coder-30b` | Working |
-| Qwen3-VL-30B MoE AWQ | MoE (128 experts) | 16K | — | — | `launch.sh qwen3-vl-moe` | Garbage output (vLLM checkpoint, weight mapping issue) |
-| Qwen3-VL-32B Dense AWQ | Dense (vision+text) | 8K | 24 | 45ms | `launch.sh qwen3-vl-32b` | Working |
-| Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | 13.5 | 74ms | `launch.sh qwen35` | Working |
 | **Qwen3.5-28B MoE REAP** | **DeltaNet+MoE (205 exp)** | **262K** | **33** | **31ms** | `launch.sh qwen35-moe` | **Working** |
+| Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | 13.5 | 74ms | `launch.sh qwen35` | Working |
+| Qwen3-VL-32B Dense AWQ | Dense (vision+text) | 8K | 24 | 45ms | `launch.sh qwen3-vl-32b` | Working |
 | Gemma 4 26B REAP | MoE (103 experts) | — | — | — | — | Blocked (FlashInfer) |
 
 ### VRAM context length limits (FP8 KV cache, TP=2, 48GB total)
@@ -81,12 +81,12 @@ KV cache is the dominant VRAM constraint. REAM/REAP MoE models have smaller weig
 
 | Model | Wt/GPU | KV/token | Free VRAM | **Max context** |
 |-------|:------:|:--------:|:---------:|:---------------:|
+| **Qwen3-30B REAM AWQ** | **6.2 GB** | **36 KB** | **16.3 GB** | **262K** |
 | Devstral-24B AWQ | 7.0 GB | 80 KB | 15.5 GB | **131K** |
 | Coder-REAP-25B W4A16 | 6.5 GB | 72 KB | 16.0 GB | **131K** |
 | Coder-30B AWQ | 8.0 GB | 36 KB | 14.5 GB | **262K** |
+| Qwen3.5-28B MoE REAP CT | 8.1 GB | 5 KB | 15.2 GB | **262K** |
 | **Qwen3.5-27B AWQ** | **19.0 GB** | 24 KB | **2.2 GB** | **32K** |
-| **Qwen3.5-28B MoE REAP CT** | **8.1 GB** | **5 KB** | **15.2 GB** | **262K** |
-| Qwen3-VL-30B MoE AWQ | 8.0 GB | 36 KB | 14.5 GB | **262K** |
 
 Future: [TurboQuant](https://github.com/sgl-project/sglang/issues/21618) (3-bit KV, ICLR 2026) would give ~3x more context, but SGLang integration is WIP/unmerged.
 
@@ -94,6 +94,7 @@ Future: [TurboQuant](https://github.com/sgl-project/sglang/issues/21618) (3-bit 
 
 | Model | Peak total tok/s | Best conc | Context |
 |-------|:----------------:|:--------:|:-------:|
+| **Qwen3-30B REAM AWQ** | **1,832** | **@16** | **16K** |
 | Devstral-24B AWQ | 1,647 | @32 | 32K |
 | Coder-30B AWQ | 1,201 | @32 | 16K |
 
@@ -194,6 +195,29 @@ Previously 7 tok/s — patches 005-007 (FP8 KV, BF16 AWQ, DeltaNet kernel tuning
 | 8 | 60 |
 
 First working INT4 quantization of Qwen3.5 DeltaNet+MoE. Required: GPTQ calibration with in-memory expert fusion (BF16 source has per-expert weights, HF model class expects fused FusedMoE format), DeltaNet/gate/vision layers excluded from INT4, custom CausalLM wrapper with logits processor + mrope handling (patch 009).
+
+### Qwen3-30B-Instruct REAM AWQ Marlin (262K context, 96 experts)
+
+30B / 3B active MoE. REAM-merged (128→96 experts). ~6.2 GB/GPU. **Fastest model on the rig.**
+
+| Context Length | tok/s | TTFT |
+|:--------------:|:-----:|:----:|
+| 128 | **179** | 0.3s |
+| 512 | 168 | 0.6s |
+| 1K | 176 | 0.6s |
+| 4K | 140 | 0.9s |
+| 8K | 116 | 1.1s |
+| **16K** | **71** | **1.8s** |
+
+| Concurrency | tok/s |
+|:-----------:|:-----:|
+| 1 | 191 |
+| 4 | 600 |
+| 8 | 1,074 |
+| **16** | **1,832** |
+| 32 | 1,301 |
+
+197 tok/s single-user decode (5ms TPOT). 1,832 tok/s peak batch throughput at 16 concurrent — fastest on the rig, beating Devstral-24B (1,647). Self-calibrated GPTQ with all-expert routing + CT→AWQ conversion for Marlin kernels. Required patching llmcompressor for fused `Qwen3MoeExperts` (transformers 5.x) by creating per-expert `nn.Linear` wrappers during calibration.
 
 ## Setup
 
