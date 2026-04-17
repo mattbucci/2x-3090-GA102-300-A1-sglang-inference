@@ -69,7 +69,7 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 | **Qwen3-30B REAM AWQ** | **MoE (96 experts)** | **262K** | **197** | **5ms** | `launch.sh qwen3-ream` | **Working** |
 | Coder-REAP-25B W4A16 | MoE (103 experts) | 131K | 134 | 7ms | `launch.sh coder-reap` | Working |
 | Devstral-24B AWQ | Dense | 131K | 79 | 13ms | `launch.sh devstral` | Working |
-| Coder-30B AWQ | MoE (128 experts) | 16K | 43 | 23ms | `launch.sh coder-30b` | Working |
+| **Coder-30B AWQ Marlin** | **MoE (128 experts)** | **16K** | **193** | **5ms** | `launch.sh coder-30b` | **Working** |
 | **Qwen3.5-28B MoE REAP** | **DeltaNet+MoE (205 exp)** | **262K** | **33** | **31ms** | `launch.sh qwen35-moe` | **Working** |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | 13.5 | 74ms | `launch.sh qwen35` | Working |
 | Qwen3-VL-32B Dense AWQ | Dense (vision+text) | 8K | 24 | 45ms | `launch.sh qwen3-vl-32b` | Working |

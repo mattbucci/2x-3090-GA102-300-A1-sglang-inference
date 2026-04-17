@@ -64,7 +64,7 @@ apply_preset() {
             CUDA_GRAPH="--cuda-graph-max-bs 1"
             ;;
         coder-30b)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ-4bit}"
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ-Marlin}"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             ;;
         gemma4)
