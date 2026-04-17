@@ -26,7 +26,7 @@ source "$SCRIPT_DIR/common.sh"
 # --- Defaults (overridden by model preset, then by CLI flags) ---
 MODEL="${MODEL:-}"
 TOKENIZER=""
-QUANT="awq_marlin"
+QUANT="compressed-tensors"
 DTYPE="float16"
 CTX=32768
 KV_DTYPE="fp8_e4m3"
