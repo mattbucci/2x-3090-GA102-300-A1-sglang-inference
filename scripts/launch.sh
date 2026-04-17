@@ -48,13 +48,13 @@ EXTRA_ARGS=""
 apply_preset() {
     case "$1" in
         devstral)
-            MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-4bit}"
+            MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-Marlin}"
             CTX=131072; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
             CUDA_GRAPH="--cuda-graph-max-bs 1"
             CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
             ;;
         devstral-32k)
-            MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-4bit}"
+            MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-Marlin}"
             CTX=32768; MEM=0.90; MAX_RUNNING=64; CHUNKED=8192
             ;;
         coder-reap)
