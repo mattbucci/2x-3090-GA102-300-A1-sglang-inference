@@ -1,0 +1,64 @@
+diff --git a/python/sglang/srt/layers/quantization/awq.py b/python/sglang/srt/layers/quantization/awq.py
+index c05aa091a..fd70717ff 100644
+--- a/python/sglang/srt/layers/quantization/awq.py
++++ b/python/sglang/srt/layers/quantization/awq.py
+@@ -2,6 +2,7 @@
+ from __future__ import annotations
+ 
+ import logging
++import os
+ import warnings
+ from typing import TYPE_CHECKING, Any, Dict, List, Optional
+ 
+@@ -137,7 +138,9 @@ class AWQConfig(QuantizationConfig):
+         return "awq"
+ 
+     def get_supported_act_dtypes(self) -> List[torch.dtype]:
+-        return [torch.float16] if not _is_npu else [torch.float16, torch.bfloat16]
++        # BF16 needed for Gemma 4 (hidden_size > 4096, FP16 overflows)
++        # Marlin kernels accumulate in FP32 so BF16 activations are safe
++        return [torch.float16, torch.bfloat16]
+ 
+     @classmethod
+     def get_min_capability(cls) -> int:
+@@ -324,11 +327,22 @@ class AWQMarlinConfig(QuantizationConfig):
+         elif isinstance(layer, FusedMoE):
+             from sglang.srt.layers.quantization.moe_wna16 import MoeWNA16Config
+ 
+-            if not check_moe_marlin_supports_layer(layer, self.group_size):
+-                logger.warning_once(
+-                    f"Layer '{prefix}' is not supported by AWQMoeMarlin. "
+-                    "Falling back to Moe WNA16 kernels."
+-                )
++            # AWQMoEMethod uses Marlin MoE repack which doubles peak VRAM
++            # (old + new weights coexist during repack). On VRAM-constrained
++            # systems (e.g. 24GB GPUs with large MoE models), fall back to
++            # MoeWNA16 which uses Triton fused MoE without repacking.
++            force_wna16 = os.environ.get("SGLANG_FORCE_MOE_WNA16", "0") == "1"
++            if force_wna16 or not check_moe_marlin_supports_layer(layer, self.group_size):
++                if force_wna16:
++                    logger.warning_once(
++                        "SGLANG_FORCE_MOE_WNA16=1: using MoeWNA16 kernels "
++                        "instead of AWQ Marlin MoE (saves peak VRAM)."
++                    )
++                else:
++                    logger.warning_once(
++                        f"Layer '{prefix}' is not supported by AWQMoeMarlin. "
++                        "Falling back to Moe WNA16 kernels."
++                    )
+                 return MoeWNA16Config.from_config(self.full_config).get_quant_method(
+                     layer, prefix
+                 )
+@@ -922,6 +936,12 @@ class AWQMoEAscendMethod(AWQMoEMethod):
+         self, layer: torch.nn.Module, moe_runner_config: MoeRunnerConfig
+     ):
+         self.moe_runner_config = moe_runner_config
++        # Store activation function from model config (Gemma4 uses gelu, Qwen uses silu)
++        act_name = getattr(moe_runner_config, "activation", "silu")
++        if act_name == "gelu":
++            self._act_fn = lambda x: torch.nn.functional.gelu(x, approximate="tanh")
++        else:
++            self._act_fn = torch.nn.functional.silu
+ 
+     def apply(
+         self,
