@@ -26,7 +26,7 @@ source "$SCRIPT_DIR/common.sh"
 # --- Defaults (overridden by model preset, then by CLI flags) ---
 MODEL="${MODEL:-}"
 TOKENIZER=""
-QUANT="compressed-tensors"
+QUANT="awq_marlin"
 DTYPE="float16"
 CTX=32768
 KV_DTYPE="fp8_e4m3"
@@ -93,8 +93,8 @@ apply_preset() {
             REASONING="--reasoning-parser qwen3"
             ;;
         qwen35-moe)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-28B-A3B-REAP-CT}"
-            QUANT="compressed-tensors"
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-28B-A3B-REAP-AWQ}"
+            QUANT="awq_marlin"
             CTX=262144; MEM=0.80; MAX_RUNNING=4; CHUNKED=8192; DECODE_STEPS=4
             MAMBA_CACHE="--max-mamba-cache-size 4"
             REASONING="--reasoning-parser qwen3"
