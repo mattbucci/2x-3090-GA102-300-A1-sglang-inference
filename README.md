@@ -15,11 +15,22 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 ## Next to Try
 
-- **Qwen3.5-28B MoE REAP** — ✅ Working at 33 tok/s. Enable piecewise CUDA graphs for speed. Extend context beyond 4K.
-- **Qwen3-VL-30B MoE** — AutoRound calibration running in background (`/tmp/autoround-qwen3vl-30b.log`). Will produce native AWQ format.
-- **Qwen3-VL-32B Dense AWQ** — Working at 24 tok/s, 8K context. Needs full benchmark suite.
-- **Coder-30B REAP → AWQ/Marlin** — Currently `auto-round` format. AWQ/Marlin would use faster kernels.
-- **REAM Qwen3-Coder-30B** — Prune 128→96 experts for Marlin-optimized coding at 128K.
+### Quality evaluation (REAP vs REAM vs original)
+
+Run reasoning and coding evals to compare expert compression quality:
+- **[LiveCodeBench](https://livecodebench.github.io/)** — Fresh coding problems (LeetCode, AtCoder, CodeForces). OpenAI-compatible API.
+- **[RULER](https://github.com/NVIDIA/RULER)** — Synthetic long-context retrieval at 4K→256K. Tests real context utilization.
+- **[LongBench Pro](https://arxiv.org/html/2601.02872v1)** — Real-world bilingual long-context tasks, 8K→256K.
+
+Models to compare: Qwen3-30B original (128 exp), REAM (96 exp), Qwen3.5-28B REAP (205 exp).
+REAP research shows quality within 1-4pp of baseline; REAM retains ≥94% ([REAP paper](https://arxiv.org/html/2510.13999), [REAM blog](https://bknyaz.github.io/blog/2026/moe/)).
+
+### Performance optimization
+
+- **Piecewise CUDA graphs** — Disabled on REAP/REAM due to `quant_type` NoneType bug in piecewise graph capture. Fixing would improve decode latency for all quantized models.
+- **DeltaNet kernel fusion** — 13.5/35 tok/s bottleneck is 312 kernel launches per token at ~316µs each. Raw compute is 44ms but actual is 74ms (pre-patches). Kernel fusion or CUDA graphs would close the gap toward theoretical 22 tok/s.
+- **Qwen3-VL-30B** — AWQ checkpoint available, garbage output from vLLM weight mapping issue. Apply same VL prefix fix used for Devstral (`model.language_model.` → `language_model.model.`).
+- **Gemma 4 REAP** — BF16 source ready (40GB, 103 experts) but blocked by FlashInfer `head_dim=512` on Ampere.
 
 ### Findings from RDNA4 R9700 system
 
