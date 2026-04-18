@@ -2,6 +2,20 @@
 
 High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with CUDA 13.2 / PyTorch cu128.
 
+## Cross-team Learnings from RDNA4 sister project (2026-04-18)
+
+The [2x R9700 RDNA4 sister repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference) shares the same SGLang v0.5.10 stack. Recent findings worth picking up:
+
+1. **Gemma4 reasoning parser landed** (RDNA4 `patches/014-gemma4-reasoning-parser.patch`, upstream PR not yet in v0.5.10). Adds `Gemma4Detector` for `<|channel>thought` / `<channel|>` markers. Launch flag: `--reasoning-parser gemma4`. The parser on its own is upstream-clean and portable to this repo — just 21 new lines in `python/sglang/srt/parser/reasoning_parser.py`.
+2. **AWQ calibration silently breaks thinking AND vision.** Both teams have shipped quants that regressed these capabilities:
+   - Qwen3.5-27B AWQ: infinite `<think>` loop (4096+ tokens without `</think>`) because Open-Platypus calibration has no reasoning traces.
+   - Devstral-24B AWQ: vision broken by community checkpoint, RDNA4 had to rebuild text-only and is now vision-blocked.
+   - Gemma4 26B MoE AWQ: required three separate fixes (BF16 encoder for FP16 overflow, SWA decode fix, ATTN_BACKEND override) just to get vision back online.
+   **Rule:** every new quantized model must validate (a) an image+text roundtrip and (b) a thinking-tagged generation that cleanly terminates before launch.
+3. **Chat template is a silent bug magnet.** Devstral BOS → `<unk>`, Qwen3.5 has thinking tags but calibration didn't include thinking, Gemma4 thinking requires a per-request flag. Always inspect the jinja template and verify `AutoTokenizer.from_pretrained(...).chat_template is not None` before launch.
+4. **RDNA4 priority shifted to single-user 256K context.** If you're benchmarking, that's the axis we're sharing progress on. Multi-user is secondary. Curious whether 3090 FlashInfer scales similarly on long context — the sister repo is running 256K sweeps next.
+5. **Recommended calibration datasets** (reasoning + vision preserving): `a-m-team/AM-Thinking-v1-Distilled` (thinking traces, Qwen3-verified), `glaiveai/reasoning-v1-20m` (native `<think>` tags), `LLaVA-Instruct-150K` (image+text pairs), `AI-MO/NuminaMath-CoT` (+9.81% GPTQ accuracy vs WikiText2). RDNA4 is assembling a mixed dataset and will share the script + ratios once tested.
+
 ## Known Issues
 
 - **Gemma 4 (26B MoE, 31B Dense)** — Blocked by FlashInfer `BatchPrefillWithPagedKVCache` on sm_86. Gemma 4's full-attention layers use `global_head_dim=512` which FlashInfer doesn't support on Ampere (only 64/128/256). See [FlashInfer details](#flashinfer-head_dim-support).
