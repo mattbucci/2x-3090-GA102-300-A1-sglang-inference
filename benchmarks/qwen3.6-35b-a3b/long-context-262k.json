@@ -1,0 +1,45 @@
+{
+  "model": "Qwen3.6-35B-A3B GPTQ-Int4 (text-only)",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-04-18 14:32:55",
+  "output_tokens": 64,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "throughput": 17.6,
+      "ttft_ms": 149.99,
+      "tpot_ms": 54.42,
+      "tok_per_sec": 18.4
+    },
+    {
+      "context": 4096,
+      "throughput": 14.35,
+      "ttft_ms": 185.21,
+      "tpot_ms": 66.83,
+      "tok_per_sec": 15.0
+    },
+    {
+      "context": 16384,
+      "throughput": 14.23,
+      "ttft_ms": 566.87,
+      "tpot_ms": 58.54,
+      "tok_per_sec": 17.1
+    },
+    {
+      "context": 65536,
+      "throughput": 11.71,
+      "ttft_ms": 1088.43,
+      "tpot_ms": 61.87,
+      "tok_per_sec": 16.2
+    },
+    {
+      "context": 131072,
+      "throughput": 9.66,
+      "ttft_ms": 1709.28,
+      "tpot_ms": 66.02,
+      "tok_per_sec": 15.1
+    }
+  ]
+}

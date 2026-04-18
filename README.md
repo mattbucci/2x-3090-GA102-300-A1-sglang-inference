@@ -64,7 +64,14 @@ Ordered by expected impact. Updated as work progresses.
 4. **Unblock Gemma 4 on 3090** — Try `--attention-backend torch_native` path (R9700 confirmed this works for head_dim=512). Measure tok/s at 4K then scale context. Patch 014 reasoning parser now in place.
 
 ### Queued
-5. **Qwen3.6-35B-A3B** (new drop 2026-04-14) — successor to Qwen3.5-28B REAP, same hybrid DeltaNet+MoE architecture with 256 experts (3B active), **vision + thinking support**, 262K native context, YaRN-extensible to 1M. Candidates: `palmfuture/Qwen3.6-35B-A3B-GPTQ-Int4` (~18 GB, Marlin-friendly path we proved on Qwen3.5-35B MoE at R9700: 24 tok/s with `moe_wna16`) and `QuantTrio/Qwen3.6-35B-A3B-AWQ`. Steps: download, test load with patches 009 + 013 + 016, verify 262K single-user, validator gate on thinking + vision before declaring ready. Avoid `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit` — same author's Qwen3-VL-30B AWQ produced garbage for us.
+5. **Qwen3.6-35B-A3B (text-only) — WORKING at 262K single-user (2026-04-18)**. `palmfuture/Qwen3.6-35B-A3B-GPTQ-Int4` loads via `./scripts/launch.sh qwen36` after one-shot config flatten (`scripts/quantize/flatten_qwen36_config.py` promotes text_config.* to top-level and forces architectures=Qwen3_5MoeForCausalLM). Single-user sweep, text-only, no CUDA graph:
+   - 1K: **18.4 tok/s** (54 ms TPOT)
+   - 4K: 15.0 tok/s (67 ms)
+   - 16K: 17.1 tok/s (59 ms)
+   - 64K: 16.2 tok/s (62 ms)
+   - 131K: 15.1 tok/s (66 ms)
+   - **250K: 14.0 tok/s** (72 ms) — hits the 256K target
+   KV pool ceiling: 1.67M tokens at 262K context (MoE + DeltaNet = tiny per-token KV). Basic "capital of France" returns "Paris" with structured thinking (reasoning_content field populated), but loops after first answer — stop-token / reasoning parser interaction needs a look. Vision path deferred: Qwen3VLMoeVisionModel receives vision_config as a dict on this checkpoint, needs either an sglang loader patch or a self-calibration step that writes a cleaner vision_config. 5x slower than Qwen3-30B REAM at the same context — CUDA graph currently disabled for safety; enabling piecewise + fixing the REAP/REAM `quant_type=None` bug would close most of the gap.
 6. **Qwen3.5-28B MoE REAP 262K perf** — 33 tok/s is constant with context but low vs REAM's 197. Profile to see whether DeltaNet kernel launches or MoE expert routing dominate; consider piecewise CUDA graph fix (currently disabled due to `quant_type` NoneType bug).
 7. **Qwen3-VL-30B AWQ Marlin** — Self-calibrate CT checkpoint with multimodal data to fix both the vLLM name-mapping garbage and the Marlin MoE peak-VRAM OOM. Vision probe mandatory post-calibration.
 8. **Piecewise CUDA graph fix** — Unblocks decode latency improvements on all quantized MoE models (REAP/REAM).
@@ -158,6 +165,7 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 | Model | Type | Max context | 1-user tok/s @max | TPOT | Launch | Status |
 |-------|------|:----------:|:----------------:|:----:|:------:|:------:|
 | **Qwen3-30B REAM AWQ** | **MoE (96 experts)** | **262K** | **74 (250K fresh) / 107 (131K)** | **13.5ms / 9.4ms** | `launch.sh qwen3-ream` | **Working — hits 256K target** |
+| **Qwen3.6-35B-A3B GPTQ** | **DeltaNet+MoE (256 exp, text-only)** | **262K** | **14 (250K)** | **72ms** | `launch.sh qwen36` | **Working text-only; vision TBD** |
 | **Devstral-24B AWQ (long)** | **Dense** | **217K** | **56** | **17.9ms** | `launch.sh devstral-long` | **Working — 66% past default** |
 | Coder-REAP-25B W4A16 | MoE (103 experts) | 131K | 46 | 22ms | `launch.sh coder-reap` | Working |
 | **Devstral-24B AWQ Marlin** | **Dense** | **131K** | 55.8 | 17.9ms | `launch.sh devstral` | Working (short-context friendly) |
