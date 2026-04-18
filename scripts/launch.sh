@@ -127,13 +127,18 @@ apply_preset() {
             # Qwen3.6-35B-A3B-GPTQ-Int4: 256-expert hybrid DeltaNet + gated attn,
             # 3B active, 262K native context, vision + thinking. Uses the same
             # SGLang Qwen3_5MoeForConditionalGeneration handler as Qwen3.5.
-            # Text-only launch for now — add --enable-multimodal once vision is validated.
+            # First pass is text-only — --json-model-override-args forces the
+            # CausalLM entry class to skip the Qwen3VLMoeVisionModel init
+            # (which crashes because vision_config reaches it as a dict, not
+            # a Qwen3VLMoeVisionConfig — upstream bug on the GPTQ checkpoint).
             MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-GPTQ-Int4}"
             QUANT="gptq_marlin"
             CTX=262144; MEM=0.85; MAX_RUNNING=4; CHUNKED=4096; DECODE_STEPS=4
             MAMBA_CACHE="--max-mamba-cache-size 4"
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            EXTRA_ARGS="${EXTRA_ARGS} --json-model-override-args"
+            EXTRA_ARGS="$EXTRA_ARGS {\"architectures\":[\"Qwen3_5MoeForCausalLM\"],\"model_type\":\"qwen3_5_moe_text\"}"
             ;;
         *)
             echo "Unknown model: $1"
