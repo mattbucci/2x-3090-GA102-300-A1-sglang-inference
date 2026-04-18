@@ -42,6 +42,52 @@ def get_max_tokens(base_url, default=4096):
         return default
 
 
+def thinking_format_eval(url, max_tokens=1024):
+    """Test whether the model produces proper <think> tags and stops cleanly."""
+    prompts = [
+        ("simple_mc", "What is 2+2?\nA. 3\nB. 4\nC. 5\nD. 6\n\nAnswer with just the letter:"),
+        ("reasoning", "If all roses are flowers and some flowers fade quickly, can we conclude all roses fade quickly?\nA. Yes\nB. No\nC. Cannot determine\nD. Only some\n\nAnswer with just the letter:"),
+        ("knowledge", "What is the capital of Japan?\nA. Beijing\nB. Seoul\nC. Tokyo\nD. Bangkok\n\nAnswer with just the letter:"),
+        ("code", "What does `len([1,2,3])` return in Python?\nA. 2\nB. 3\nC. 4\nD. Error\n\nAnswer with just the letter:"),
+        ("hard_mc", "In quantum mechanics, the commutator [x, p] equals:\nA. 0\nB. ih\nC. -ih\nD. h\n\nAnswer with just the letter:"),
+    ]
+    results = []
+    for name, prompt in prompts:
+        try:
+            r = requests.post(url, json={"model": "default", "messages": [
+                {"role": "user", "content": prompt}
+            ], "max_tokens": max_tokens, "temperature": 0}, timeout=120).json()
+            content = r["choices"][0]["message"]["content"] or ""
+            comp_tokens = r["usage"]["completion_tokens"]
+            finish = r["choices"][0]["finish_reason"]
+            has_think_open = "<think>" in content
+            has_think_close = "</think>" in content
+            has_tags = has_think_open and has_think_close
+            # Check for answer after think block
+            after_think = content.split("</think>")[-1].strip() if has_think_close else content
+            answer_matches = re.findall(r"\b[ABCD]\b", after_think)
+            clean_answer = len(answer_matches) > 0
+            results.append({
+                "name": name, "tokens": comp_tokens, "finish": finish,
+                "has_think_tags": has_tags, "clean_answer": clean_answer,
+                "truncated": finish == "length",
+            })
+        except Exception as e:
+            results.append({"name": name, "error": str(e)[:100]})
+
+    tagged = sum(1 for r in results if r.get("has_think_tags", False))
+    clean = sum(1 for r in results if r.get("clean_answer", False))
+    truncated = sum(1 for r in results if r.get("truncated", False))
+    total = len(results)
+    return {
+        "results": results,
+        "think_tags_rate": tagged / total if total else 0,
+        "clean_answer_rate": clean / total if total else 0,
+        "truncation_rate": truncated / total if total else 0,
+        "avg_tokens": sum(r.get("tokens", 0) for r in results) / total if total else 0,
+    }
+
+
 def mmlu_eval(url, n_samples=200, max_workers=8, max_tokens=4096):
     """MMLU multiple-choice reasoning."""
     ds = load_dataset("cais/mmlu", "all", split="test")
@@ -197,9 +243,13 @@ def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50, needle_lengths=[1024
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     max_ctx = get_max_tokens(url)
-    # Full context budget — let the model reason as long as it needs
-    # Server will reject if prompt + max_tokens > context, so leave room for prompt
-    mc_budget = max_ctx - 1024  # reserve 1K for prompt tokens
+    # MC reasoning budget: 1024 tokens. Models that use <think> tags stop naturally
+    # at ~100-500 tokens. Models without tags (Qwen3.5 REAP) spiral on hard questions
+    # and hit the cap — but the regex still finds answer letters in the reasoning.
+    # Qwen3 official guidance: 8K thinking budget, but that's for <think>-tagged models
+    # where thinking tokens are separate. For untagged models, 1024 total prevents
+    # 4-minute runaway generations per question while still capturing the answer.
+    mc_budget = min(1024, max_ctx - 512)
     print(f"{'=' * 50}")
     print(f"Quality Eval: {tag} (workers={workers}, max_context={max_ctx})")
     print(f"{'=' * 50}")
@@ -215,6 +265,22 @@ def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50, needle_lengths=[1024
     def save():
         with open(outfile, "w") as f:
             json.dump(results, f, indent=2)
+
+    # Thinking format check — run first, fast diagnostic
+    if "thinking" not in results:
+        print(f"\nThinking format check...")
+        results["thinking"] = thinking_format_eval(url, max_tokens=mc_budget)
+        tf = results["thinking"]
+        tags_pct = tf["think_tags_rate"] * 100
+        clean_pct = tf["clean_answer_rate"] * 100
+        trunc_pct = tf["truncation_rate"] * 100
+        print(f"  <think> tags: {tags_pct:.0f}%  clean answers: {clean_pct:.0f}%  truncated: {trunc_pct:.0f}%  avg tokens: {tf['avg_tokens']:.0f}")
+        if tags_pct == 0:
+            print(f"  WARNING: model not producing <think> tags — thinking format may be broken")
+        save()
+    else:
+        tf = results["thinking"]
+        print(f"\nThinking: tags={tf['think_tags_rate']:.0%} clean={tf['clean_answer_rate']:.0%} (cached)")
 
     if "mmlu" not in results or results["mmlu"].get("total", 0) == 0:
         print(f"\nMMLU ({mmlu_n} samples)...")
@@ -294,12 +360,14 @@ def generate_charts():
     he = [get_score(r, ["humaneval"], "pass_rate") for r in results]
     labbench = [get_score(r, ["labbench", "_overall"], "accuracy") for r in results]
     needle = [get_score(r, ["needle"], "score") for r in results]
+    think_tags = [get_score(r, ["thinking"], "think_tags_rate") for r in results]
 
     benchmarks = [
         ("MMLU (%)", mmlu),
         ("HumanEval pass@1 (%)", he),
         ("LAB-Bench (%)", labbench),
         ("Needle-in-Haystack (%)", needle),
+        ("<think> tags (%)", think_tags),
     ]
     # Only show benchmarks that have at least one result
     benchmarks = [(t, d) for t, d in benchmarks if any(v is not None for v in d)]
@@ -337,14 +405,15 @@ def generate_charts():
     print(f"Chart saved to {outpath}")
 
     # Print summary table
-    print(f"\n{'Model':<20} {'MMLU':>8} {'HumanEval':>10} {'LAB-Bench':>10} {'Needle':>8}")
-    print("-" * 60)
+    print(f"\n{'Model':<20} {'MMLU':>8} {'HumanEval':>10} {'LAB-Bench':>10} {'Needle':>8} {'<think>':>8}")
+    print("-" * 68)
     for i, r in enumerate(results):
         m = f"{mmlu[i]*100:.1f}%" if mmlu[i] is not None else "N/A"
         h = f"{he[i]*100:.1f}%" if he[i] is not None else "N/A"
         l = f"{labbench[i]*100:.1f}%" if labbench[i] is not None else "N/A"
         n = f"{needle[i]*100:.1f}%" if needle[i] is not None else "N/A"
-        print(f"{tags[i]:<20} {m:>8} {h:>10} {l:>10} {n:>8}")
+        t = f"{think_tags[i]*100:.0f}%" if think_tags[i] is not None else "N/A"
+        print(f"{tags[i]:<20} {m:>8} {h:>10} {l:>10} {n:>8} {t:>8}")
 
     # Print LAB-Bench breakdown if available
     has_lb = any(r.get("labbench") for r in results)
