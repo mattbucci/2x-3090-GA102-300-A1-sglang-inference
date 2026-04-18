@@ -8,6 +8,8 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 Reference model for the target: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5 ms TPOT, fresh prefill). Qwen3.6-35B-A3B-GPTQ text-only hits the same target at 14 tok/s.
 
+**Cross-team parity on Qwen3.6 (2026-04-18):** RDNA4 sister repo also has Qwen3.6-35B-A3B-GPTQ loaded via the `qwen36-moe` preset — 13.3 tok/s @ 262K, thinking validator passes on first probe (396 tok, `finish=stop`).  Same architecture class (`Qwen3_5MoeForConditionalGeneration`) as Qwen3.5-35B; patch 009 covers it.  Their `flatten_qwen36_config.py` now has `--arch` flag: default `Qwen3_5MoeForConditionalGeneration` for RDNA4 patch 009 registration, `--arch Qwen3_5MoeForCausalLM` for your upstream-registered class.  Conclusion: Qwen3.6 works cleanly on both stacks without recalibration — thinking survives community GPTQ where it failed on Qwen3.5 AWQ.
+
 ## Active work (short list)
 
 1. **Qwen3.5-28B REAP thinking recalibration — RUNNING.** Kicked off 2026-04-18, layer 2/41 at check-in. Mixed `thinking_text` recipe (AM-Thinking-v1 + NuminaMath-CoT + UltraChat) via `scripts/quantize/quantize_qwen35_28b_moe_reap_thinking.py`. Projecting ~18-20h CPU-only (54 GB BF16 + Hessians, swap-heavy). Output: `~/AI/models/Qwen3.5-28B-A3B-REAP-CT-thinking/`. Next: CT→AWQ → `validate_chat_template.py` → swap preset.
