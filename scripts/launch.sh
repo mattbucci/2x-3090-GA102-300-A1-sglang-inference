@@ -59,6 +59,16 @@ apply_preset() {
             QUANT="awq_marlin"
             CTX=32768; MEM=0.90; MAX_RUNNING=64; CHUNKED=8192
             ;;
+        devstral-long)
+            # Single-user long-context preset: pushes KV ceiling from 131K (default)
+            # to ~217K tokens at MEM=0.97 + no CUDA graph/overlap/radix cache.
+            # Decode plateaus ~56 tok/s past 131K. Not for multi-user.
+            MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-Marlin}"
+            QUANT="awq_marlin"
+            CTX=262144; MEM=0.97; MAX_RUNNING=1; CHUNKED=2048
+            EXTRA_ARGS="${EXTRA_ARGS} --disable-cuda-graph --disable-overlap-schedule --disable-radix-cache"
+            CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
+            ;;
         coder-reap)
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-REAP-25B-A3B-W4A16}"
             QUANT="auto-round"
@@ -217,5 +227,8 @@ CMD=(python -m sglang.launch_server
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
 [[ -n "$OVERLAP" ]] && CMD+=($OVERLAP)
 [[ -n "$CUDA_GRAPH" ]] && CMD+=($CUDA_GRAPH)
+# EXTRA_ARGS lets callers append/override flags (e.g. --disable-cuda-graph,
+# --enable-multimodal) without editing the script. Honor it from env.
+[[ -n "${EXTRA_ARGS:-}" ]] && CMD+=(${EXTRA_ARGS})
 
 exec "${CMD[@]}"

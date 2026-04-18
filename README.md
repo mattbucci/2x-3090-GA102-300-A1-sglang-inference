@@ -35,10 +35,10 @@ The [2x R9700 RDNA4 sister repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX
 Ordered by expected impact. Updated as work progresses.
 
 ### Active
-1. **Push Devstral-24B to 256K context** — Currently 131K with room in VRAM (24B dense, ~7 GB/GPU, 80 KB/token KV). FP8 KV cache already applied. Needs `--context-length 262144` sweep and sliding window verification at long context. Likely quickest win.
-2. **Fix Qwen3.5-28B REAP `<think>` regression** — Re-calibrate GPTQ with thinking-aware data (`glaiveai/reasoning-v1-20m` + Open-Platypus mix). Must preserve MMLU/HumanEval numbers while restoring `<think>` tagging. Multi-hour calibration job.
-3. **Unblock Gemma 4 on 3090** — Try `--attention-backend torch_native` path (R9700 confirmed this works for head_dim=512). Measure tok/s at 4K then scale context. Patch 014 reasoning parser now in place.
-4. **Qwen3-30B REAM 256K sweep** — Currently benchmarked to 16K (@71 tok/s). Extend sweep to 32K/64K/128K/256K to characterize the long-context decode cliff. Already the fastest long-context model; establish the ceiling.
+1. **Devstral-24B long-context preset — DONE (partial).** KV ceiling pushed from 131K → **217K tokens** single-user via `launch.sh devstral-long` (MEM=0.97, chunked=2048, `--disable-cuda-graph --disable-overlap-schedule --disable-radix-cache`). Decode plateaus at **55.9 tok/s @ 200K** (17.9 ms TPOT, stable from 131K onward). Cannot reach a full 262K prompt — Devstral has no sliding window (full-attention KV 80 KB/token) so per-GPU KV budget hits ~8 GB/GPU ceiling. **Gap to 256K: ~45K tokens (~3.6 GB short per node).** Further progress requires either (a) TurboQuant 3-bit KV (SGLang PR #21618, unmerged), (b) a smaller-KV Devstral variant, or (c) accepting 217K as the 3090 practical ceiling for 24B dense at TP=2. See `benchmarks/devstral-24b-awq/long-context-262k-v4.json`. Default `devstral` preset unchanged (131K, CUDA graph on, better for short prompts / multi-user).
+2. **Qwen3-30B REAM full 262K sweep** — NOW RUNNING. Smaller per-token KV (36 KB vs Devstral's 80 KB) means 262K should fit comfortably. Will be the reference model for single-user long-context work.
+3. **Fix Qwen3.5-28B REAP `<think>` regression** — Re-calibrate GPTQ with thinking-aware data (`glaiveai/reasoning-v1-20m` + Open-Platypus mix). Must preserve MMLU/HumanEval numbers while restoring `<think>` tagging. `scripts/eval/validate_chat_template.py` now flags this failure mode pre-launch. Multi-hour calibration job.
+4. **Unblock Gemma 4 on 3090** — Try `--attention-backend torch_native` path (R9700 confirmed this works for head_dim=512). Measure tok/s at 4K then scale context. Patch 014 reasoning parser now in place.
 
 ### Queued
 5. **Qwen3.5-28B MoE REAP 262K perf** — 33 tok/s is constant with context but low vs REAM's 197. Profile to see whether DeltaNet kernel launches or MoE expert routing dominate; consider piecewise CUDA graph fix (currently disabled due to `quant_type` NoneType bug).
@@ -131,13 +131,14 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 
 ### Agent / coding workloads (single-user, max context)
 
-| Model | Type | Max context | 1-user tok/s | TPOT | Launch | Status |
-|-------|------|:----------:|:------------:|:----:|:------:|:------:|
-| **Qwen3-30B REAM AWQ** | **MoE (96 experts)** | **262K** | **197** | **5ms** | `launch.sh qwen3-ream` | **Working** |
-| Coder-REAP-25B W4A16 | MoE (103 experts) | 131K | 134 | 7ms | `launch.sh coder-reap` | Working |
-| **Devstral-24B AWQ Marlin** | **Dense** | **131K** | **87** | **12ms** | `launch.sh devstral` | **Working** |
+| Model | Type | Max context | 1-user tok/s @max | TPOT | Launch | Status |
+|-------|------|:----------:|:----------------:|:----:|:------:|:------:|
+| **Qwen3-30B REAM AWQ** | **MoE (96 experts)** | **262K** | **107** | **9.4ms** | `launch.sh qwen3-ream` | **Working — hits 256K target** |
+| **Devstral-24B AWQ (long)** | **Dense** | **217K** | **56** | **17.9ms** | `launch.sh devstral-long` | **Working — 66% past default** |
+| Coder-REAP-25B W4A16 | MoE (103 experts) | 131K | 46 | 22ms | `launch.sh coder-reap` | Working |
+| **Devstral-24B AWQ Marlin** | **Dense** | **131K** | 55.8 | 17.9ms | `launch.sh devstral` | Working (short-context friendly) |
 | **Coder-30B AWQ Marlin** | **MoE (128 experts)** | **16K** | **193** | **5ms** | `launch.sh coder-30b` | **Working** |
-| **Qwen3.5-28B MoE REAP** | **DeltaNet+MoE (205 exp)** | **262K** | **35** | **29ms** | `launch.sh qwen35-moe` | **Working** |
+| **Qwen3.5-28B MoE REAP** | **DeltaNet+MoE (205 exp)** | **262K** | **33** | **31ms** | `launch.sh qwen35-moe` | Working, thinking broken |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | 13.5 | 74ms | `launch.sh qwen35` | Working |
 | Qwen3-VL-32B Dense AWQ | Dense (vision+text) | 8K | 24 | 45ms | `launch.sh qwen3-vl-32b` | Working |
 | Gemma 4 26B REAP | MoE (103 experts) | — | — | — | — | Blocked (FlashInfer) |
@@ -176,9 +177,24 @@ Self-calibrated models use the pipeline in `scripts/quantize/` (GPTQ calibration
 
 **Methodology:** `bench_all_unified.py` uses `sglang.bench_serving` for proper TPOT/TTFT measurement.
 
-### Devstral-24B AWQ (up to 131K context)
+### Devstral-24B AWQ (up to 217K context single-user)
 
-24B dense transformer. ~7 GB/GPU. FP8 KV cache enables long context.
+24B dense transformer. ~7 GB/GPU. FP8 KV cache enables long context. Full-attention KV = 80 KB/token — the binding VRAM constraint.
+
+**Single-user long-context (`launch.sh devstral-long`, MEM=0.97, no CUDA graph/overlap/radix):**
+
+| Context Length | TPOT | tok/s |
+|:--------------:|:----:|:-----:|
+| 1K | 11.3ms | 88.7 |
+| 4K | 11.4ms | 87.8 |
+| 16K | 12.1ms | 82.6 |
+| 64K | 14.6ms | 68.5 |
+| **131K** | **17.9ms** | **55.8** |
+| **200K** | **17.9ms** | **55.9** |
+
+Decode TPOT plateaus at 17.9ms past 131K — attention is memory-bandwidth-bound and saturates. KV cache ceiling is ~217K tokens; a 256K prompt won't fit.
+
+**Default preset (`launch.sh devstral`, 131K, CUDA graph on):**
 
 | Context Length | tok/s |
 |:--------------:|:-----:|
@@ -263,9 +279,25 @@ Previously 7 tok/s — patches 005-007 (FP8 KV, BF16 AWQ, DeltaNet kernel tuning
 
 First working INT4 quantization of Qwen3.5 DeltaNet+MoE. Required: GPTQ calibration with in-memory expert fusion (BF16 source has per-expert weights, HF model class expects fused FusedMoE format), DeltaNet/gate/vision layers excluded from INT4, custom CausalLM wrapper with logits processor + mrope handling (patch 009).
 
-### Qwen3-30B-Instruct REAM AWQ Marlin (262K context, 96 experts)
+### Qwen3-30B-Instruct REAM AWQ Marlin (262K single-user context, 96 experts)
 
-30B / 3B active MoE. REAM-merged (128→96 experts). ~6.2 GB/GPU. **Fastest model on the rig.**
+30B / 3B active MoE. REAM-merged (128→96 experts). ~6.2 GB/GPU. Per-token KV 36 KB (much smaller than Devstral's 80 KB) → KV pool fits 583K tokens, leaving room to serve the full 262K context trivially. **Fastest long-context model on the rig.**
+
+**Long-context single-user sweep (`launch.sh qwen3-ream`, MEM=0.85, CUDA graph on):**
+
+| Context Length | TPOT | tok/s |
+|:--------------:|:----:|:-----:|
+| 1K | 5.4ms | 185 |
+| 4K | 5.0ms | 199 |
+| 16K | 5.6ms | 179 |
+| 64K | 7.0ms | 143 |
+| **131K** | **9.4ms** | **107** |
+| **200K** | **9.7ms** | **103** |
+| **262K** | **9.4ms** | **107** |
+
+TPOT plateaus at ~9.4ms past 131K — this is the 3090's current benchmark for single-user 256K. See `benchmarks/qwen3-30b-ream/long-context-262k.json`.
+
+**Short-context / multi-user sweep (original benchmark methodology):**
 
 | Context Length | tok/s | TTFT |
 |:--------------:|:-----:|:----:|

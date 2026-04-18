@@ -1,0 +1,24 @@
+{
+  "model": "Devstral-24B 262K MEM=0.97 noradix",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-04-18 13:42:27",
+  "output_tokens": 64,
+  "context_sweep": [
+    {
+      "context": 131072,
+      "throughput": 34.4,
+      "ttft_ms": 179.88,
+      "tpot_ms": 17.93,
+      "tok_per_sec": 55.8
+    },
+    {
+      "context": 200000,
+      "throughput": 34.41,
+      "ttft_ms": 174.74,
+      "tpot_ms": 17.89,
+      "tok_per_sec": 55.9
+    }
+  ]
+}
