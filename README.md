@@ -52,10 +52,11 @@ Ordered by expected impact. Updated as work progresses.
 4. **Unblock Gemma 4 on 3090** — Try `--attention-backend torch_native` path (R9700 confirmed this works for head_dim=512). Measure tok/s at 4K then scale context. Patch 014 reasoning parser now in place.
 
 ### Queued
-5. **Qwen3.5-28B MoE REAP 262K perf** — 33 tok/s is constant with context but low vs REAM's 197. Profile to see whether DeltaNet kernel launches or MoE expert routing dominate; consider piecewise CUDA graph fix (currently disabled due to `quant_type` NoneType bug).
-6. **Qwen3-VL-30B AWQ Marlin** — Self-calibrate CT checkpoint with multimodal data to fix both the vLLM name-mapping garbage and the Marlin MoE peak-VRAM OOM. Vision probe mandatory post-calibration.
-7. **Piecewise CUDA graph fix** — Unblocks decode latency improvements on all quantized MoE models (REAP/REAM).
-8. **Coder-30B 262K context** — KV budget says it fits; need to verify sliding window + FP8 KV at long context.
+5. **Qwen3.6-35B-A3B** (new drop 2026-04-14) — successor to Qwen3.5-28B REAP, same hybrid DeltaNet+MoE architecture with 256 experts (3B active), **vision + thinking support**, 262K native context, YaRN-extensible to 1M. Candidates: `palmfuture/Qwen3.6-35B-A3B-GPTQ-Int4` (~18 GB, Marlin-friendly path we proved on Qwen3.5-35B MoE at R9700: 24 tok/s with `moe_wna16`) and `QuantTrio/Qwen3.6-35B-A3B-AWQ`. Steps: download, test load with patches 009 + 013 + 016, verify 262K single-user, validator gate on thinking + vision before declaring ready. Avoid `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit` — same author's Qwen3-VL-30B AWQ produced garbage for us.
+6. **Qwen3.5-28B MoE REAP 262K perf** — 33 tok/s is constant with context but low vs REAM's 197. Profile to see whether DeltaNet kernel launches or MoE expert routing dominate; consider piecewise CUDA graph fix (currently disabled due to `quant_type` NoneType bug).
+7. **Qwen3-VL-30B AWQ Marlin** — Self-calibrate CT checkpoint with multimodal data to fix both the vLLM name-mapping garbage and the Marlin MoE peak-VRAM OOM. Vision probe mandatory post-calibration.
+8. **Piecewise CUDA graph fix** — Unblocks decode latency improvements on all quantized MoE models (REAP/REAM).
+9. **Coder-30B 262K context** — KV budget says it fits; need to verify sliding window + FP8 KV at long context.
 
 ### Discarded / blocked
 - **TurboQuant 3-bit KV** — Would 3x effective context, but [SGLang PR #21618](https://github.com/sgl-project/sglang/issues/21618) is unmerged.
