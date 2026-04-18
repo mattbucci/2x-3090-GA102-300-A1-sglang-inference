@@ -133,7 +133,7 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 
 | Model | Type | Max context | 1-user tok/s @max | TPOT | Launch | Status |
 |-------|------|:----------:|:----------------:|:----:|:------:|:------:|
-| **Qwen3-30B REAM AWQ** | **MoE (96 experts)** | **262K** | **107** | **9.4ms** | `launch.sh qwen3-ream` | **Working — hits 256K target** |
+| **Qwen3-30B REAM AWQ** | **MoE (96 experts)** | **262K** | **74 (250K fresh) / 107 (131K)** | **13.5ms / 9.4ms** | `launch.sh qwen3-ream` | **Working — hits 256K target** |
 | **Devstral-24B AWQ (long)** | **Dense** | **217K** | **56** | **17.9ms** | `launch.sh devstral-long` | **Working — 66% past default** |
 | Coder-REAP-25B W4A16 | MoE (103 experts) | 131K | 46 | 22ms | `launch.sh coder-reap` | Working |
 | **Devstral-24B AWQ Marlin** | **Dense** | **131K** | 55.8 | 17.9ms | `launch.sh devstral` | Working (short-context friendly) |
@@ -285,17 +285,18 @@ First working INT4 quantization of Qwen3.5 DeltaNet+MoE. Required: GPTQ calibrat
 
 **Long-context single-user sweep (`launch.sh qwen3-ream`, MEM=0.85, CUDA graph on):**
 
-| Context Length | TPOT | tok/s |
-|:--------------:|:----:|:-----:|
-| 1K | 5.4ms | 185 |
-| 4K | 5.0ms | 199 |
-| 16K | 5.6ms | 179 |
-| 64K | 7.0ms | 143 |
-| **131K** | **9.4ms** | **107** |
-| **200K** | **9.7ms** | **103** |
-| **262K** | **9.4ms** | **107** |
+| Context Length | TPOT | tok/s | Notes |
+|:--------------:|:----:|:-----:|:------|
+| 1K | 5.4ms | 185 | fresh |
+| 4K | 5.0ms | 199 | fresh |
+| 16K | 5.6ms | 179 | fresh |
+| 64K | 7.0ms | 143 | fresh |
+| **131K** | **9.4ms** | **107** | fresh |
+| 200K | 9.7ms | 103 | radix-cached prefix |
+| 262K | 9.4ms | 107 | radix-cached prefix |
+| **250K** | **13.5ms** | **74** | **fresh (radix disabled)** |
 
-TPOT plateaus at ~9.4ms past 131K — this is the 3090's current benchmark for single-user 256K. See `benchmarks/qwen3-30b-ream/long-context-262k.json`.
+Radix cache matters for the reported numbers: bench_serving's random dataset produces prompts sharing the first 131K of tokens, so after one full 131K prefill, subsequent 200K+ prompts hit the radix cache for most of their prefix. Decode speed at 200K-with-mostly-cached-KV ≠ decode speed at 250K fresh KV. The honest single-user number at a genuinely fresh 250K context is **74 tok/s** (13.5ms TPOT) — still comfortably the fastest long-context model on the rig. See `benchmarks/qwen3-30b-ream/long-context-262k.json`.
 
 **Short-context / multi-user sweep (original benchmark methodology):**
 
