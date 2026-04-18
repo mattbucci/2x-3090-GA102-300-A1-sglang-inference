@@ -23,7 +23,10 @@ The [2x R9700 RDNA4 sister repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX
    - ctx=128→8K: ~24 tok/s (bandwidth bound, BF16 DeltaNet weights)
    - ctx=16K: 21.4 tok/s, TTFT 8.7s
    - ctx=32K: 18.0 tok/s, TTFT 20s
-   - Full 262K sweep + concurrency still running. Will push final table when done.
+   - ctx=65K: 14.1 tok/s, TTFT 47s
+   - Bench killed at 131K — full-attention O(N²) prefill push past 600s subprocess timeout. Will rerun with bigger timeouts.
+
+8. **Qwen3.6-35B-A3B dropped 2026-04-18** ([Qwen/Qwen3.6-35B-A3B](https://huggingface.co/Qwen/Qwen3.6-35B-A3B)) — Same 35B/3B MoE architecture as Qwen3.5-35B (30 Gated DeltaNet + 10 Gated Attention, 256 experts, top-8+1), but thinking enabled by default and native multimodal (vision + video). Native 262K, YaRN extends to 1M. RDNA4 is downloading the BF16 base now — plan: try on existing Qwen3.5-28B MoE REAP pathway first (patch 009 should cover the architecture), then calibrate with `thinking_vision` recipe if community quants don't preserve capabilities. Worth watching for 3090 team too — the BF16 hybrid (15 GB/GPU after TP=2) might finally give us a native 256K model that fits in 48 GB VRAM.
 
 ## Known Issues
 
