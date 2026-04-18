@@ -1,0 +1,47 @@
+diff --git a/python/sglang/srt/layers/quantization/compressed_tensors/compressed_tensors.py b/python/sglang/srt/layers/quantization/compressed_tensors/compressed_tensors.py
+index a13c53af4..cdefa76bd 100644
+--- a/python/sglang/srt/layers/quantization/compressed_tensors/compressed_tensors.py
++++ b/python/sglang/srt/layers/quantization/compressed_tensors/compressed_tensors.py
+@@ -3,6 +3,7 @@
+ from __future__ import annotations
+ 
+ import logging
++import os
+ from contextlib import suppress
+ from typing import (
+     TYPE_CHECKING,
+@@ -678,8 +679,11 @@ class CompressedTensorsConfig(QuantizationConfig):
+                         "Using CompressedTensorsMxInt4MoE with flashinfer_trtllm backend"
+                     )
+                     return CompressedTensorsMxInt4MoE(self)
+-                elif _is_hip:
+-                    logger.info_once("Using CompressedTensorsWNA16TritonMoE (ROCm)")
++                elif _is_hip or os.environ.get("SGLANG_FORCE_CT_MOE_TRITON", "0") == "1":
++                    logger.info_once(
++                        "Using CompressedTensorsWNA16TritonMoE "
++                        "(ROCm or SGLANG_FORCE_CT_MOE_TRITON=1)"
++                    )
+                     return CompressedTensorsWNA16TritonMoE(self)
+                 else:
+                     logger.info_once("Using CompressedTensorsWNA16MarlinMoEMethod")
+diff --git a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
+index 7a8fb6542..b18434a42 100644
+--- a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
++++ b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
+@@ -455,9 +455,13 @@ class CompressedTensorsWNA16TritonMoE(CompressedTensorsWNA16MoE):
+     ) -> "CombineInput":
+         from sglang.srt.layers.moe.moe_runner.triton import TritonMoeQuantInfo
+ 
+-        assert (
+-            self.moe_runner_config.activation == "silu"
+-        ), "Only SiLU activation is supported."
++        # Triton fused MoE runner supports both silu and gelu (see
++        # moe_runner/triton.py). The original SiLU-only assertion blocked
++        # Gemma 4 (gelu). Runner still raises for unknown activations.
++        assert self.moe_runner_config.activation in (
++            "silu",
++            "gelu",
++        ), f"Only SiLU/GELU activation supported, got {self.moe_runner_config.activation!r}."
+ 
+         quant_info = TritonMoeQuantInfo(
+             w13_weight=layer.w13_weight_packed,
