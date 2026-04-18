@@ -17,12 +17,31 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 ### Quality evaluation (REAP vs REAM vs original)
 
-Run reasoning and coding evals to compare expert compression quality:
-- **[LiveCodeBench](https://livecodebench.github.io/)** — Fresh coding problems (LeetCode, AtCoder, CodeForces). OpenAI-compatible API.
-- **[RULER](https://github.com/NVIDIA/RULER)** — Synthetic long-context retrieval at 4K→256K. Tests real context utilization.
-- **[LongBench Pro](https://arxiv.org/html/2601.02872v1)** — Real-world bilingual long-context tasks, 8K→256K.
+![Quality Comparison](benchmarks/quality/quality_comparison.png)
 
-Models to compare: Qwen3-30B original (128 exp), REAM (96 exp), Qwen3.5-28B REAP (205 exp).
+| Model | MMLU | HumanEval | Needle (65K) | Context | tok/s |
+|-------|:----:|:---------:|:------------:|:-------:|:-----:|
+| **Coder-30B** (128 exp) | **73%** | **100%** | 100% | 16K | 193 |
+| **REAP-28B** (205 exp, DeltaNet) | 70% | 80% | **100%** | **262K** | 35 |
+| **REAM-30B** (96 exp) | 63% | 80% | 100% | **262K** | **197** |
+
+**Methodology:** `scripts/eval/eval_and_chart.py` — MMLU (200 samples), HumanEval pass@1 (30 samples), [LAB-Bench](https://github.com/Future-House/LAB-Bench) (7 science benchmarks, 50 samples each), needle-in-a-haystack (1K→65K). Full model context as reasoning budget. Single-user, temperature=0.
+
+**Key findings:**
+- **REAM lost the most quality** — 10pp below Coder on MMLU. Expert merging (128→96) hurt reasoning more than REAP's pruning.
+- **REAP held up better** on MMLU (70% vs 73%) despite pruning 256→205 experts, but 20pp gap on HumanEval.
+- **All models pass needle** through 65K context — context utilization is solid across architectures.
+- The original eval bug gave REAP 20% MMLU because `max_tokens=20` truncated the model's verbose reasoning before it could answer.
+
+Run evals:
+```bash
+# Start model server, then:
+python scripts/eval/eval_and_chart.py --run --port 23334 --tag "Model-Name" --workers 1
+python scripts/eval/eval_and_chart.py --chart  # generate PNG
+```
+
+**Still TODO:** [RULER](https://github.com/NVIDIA/RULER) (synthetic long-context 4K→256K), [LongBench Pro](https://arxiv.org/html/2601.02872v1) (real-world bilingual 8K→256K), [LiveCodeBench](https://livecodebench.github.io/) (fresh coding problems).
+
 REAP research shows quality within 1-4pp of baseline; REAM retains ≥94% ([REAP paper](https://arxiv.org/html/2510.13999), [REAM blog](https://bknyaz.github.io/blog/2026/moe/)).
 
 ### Performance optimization
@@ -57,8 +76,8 @@ The sister [2x R9700 repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-s
 ./scripts/launch.sh coder-reap          # Coder-REAP-25B — fastest single-user
 ./scripts/launch.sh qwen35              # Qwen3.5-27B DeltaNet AWQ
 
-# 3. Test quality
-python scripts/eval/eval_comprehensive.py --port 23334 --parallel 4
+# 3. Test quality (MMLU, HumanEval, LAB-Bench, Needle)
+python scripts/eval/eval_and_chart.py --run --port 23334 --tag "Model-Name"
 
 # 4. Benchmark
 python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
@@ -363,13 +382,15 @@ Python: 3.12
 
 ```
 patches/                           # SGLang v0.5.10 patches (7 total)
-benchmarks/                        # Benchmark results (per-model directories)
+benchmarks/
+  quality/                         #   Quality eval results (MMLU, HumanEval, LAB-Bench, Needle)
+  <model>/                         #   Per-model throughput benchmark results
 scripts/
   launch.sh                       #   Unified model launcher (launch.sh <model>)
   common.sh                       #   Shared NVIDIA environment setup
   setup.sh                        #   Full setup (conda, SGLang install)
-  bench/                          #   Benchmark scripts
-  eval/                           #   Quality evaluation + warmup
+  bench/                          #   Throughput benchmark scripts
+  eval/                           #   Quality evaluation (eval_and_chart.py)
   quantize/                       #   Quantization pipeline (GPTQ -> CT -> AWQ)
   test/                           #   Kernel microbenchmarks + profiling
 components/sglang/                 # SGLang v0.5.10 + patches (cloned by setup.sh)
