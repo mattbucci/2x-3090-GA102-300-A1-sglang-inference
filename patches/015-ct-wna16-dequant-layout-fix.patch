@@ -1,0 +1,60 @@
+diff --git a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16.py b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16.py
+index d7781b09c..1b412bc2d 100644
+--- a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16.py
++++ b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16.py
+@@ -311,33 +311,42 @@ class CompressedTensorsWNA16(CompressedTensorsLinearScheme):
+         _transform_param(layer, self.w_s_name, transform_w_s)
+ 
+     def _dequant_fallback(self, layer, x, bias):
+-        """Torch dequant fallback for layers where Marlin shape is incompatible."""
++        """Torch dequant fallback for layers where Marlin shape is incompatible.
++
++        CompressedTensorsWNA16 stores weights in [out_features, in_features // pack_factor]
++        and scales in [out_features, num_groups]. The previous version assumed a transposed
++        [in//pack, out] layout, which silently produced garbage shapes for TP-sharded
++        RowParallel layers (Gemma 4 down_proj hit this: scales came out [out, 33] but were
++        treated as [rows, out]). Keep the native [out, in] orientation and transpose once
++        at the matmul.
++        """
+         c = self.kernel_config
+         w_q = getattr(layer, self.w_q_name)
+         w_s = getattr(layer, self.w_s_name)
+         num_bits = c.weight_type.size_bits
+         group_size = c.group_size
+ 
+-        # Unpack INT4 weights to FP16
+         pack_factor = 32 // num_bits
+-        in_features = c.full_weight_shape[0]
++        # Partition (local TP shard) shape — w_q and w_s are already sharded.
++        in_features = c.partition_weight_shape[0]
+         out_features = c.partition_weight_shape[1]
+ 
+-        # w_q is packed: [in_features // pack_factor, out_features]
++        # w_q shape: [out_features, in_features // pack_factor] int32
+         shifts = torch.arange(0, 32, num_bits, device=w_q.device, dtype=torch.int32)
+-        unpacked = (w_q.unsqueeze(-1) >> shifts) & ((1 << num_bits) - 1)
+-        unpacked = unpacked.reshape(-1, out_features).to(x.dtype)
++        unpacked = (w_q.to(torch.int32).unsqueeze(-1) >> shifts) & ((1 << num_bits) - 1)
++        # [out, in//pack, pack] → [out, in]
++        unpacked = unpacked.reshape(out_features, -1)[:, :in_features].to(x.dtype)
+ 
+-        # Apply scales per group
+         if group_size > 0 and w_s.numel() > 0:
+-            num_groups = (in_features + group_size - 1) // group_size
+-            scales = w_s[:num_groups, :out_features].to(x.dtype)
+-            scales_expanded = scales.repeat_interleave(group_size, dim=0)[:in_features]
+-            weight_fp = unpacked[:in_features] * scales_expanded
++            # w_s shape: [out_features, num_groups]; expand along the input dim.
++            scales = w_s.to(x.dtype)
++            scales_expanded = scales.repeat_interleave(group_size, dim=1)[:, :in_features]
++            weight_fp = unpacked * scales_expanded  # [out, in]
+         else:
+-            weight_fp = unpacked[:in_features]
++            weight_fp = unpacked
+ 
+-        out = x @ weight_fp
++        # x: [..., in] · weight_fp.t() [in, out] → [..., out]
++        out = x @ weight_fp.t()
+         if bias is not None:
+             out = out + bias
+         return out

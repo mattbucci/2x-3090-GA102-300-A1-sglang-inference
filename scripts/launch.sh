@@ -42,7 +42,7 @@ OVERLAP=""
 WARMUP=""
 WATCHDOG=600
 TP=2
-EXTRA_ARGS=""
+EXTRA_ARGS="${EXTRA_ARGS:-}"
 
 # --- Model presets (tuned for 48GB total VRAM) ---
 apply_preset() {

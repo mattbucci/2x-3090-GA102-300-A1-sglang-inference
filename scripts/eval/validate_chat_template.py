@@ -52,6 +52,7 @@ def check_bos_handling(tok):
 
 def check_thinking(tok):
     msgs = [{"role": "user", "content": "What is 1+1?"}]
+    markers = ("<think>", "<|channel>", "<start_working_out>")
     findings = []
     for enable in (True, False):
         try:
@@ -66,18 +67,21 @@ def check_thinking(tok):
                     enable_thinking=enable,
                 )
             except Exception:
-                return None, "template does not accept enable_thinking kwarg (may be fine for non-thinking models)"
+                return None, "template does not accept enable_thinking kwarg — OK for non-thinking models"
         except Exception as e:
             return False, f"render failed with enable_thinking={enable}: {e}"
         findings.append((enable, out))
 
     on, off = findings[0][1], findings[1][1]
+    markers_on = [t for t in markers if t in on]
+    markers_off = [t for t in markers if t in off]
+    if on == off and not markers_on and not markers_off:
+        return None, "template ignores enable_thinking and contains no thinking markers — not a thinking model"
     if on == off:
-        return False, "enable_thinking had no effect on rendered template"
-    markers_on = any(t in on for t in ("<think>", "<|channel>", "<start_working_out>"))
+        return False, f"enable_thinking had no effect but template contains markers {markers_off} — model may still emit thinking regardless of flag"
     if not markers_on:
-        return False, "enable_thinking=True did not introduce any known thinking marker (<think>, <|channel>, <start_working_out>)"
-    return True, f"thinking markers toggle correctly (on={[t for t in ('<think>','<|channel>') if t in on]})"
+        return False, "enable_thinking=True did not introduce any known thinking marker"
+    return True, f"thinking markers toggle correctly (on={markers_on})"
 
 
 def check_vision_placeholder(tok):
