@@ -13,7 +13,17 @@ The [2x R9700 RDNA4 sister repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX
 1. **Gemma4 reasoning parser** — cherry-picked as `patches/014-gemma4-reasoning-parser.patch` (upstream PR #21952, not in v0.5.10). Adds `Gemma4Detector` for `<|channel>thought` / `<channel|>` markers. Enabled on `gemma4` and `gemma4-31b` presets once Gemma 4 inference unblocks on sm_86.
 2. **AWQ calibration silently breaks thinking AND vision.** Both teams shipped quants that regressed these capabilities (our Qwen3.5-28B REAP lost `<think>` structure; Devstral + Qwen3-VL-30B community AWQs broke vision). See [Known Issues](#known-issues) for the specific failures. **Rule:** every new quantized model must validate (a) an image+text roundtrip and (b) a thinking-tagged generation that cleanly terminates before launch.
 3. **Chat template is a silent bug magnet.** Devstral BOS → `<unk>`, Qwen3.5 has thinking tags but calibration didn't include thinking, Gemma4 thinking requires a per-request flag. Always inspect the jinja template and verify `AutoTokenizer.from_pretrained(...).chat_template is not None` before launch.
-4. **Recommended calibration datasets** (reasoning + vision preserving): `a-m-team/AM-Thinking-v1-Distilled` (thinking traces, Qwen3-verified), `glaiveai/reasoning-v1-20m` (native `<think>` tags), `LLaVA-Instruct-150K` (image+text pairs), `AI-MO/NuminaMath-CoT` (+9.81% GPTQ accuracy vs WikiText2). RDNA4 is assembling a mixed dataset and will share the script + ratios once tested.
+4. **Recommended calibration datasets** (reasoning + vision preserving): `a-m-team/AM-Thinking-v1-Distilled` (thinking traces, Qwen3-verified), `glaiveai/reasoning-v1-20m` (native `<think>` tags), `LLaVA-Instruct-150K` (image+text pairs), `AI-MO/NuminaMath-CoT` (+9.81% GPTQ accuracy vs WikiText2). RDNA4 assembled the mixed dataset: `scripts/quantize/calibration_datasets.py` with recipes `thinking_text`, `thinking_vision`, `code_vision`, `code_thinking`. Smoke-tested: 8/8 rows preserve `<think>...</think>` through chat template + tokenizer.
+
+5. **Validator gate before launch** — RDNA4 now runs `scripts/eval/validate_capabilities.py` after every requant. Checks (a) thinking generation terminates before max_tokens, (b) a synthetic red-circle PNG gets described correctly, (c) "capital of France → Paris". Result on current Qwen3.5-27B AWQ: basic FAIL (answer empty — model thinks for 2048 tokens even for "capital of France", content field stays empty because SGLang's reasoning parser strips unclosed `<think>` blocks). Confirms the thinking regression is **not limited to hard questions** — it breaks trivial queries too. Your `Qwen3.5-28B REAP <think> tags broken` entry is the same class of bug.
+
+6. **CUDA graphs fragment VRAM at long context on RDNA4** — `--cuda-graph-bs 1 2 4 8` reserves ~2.2 GiB in private pools that causes AWQ forward OOM at 32K+ context on Qwen3.5-27B (tried to alloc 544 MiB, 42 MiB free). Fix: `--disable-cuda-graph` in the qwen35 preset. Perf cost ~9% single-user decode speed. Likely also relevant for your 131K sweeps — keep an eye out for similar private-pool fragmentation once you push 3090s past 32K context.
+
+7. **RDNA4 256K Qwen3.5-27B AWQ measurements (partial, 2026-04-18)**:
+   - ctx=128→8K: ~24 tok/s (bandwidth bound, BF16 DeltaNet weights)
+   - ctx=16K: 21.4 tok/s, TTFT 8.7s
+   - ctx=32K: 18.0 tok/s, TTFT 20s
+   - Full 262K sweep + concurrency still running. Will push final table when done.
 
 ## Known Issues
 
