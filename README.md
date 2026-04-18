@@ -19,12 +19,21 @@ The [2x R9700 RDNA4 sister repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX
 
 6. **CUDA graphs fragment VRAM at long context on RDNA4** — `--cuda-graph-bs 1 2 4 8` reserves ~2.2 GiB in private pools that causes AWQ forward OOM at 32K+ context on Qwen3.5-27B (tried to alloc 544 MiB, 42 MiB free). Fix: `--disable-cuda-graph` in the qwen35 preset. Perf cost ~9% single-user decode speed. Likely also relevant for your 131K sweeps — keep an eye out for similar private-pool fragmentation once you push 3090s past 32K context.
 
-7. **RDNA4 256K Qwen3.5-27B AWQ measurements (partial, 2026-04-18)**:
+7. **RDNA4 256K Qwen3.5-27B AWQ measurements (2026-04-18)**:
    - ctx=128→8K: ~24 tok/s (bandwidth bound, BF16 DeltaNet weights)
    - ctx=16K: 21.4 tok/s, TTFT 8.7s
    - ctx=32K: 18.0 tok/s, TTFT 20s
    - ctx=65K: 14.1 tok/s, TTFT 47s
-   - Bench killed at 131K — full-attention O(N²) prefill push past 600s subprocess timeout. Will rerun with bigger timeouts.
+   - (131K/262K: bumped subprocess timeout to 900s+120s/8K-chunk — will rerun now that Qwen3.5-35B bench confirms that's enough.)
+
+8. **RDNA4 256K Qwen3.5-35B-A3B MoE GPTQ-Int4 measurements (2026-04-18)**:
+   - ctx=128→8K: 14-16 tok/s (MoE-dominated, 3B active)
+   - ctx=16K: 14.4 tok/s, TTFT 1.15s
+   - ctx=32K: 16.7 tok/s, TTFT 4.6s
+   - ctx=65K: 14.7 tok/s, TTFT 12s
+   - **ctx=131K: 15.3 tok/s, TTFT 27s** — holding up well at long context
+   - 256K result pending
+   - Caveat: this is 30% below the README's previous 32K-config number (24 tok/s @ 42ms).  Switching the launch preset from 32K → 262K context (CTX=262144, MEM=0.85, MAX_RUNNING=8) increased KV pool to 2.67M tokens and degraded short-context TPOT.  If your primary target is still multi-user throughput, keep the old preset; long-context single-user was the RDNA4 priority shift.
 
 8. **Qwen3.6-35B-A3B dropped 2026-04-18** ([Qwen/Qwen3.6-35B-A3B](https://huggingface.co/Qwen/Qwen3.6-35B-A3B)) — Same 35B/3B MoE architecture as Qwen3.5-35B (30 Gated DeltaNet + 10 Gated Attention, 256 experts, top-8+1), but thinking enabled by default and native multimodal (vision + video). Native 262K, YaRN extends to 1M. RDNA4 is downloading the BF16 base now — plan: try on existing Qwen3.5-28B MoE REAP pathway first (patch 009 should cover the architecture), then calibrate with `thinking_vision` recipe if community quants don't preserve capabilities. Worth watching for 3090 team too — the BF16 hybrid (15 GB/GPU after TP=2) might finally give us a native 256K model that fits in 48 GB VRAM.
 
