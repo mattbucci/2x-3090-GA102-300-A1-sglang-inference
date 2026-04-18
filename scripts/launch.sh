@@ -49,12 +49,14 @@ apply_preset() {
     case "$1" in
         devstral)
             MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-Marlin}"
+            QUANT="awq_marlin"
             CTX=131072; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
             CUDA_GRAPH="--cuda-graph-max-bs 1"
             CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
             ;;
         devstral-32k)
             MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-Marlin}"
+            QUANT="awq_marlin"
             CTX=32768; MEM=0.90; MAX_RUNNING=64; CHUNKED=8192
             ;;
         coder-reap)
@@ -65,6 +67,7 @@ apply_preset() {
             ;;
         coder-30b)
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ-Marlin}"
+            QUANT="awq_marlin"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             ;;
         gemma4)
@@ -104,6 +107,7 @@ apply_preset() {
             ;;
         qwen3-ream)
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-30B-Instruct-2507-REAM-AWQ}"
+            QUANT="awq_marlin"
             CTX=262144; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             REASONING="--reasoning-parser qwen3"
             ;;
@@ -116,21 +120,32 @@ apply_preset() {
 }
 
 # --- Parse arguments ---
+# CLI flags are collected into *_OVERRIDE vars first, then applied AFTER the
+# preset so CLI always wins. Preset-only fields (MODEL, QUANT, CHAT_TEMPLATE,
+# REASONING, CUDA_GRAPH, MAMBA_CACHE, WARMUP) are left to the preset.
 PRESET=""
+CTX_OVERRIDE=""
+PORT_OVERRIDE=""
+MEM_OVERRIDE=""
+MAX_RUNNING_OVERRIDE=""
+DECODE_STEPS_OVERRIDE=""
+CHUNKED_OVERRIDE=""
+WATCHDOG_OVERRIDE=""
+TP_OVERRIDE=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -h|--help)
             head -17 "$0" | tail -16
             exit 0
             ;;
-        --context-length) CTX="$2"; shift 2 ;;
-        --port) PORT="$2"; shift 2 ;;
-        --mem-fraction) MEM="$2"; shift 2 ;;
-        --max-running) MAX_RUNNING="$2"; shift 2 ;;
-        --decode-steps) DECODE_STEPS="$2"; shift 2 ;;
-        --chunked-prefill) CHUNKED="$2"; shift 2 ;;
-        --watchdog) WATCHDOG="$2"; shift 2 ;;
-        --tp) TP="$2"; shift 2 ;;
+        --context-length) CTX_OVERRIDE="$2"; shift 2 ;;
+        --port) PORT_OVERRIDE="$2"; shift 2 ;;
+        --mem-fraction) MEM_OVERRIDE="$2"; shift 2 ;;
+        --max-running) MAX_RUNNING_OVERRIDE="$2"; shift 2 ;;
+        --decode-steps) DECODE_STEPS_OVERRIDE="$2"; shift 2 ;;
+        --chunked-prefill) CHUNKED_OVERRIDE="$2"; shift 2 ;;
+        --watchdog) WATCHDOG_OVERRIDE="$2"; shift 2 ;;
+        --tp) TP_OVERRIDE="$2"; shift 2 ;;
         -*)
             echo "Unknown option: $1"; exit 1 ;;
         *)
@@ -150,6 +165,16 @@ if [[ -z "$PRESET" ]]; then
 fi
 
 apply_preset "$PRESET"
+
+# Apply CLI overrides after preset so CLI always wins.
+[[ -n "$CTX_OVERRIDE" ]] && CTX="$CTX_OVERRIDE"
+[[ -n "$PORT_OVERRIDE" ]] && PORT="$PORT_OVERRIDE"
+[[ -n "$MEM_OVERRIDE" ]] && MEM="$MEM_OVERRIDE"
+[[ -n "$MAX_RUNNING_OVERRIDE" ]] && MAX_RUNNING="$MAX_RUNNING_OVERRIDE"
+[[ -n "$DECODE_STEPS_OVERRIDE" ]] && DECODE_STEPS="$DECODE_STEPS_OVERRIDE"
+[[ -n "$CHUNKED_OVERRIDE" ]] && CHUNKED="$CHUNKED_OVERRIDE"
+[[ -n "$WATCHDOG_OVERRIDE" ]] && WATCHDOG="$WATCHDOG_OVERRIDE"
+[[ -n "$TP_OVERRIDE" ]] && TP="$TP_OVERRIDE"
 
 # Resolve chat template (deferred $MODEL expansion)
 CHAT_TEMPLATE=$(eval echo "$CHAT_TEMPLATE")
