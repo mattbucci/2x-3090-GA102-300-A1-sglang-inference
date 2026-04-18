@@ -29,3 +29,22 @@ scripts/launch.sh qwen3-ream           # Qwen3-30B REAM AWQ (96 experts, 197 tok
 - **MoE quantization is hard** — standard GPTQ under-calibrates rare experts
 - **DeltaNet/SSM layers cannot be INT4 quantized** — recurrent state error accumulation
 - Always source `scripts/common.sh` + `activate_conda` + `setup_nvidia_env` before launching
+
+## Optimization Target
+- **Primary:** single-user **256K context** performance (decode tok/s, TPOT). Measure at long context first.
+- **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win batch benchmarks.
+
+## Calibration Rules
+- **Preserve vision and thinking.** Past calibrations on this rig broke both (Qwen3.5-28B REAP lost structured `<think>` tags; community VL AWQs broke image handling). Do not repeat.
+- **Calibration data requirements:**
+  - Thinking-mode models (Qwen3.5, Qwen3-30B, Gemma4): include `glaiveai/reasoning-v1-20m` or `a-m-team/AM-Thinking-v1-Distilled` in the mix. Plain Open-Platypus silently strips reasoning.
+  - Math/code models: add `AI-MO/NuminaMath-CoT` (~9.81% GPTQ accuracy gain over WikiText2).
+  - Vision models: include multimodal image+text examples. Never calibrate from text-only loaders.
+- **Post-calibration verification:** run a thinking-format health check and a vision sanity probe before publishing. A model that passes MMLU/HumanEval can still be silently broken on thinking/vision.
+- **Multi-hour calibration runs are allowed** without user check-in — kick them off and keep working on other fronts.
+
+## Workflow
+- **Work autonomously.** User checks in periodically; README.md is the status document they read first.
+- **Commit + push as progress is made** — small, self-contained commits, not one giant batch.
+- **R9700 team collaboration:** `git fetch origin` on `~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference` to pull their commits; we can also edit their README to share 3090 findings. Patches are often portable.
+- **Never stop to ask for confirmation.** If the user wants a redirect they'll interrupt with new signal.

@@ -2,23 +2,25 @@
 
 High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with CUDA 13.2 / PyTorch cu128.
 
+## Current Focus
+
+**Target: single-user 256K context performance.** Multi-user throughput is secondary. See [256K single-user optimization roadmap](#256k-single-user-optimization-roadmap) for active work. Aligned with the RDNA4 sister project's target — both teams share 256K progress bidirectionally.
+
 ## Cross-team Learnings from RDNA4 sister project (2026-04-18)
 
-The [2x R9700 RDNA4 sister repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference) shares the same SGLang v0.5.10 stack. Recent findings worth picking up:
+The [2x R9700 RDNA4 sister repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference) shares the same SGLang v0.5.10 stack. Recent findings already incorporated here:
 
-1. **Gemma4 reasoning parser landed** (RDNA4 `patches/014-gemma4-reasoning-parser.patch`, upstream PR not yet in v0.5.10). Adds `Gemma4Detector` for `<|channel>thought` / `<channel|>` markers. Launch flag: `--reasoning-parser gemma4`. The parser on its own is upstream-clean and portable to this repo — just 21 new lines in `python/sglang/srt/parser/reasoning_parser.py`.
-2. **AWQ calibration silently breaks thinking AND vision.** Both teams have shipped quants that regressed these capabilities:
-   - Qwen3.5-27B AWQ: infinite `<think>` loop (4096+ tokens without `</think>`) because Open-Platypus calibration has no reasoning traces.
-   - Devstral-24B AWQ: vision broken by community checkpoint, RDNA4 had to rebuild text-only and is now vision-blocked.
-   - Gemma4 26B MoE AWQ: required three separate fixes (BF16 encoder for FP16 overflow, SWA decode fix, ATTN_BACKEND override) just to get vision back online.
-   **Rule:** every new quantized model must validate (a) an image+text roundtrip and (b) a thinking-tagged generation that cleanly terminates before launch.
+1. **Gemma4 reasoning parser** — cherry-picked as `patches/014-gemma4-reasoning-parser.patch` (upstream PR #21952, not in v0.5.10). Adds `Gemma4Detector` for `<|channel>thought` / `<channel|>` markers. Enabled on `gemma4` and `gemma4-31b` presets once Gemma 4 inference unblocks on sm_86.
+2. **AWQ calibration silently breaks thinking AND vision.** Both teams shipped quants that regressed these capabilities (our Qwen3.5-28B REAP lost `<think>` structure; Devstral + Qwen3-VL-30B community AWQs broke vision). See [Known Issues](#known-issues) for the specific failures. **Rule:** every new quantized model must validate (a) an image+text roundtrip and (b) a thinking-tagged generation that cleanly terminates before launch.
 3. **Chat template is a silent bug magnet.** Devstral BOS → `<unk>`, Qwen3.5 has thinking tags but calibration didn't include thinking, Gemma4 thinking requires a per-request flag. Always inspect the jinja template and verify `AutoTokenizer.from_pretrained(...).chat_template is not None` before launch.
-4. **RDNA4 priority shifted to single-user 256K context.** If you're benchmarking, that's the axis we're sharing progress on. Multi-user is secondary. Curious whether 3090 FlashInfer scales similarly on long context — the sister repo is running 256K sweeps next.
-5. **Recommended calibration datasets** (reasoning + vision preserving): `a-m-team/AM-Thinking-v1-Distilled` (thinking traces, Qwen3-verified), `glaiveai/reasoning-v1-20m` (native `<think>` tags), `LLaVA-Instruct-150K` (image+text pairs), `AI-MO/NuminaMath-CoT` (+9.81% GPTQ accuracy vs WikiText2). RDNA4 is assembling a mixed dataset and will share the script + ratios once tested.
+4. **Recommended calibration datasets** (reasoning + vision preserving): `a-m-team/AM-Thinking-v1-Distilled` (thinking traces, Qwen3-verified), `glaiveai/reasoning-v1-20m` (native `<think>` tags), `LLaVA-Instruct-150K` (image+text pairs), `AI-MO/NuminaMath-CoT` (+9.81% GPTQ accuracy vs WikiText2). RDNA4 is assembling a mixed dataset and will share the script + ratios once tested.
 
 ## Known Issues
 
-- **Gemma 4 (26B MoE, 31B Dense)** — Blocked by FlashInfer `BatchPrefillWithPagedKVCache` on sm_86. Gemma 4's full-attention layers use `global_head_dim=512` which FlashInfer doesn't support on Ampere (only 64/128/256). See [FlashInfer details](#flashinfer-head_dim-support).
+- **Gemma 4 (26B MoE, 31B Dense)** — Blocked by FlashInfer `BatchPrefillWithPagedKVCache` on sm_86. Gemma 4's full-attention layers use `global_head_dim=512` which FlashInfer doesn't support on Ampere (only 64/128/256). See [FlashInfer details](#flashinfer-head_dim-support). Unblock paths: `--attention-backend torch_native` (slower but working on R9700), FFPA kernels, or TRTLLM FMHA.
+- **Vision handling breaks during calibration** — Community VL AWQ checkpoints (Qwen3-VL-30B from cyankiwi, Devstral vision) produce garbage or lose image alignment. Root cause: calibration data had no multimodal image+text examples, so vision-language alignment isn't preserved through quantization. Self-calibration must include multimodal samples. The R9700 team's Gemma 4 26B MoE vision is working after fixes — we need to port the same approach.
+- **Thinking-mode breaks during calibration** — Our Qwen3.5-28B REAP lost structured `<think>` tagging after GPTQ + CT→AWQ conversion (emits free-form reasoning, blocks `--reasoning-parser qwen3`, causes runaway generation on hard prompts). Root cause: Open-Platypus calibration had no reasoning traces, so the model forgot how to emit `<think>`/`</think>` stop tokens. Fix path: re-calibrate with `glaiveai/reasoning-v1-20m` or `a-m-team/AM-Thinking-v1-Distilled`. Until then use `enable_thinking=False`.
+- **Chat templates are load-bearing** — We've been bitten multiple times. Devstral community AWQ needs a custom template (BOS token stripped or it emits `<unk>`). Gemma 4 community weights ship without a template (must embed jinja into `tokenizer_config.json`). Qwen3.5 uses `enable_thinking` via `chat_template_kwargs`. Always verify the template with a short generation after loading, and keep project-specific templates under version control in `scripts/*_chat_template.jinja`.
 - **Qwen3-VL-30B MoE AWQ** — Two issues. (1) `--quantization awq` (base AWQConfig) has [no FusedMoE handler](https://github.com/sgl-project/sglang/blob/v0.5.10/python/sglang/srt/layers/quantization/awq.py#L187-L191) — MoE expert layers fall back to unquantized fp16 weights (384 MB/layer × 48 layers → 23 GB/GPU OOM). Fix: use `--quantization awq_marlin`. (2) Even with `awq_marlin`, the [community vLLM checkpoint](https://huggingface.co/cyankiwi/Qwen3-VL-30B-A3B-Instruct-AWQ) produces garbage output — likely a weight-name mapping mismatch between vLLM and SGLang for `Qwen3VLMoeForConditionalGeneration`. Workaround: use `SGLANG_FORCE_MOE_WNA16=1` to skip Marlin MoE repack (saves ~7 GB peak VRAM), but needs a compressed-tensors checkpoint since AWQ packing ≠ WNA16 packing. Self-calibrating a CT checkpoint via llmcompressor would fix both issues.
 - **Qwen3.5-27B DeltaNet context limited to 32K** — DeltaNet layers replicated across GPUs (19 GB/GPU), leaving only 2.2 GB for KV cache. REAM/REAP MoE variants would reduce weights and unlock longer context.
 - **AWQ Marlin MoE peak VRAM** — `awq_marlin_moe_repack` doubles weight memory during repacking (old + new tensors coexist). For 128-expert MoE models this adds ~7 GB peak per GPU. Patch adds `SGLANG_FORCE_MOE_WNA16=1` env var to bypass Marlin repack and use [MoeWNA16 Triton kernels](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/layers/quantization/moe_wna16.py) instead (only works with compressed-tensors format, not native AWQ).
@@ -27,6 +29,26 @@ The [2x R9700 RDNA4 sister repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX
 - **Qwen3.5-28B REAP `<think>` tags broken** — The model has think tokens (248068/248069) and the chat template supports `enable_thinking`, but the GPTQ calibration + CT→AWQ conversion appears to have broken structured thinking. The model produces free-form reasoning ("The user is asking...") instead of `<think>...</think>` tagged output. This causes: (1) runaway generation on hard questions (no stop signal), (2) answer truncation when max_tokens is hit, (3) inability to use `--reasoning-parser qwen3`. Needs investigation — may require re-calibrating with thinking-mode prompts or fixing tokenizer special token handling in the conversion pipeline.
 - **CUDA graphs** — Only bs=1 works. `--cuda-graph-max-bs 1 --disable-custom-all-reduce`.
 - **60B+ models** — Coder-Next-REAM (35GB), GLM-4.5-Air-REAP (43GB) don't fit in 48GB.
+
+## 256K Single-User Optimization Roadmap
+
+Ordered by expected impact. Updated as work progresses.
+
+### Active
+1. **Push Devstral-24B to 256K context** — Currently 131K with room in VRAM (24B dense, ~7 GB/GPU, 80 KB/token KV). FP8 KV cache already applied. Needs `--context-length 262144` sweep and sliding window verification at long context. Likely quickest win.
+2. **Fix Qwen3.5-28B REAP `<think>` regression** — Re-calibrate GPTQ with thinking-aware data (`glaiveai/reasoning-v1-20m` + Open-Platypus mix). Must preserve MMLU/HumanEval numbers while restoring `<think>` tagging. Multi-hour calibration job.
+3. **Unblock Gemma 4 on 3090** — Try `--attention-backend torch_native` path (R9700 confirmed this works for head_dim=512). Measure tok/s at 4K then scale context. Patch 014 reasoning parser now in place.
+4. **Qwen3-30B REAM 256K sweep** — Currently benchmarked to 16K (@71 tok/s). Extend sweep to 32K/64K/128K/256K to characterize the long-context decode cliff. Already the fastest long-context model; establish the ceiling.
+
+### Queued
+5. **Qwen3.5-28B MoE REAP 262K perf** — 33 tok/s is constant with context but low vs REAM's 197. Profile to see whether DeltaNet kernel launches or MoE expert routing dominate; consider piecewise CUDA graph fix (currently disabled due to `quant_type` NoneType bug).
+6. **Qwen3-VL-30B AWQ Marlin** — Self-calibrate CT checkpoint with multimodal data to fix both the vLLM name-mapping garbage and the Marlin MoE peak-VRAM OOM. Vision probe mandatory post-calibration.
+7. **Piecewise CUDA graph fix** — Unblocks decode latency improvements on all quantized MoE models (REAP/REAM).
+8. **Coder-30B 262K context** — KV budget says it fits; need to verify sliding window + FP8 KV at long context.
+
+### Discarded / blocked
+- **TurboQuant 3-bit KV** — Would 3x effective context, but [SGLang PR #21618](https://github.com/sgl-project/sglang/issues/21618) is unmerged.
+- **Coder-Next-REAM, GLM-4.5-Air REAP** — Don't fit in 48 GB even quantized.
 
 ## Next to Try
 
@@ -288,7 +310,7 @@ cd python && pip install -e ".[srt]"
 
 ## Patches
 
-8 patches on top of SGLang v0.5.10. Apply in order:
+11 patches on top of SGLang v0.5.10. Apply in order:
 
 1. **001-upstream-sync** (3,000 LOC) — Upstream cherry-picks: Gemma 4, Qwen3.5/3-Next, Triton attention, pool_configurator
 2. **002-nvidia-model-fixes** (923 LOC) — Marlin shape fallback, DeltaNet TP replication, Gemma4 config fixes
@@ -298,6 +320,10 @@ cd python && pip install -e ".[srt]"
 6. **006-awq-bf16-activation-support** (15 LOC) — BF16 activations with AWQ dequant
 7. **007-ampere-deltanet-kernel-tuning** (48 LOC) — DeltaNet BV=64 tuning for sm_86 (1.57x kernel speedup)
 8. **008-awq-moe-wna16-fallback** (64 LOC) — `SGLANG_FORCE_MOE_WNA16=1` env var to bypass Marlin MoE repack (saves ~7 GB peak VRAM for 128-expert models)
+9. **009-qwen35-moe-causalLM** — Qwen3.5 MoE text-only CausalLM wrapper (logits processor + mrope + setup.sh auto-patching)
+10. **011-triton-attention-fp32** — FP32 accumulation in Triton attention online softmax (backport from R9700 — affects deep models like Gemma 31B)
+11. **012-sliding-window-decode-fix** — Sliding window decode metadata: capture `window_kv_offsets` instead of discarding (backport from R9700)
+12. **014-gemma4-reasoning-parser** (40 LOC) — `Gemma4Detector` from unreleased upstream SGLang PR #21952. Enables `--reasoning-parser gemma4` (`<|channel>`/`<channel|>` thinking delimiters). Backport from R9700.
 
 ## Key Findings
 

@@ -69,11 +69,13 @@ apply_preset() {
             ;;
         gemma4)
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-4bit}"
+            REASONING="--reasoning-parser gemma4"
             CTX=4096; MAX_RUNNING=1; CHUNKED=2048
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         gemma4-31b)
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AWQ-4bit}"
+            REASONING="--reasoning-parser gemma4"
             CTX=4096; MEM=0.85; MAX_RUNNING=1; CHUNKED=2048
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
