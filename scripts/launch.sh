@@ -14,8 +14,10 @@
 #   coder-30b      Qwen3-Coder-30B MoE AWQ (16K)
 #   qwen35-moe     Qwen3.5-28B MoE REAP CT (262K, DeltaNet)
 #   qwen35         Qwen3.5-27B DeltaNet AWQ (32K)
+#   qwen36         Qwen3.6-35B-A3B GPTQ-Int4 (262K, DeltaNet + vision, thinking default)
 #   gemma4         Gemma 4 26B MoE AWQ (4K)
 #   gemma4-31b     Gemma 4 31B Dense AWQ (4K)
+#   devstral-long  Devstral-24B AWQ at 217K KV ceiling (single-user long-context)
 #
 # Note: 80B+ models (coder-next, glm45-air) do NOT fit in 48GB VRAM.
 
@@ -120,6 +122,18 @@ apply_preset() {
             QUANT="awq_marlin"
             CTX=262144; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             REASONING="--reasoning-parser qwen3"
+            ;;
+        qwen36)
+            # Qwen3.6-35B-A3B-GPTQ-Int4: 256-expert hybrid DeltaNet + gated attn,
+            # 3B active, 262K native context, vision + thinking. Uses the same
+            # SGLang Qwen3_5MoeForConditionalGeneration handler as Qwen3.5.
+            # Text-only launch for now — add --enable-multimodal once vision is validated.
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-GPTQ-Int4}"
+            QUANT="gptq_marlin"
+            CTX=262144; MEM=0.85; MAX_RUNNING=4; CHUNKED=4096; DECODE_STEPS=4
+            MAMBA_CACHE="--max-mamba-cache-size 4"
+            REASONING="--reasoning-parser qwen3"
+            CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
             ;;
         *)
             echo "Unknown model: $1"
