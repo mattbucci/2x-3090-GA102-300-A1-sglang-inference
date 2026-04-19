@@ -30,7 +30,7 @@ from calibration_datasets import (
     rows_to_text,
     tokenize_text_dataset,
 )
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForImageTextToText, AutoTokenizer
 from llmcompressor.modifiers.quantization import GPTQModifier
 from llmcompressor import oneshot
 
@@ -77,7 +77,7 @@ print(f"Tokenized {len(dataset)} samples at max_seq_len={MAX_SEQUENCE_LENGTH}")
 # --- 3. Load model on CPU ---
 print("\n[3/4] Loading model on CPU...")
 t0 = time.time()
-model = AutoModelForCausalLM.from_pretrained(
+model = AutoModelForImageTextToText.from_pretrained(
     BASE_MODEL,
     device_map="cpu",
     torch_dtype="auto",
