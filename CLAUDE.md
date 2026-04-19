@@ -35,12 +35,14 @@ scripts/launch.sh qwen3-ream           # Qwen3-30B REAM AWQ (96 experts, 197 tok
 - **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win batch benchmarks.
 
 ## Calibration Rules
-- **Preserve vision and thinking.** Past calibrations on this rig broke both (Qwen3.5-28B REAP lost structured `<think>` tags; community VL AWQs broke image handling). Do not repeat.
+- **Preserve thinking + image + video + audio.** Past calibrations on this rig broke thinking (Qwen3.5-28B REAP lost `<think>` tags) and image (community VL AWQs broke alignment). Gemma 4 and Qwen3.5/3.6 also support **video and audio** natively — both easy to miss if your calibration recipe is image+text only. See [Gemma video docs](https://ai.google.dev/gemma/docs/capabilities/vision/video); Qwen3.5/3.6 handle video via `<|vision_start|><|video_pad|><|vision_end|>` in the chat template.
 - **Calibration data requirements:**
-  - Thinking-mode models (Qwen3.5, Qwen3-30B, Gemma4): include `glaiveai/reasoning-v1-20m` or `a-m-team/AM-Thinking-v1-Distilled` in the mix. Plain Open-Platypus silently strips reasoning.
-  - Math/code models: add `AI-MO/NuminaMath-CoT` (~9.81% GPTQ accuracy gain over WikiText2).
-  - Vision models: include multimodal image+text examples. Never calibrate from text-only loaders.
-- **Post-calibration verification:** run a thinking-format health check and a vision sanity probe before publishing. A model that passes MMLU/HumanEval can still be silently broken on thinking/vision.
+  - Thinking-mode models (Qwen3.5, Qwen3-30B, Gemma4): `glaiveai/reasoning-v1-20m` or `a-m-team/AM-Thinking-v1-Distilled`. Plain Open-Platypus silently strips reasoning.
+  - Math/code models: `AI-MO/NuminaMath-CoT` (~9.81% GPTQ accuracy gain over WikiText2).
+  - Image models: `liuhaotian/LLaVA-Instruct-150K` or equivalent image+text pairs.
+  - **Video models (Gemma4 all variants, Qwen3.5/3.6):** include video-text pairs (e.g. `lmms-lab/LLaVA-Video-178K`, `ShareGPT4Video`, or frame-sampled subsets). Never calibrate video-capable models without video samples — the temporal-attention weights drift otherwise.
+  - **Audio models (Gemma 4 all variants):** include audio-text pairs (e.g. `mozilla-foundation/common_voice`, `google/covost2`). Audio preprocessor_config.json must ship with the checkpoint — M4 team has a known bug where community checkpoints omit it.
+- **Post-calibration verification:** run ALL applicable probes before publishing — thinking-terminates, image-caption, video-summary (frame or clip), audio-transcription. A model that passes MMLU/HumanEval can still be silently broken on any single modality.
 - **Multi-hour calibration runs are allowed** without user check-in — kick them off and keep working on other fronts.
 - **Detach long-running jobs from the shell session.** `run_in_background: true` alone does NOT survive a session interrupt — we lost 7h 45min of Qwen3.5-28B calibration (layer 13/41) when the harness restarted. Launch via `setsid` + redirect all std streams + write PID to a file so the process gets PPID=1 and its own session ID. Verify: `ps -p $PID -o ppid=` must print `1`. Pattern:
   ```bash
@@ -53,5 +55,8 @@ scripts/launch.sh qwen3-ream           # Qwen3-30B REAM AWQ (96 experts, 197 tok
 ## Workflow
 - **Work autonomously.** User checks in periodically; README.md is the status document they read first.
 - **Commit + push as progress is made** — small, self-contained commits, not one giant batch.
-- **R9700 team collaboration:** `git fetch origin` on `~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference` to pull their commits; we can also edit their README to share 3090 findings. Patches are often portable.
+- **Sister-team collaboration:** we work with two other teams running the same SGLang stack on different hardware. `git fetch origin` on each, read their commits for ideas, push findings to their README.
+  - **R9700 (AMD RDNA4, ROCm 7.2):** `~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference` — calibration pipeline owner, FP32-softmax patch 011 originator.
+  - **M4 (Apple Silicon, MLX bridge):** `~/AI/m4-sglang-inference` — patch 013 owner (DeltaNet cache-wiring fix). Identified that Qwen3.5/3.6 support video and Gemma 4 supports audio; preprocessor_config.json often missing on community checkpoints.
+  - Patches are often portable across vendors — verify the layout-assuming parts (e.g. patch 015 dequant layout was vendor-neutral). Findings about model behavior (stop tokens, template quirks, activation functions) are always portable.
 - **Never stop to ask for confirmation.** If the user wants a redirect they'll interrupt with new signal.
