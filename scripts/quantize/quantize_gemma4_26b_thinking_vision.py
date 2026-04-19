@@ -163,9 +163,21 @@ if tmp_dir is None:
             if os.path.isfile(src):
                 shutil.copy2(src, os.path.join(tmp_dir, fname))
 
-    with open(os.path.join(BF16_MODEL, "model.safetensors.index.json")) as f:
-        bf16_index = json.load(f)
-    weight_map = bf16_index["weight_map"]
+    index_path = os.path.join(BF16_MODEL, "model.safetensors.index.json")
+    if os.path.exists(index_path):
+        with open(index_path) as f:
+            bf16_index = json.load(f)
+        weight_map = bf16_index["weight_map"]
+    else:
+        # Single-file safetensors (e.g. gemma-4-21b-REAP-BF16 ships one file).
+        # Fabricate a weight_map so the downstream sharded loop works unchanged.
+        single = "model.safetensors"
+        assert os.path.exists(os.path.join(BF16_MODEL, single)), (
+            f"Neither model.safetensors.index.json nor {single} in {BF16_MODEL}"
+        )
+        with safe_open(os.path.join(BF16_MODEL, single), framework="pt") as _f:
+            weight_map = {k: single for k in _f.keys()}
+        bf16_index = {"metadata": {}, "weight_map": weight_map}
     shard_files = sorted(set(weight_map.values()))
     new_weight_map = {}
 
