@@ -158,7 +158,7 @@ if tmp_dir is None:
     )
     print(f"  Creating unfused dir: {tmp_dir}")
     for fname in os.listdir(BF16_MODEL):
-        if fname.endswith((".json", ".txt", ".model")) or "token" in fname:
+        if fname.endswith((".json", ".txt", ".model", ".jinja")) or "token" in fname:
             src = os.path.join(BF16_MODEL, fname)
             if os.path.isfile(src):
                 shutil.copy2(src, os.path.join(tmp_dir, fname))
