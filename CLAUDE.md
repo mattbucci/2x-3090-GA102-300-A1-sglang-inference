@@ -42,6 +42,13 @@ scripts/launch.sh qwen3-ream           # Qwen3-30B REAM AWQ (96 experts, 197 tok
   - Vision models: include multimodal image+text examples. Never calibrate from text-only loaders.
 - **Post-calibration verification:** run a thinking-format health check and a vision sanity probe before publishing. A model that passes MMLU/HumanEval can still be silently broken on thinking/vision.
 - **Multi-hour calibration runs are allowed** without user check-in — kick them off and keep working on other fronts.
+- **Detach long-running jobs from the shell session.** `run_in_background: true` alone does NOT survive a session interrupt — we lost 7h 45min of Qwen3.5-28B calibration (layer 13/41) when the harness restarted. Launch via `setsid` + redirect all std streams + write PID to a file so the process gets PPID=1 and its own session ID. Verify: `ps -p $PID -o ppid=` must print `1`. Pattern:
+  ```bash
+  mkdir -p /tmp/<job>-logs
+  setsid bash -c '<CMD> > /tmp/<job>-logs/run.log 2>&1 & echo $! > /tmp/<job>-logs/pid; disown' </dev/null >/dev/null 2>&1 &
+  disown
+  ```
+  Any job expected to run > 30 minutes (calibrations, long benches, downloads of 50 GB+) must use this pattern.
 
 ## Workflow
 - **Work autonomously.** User checks in periodically; README.md is the status document they read first.
