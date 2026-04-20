@@ -59,6 +59,12 @@ Gemma 4 MoE uses gelu activation. `CompressedTensorsWNA16MoE` (Marlin MoE path) 
 
 Launches Gemma 4 26B MoE on 3090. Generation quality is still degraded (see Known Issues / top-level README).
 
+### 017 — moe-wna16-gelu-activation (21 LOC)
+`moe_wna16.py:373` hard-asserts SiLU-only for the WNA16 fused-MoE runner, which blocks Gemma-4 21B REAP AWQ from serving. Relaxed to `silu | gelu` since `moe_runner/triton.py` already dispatches both.
+
+### 018 — qwen36-vision-config-dict-wrap (R9700 backport, 19 LOC)
+`qwen_vl.py` multimodal processor assumes `hf_config.vision_config` is a `PretrainedConfig` (attribute access). llmcompressor-saved CT configs (Qwen3.6 VL, and likely our own Phase 3 Qwen3-VL-32B output) ship `vision_config` as a plain dict, causing `AttributeError: 'dict' object has no attribute 'spatial_merge_size'` at HTTP 500 on first image request. Wrap once at processor init with `SimpleNamespace`. R9700 verified this unblocks `mattbucci/Qwen3.6-35B-A3B-AWQ-thinking-vision`.
+
 ---
 
 ## Cross-team findings (3090 ⟷ R9700)
