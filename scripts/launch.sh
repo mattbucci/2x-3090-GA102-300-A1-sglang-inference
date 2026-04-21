@@ -85,14 +85,18 @@ apply_preset() {
         gemma4)
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-4bit}"
             REASONING="--reasoning-parser gemma4"
-            CTX=4096; MAX_RUNNING=1; CHUNKED=2048
+            # Bumped CTX 4096 → 16384: validate_capabilities.check_thinking sends
+            # max_tokens=4096 which overflows 4096 CTX with any prompt.
+            CTX=16384; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
             ;;
         gemma4-31b)
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AWQ-4bit}"
             REASONING="--reasoning-parser gemma4"
-            CTX=4096; MEM=0.85; MAX_RUNNING=1; CHUNKED=2048
+            CTX=16384; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
             ;;
         qwen3-vl-moe)
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-VL-30B-A3B-Instruct-AWQ-4bit}"
