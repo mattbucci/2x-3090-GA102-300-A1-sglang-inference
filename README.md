@@ -70,7 +70,7 @@ Single-user tok/s measured at the max-context value in the table. All numbers ar
 | Qwen3.5-28B MoE REAP | DeltaNet+MoE (205 exp) | 262K | 33 | 31 ms | `qwen35-moe` | Thinking broken (recal running) |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | 13.5 | 74 ms | `qwen35` | Working |
 | Qwen3-VL-32B Dense AWQ | Dense (vision) | 8K | 24 | 45 ms | `qwen3-vl-32b` | Working (community) |
-| **Qwen3-VL-32B CT thinking+vision (ours)** | Dense (vision) | 16K | — | — | `qwen3-vl-32b` + MODEL env | **Self-calibrated, validator 4/4** |
+| **Qwen3-VL-32B CT thinking+vision (ours)** | Dense (vision) | **131K** | **40** | 24.7 ms | `qwen3-vl-32b` + MODEL env | **Self-calibrated, validator 4/4** |
 | Gemma 4 26B MoE | MoE (103 exp) | 4K | — | — | `gemma4` | Boots via patches 015/016, `<pad>` output |
 | Gemma 4 31B Dense | Dense | — | — | — | — | Blocked (FlashInfer head_dim=512) |
 
