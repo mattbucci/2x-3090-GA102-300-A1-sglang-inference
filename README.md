@@ -16,7 +16,7 @@ Reference model for the target: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5
 
 1. **Qwen3.5-28B REAP thinking recalibration — CANCELLED (2026-04-19).** v1 died at layer 13/41 when the harness was interrupted; v2 (detached via setsid) was killed at layer 1/41 by decision. Rationale: R9700 shipped a thinking-preserving Qwen3.5-27B-AWQ v2 (`mattbucci/Qwen3.5-27B-AWQ-4bit-calibrated`, basic FAIL→PASS), and Qwen3.6-35B-A3B community GPTQ passes the thinking validator on both 3090 and R9700 — the regression this was fixing is effectively superseded by switching the long-context preset to Qwen3.6 or Qwen3-30B REAM. Future multimodal recal will use the upgraded `thinking_vision_video_audio` recipe (LLaVA-Video-178K + CoVoST2) that R9700 shipped after our v2 started.
 2. **Gemma 4 26B MoE quality debug.** Server boots (patches 015 + 016 + `SGLANG_FORCE_CT_MOE_TRITON=1`) but generation emits `<pad>` tokens. Next: profile layer 0 to localize, then re-calibrate with the upgraded `thinking_vision_video_audio` recipe.
-3. **Qwen3-VL-30B self-calibration.** Community AWQ produces garbage; needs a multimodal self-calibration run to fix both the vLLM name-mapping issue and preserve vision.
+3. **Qwen3-VL-32B Dense self-calibration — SHIPPED (2026-04-21).** Calibrated with `thinking_vision` recipe, 256 samples @ 1024 tokens, 13.5h CPU on 32B Dense. Vision tower preserved in BF16 via `ignore=[re:.*visual\..*, re:.*vision_tower.*]`. Launches via `MODEL=/path/to/Qwen3-VL-32B-CT-thinking-vision QUANT=compressed-tensors EXTRA_ARGS="--enable-multimodal --reasoning-parser qwen3" ./scripts/launch.sh qwen3-vl-32b`. Validator 4/4 PASS: basic `(reasoning)paris`, thinking 108 tok `reasoning_seen+answer_ok`, vision `saw=['red','circle','round']` on solid-red-circle probe (video skipped — imageio missing in sglang env). Patch 018 (R9700 backport) unblocked the `vision_config` dict→SimpleNamespace wrap needed for CT-saved configs. Qwen3-VL-30B **MoE** version still pending.
 4. **Piecewise CUDA graph `quant_type=None` fix.** Would unblock decode speedups on REAP/REAM/Qwen3.6 (all currently run with graphs disabled for safety).
 
 ## Known Issues (open)
@@ -68,7 +68,8 @@ Single-user tok/s measured at the max-context value in the table. All numbers ar
 | Coder-30B AWQ Marlin | MoE (128 exp) | 16K | 193 | 5 ms | `coder-30b` | Peak throughput |
 | Qwen3.5-28B MoE REAP | DeltaNet+MoE (205 exp) | 262K | 33 | 31 ms | `qwen35-moe` | Thinking broken (recal running) |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | 13.5 | 74 ms | `qwen35` | Working |
-| Qwen3-VL-32B Dense AWQ | Dense (vision) | 8K | 24 | 45 ms | `qwen3-vl-32b` | Working |
+| Qwen3-VL-32B Dense AWQ | Dense (vision) | 8K | 24 | 45 ms | `qwen3-vl-32b` | Working (community) |
+| **Qwen3-VL-32B CT thinking+vision (ours)** | Dense (vision) | 16K | — | — | `qwen3-vl-32b` + MODEL env | **Self-calibrated, validator 4/4** |
 | Gemma 4 26B MoE | MoE (103 exp) | 4K | — | — | `gemma4` | Boots via patches 015/016, `<pad>` output |
 | Gemma 4 31B Dense | Dense | — | — | — | — | Blocked (FlashInfer head_dim=512) |
 
