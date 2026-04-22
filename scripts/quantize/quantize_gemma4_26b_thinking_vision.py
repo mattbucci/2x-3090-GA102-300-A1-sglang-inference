@@ -242,11 +242,17 @@ rows = build_calibration_dataset(
 # ---------------------------------------------------------------------------
 print("\n[4/5] Rendering chat template + tokenizing...")
 
-from transformers import AutoTokenizer
+from transformers import AutoProcessor, AutoTokenizer
 
 tokenizer = AutoTokenizer.from_pretrained(tmp_dir, trust_remote_code=True)
 if tokenizer.chat_template is None:
     raise RuntimeError("Gemma4 tokenizer missing chat_template.")
+
+# Pre-flight: load the image+video processor from the BF16 base now, before the
+# multi-hour GPTQ pass.  SGLang's tokenizer_manager requires
+# preprocessor_config.json at launch; failing fast beats discovering the
+# processor is broken at serve time after a full calibration run.
+processor = AutoProcessor.from_pretrained(BF16_MODEL, trust_remote_code=True)
 
 text_dataset = rows_to_text(
     rows,
@@ -336,13 +342,10 @@ print(f"Output: {CT_OUTPUT}")
 
 # Also save the image+video processor — tokenizer.save_pretrained omits it,
 # and SGLang's tokenizer_manager requires preprocessor_config.json at launch.
-try:
-    from transformers import AutoProcessor
-    proc = AutoProcessor.from_pretrained(BF16_MODEL, trust_remote_code=True)
-    proc.save_pretrained(CT_OUTPUT)
-    print("  Saved preprocessor (image/video) config")
-except Exception as e:
-    print(f"  WARN: could not save preprocessor ({e!r}); launch may need manual copy")
+# `processor` was loaded pre-flight (before calibration), so any load errors
+# failed fast; at this point the save itself is the only thing left to do.
+processor.save_pretrained(CT_OUTPUT)
+print("  Saved preprocessor (image/video) config")
 
 print("Next:")
 print(f"  1. python scripts/quantize/convert_gemma4_26b_ct_to_awq.py --input {CT_OUTPUT}")

@@ -30,7 +30,7 @@ from calibration_datasets import (
     rows_to_text,
     tokenize_text_dataset,
 )
-from transformers import AutoModelForImageTextToText, AutoTokenizer
+from transformers import AutoModelForImageTextToText, AutoProcessor, AutoTokenizer
 from llmcompressor.modifiers.quantization import GPTQModifier
 from llmcompressor import oneshot
 
@@ -62,6 +62,12 @@ if tokenizer.chat_template is None:
     raise RuntimeError(
         f"{BASE_MODEL} missing chat_template — Devstral community quants need a custom jinja"
     )
+
+# Pre-flight: load the image processor now, before the 10h+ calibration.
+# Vision serving needs preprocessor_config.json in the output dir; catching a
+# missing/broken processor up front avoids discovering it only at serve time
+# after the full GPTQ pass has already completed.
+processor = AutoProcessor.from_pretrained(BASE_MODEL, trust_remote_code=True)
 
 text_dataset = rows_to_text(
     rows,
@@ -117,14 +123,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 print(f"Saving to {OUTPUT_DIR}...")
 model.save_pretrained(OUTPUT_DIR, save_compressed=True)
 tokenizer.save_pretrained(OUTPUT_DIR)
-
-# Save preprocessor for vision support
-try:
-    from transformers import AutoProcessor
-    proc = AutoProcessor.from_pretrained(BASE_MODEL, trust_remote_code=True)
-    proc.save_pretrained(OUTPUT_DIR)
-    print("  Saved preprocessor (image) config")
-except Exception as e:
-    print(f"  WARN: could not save preprocessor ({e!r})")
+processor.save_pretrained(OUTPUT_DIR)
+print(f"  Saved preprocessor (image) config to {OUTPUT_DIR}")
 
 print("Done.")
