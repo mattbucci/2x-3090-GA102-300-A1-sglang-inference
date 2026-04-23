@@ -3,16 +3,23 @@
 
 Dedicated script for Qwen3.6-27B (and any future Qwen3.5/3.6 hybrid model).
 Differs from quantize_qwen3vl_32b_thinking_vision.py in ONE place: the
-ignore regex also excludes `linear_attn.*` — the Gated DeltaNet (linear
-recurrent attention) path.
+ignore regex also excludes `in_proj_a` and `in_proj_b` — the tiny DeltaNet
+gating scalars.
 
-Why: DeltaNet / linear-recurrent layers carry state S(t) = g*S(t-1) + delta
-across positions. INT4 quantization injects ~ULP noise on the projections
-feeding S; that noise compounds through the recurrence and destroys
-generation quality at any context length.  First calibration pass on
-Qwen3.6-27B without this ignore produced "!!!!!!!" garbage on every
-prompt, confirming the Qwen3.5-27B observation that hybrid DeltaNet
-layers MUST stay BF16.
+Why (corrected 2026-04-23 after two failed calibrations): SGLang's
+`Qwen3_5GatedDeltaNet` loader merges the checkpoint layout into two fused
+params: `in_proj_qkvz` (from `in_proj_qkv` + `in_proj_z`, uses the outer
+`quant_config`) and `in_proj_ba` (from `in_proj_b` + `in_proj_a`, hardcoded
+`quant_config=None` per qwen3_5.py:186 — "output dim 48 is not divisible
+by TP=2 * 16 alignment"). So the loader wants:
+  - in_proj_qkv / in_proj_z / out_proj → INT4 (Marlin)
+  - in_proj_b / in_proj_a → BF16 always
+  - conv1d → BF16 (nn.Conv1d, not touched by GPTQModifier targets="Linear")
+
+v1 (ignore=[]): quantized everything incl. in_proj_a/b → loader wanted BF16.
+v2 (ignore=linear_attn.*): kept everything BF16 → loader wanted INT4 qkvz.
+v3 (this script): ignore only `in_proj_a$` + `in_proj_b$`, matching R9700's
+working Qwen3.5-27B recipe and SGLang's exact weight-layout expectations.
 
 Everything else matches the Qwen3VL script: `thinking_vision` recipe,
 `drop_images=True`, AutoProcessor pre-flight, no try/except around save.
@@ -106,11 +113,15 @@ recipe = GPTQModifier(
         r"re:.*visual\..*",
         r"re:.*multi_modal_projector.*",
         r"re:.*embed_vision.*",
-        # Gated DeltaNet / linear recurrent attention — INT4 noise compounds
-        # through the recurrent state S(t) = g*S(t-1) + delta and destroys
-        # generation quality.  Covers in_proj_qkv, in_proj_a, in_proj_b,
-        # out_proj, b_proj, and any other Linears inside linear_attn.
-        r"re:.*linear_attn\..*",
+        # DeltaNet gating scalars — SGLang's Qwen3_5GatedDeltaNet loader
+        # hardcodes quant_config=None for in_proj_ba (= in_proj_b + in_proj_a
+        # fused), since output dim 48 isn't divisible by TP alignment.
+        # Everything else in linear_attn (in_proj_qkv, in_proj_z, out_proj)
+        # must be INT4 because the loader passes the outer quant_config
+        # through to in_proj_qkvz.  Matches R9700's working Qwen3.5-27B
+        # recipe (quantize_qwen35_moe_ream.py).
+        r"re:.*in_proj_a$",
+        r"re:.*in_proj_b$",
     ],
     offload_hessians=True,
 )
