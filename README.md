@@ -18,11 +18,19 @@ Reference model for the target: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5
 2. **Gemma 4 26B MoE quality debug.** Server boots (patches 015 + 016 + `SGLANG_FORCE_CT_MOE_TRITON=1`) but generation emits `<pad>` tokens. Next: profile layer 0 to localize, then re-calibrate with the upgraded `thinking_vision_video_audio` recipe.
 3. **Qwen3-VL-32B Dense self-calibration — SHIPPED (2026-04-21).** Calibrated with `thinking_vision` recipe, 256 samples @ 1024 tokens, 13.5h CPU on 32B Dense. Vision tower preserved in BF16 via `ignore=[re:.*visual\..*, re:.*vision_tower.*]`. Launches via `MODEL=/path/to/Qwen3-VL-32B-CT-thinking-vision QUANT=compressed-tensors EXTRA_ARGS="--enable-multimodal --reasoning-parser qwen3" ./scripts/launch.sh qwen3-vl-32b`. Validator 4/4 PASS: basic `(reasoning)paris`, thinking 108 tok `reasoning_seen+answer_ok`, vision `saw=['red','circle','round']` on solid-red-circle probe (video skipped — imageio missing in sglang env). Patch 018 (R9700 backport) unblocked the `vision_config` dict→SimpleNamespace wrap needed for CT-saved configs. Qwen3-VL-30B **MoE** version still pending.
 4. **Gemma 4 21B REAP AWQ vision — KNOWN BROKEN (2026-04-21).** Our self-calibrated `gemma-4-21b-REAP-AWQ-thinking-vision` serves cleanly via `QUANT=awq_marlin EXTRA_ARGS="--attention-backend torch_native --disable-cuda-graph --disable-piecewise-cuda-graph --enable-multimodal" ./scripts/launch.sh gemma4` but validator is 3/4: basic PASS `(reasoning)paris`, thinking PASS 604 tok, **vision FAIL** — response `"i cannot see the image you are referring to"`. R9700 hit the identical failure on their 21B REAP and diagnosed it as template/processor plumbing in the SGLang Gemma 4 multimodal path, not a weight or calibration issue. Parked pending SGLang-side fix (not recalibration).
-5. **Qwen3.6-27B — BLOCKED (2026-04-23).** Dense 27B hybrid (DeltaNet + gated attention), 64 layers, 262K native, vision+video, `Qwen3_5ForConditionalGeneration`. Two calibration attempts both produce `"!!!!!!!!!!"` garbage:
-    - **v1 (9.5h CPU):** Qwen3-VL-32B script, linear_attn got INT4. 240 DeltaNet projections quantized. Validator 1/4.
-    - **v2 (7.6h CPU):** dedicated script excludes `re:.*linear_attn\..*` entirely (0 DeltaNet projections quantized — only MLP + gated-attention Q/K/V/O at 256 total). Still validator 1/4, same `!!!!!!` output.
+5. **Qwen3.6-27B — SHIPPED v3 (2026-04-23).** Dense 27B hybrid (DeltaNet + gated attention), 64 layers, 262K native, vision+video, `Qwen3_5ForConditionalGeneration`. Validator 4/4 PASS after diagnosing SGLang's `Qwen3_5GatedDeltaNet` loader layout:
+    - **v1 (9.5h):** Qwen3-VL script, all linear_attn INT4 → `!!!!!`.  
+    - **v2 (7.6h):** `re:.*linear_attn\..*` excluded → still `!!!!!`.
+    - **v3 (7h):** ignore only `in_proj_a$` + `in_proj_b$` → 4/4 PASS.  
    
-    R9700's successful Qwen3.5-27B calibration (`quantize_qwen35_moe_ream.py`) ignores **only** `in_proj_a` and `in_proj_b` (the tiny gating scalars), letting `in_proj_qkv`/`out_proj`/`conv1d` get INT4. Our v2 being more conservative than that should produce better quality, not worse — suggests the failure isn't the ignore list. Hypothesis: SGLang's `qwen3_5.py` loader may expect DeltaNet projections in Marlin INT4 format (like community AWQs) and not handle the mixed BF16-DeltaNet + INT4-attention layout. Needs loader-side investigation before a third calibration attempt.
+    Root cause: SGLang's loader merges `in_proj_qkv` + `in_proj_z` → `in_proj_qkvz` (passes through `quant_config` → expects INT4) and `in_proj_b` + `in_proj_a` → `in_proj_ba` (hardcoded `quant_config=None` → expects BF16). So the layout it wants is: in_proj_qkv/z/out_proj INT4, in_proj_a/b BF16, conv1d BF16 (it's `nn.Conv1d` not Linear — GPTQ doesn't touch it). Bench sweep:
+    ```
+    ctx=  1024: TPOT=32.9ms  TTFT=58ms     30.4 tok/s
+    ctx=  8192: TPOT=33.2ms  TTFT=3841ms   30.1 tok/s
+    ctx= 32768: TPOT=33.6ms  TTFT=7611ms   29.7 tok/s
+    ctx=131072: TPOT=47.4ms  TTFT=34100ms  21.1 tok/s
+    ```
+    DeltaNet Triton kernels cap short-ctx throughput at ~30 tok/s (vs Qwen3-VL-32B Dense's 69 tok/s on FlashInfer). 18.6 GB CT output, same ballpark as R9700's `mattbucci/Qwen3.6-27B-AWQ-thinking-vision` shipped same day.
 4. **Piecewise CUDA graph `quant_type=None` fix.** Would unblock decode speedups on REAP/REAM/Qwen3.6 (all currently run with graphs disabled for safety).
 
 ## Known Issues (open)
@@ -74,6 +82,7 @@ Single-user tok/s measured at the max-context value in the table. All numbers ar
 | Coder-30B AWQ Marlin | MoE (128 exp) | 16K | 193 | 5 ms | `coder-30b` | Peak throughput |
 | Qwen3.5-28B MoE REAP | DeltaNet+MoE (205 exp) | 262K | 33 | 31 ms | `qwen35-moe` | Thinking broken (recal running) |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | 13.5 | 74 ms | `qwen35` | Working |
+| **Qwen3.6-27B CT thinking+vision (ours)** | DeltaNet+attn (vision) | **131K** | **21** | 47.4 ms | `qwen35` + MODEL env | **Self-calibrated v3, validator 4/4** |
 | Qwen3-VL-32B Dense AWQ | Dense (vision) | 8K | 24 | 45 ms | `qwen3-vl-32b` | Working (community) |
 | **Qwen3-VL-32B CT thinking+vision (ours)** | Dense (vision) | **150K** | **40** | 24.7 ms | `qwen3-vl-32b` + MODEL env | **Self-calibrated, validator 4/4** |
 | Gemma 4 26B MoE | MoE (103 exp) | 4K | — | — | `gemma4` | Boots via patches 015/016, `<pad>` output |
