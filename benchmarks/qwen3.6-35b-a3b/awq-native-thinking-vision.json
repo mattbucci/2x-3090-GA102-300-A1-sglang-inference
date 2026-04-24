@@ -1,0 +1,33 @@
+{
+  "model": "Qwen3.6-35B-A3B-AWQ-native (thinking+vision)",
+  "source": "mattbucci/Qwen3.6-35B-A3B-AWQ-thinking-vision CT → convert_moe_ct_to_awq.py",
+  "engine": "SGLang v0.5.10 + patch 019",
+  "hardware": "2x RTX 3090 TP=2",
+  "quantization": "awq_marlin (4-bit) + BF16 shared_expert_gate + BF16 in_proj_a/b + BF16 vision tower",
+  "attention_backend": "flashinfer",
+  "kv_cache_dtype": "auto (bf16)",
+  "timestamp": "2026-04-24",
+  "launch_preset": "qwen36",
+  "validator": {
+    "basic": "PASS",
+    "thinking": "PASS (687 tok, reasoning_terminated, answer_ok)",
+    "vision": "PASS (saw=[red,circle,round] on solid-red-circle probe)",
+    "video": "skipped (imageio missing in env)"
+  },
+  "context_sweep": [
+    {"context": 30,      "output_tokens": 500, "total_seconds": 15.0, "tok_per_sec": 33.4, "note": "short-context baseline"},
+    {"context": 40000,   "output_tokens": 300, "total_seconds": 13.8, "tok_per_sec": 21.8, "note": "mid-context"},
+    {"context": 160000,  "output_tokens": 200, "total_seconds": 34.4, "tok_per_sec": 5.8,  "note": "flashinfer attention"},
+    {"context": 250000,  "output_tokens": 100, "total_seconds": 38.4, "tok_per_sec": 2.6,  "note": "near-max; 262K preset ceiling"}
+  ],
+  "tuning_experiments": [
+    {"name": "triton attention backend", "short": 32.8, "at_131K": 3.4, "at_250K": 1.4, "verdict": "worse than flashinfer on Ampere; R9700's flat 20 tok/s @131K is ROCm-triton-specific"},
+    {"name": "R9700-style tunables (CHUNKED=8192 DECODE_STEPS=32 MAMBA_CACHE=8 MAX_RUNNING=8)", "short": 32.4, "at_131K": 4.7, "at_250K": 2.2, "verdict": "no single-user decode benefit; kept in preset for future multi-user work"}
+  ],
+  "comparison_R9700": {
+    "model": "Qwen3.6-35B-A3B-AWQ-native-thinking-vision on 2x R9700 (ROCm 7.2, triton attn)",
+    "short_tok_per_sec": 21.6,
+    "at_131K_tok_per_sec": 20.6,
+    "note": "ROCm triton kernel holds flat at long-ctx; Ampere flashinfer does not. Architecture not fungible."
+  }
+}
