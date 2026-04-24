@@ -68,7 +68,7 @@ RDNA4 workaround already in repo: `scripts/quantize/convert_moe_ct_to_awq.py` ru
 ./scripts/setup.sh                          # clone SGLang v0.5.10, apply patches, create conda env
 
 ./scripts/launch.sh qwen3-ream              # fastest 256K — reference model
-./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B text-only (262K, vision TBD)
+./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B AWQ-native thinking+vision (262K, 4/4)
 ./scripts/launch.sh devstral-long           # Devstral-24B at 217K single-user ceiling
 ./scripts/launch.sh devstral                # Devstral-24B default (131K, better short-ctx + multi-user)
 ./scripts/launch.sh coder-30b               # Coder-30B MoE — peak throughput
@@ -98,7 +98,7 @@ Single-user tok/s measured at the max-context value in the table. All numbers ar
 | Devstral-24B AWQ | Dense | 131K | 55.8 | 17.9 ms | `devstral` | Short-ctx + multi-user friendly |
 | Coder-REAP-25B W4A16 | MoE (103 exp) | 131K | 46 | 22 ms | `coder-reap` | Working |
 | Coder-30B AWQ Marlin | MoE (128 exp) | 16K | 193 | 5 ms | `coder-30b` | Peak throughput |
-| Qwen3.5-28B MoE REAP | DeltaNet+MoE (205 exp) | 262K | 33 | 31 ms | `qwen35-moe` | Thinking broken (recal running) |
+| Qwen3.5-28B MoE REAP | DeltaNet+MoE (205 exp) | 262K | 33 | 31 ms | `qwen35-moe` | Thinking broken; deprioritized (use `qwen36` or `qwen3-ream`) |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 32K | 13.5 | 74 ms | `qwen35` | Working |
 | **Qwen3.6-27B CT thinking+vision (ours)** | DeltaNet+attn (vision) | **131K** | **21** | 47.4 ms | `qwen35` + MODEL env | **Self-calibrated v3, validator 4/4** |
 | Qwen3-VL-32B Dense AWQ | Dense (vision) | 8K | 24 | 45 ms | `qwen3-vl-32b` | Working (community) |
