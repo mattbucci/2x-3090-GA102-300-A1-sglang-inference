@@ -30,7 +30,9 @@ Reference model for the target: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5
     ctx= 32768: TPOT=33.6ms  TTFT=7611ms   29.7 tok/s
     ctx=131072: TPOT=47.4ms  TTFT=34100ms  21.1 tok/s
     ```
-    DeltaNet Triton kernels cap short-ctx throughput at ~30 tok/s (vs Qwen3-VL-32B Dense's 69 tok/s on FlashInfer). 18.6 GB CT output, same ballpark as R9700's `mattbucci/Qwen3.6-27B-AWQ-thinking-vision` shipped same day.
+    DeltaNet Triton kernels cap short-ctx throughput at ~30 tok/s (vs Qwen3-VL-32B Dense's 69 tok/s on FlashInfer). 18.6 GB CT output.
+    
+    **Cross-validated against R9700's shipped `mattbucci/Qwen3.6-27B-AWQ-thinking-vision` (2026-04-23):** downloaded their 18 GB HF model and ran the same validator + bench.  Throughput identical within noise (30.1/30.8/29.8/21.0 tok/s across 1K/8K/32K/131K vs our 30.4/30.1/29.7/21.1).  Quality trade: R9700's model gives a cleaner vision caption (`"a red circle on a white background"` vs ours `"the flag of japan."` — though both triggered the validator's red/circle keyword match) and ours terminates thinking more concisely (259 tok vs R9700's hitting the 4096-token reasoning ceiling on the same probe).  Different calibration recipes (R9700 used `thinking_vision_video`, we used `thinking_vision`) likely account for the different trade-offs.
 4. **Piecewise CUDA graph `quant_type=None` fix.** Would unblock decode speedups on REAP/REAM/Qwen3.6 (all currently run with graphs disabled for safety).
 
 ## Known Issues (open)
