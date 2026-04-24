@@ -58,7 +58,7 @@ scripts/launch.sh qwen3-ream           # Qwen3-30B REAM AWQ (96 experts, 197 tok
 - **Note the next step in the README before starting it** — user can interject if they see a better path. Commit + push as progress is made (small self-contained commits, not one giant batch). Every commit should stand on its own.
 - **Keep README.md clean.** It is the single source of truth. Once a ship supersedes a debugging narrative, trim the narrative. Reader should see current status + known issues + next step without scrolling.
 - **Carry forward these design principles** — user has re-emphasized them and they should not drift:
-  - **REAP / REAM pruning is preferred** for long-context MoE at 3090/R9700 scale. Dropped rare experts fit 256K in 48 GB VRAM where full experts can't.
+  - **REAP and REAM are different MoE compression strategies** — don't conflate. **REAP** ([Cerebras](https://github.com/CerebrasResearch/reap)) = expert **pruning** (drops low-impact experts, tends better on generative tasks). **REAM** ([Samsung SAIL](https://github.com/SamsungSAILMontreal/ream)) = expert **merging** (groups similar experts, ~94%+ quality). Both shrink MoE to fit 256K in 48 GB VRAM but via different algorithms with different tradeoffs. Full details in `scripts/quantize/REAM.md`.
   - **Chat templates are load-bearing.** Wrong BOS/EOS, missing `<think>` handling, or reasoning stripped from calibration data silently destroys quality. Inspect `chat_template.jinja` and validate thinking tags on every new model before claiming ship.
   - **Calibration data must cover all live modalities** (thinking + image + video + audio as applicable). Text-only Open-Platypus breaks both reasoning and vision alignment.
 - **Sister-team collaboration:**
