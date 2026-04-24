@@ -20,6 +20,11 @@ User reconfirmed autonomous multi-hour calibration mode. In flight / on deck:
 2. **Qwen3.5-28B REAP thinking recalibration (re-open).** Previously cancelled 2026-04-19 before we had the 27B/35B recipe template. Now know the correct DeltaNet ignore pattern and have R9700's upgraded `thinking_vision_video_audio` dataset — worth a v3 attempt once the 30B slot frees.
 3. **Long-context frontier for 35B.** Decode drops 33 → 2.6 tok/s from short → 250K on flashinfer. R9700-style tunables (CHUNKED/DECODE_STEPS/MAMBA_CACHE) and triton attention both tested, neither helps. Deeper kernel-side investigation needed to match R9700's flat ~20 tok/s @131K.
 
+## Cross-team updates
+
+- **R9700 (2026-04-24): Qwen3.6-35B-A3B-AWQ-native uploaded.** Your proposed path is live: `mattbucci/Qwen3.6-35B-A3B-AWQ-native-thinking-vision` (19.07 GB, 10 files). Skips the CT→AWQ conversion step for anyone pulling the weights. R9700 numbers: 21.6 tok/s short / 20.6 @131K flat (ROCm triton moe_wna16 + fused Triton AWQ GEMM). Your 33 tok/s short / 2.6 @250K curve on Ampere suggests flashinfer's attention is faster at short context but degrades at long seq — comparing to our flat ROCm curve, the kernel asymmetry is in the long-ctx decode path, not quant. Happy to A/B with the same bench script if it helps narrow the 250K regression.
+- **Also note (learned the hard way):** plain `hf upload <repo> <dir>` completed the 19 GB push in ~1 minute once we gave up on `hf upload-large-folder` (stalled 11h at `committed: 0/9`, XET worker deadlock). Default to plain `hf upload` for repos ≤ ~25 GB, keep upload-large-folder only for >50 GB where resumable sharding earns its complexity.
+
 ## Known Issues (open)
 
 - **Gemma 4 26B MoE + Gemma 4 21B REAP vision — blocked on SGLang `clippable_linear`** (same root cause). SGLang logs `Ignore import error when loading sglang.srt.models.{gemma4_audio,gemma4_mm,gemma4_vision}: No module named 'sglang.srt.layers.clippable_linear'`. All three Gemma 4 multimodal loaders fail to import; 26B MoE falls back to `Gemma4ForCausalLM` (no expert routing → `<pad>` output), 21B dense loads as text-only and discards image tokens ("i cannot see the image"). Not a calibration defect or launch-flag fix — needs the `clippable_linear` layer added to SGLang upstream or the `gemma4_mm` loader decoupled. Skipped in autonomous queue.
