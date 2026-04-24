@@ -34,6 +34,9 @@ TOKENIZER=""
 QUANT="${QUANT:-}"
 DTYPE="float16"
 CTX=32768
+# Capture env-provided KV_DTYPE so presets can fall back to a per-model
+# default without being shadowed by the top-level fp8_e4m3 default.
+_ENV_KV_DTYPE="${KV_DTYPE:-}"
 KV_DTYPE="${KV_DTYPE:-fp8_e4m3}"
 MEM=0.85
 MAX_RUNNING=32
@@ -140,9 +143,12 @@ apply_preset() {
             # Validator 4/4, ~33 tok/s short-ctx on 3090 TP=2.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-AWQ-native-r9700-conv}"
             QUANT="${QUANT:-awq_marlin}"
-            KV_DTYPE="${KV_DTYPE:-auto}"
-            CTX=262144; MEM=0.85; MAX_RUNNING=4; CHUNKED=4096; DECODE_STEPS=4
-            MAMBA_CACHE="--max-mamba-cache-size 4"
+            # Force bf16 KV: fp8_e4m3 KV produces garbage on this model via
+            # Qwen3_5MoeForConditionalGeneration on Ampere. Env override
+            # (KV_DTYPE=X on the command line) still wins.
+            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            CTX=262144; MEM=0.85; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
+            MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
             ;;
