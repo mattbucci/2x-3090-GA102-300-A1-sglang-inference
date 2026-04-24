@@ -18,6 +18,14 @@ Reference model for the target: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5
 
 The 35B load also required **patch 019** (the CT→AWQ conversion fixed the runtime but the model still needs patch 019's config fixes to instantiate): dict-wrap `text_config`+`vision_config` in `Qwen3VLForConditionalGeneration.__init__` (llmcompressor saves both as bare PreTrainedConfig) + explicit `__init__(self, **kwargs): super().__init__(**kwargs)` on the `Qwen3_5Moe{Vision,Text,}Config` classes — without the explicit init, transformers 5.x on Python 3.13 auto-decorates those subclasses as dataclasses and drops every inherited default (`norm_topk_prob`, `num_experts`, etc.). See `patches/019-qwen3_5-moe-vl-config-dataclass-and-model-init.patch`.
 
+## Next up (autonomous, 2026-04-24)
+
+User reconfirmed autonomous multi-hour calibration mode. Picking up in priority order:
+
+1. **Qwen3-VL-30B MoE AWQ self-calibration (IN FLIGHT).** Community vLLM AWQ is broken on `awq_marlin` (weight-name mismatch for `Qwen3VLMoeForConditionalGeneration`); self-calibrate a CT checkpoint from BF16 base with the `thinking_vision` recipe, then run the same CT→AWQ conversion we shipped for 35B. Expected time: ~4 GB/min HF download for ~60 GB base (~15 min), then ~10-13h GPTQ calibration on CPU, then ~10 min CT→AWQ conversion + validator. Preserves vision tower in BF16, same ignore pattern as 27B. Success criterion: 4/4 validator on 30B-A3B arch.
+2. **After 30B ships: Qwen3.5-28B REAP thinking re-calibration.** Previously cancelled 2026-04-19; re-opening because we now have the working calibration template (Qwen3.6-27B recipe) + the chat-template awareness the prior attempts lacked. Will verify the calibration data contains `<think>` traces and the saved model passes the thinking validator before publishing.
+3. **Gemma 4 26B + 21B — TRACKED, NOT CALIBRATION-FIXABLE.** Both blocked on SGLang `clippable_linear` upstream (`gemma4_mm` / `gemma4_vision` / `gemma4_audio` all fail to import). Skipping in the autonomous queue because no amount of recalibration will route the model through the missing multimodal loader. Will revisit if SGLang upstream adds the layer or R9700 / M4 teams find a workaround.
+
 ## Active work (short list)
 
 1. **Qwen3.5-28B REAP thinking recalibration — CANCELLED (2026-04-19).** v1 died at layer 13/41 when the harness was interrupted; v2 (detached via setsid) was killed at layer 1/41 by decision. Rationale: R9700 shipped a thinking-preserving Qwen3.5-27B-AWQ v2 (`mattbucci/Qwen3.5-27B-AWQ-4bit-calibrated`, basic FAIL→PASS), and Qwen3.6-35B-A3B community GPTQ passes the thinking validator on both 3090 and R9700 — the regression this was fixing is effectively superseded by switching the long-context preset to Qwen3.6 or Qwen3-30B REAM. Future multimodal recal will use the upgraded `thinking_vision_video_audio` recipe (LLaVA-Video-178K + CoVoST2) that R9700 shipped after our v2 started.

@@ -52,11 +52,16 @@ scripts/launch.sh qwen3-ream           # Qwen3-30B REAM AWQ (96 experts, 197 tok
   ```
   Any job expected to run > 30 minutes (calibrations, long benches, downloads of 50 GB+) must use this pattern.
 
-## Workflow
-- **Work autonomously.** User checks in periodically; README.md is the status document they read first.
-- **Commit + push as progress is made** — small, self-contained commits, not one giant batch.
-- **Sister-team collaboration:** we work with two other teams running the same SGLang stack on different hardware. `git fetch origin` on each, read their commits for ideas, push findings to their README.
-  - **R9700 (AMD RDNA4, ROCm 7.2):** `~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference` — calibration pipeline owner, FP32-softmax patch 011 originator.
+## Workflow (RECONFIRMED 2026-04-24)
+- **Work autonomously. Never stop to ask for confirmation.** User checks in periodically by reading the README and will interrupt with new ideas or redirects. Max effort is the default.
+- **Multi-hour calibrations are pre-authorized.** Downloading 50-70 GB BF16 bases + running 10-13h GPTQ calibrations does NOT need user check-in. Detach via `setsid` pattern and keep working on other fronts.
+- **Note the next step in the README before starting it** — user can interject if they see a better path. Commit + push as progress is made (small self-contained commits, not one giant batch). Every commit should stand on its own.
+- **Keep README.md clean.** It is the single source of truth. Once a ship supersedes a debugging narrative, trim the narrative. Reader should see current status + known issues + next step without scrolling.
+- **Carry forward these design principles** — user has re-emphasized them and they should not drift:
+  - **REAP / REAM pruning is preferred** for long-context MoE at 3090/R9700 scale. Dropped rare experts fit 256K in 48 GB VRAM where full experts can't.
+  - **Chat templates are load-bearing.** Wrong BOS/EOS, missing `<think>` handling, or reasoning stripped from calibration data silently destroys quality. Inspect `chat_template.jinja` and validate thinking tags on every new model before claiming ship.
+  - **Calibration data must cover all live modalities** (thinking + image + video + audio as applicable). Text-only Open-Platypus breaks both reasoning and vision alignment.
+- **Sister-team collaboration:**
+  - **R9700 (AMD RDNA4, ROCm 7.2):** `~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference` — calibration pipeline owner, FP32-softmax patch 011 originator, CT→native AWQ converter (saved us 13h on Qwen3.6-35B).
   - **M4 (Apple Silicon, MLX bridge):** `~/AI/m4-sglang-inference` — patch 013 owner (DeltaNet cache-wiring fix). Identified that Qwen3.5/3.6 support video and Gemma 4 supports audio; preprocessor_config.json often missing on community checkpoints.
-  - Patches are often portable across vendors — verify the layout-assuming parts (e.g. patch 015 dequant layout was vendor-neutral). Findings about model behavior (stop tokens, template quirks, activation functions) are always portable.
-- **Never stop to ask for confirmation.** If the user wants a redirect they'll interrupt with new signal.
+  - `git fetch origin` each, read their commits, push findings to their READMEs. Patches are often portable; findings about model behavior (stop tokens, template quirks) always are.
