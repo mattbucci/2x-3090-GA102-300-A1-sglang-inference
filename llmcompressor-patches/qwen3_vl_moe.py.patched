@@ -107,12 +107,17 @@ class SequentialQwen3VLMoeTextExperts(torch.nn.ModuleList):
         )
 
         self.num_experts = original.gate_up_proj.shape[0]
-        # MoE experts are sized by `moe_intermediate_size`, NOT the dense
-        # `intermediate_size` (e.g. 768 vs 6144 for Qwen3-VL-30B).
-        # Qwen3VLMoeTextMLP accepts an intermediate_size kwarg that overrides
-        # config.intermediate_size.
         moe_intermediate_size = getattr(
             config, "moe_intermediate_size", original.down_proj.shape[1]
+        )
+        print(
+            f"[SequentialQwen3VLMoeTextExperts] num_experts={self.num_experts} "
+            f"config.hidden_size={config.hidden_size} "
+            f"config.intermediate_size={config.intermediate_size} "
+            f"moe_intermediate_size={moe_intermediate_size} "
+            f"gate_up_proj.shape={tuple(original.gate_up_proj.shape)} "
+            f"down_proj.shape={tuple(original.down_proj.shape)}",
+            flush=True,
         )
 
         with skip_weights_initialize():
@@ -122,28 +127,26 @@ class SequentialQwen3VLMoeTextExperts(torch.nn.ModuleList):
                     for _ in range(self.num_experts)
                 ]
             )
+        print(
+            f"[SequentialQwen3VLMoeTextExperts] MLP[0].gate_proj.weight.shape="
+            f"{tuple(self[0].gate_proj.weight.shape)}",
+            flush=True,
+        )
 
-        # Safetensors layout for this model:
-        #   gate_up_proj: (E, H=2048, 2I=1536)   — contract on dim 1 (H)
-        #   down_proj:    (E, I=768, H=2048)     — contract on dim 1 (I)
-        # The fused-tensor forward does F.linear(x[..., H], w) where w is
-        # gate_up_proj[e] with shape (H, 2I). F.linear treats that as weight
-        # [out=H, in=2I] and computes x @ w.T → requires x shape [..., 2I],
-        # which contradicts the documented usage. The actual contract is:
-        # F.linear(x[..., H], w) == x @ w — i.e. torch uses w.T internally only
-        # when w is a *registered* Linear weight; for a bare parameter here
-        # treatment is ambiguous. Empirically the model serves correctly, so we
-        # unfuse assuming w is [H, 2I] and split along the 2I axis, then
-        # transpose into Linear's [out, in] convention.
+        # Actual safetensors layout (confirmed via debug print):
+        #   gate_up_proj: (E, 2I=1536, H=2048)  — rows 0:I are gate, rows I:2I are up
+        #   down_proj:    (E, H=2048, I=768)    — already in Linear weight shape
+        # Linear weight convention is [out, in], so:
+        #   gate_proj.weight = gate_up[0:I, :]          → (I, H)  — no transpose
+        #   up_proj.weight   = gate_up[I:2I, :]         → (I, H)
+        #   down_proj.weight = down                     → (H, I)  — no transpose
         for i in range(self.num_experts):
-            gate_up = original.gate_up_proj[i]  # (H, 2I)
-            down = original.down_proj[i]        # (I, H)
+            gate_up = original.gate_up_proj[i]  # (2I, H)
+            down = original.down_proj[i]        # (H, I)
 
-            # gate_up along the 2I axis: first I cols = gate, next I = up
-            gate_proj = gate_up[:, :moe_intermediate_size]  # (H, I)
-            up_proj = gate_up[:, moe_intermediate_size:]    # (H, I)
+            gate_w = gate_up[:moe_intermediate_size, :]         # (I, H)
+            up_w = gate_up[moe_intermediate_size:, :]           # (I, H)
 
-            # Linear expects weight [out, in]
-            self[i].gate_proj.weight.data = gate_proj.t().clone().contiguous()  # (I, H)
-            self[i].up_proj.weight.data = up_proj.t().clone().contiguous()      # (I, H)
-            self[i].down_proj.weight.data = down.t().clone().contiguous()       # (H, I)
+            self[i].gate_proj.weight.data = gate_w.clone().contiguous()
+            self[i].up_proj.weight.data = up_w.clone().contiguous()
+            self[i].down_proj.weight.data = down.clone().contiguous()
