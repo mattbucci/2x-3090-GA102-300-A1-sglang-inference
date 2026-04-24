@@ -94,7 +94,10 @@ class CalibrateQwen3VLMoeTextSparseMoeBlock(MoECalibrationModule):
                 )
 
         next_states = next_states.reshape(batch_size, sequence_length, hidden_dim)
-        return next_states, router_logits
+        # Upstream Qwen3VLMoeTextSparseMoeBlock.forward returns a single tensor
+        # (not a (hidden_states, router_logits) tuple like Qwen3Moe), so the
+        # outer decoder layer does `residual + hidden_states` expecting a Tensor.
+        return next_states
 
     def restore(self, original: torch.nn.Module) -> torch.nn.Module:
         return original
@@ -107,17 +110,10 @@ class SequentialQwen3VLMoeTextExperts(torch.nn.ModuleList):
         )
 
         self.num_experts = original.gate_up_proj.shape[0]
+        # MoE experts are sized by moe_intermediate_size (768) not the dense
+        # intermediate_size (6144). Pass the kwarg to Qwen3VLMoeTextMLP.
         moe_intermediate_size = getattr(
             config, "moe_intermediate_size", original.down_proj.shape[1]
-        )
-        print(
-            f"[SequentialQwen3VLMoeTextExperts] num_experts={self.num_experts} "
-            f"config.hidden_size={config.hidden_size} "
-            f"config.intermediate_size={config.intermediate_size} "
-            f"moe_intermediate_size={moe_intermediate_size} "
-            f"gate_up_proj.shape={tuple(original.gate_up_proj.shape)} "
-            f"down_proj.shape={tuple(original.down_proj.shape)}",
-            flush=True,
         )
 
         with skip_weights_initialize():
@@ -127,11 +123,6 @@ class SequentialQwen3VLMoeTextExperts(torch.nn.ModuleList):
                     for _ in range(self.num_experts)
                 ]
             )
-        print(
-            f"[SequentialQwen3VLMoeTextExperts] MLP[0].gate_proj.weight.shape="
-            f"{tuple(self[0].gate_proj.weight.shape)}",
-            flush=True,
-        )
 
         # Actual safetensors layout (confirmed via debug print):
         #   gate_up_proj: (E, 2I=1536, H=2048)  — rows 0:I are gate, rows I:2I are up
