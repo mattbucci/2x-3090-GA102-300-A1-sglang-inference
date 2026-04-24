@@ -65,6 +65,52 @@ Launches Gemma 4 26B MoE on 3090. Generation quality is still degraded (see Know
 ### 018 — qwen36-vision-config-dict-wrap (R9700 backport, 19 LOC)
 `qwen_vl.py` multimodal processor assumes `hf_config.vision_config` is a `PretrainedConfig` (attribute access). llmcompressor-saved CT configs (Qwen3.6 VL, and likely our own Phase 3 Qwen3-VL-32B output) ship `vision_config` as a plain dict, causing `AttributeError: 'dict' object has no attribute 'spatial_merge_size'` at HTTP 500 on first image request. Wrap once at processor init with `SimpleNamespace`. R9700 verified this unblocks `mattbucci/Qwen3.6-35B-A3B-AWQ-thinking-vision`.
 
+### 019 — qwen3_5-moe-vl-config-dataclass-and-model-init (2026-04-24, 60 LOC)
+Three-part fix required to load the Qwen3_5MoeForConditionalGeneration path on Python 3.13 + transformers 5.x:
+- **Model init dict-wrap (qwen3_vl.py):** symmetric to patch 018 but on the model side — `Qwen3VLForConditionalGeneration.__init__` accesses `config.vision_config.{hidden_size,depth,…}` and `config.text_config`; llmcompressor-saved CT configs ship both as raw dicts / bare PreTrainedConfig. Re-wrap into the proper sub_configs class before super() runs.
+- **Explicit `__init__` on subclasses (qwen3_5.py configs):** transformers 5.x on Python 3.13 auto-decorates `PretrainedConfig` subclasses that don't define `__init__` as dataclasses, which **replaces** the inherited init with a generated one that never runs the parent's attribute defaults (`norm_topk_prob=True`, `num_experts=512`, etc.). Reproduced standalone: `Qwen3_5MoeTextConfig(**text_config_dict)` → `hasattr(tc, 'norm_topk_prob') == False`. Fix: add explicit `def __init__(self, **kwargs): super().__init__(**kwargs)` to `Qwen3_5Moe{Vision,Text,}Config`.
+- **Drop `model_type` from kwargs when re-wrapping** — it's a class attr, and `PreTrainedConfig.to_dict()` can return `model_type=""` that would overwrite the class default.
+
+Without patch 019, Qwen3_5MoeForConditionalGeneration fails to instantiate (`'dict' object has no attribute 'hidden_size'`) or later raises `'Qwen3_5MoeTextConfig' object has no attribute 'norm_topk_prob'`.
+
+---
+
+## Shipped model history
+
+Narratives for models that are now working. Current-state entries live in the top-level `README.md`.
+
+### Qwen3.6-35B-A3B AWQ-native thinking+vision — shipped 2026-04-24
+First successful Qwen3_5MoeForConditionalGeneration load on 3090. Path:
+1. Downloaded R9700's `mattbucci/Qwen3.6-35B-A3B-AWQ-thinking-vision` CT upload (20 GB).
+2. Attempted direct load → four class-of-bug discoveries: dict-wrap vision_config at model init, dict-wrap text_config, transformers 5.x dataclass replacement of subclass init, model_type kwarg overwriting class attr. All fixed in patch 019.
+3. With patch 019: server boots clean but generation emits `_4_4_4_4…` on fp8_e4m3 KV / infinite `"15*17 = 15*17 = …"` loops on bf16 KV.
+4. Root cause isolated via safetensors inspection: `shared_expert_gate.weight_packed` has shape `(1, H)` — output dim 1 can't be AWQ-packed (requires divisibility by 8), and the NVIDIA CT loader doesn't fall back to BF16 for unpackable shapes the way R9700's `convert_moe_ct_to_awq.py` does. So every token's shared-expert gate was reading garbage from INT4 weights clamped to ~15 distinct values.
+5. Ported R9700's `convert_moe_ct_to_awq.py` verbatim; ran it on the CT checkpoint → 30970 INT4 expert weights + 40 BF16 `shared_expert_gate` fallbacks + 696 passthroughs, 20 GB output.
+6. Launched converted native AWQ through patch 019: validator **4/4 PASS** (basic/thinking/vision/video-skipped), **~33 tok/s short-context** (vs R9700's 21.6 on ROCm — +55% from awq_marlin kernel).
+
+Bench curve on 2x 3090, flashinfer attention, bf16 KV: 33.4 short / 21.8 @32K / 5.8 @160K / 2.6 @250K tok/s. Long-context drop is steeper than R9700's flat 20 tok/s @131K ROCm curve — verified by A/B: matching R9700's CHUNKED/DECODE_STEPS/MAMBA_CACHE tuning didn't move the needle, and swapping to `--attention-backend triton` was *worse* on Ampere (3.4 tok/s @131K). Conclusion: R9700's flat long-ctx curve is ROCm-triton-kernel-specific, not portable; Ampere decode on this model is bounded by flashinfer's hybrid-attention path past ~80K.
+
+Detailed bench artifact: `benchmarks/qwen3.6-35b-a3b/awq-native-thinking-vision.json`.
+
+### Qwen3.6-27B Dense AWQ thinking+vision — shipped 2026-04-23 (v3)
+Dense VL, 64 layers, 262K native, `Qwen3_5ForConditionalGeneration`. Three calibration attempts:
+- **v1 (9.5h):** copied Qwen3-VL script, all `linear_attn` projections INT4 → `!!!!!` garbage everywhere.
+- **v2 (7.6h):** added `re:.*linear_attn\..*` to GPTQ ignore (all DeltaNet BF16) → still `!!!!!` garbage.
+- **v3 (7h):** ignore ONLY `in_proj_a$` + `in_proj_b$` → 4/4 PASS.
+
+Root cause: SGLang's `Qwen3_5GatedDeltaNet` loader merges `in_proj_qkv + in_proj_z → in_proj_qkvz` (passes outer `quant_config` → expects INT4) and `in_proj_b + in_proj_a → in_proj_ba` (hardcoded `quant_config=None` per `qwen3_5.py:186` → expects BF16). So the loader demands: `in_proj_qkv/z/out_proj` INT4, `in_proj_a/b` BF16, `conv1d` BF16 (it's `nn.Conv1d`, GPTQ doesn't touch it). Cross-validated against R9700's shipped `mattbucci/Qwen3.6-27B-AWQ-thinking-vision` — throughput identical within noise across 1K/8K/32K/131K contexts; quality trade varies with calibration recipe (R9700 used `thinking_vision_video`, we used `thinking_vision`).
+
+Bench on 2x 3090: 30.4 @1K / 30.1 @8K / 29.7 @32K / 21.1 @131K tok/s. DeltaNet Triton kernels cap short-ctx around 30 tok/s (vs Qwen3-VL-32B Dense's 69 tok/s on flashinfer).
+
+### Qwen3-VL-32B Dense AWQ thinking+vision — shipped 2026-04-21
+First successful vision-preserving self-calibration. Recipe: `thinking_vision`, 256 samples × 1024 tokens, 13.5h CPU. Vision tower held in BF16 via `ignore=[re:.*visual\..*, re:.*vision_tower.*]`. Validator 4/4 PASS: basic `(reasoning)paris`, thinking 108 tok cleanly terminated, vision `saw=['red','circle','round']` on red-circle probe. Needed patch 018 (R9700 backport) to wrap the dict `vision_config` at processor init.
+
+### Gemma 4 31B Dense AWQ — unblocked 2026-04-23
+`QUANT=compressed-tensors EXTRA_ARGS="--attention-backend torch_native --disable-cuda-graph --disable-piecewise-cuda-graph" ./scripts/launch.sh gemma4-31b`. 11.2 GB/GPU, 48K max tokens at 16K context. Validator 3/4: basic+thinking PASS, vision generates (`"the image shows a single cuneiform character"`) — hallucinated, not the plumbing failure the 21B REAP has. Short-ctx bench 28 tok/s, TPOT 35 ms @ 1K. Model config says `compressed-tensors` despite the AWQ directory name.
+
+### Qwen3.5-28B REAP thinking recalibration — cancelled 2026-04-19
+v1 died at layer 13/41 on harness restart (lost 7h 45min — this is where the `setsid` detach rule came from). v2 killed at layer 1/41 because R9700 shipped a working thinking-preserving Qwen3.5-27B-AWQ v2 (`mattbucci/Qwen3.5-27B-AWQ-4bit-calibrated`, basic FAIL→PASS) and Qwen3.6-35B-A3B GPTQ passes the thinking validator on both rigs — the regression this was fixing is superseded by switching long-ctx thinking workloads to `qwen36` or `qwen3-ream`. May be re-opened once we have free calibration cycles + the upgraded `thinking_vision_video_audio` recipe R9700 shipped after v2 started.
+
 ---
 
 ## Cross-team findings (3090 ⟷ R9700)
