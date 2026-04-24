@@ -6,7 +6,7 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 **Target: single-user 256K context performance.** Multi-user throughput is secondary. Aligned with the RDNA4 sister project; both teams share 256K progress bidirectionally.
 
-Reference model for the target: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5 ms TPOT, fresh prefill). Qwen3.6-35B-A3B-GPTQ text-only hits the same target at 14 tok/s.
+Reference model for the target: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5 ms TPOT, fresh prefill). Qwen3.6-35B-A3B-AWQ-native (thinking+vision, shipped 2026-04-24) hits 33 tok/s at short context and 2.6 tok/s at 250K — primary drop is at the very long-context end (likely flashinfer attention + mamba cache interaction at >=160K).
 
 **Cross-team parity on Qwen3.6 (2026-04-18):** RDNA4 sister repo also has Qwen3.6-35B-A3B-GPTQ loaded via the `qwen36-moe` preset — 13.3 tok/s @ 262K, thinking validator passes on first probe (396 tok, `finish=stop`).  Same architecture class (`Qwen3_5MoeForConditionalGeneration`) as Qwen3.5-35B; patch 009 covers it.  Their `flatten_qwen36_config.py` now has `--arch` flag: default `Qwen3_5MoeForConditionalGeneration` for RDNA4 patch 009 registration, `--arch Qwen3_5MoeForCausalLM` for your upstream-registered class.  Conclusion: Qwen3.6 works cleanly on both stacks without recalibration — thinking survives community GPTQ where it failed on Qwen3.5 AWQ.
 
@@ -93,7 +93,7 @@ Single-user tok/s measured at the max-context value in the table. All numbers ar
 | Model | Type | Max ctx | tok/s @max | TPOT | Launch | Status |
 |-------|------|:-------:|:----------:|:----:|:------:|:-------|
 | **Qwen3-30B REAM AWQ** | MoE (96 exp) | **262K** | **74** | 13.5 ms | `qwen3-ream` | **Hits 256K target** |
-| **Qwen3.6-35B-A3B GPTQ** | DeltaNet+MoE (256 exp) | **262K** | **14** | 72 ms | `qwen36` | Text-only; vision TBD |
+| **Qwen3.6-35B-A3B AWQ-native** | DeltaNet+MoE (256 exp, VL) | **262K** | **2.6** | 385 ms | `qwen36` | **thinking+vision 4/4**; 33 @ short / 21.8 @32K / 5.8 @160K / 2.6 @250K |
 | **Devstral-24B AWQ (long)** | Dense | **217K** | **56** | 17.9 ms | `devstral-long` | 66% past default ceiling |
 | Devstral-24B AWQ | Dense | 131K | 55.8 | 17.9 ms | `devstral` | Short-ctx + multi-user friendly |
 | Coder-REAP-25B W4A16 | MoE (103 exp) | 131K | 46 | 22 ms | `coder-reap` | Working |

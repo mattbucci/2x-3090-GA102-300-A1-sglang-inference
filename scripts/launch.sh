@@ -28,7 +28,10 @@ source "$SCRIPT_DIR/common.sh"
 # --- Defaults (overridden by model preset, then by CLI flags) ---
 MODEL="${MODEL:-}"
 TOKENIZER=""
-QUANT="${QUANT:-compressed-tensors}"
+# QUANT default is set by the per-preset block below so presets that use
+# `${QUANT:-X}` can honor an env override. Presets that hardcode `QUANT="X"`
+# ignore env by design (most do — their weight format is fixed).
+QUANT="${QUANT:-}"
 DTYPE="float16"
 CTX=32768
 KV_DTYPE="${KV_DTYPE:-fp8_e4m3}"
