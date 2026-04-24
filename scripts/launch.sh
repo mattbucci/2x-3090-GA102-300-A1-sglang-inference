@@ -31,7 +31,7 @@ TOKENIZER=""
 QUANT="${QUANT:-compressed-tensors}"
 DTYPE="float16"
 CTX=32768
-KV_DTYPE="fp8_e4m3"
+KV_DTYPE="${KV_DTYPE:-fp8_e4m3}"
 MEM=0.85
 MAX_RUNNING=32
 CHUNKED=4096
@@ -138,7 +138,7 @@ apply_preset() {
             # fix to the sglang loader that builds Qwen3VLMoeVisionConfig from
             # the dict — deferred until text path is validated.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-GPTQ-Int4}"
-            QUANT="gptq_marlin"
+            QUANT="${QUANT:-gptq_marlin}"
             CTX=262144; MEM=0.85; MAX_RUNNING=4; CHUNKED=4096; DECODE_STEPS=4
             MAMBA_CACHE="--max-mamba-cache-size 4"
             REASONING="--reasoning-parser qwen3"
