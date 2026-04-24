@@ -128,17 +128,16 @@ apply_preset() {
             REASONING="--reasoning-parser qwen3"
             ;;
         qwen36)
-            # Qwen3.6-35B-A3B-GPTQ-Int4: 256-expert hybrid DeltaNet + gated attn,
-            # 3B active, 262K native context, vision + thinking. Uses the same
-            # SGLang Qwen3_5MoeForConditionalGeneration handler as Qwen3.5.
-            # First-pass is text-only. Requires config flattening before launch:
-            #   scripts/quantize/flatten_qwen36_config.py "$MODEL"
-            # which promotes text_config.* to top level and sets
-            # architectures=[Qwen3_5MoeForCausalLM]. Vision needs a separate
-            # fix to the sglang loader that builds Qwen3VLMoeVisionConfig from
-            # the dict — deferred until text path is validated.
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-GPTQ-Int4}"
-            QUANT="${QUANT:-gptq_marlin}"
+            # Qwen3.6-35B-A3B AWQ-native (thinking + vision): 256-expert hybrid
+            # DeltaNet + gated attn, 3B active, 262K native context. Default path
+            # is the R9700-CT-upload converted to native AWQ via
+            # scripts/quantize/convert_moe_ct_to_awq.py (BF16 fallback for the
+            # [1, H] shared_expert_gate that's not AWQ-packable). Loads as
+            # Qwen3_5MoeForConditionalGeneration with patch 019 applied.
+            # Validator 4/4, ~33 tok/s short-ctx on 3090 TP=2.
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-AWQ-native-r9700-conv}"
+            QUANT="${QUANT:-awq_marlin}"
+            KV_DTYPE="${KV_DTYPE:-auto}"
             CTX=262144; MEM=0.85; MAX_RUNNING=4; CHUNKED=4096; DECODE_STEPS=4
             MAMBA_CACHE="--max-mamba-cache-size 4"
             REASONING="--reasoning-parser qwen3"
