@@ -36,7 +36,7 @@ Reference model for the target: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5
 ## Known Issues (open)
 
 - **Gemma 4 26B MoE — boots but emits `<pad>`** via `SGLANG_FORCE_CT_MOE_TRITON=1 EXTRA_ARGS="--attention-backend torch_native --disable-cuda-graph" ./scripts/launch.sh gemma4`. Suspect weight-layout mismatch in the CUDA Triton MoE path or calibration that dropped the gelu activation profile. See `patches/README.md` → Gemma 4 notes.
-- **Gemma 4 31B Dense** — Blocked by FlashInfer `head_dim=512` on sm_86. Now that patch 015 proves the CT dequant path works, `--attention-backend torch_native` is the next path to try.
+- **Gemma 4 31B Dense** — ~~Blocked~~ **UNBLOCKED 2026-04-23** via `QUANT=compressed-tensors EXTRA_ARGS="--attention-backend torch_native --disable-cuda-graph --disable-piecewise-cuda-graph" ./scripts/launch.sh gemma4-31b`. 11.2 GB/GPU weights, 48K max tokens at 16K context. Validator 3/4: basic + thinking PASS, vision **receives image tokens and generates** (response `"the image shows a single cuneiform character"`) — it's just hallucinated content, not the "i cannot see the image" plumbing failure the 21B REAP has. Short-ctx bench: 28 tok/s TPOT 35 ms @ 1K. Note model config is `compressed-tensors`, not AWQ, despite the directory name.
 - **Qwen3-VL-30B MoE AWQ** — Community vLLM checkpoint produces garbage under `awq_marlin` (weight-name mapping mismatch for `Qwen3VLMoeForConditionalGeneration`). Workaround `SGLANG_FORCE_MOE_WNA16=1` needs a compressed-tensors checkpoint. Fix: self-calibrate CT with multimodal data.
 - **Qwen3.5-27B DeltaNet stuck at 32K context** — DeltaNet layers replicated across GPUs (19 GB/GPU), leaving only 2.2 GB for KV cache. REAM/REAP MoE variants unlock longer context; `launch.sh qwen3-ream` is the recommended path for this architecture class.
   - **Cross-team (M4 SGLang/MLX, 2026-04-18 evening — REVISION):** the earlier M4 cross-team note claiming DeltaNet quality is broken everywhere was WRONG about M4. M4 patch 013 root-caused the M4-specific brokenness to a cache-wiring bug in the SGLang↔MLX bridge, not a DeltaNet architectural issue: when Qwen3.5/3.6 load via `mlx_vlm.load` (vision_config in their config.json), `_acquire_cache` couldn't find `make_cache` on the outer wrapper and built uniform `ContiguousKVCache` for every layer, giving DeltaNet's hybrid layers the wrong cache type. Both Qwen3.5-27B-4bit and Qwen3.5-9B-MLX-8bit now produce correct factual answers on M4 with patch 013. **Lesson:** before assuming DeltaNet itself is broken on a backend, verify the cache plumbing: each architecture-specific cache type (ArraysCache, KVCache, RotatingKVCache) must reach the layer it was built for. The M4 MMLU 16.7-33.3% numbers in the previous note are stale and should not be cited as evidence of universal DeltaNet brokenness.
@@ -86,7 +86,7 @@ Single-user tok/s measured at the max-context value in the table. All numbers ar
 | Qwen3-VL-32B Dense AWQ | Dense (vision) | 8K | 24 | 45 ms | `qwen3-vl-32b` | Working (community) |
 | **Qwen3-VL-32B CT thinking+vision (ours)** | Dense (vision) | **150K** | **40** | 24.7 ms | `qwen3-vl-32b` + MODEL env | **Self-calibrated, validator 4/4** |
 | Gemma 4 26B MoE | MoE (103 exp) | 4K | — | — | `gemma4` | Boots via patches 015/016, `<pad>` output |
-| Gemma 4 31B Dense | Dense | — | — | — | — | Blocked (FlashInfer head_dim=512) |
+| Gemma 4 31B Dense | Dense | 16K | 28 | 35 ms | `gemma4-31b` | Working w/ torch_native (basic+thinking PASS, vision hallucinates) |
 
 ### VRAM context limits (FP8 KV, TP=2, 48 GB total)
 
