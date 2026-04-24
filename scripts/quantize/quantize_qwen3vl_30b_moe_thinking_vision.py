@@ -62,7 +62,7 @@ print(f"Calibration: {NUM_CALIBRATION_SAMPLES} samples x {MAX_SEQUENCE_LENGTH} t
 # --- 1. Build thinking + vision calibration dataset ---
 print("\n[1/4] Building thinking + vision calibration dataset...")
 rows = build_calibration_dataset(
-    recipe="thinking_vision",
+    recipe="thinking_vision_video",
     num_samples=NUM_CALIBRATION_SAMPLES,
     seed=42,
 )
