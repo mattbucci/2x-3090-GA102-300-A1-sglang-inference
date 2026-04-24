@@ -65,6 +65,16 @@ Next step: either self-calibrate 35B on 3090 hardware (Qwen3.6-27B-style recipe 
 - **60B+ models** — Coder-Next-REAM (35 GB), GLM-4.5-Air-REAP (43 GB) don't fit in 48 GB.
 - **Qwen3.6-35B-A3B vision path** — probed 2026-04-24 via `EXTRA_ARGS="--enable-multimodal" ./scripts/launch.sh qwen36`. Server accepts image requests and the class-level validator 4/4 PASSes by coincidence (random keyword match on hallucinated caption), **but the model is not actually processing the image**. Direct probe with a red circle on white → response `"The image is a black square."` (wrong color, wrong shape). Root cause: `flatten_qwen36_config.py` sets `architectures=[Qwen3_5MoeForCausalLM]` to work around the vision_config-as-dict crash in `Qwen3VLMoeVisionModel` init. That class loads text-only, accepts image tokens silently, and discards them — no vision tower runs. `--enable-multimodal` is a no-op on `Qwen3_5MoeForCausalLM`. Fixes: (a) self-calibrate from BF16 with vision tower explicitly preserved (same approach as our Qwen3-VL-32B), or (b) un-flatten the config and patch the SGLang `Qwen3VLMoeVisionModel` loader to wrap dict vision_config like patch 018 does for Qwen3VL.
 
+**Cross-team ANSWER to your patch-019 thinking-loop question (RDNA4, 2026-04-24):** direct inspection of `Qwen3.6-35B-A3B-AWQ-CT-thinking-vision/model.safetensors` + `recipe.yaml`:
+- `in_proj_a` / `in_proj_b` (DeltaNet gates, shape [32, 2048]): **BF16** — correctly ignored.
+- `mlp.gate` (router, [256, 2048]): **BF16** — correctly ignored (`re:.*mlp.gate$` matched).
+- `mlp.shared_expert.{gate,up,down}_proj`: **INT4 (weight_packed I32)** — **bug in our recipe**: the ignore pattern `re:.*shared_experts.*` (plural) doesn't match the actual module `mlp.shared_expert.` (singular). Shared expert got quantized despite the intent to skip it.
+- `mlp.shared_expert_gate` (tiny, [1, 256] packed): **INT4** — also quantized, and AWQ can't repack it cleanly (out_features=1 fails `out%PACK_FACTOR==0`); on RDNA4 we fall back to BF16 dequant at CT→AWQ conversion time.
+
+Best hypothesis for the NVIDIA thinking loop: shared_expert being INT4 feeds every token (not sparse), so any dequant/numerical-path difference accumulates across the 48-layer thinking trace. Worth checking: does NVIDIA's AWQ_Marlin dequant of a [2048, H] shared_expert use a different rounding path than ROCm's Triton AWQ GEMM? Also, the `shared_expert_gate` [1, H] is semantically a scalar — quantizing it to INT4 will clamp it to ~15 distinct values, which is plausible nonsense for a gating scalar.
+
+RDNA4 workaround already in repo: `scripts/quantize/convert_moe_ct_to_awq.py` runs the BF16 dequant fallback on out%8≠0 tensors and re-packs everything else into native AWQ (`moe_wna16`). Result was 6× decode speedup (3.6 → 21.6 tok/s short, 3.4 → 20.6 @131K on R9700 pair). **Uploading the converted weights now to `mattbucci/Qwen3.6-35B-A3B-AWQ-native-thinking-vision`** — should land in a few hours. If NVIDIA's thinking loop reproduces on those weights too, it narrows the problem to the NVIDIA `Qwen3_5MoeForConditionalGeneration` loader, not the calibration. If it fixes the loop, the culprit was shared_expert INT4 quantization and we should fix the recipe ignore pattern (`re:.*shared_expert\..*`) and requant.
+
 ## Quick Start
 
 ```bash
