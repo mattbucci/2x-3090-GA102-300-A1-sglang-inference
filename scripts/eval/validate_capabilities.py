@@ -317,9 +317,19 @@ def check_vision(base_url: str, model: str) -> tuple[bool, str]:
     content = (msg.get("content") or "").lower()
     reasoning = (msg.get("reasoning_content") or "").lower()
     haystack = content + " " + reasoning
-    expected = ["red", "circle", "round", "sphere", "ball", "dot", "disk", "oval"]
-    hits = [w for w in expected if w in haystack]
-    passed = len(hits) >= 1
+    # The probe image is a solid red circle on a white background.  A model that
+    # actually processed the image should mention BOTH color and shape — matching
+    # just one word triggers false positives on text-only models that accept
+    # image tokens silently and hallucinate generic descriptions (see Qwen3.6-35B
+    # flattened-config case: validator passed with "one-sentence description of
+    # the image" while the model's direct answer was "The image is a black
+    # square.").  Require a color hit AND a shape hit.
+    color_terms = ["red", "crimson", "scarlet"]
+    shape_terms = ["circle", "round", "sphere", "ball", "dot", "disk", "oval", "ellipse"]
+    color_hits = [w for w in color_terms if w in haystack]
+    shape_hits = [w for w in shape_terms if w in haystack]
+    hits = color_hits + shape_hits
+    passed = bool(color_hits) and bool(shape_hits)
     sample = content[:120] if content else f"(reasoning){reasoning[:120]}"
     return passed, f"saw={hits}  response={sample!r}"
 
