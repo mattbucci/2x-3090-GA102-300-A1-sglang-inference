@@ -25,7 +25,11 @@ With patch 019 applied:
   - Thinking mode: **FAIL** — model emits endless `"15*17 = 15*17 = 15*17 = ..."` loops regardless of KV dtype (fp8_e4m3 → `_4_4_4` garbage; auto/bf16 → coherent-but-looped thinking). Classic recurrent-state-corruption symptom, the same one flagged in `feedback_deltanet_must_stay_bf16.md`.
   - Vision: not testable while thinking is broken (model defaults to thinking on the vision prompt).
 
-Hypothesis: R9700's calibration ignore list handles their linear_attn layout correctly for ROCm execution, but NVIDIA's `linear_attn_backend='triton'` kernel may accumulate numerical error differently, or the shared_expert_gate / in_proj_ba projections that R9700's `convert_moe_ct_to_awq.py` specifically calls out (output dim not divisible by 8) are being quantized differently here. Next step: either self-calibrate 35B on 3090 hardware (same `thinking_vision` recipe as 27B, ~10h CPU) or diff R9700's patch 009 (`qwen35-moe-causalLM`) against our qwen3_5 loader.
+Hypothesis: R9700's calibration ignore list handles their linear_attn layout correctly for ROCm execution, but NVIDIA's `linear_attn_backend='triton'` kernel may accumulate numerical error differently, or the shared_expert_gate / in_proj_ba projections that R9700's `convert_moe_ct_to_awq.py` specifically calls out (output dim not divisible by 8) are being quantized differently here.
+
+**Additional finding on R9700's 35B calibration ignore list (101 entries):** DeltaNet `in_proj_a/b` on 30 layers (correct), MoE `mlp.gate` on 40 layers (correct), `lm_head` (correct) — but **zero entries covering the vision tower** (no `model.visual.*` patterns). Our working Qwen3.6-27B-CT has all `model.visual.blocks.*` explicitly in its ignore list keeping them BF16. R9700's 35B appears to have INT4-quantized the vision tower, which is likely fine for text/thinking (the loop we see) but would corrupt vision outputs if we got there. Text-first root cause remains the primary blocker; vision tower would need re-preservation in any self-calibration.
+
+Next step: either self-calibrate 35B on 3090 hardware (Qwen3.6-27B-style recipe + vision-tower preservation, ~13h CPU, ~70 GB BF16 download first) or probe NVIDIA-specific `Qwen3_5MoeForConditionalGeneration` path with a tiny prompt + layerwise hidden-state dump.
 
 ## Active work (short list)
 
