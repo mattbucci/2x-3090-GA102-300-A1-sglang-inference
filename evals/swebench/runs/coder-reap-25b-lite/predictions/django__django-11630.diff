@@ -1,0 +1,59 @@
+diff --git a/django/core/checks/model_checks.py b/django/core/checks/model_checks.py
+index 5c2266ca1d..121a9c9ff4 100644
+--- a/django/core/checks/model_checks.py
++++ b/django/core/checks/model_checks.py
+@@ -4,6 +4,7 @@ from collections import defaultdict
+ from itertools import chain
+ 
+ from django.apps import apps
++from django.conf import settings
+ from django.core.checks import Error, Tags, register
+ 
+ 
+@@ -37,14 +38,26 @@ def check_all_models(app_configs=None, **kwargs):
+             constraints[model_constraint.name].append(model._meta.label)
+     for db_table, model_labels in db_table_models.items():
+         if len(model_labels) != 1:
+-            errors.append(
+-                Error(
+-                    "db_table '%s' is used by multiple models: %s."
+-                    % (db_table, ', '.join(db_table_models[db_table])),
+-                    obj=db_table,
+-                    id='models.E028',
++            # If DATABASE_ROUTERS is configured, this might be valid - make it a warning
++            if settings.DATABASE_ROUTERS:
++                from django.core.checks import Warning
++                errors.append(
++                    Warning(
++                        "db_table '%s' is used by multiple models: %s."
++                        % (db_table, ', '.join(db_table_models[db_table])),
++                        obj=db_table,
++                        id='models.W028',
++                    )
++                )
++            else:
++                errors.append(
++                    Error(
++                        "db_table '%s' is used by multiple models: %s."
++                        % (db_table, ', '.join(db_table_models[db_table])),
++                        obj=db_table,
++                        id='models.E028',
++                    )
+                 )
+-            )
+     for index_name, model_labels in indexes.items():
+         if len(model_labels) > 1:
+             model_labels = set(model_labels)
+diff --git a/docs/ref/checks.txt b/docs/ref/checks.txt
+index 99f4e1d316..51dd501b86 100644
+--- a/docs/ref/checks.txt
++++ b/docs/ref/checks.txt
+@@ -306,6 +306,8 @@ Models
+ * **models.W027**: ``<database>`` does not support check constraints.
+ * **models.E028**: ``db_table`` ``<db_table>`` is used by multiple models:
+   ``<model list>``.
++* **models.W028**: ``db_table`` ``<db_table>`` is used by multiple models:
++  ``<model list>``. This is allowed when ``DATABASE_ROUTERS`` is configured.
+ * **models.E029**: index name ``<index>`` is not unique for model ``<model>``.
+ * **models.E030**: index name ``<index>`` is not unique amongst models:
+   ``<model list>``.

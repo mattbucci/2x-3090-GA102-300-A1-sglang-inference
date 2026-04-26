@@ -1,0 +1,36 @@
+diff --git a/astropy/wcs/wcs.py b/astropy/wcs/wcs.py
+index d3a06f2b31..176eb47e98 100644
+--- a/astropy/wcs/wcs.py
++++ b/astropy/wcs/wcs.py
+@@ -1210,6 +1210,31 @@ reduce these to 2 dimensions using the naxis kwarg.
+         A helper function to support reading either a pair of arrays
+         or a single Nx2 array.
+         """
++        
++        # Handle empty arrays gracefully
++        if len(args) == 2:
++            try:
++                xy, origin = args
++                xy = np.asarray(xy)
++                # Check if it's an empty array
++                if xy.size == 0:
++                    if self.naxis == 1 and len(xy.shape) == 1:
++                        # Return empty list for 1D case
++                        return [np.array([])]
++                    else:
++                        # Return empty array with correct shape for 2+D case
++                        return np.array([]).reshape(0, self.naxis)
++            except Exception:
++                pass
++        
++        elif len(args) == self.naxis + 1:
++            axes = args[:-1]
++            # Check if all axes are empty
++            if all(len(np.asarray(ax)) == 0 for ax in axes):
++                if self.naxis == 1:
++                    return [np.array([])]
++                else:
++                    return [np.array([]) for _ in range(self.naxis)]
+ 
+         def _return_list_of_arrays(axes, origin):
+             try:

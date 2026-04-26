@@ -91,7 +91,8 @@ apply_preset() {
         coder-reap-25b)
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ}"
             QUANT="awq_marlin"
-            CTX=65536; MEM=0.90; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
+            CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
+            CUDA_GRAPH="--cuda-graph-max-bs 1"
             EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
             ;;
         gemma4)

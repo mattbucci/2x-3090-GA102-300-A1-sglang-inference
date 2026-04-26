@@ -1,0 +1,27 @@
+# command
+opencode run --dir /tmp/swebench-work/django__django-11283 --model sglang/coder-reap-25b --format json --dangerously-skip-permissions <PROMPT>
+# elapsed 8.4s
+# returncode 0
+# stdout
+{"type":"step_start","timestamp":1777195931773,"sessionID":"ses_236de2f88ffelF7vZL1234ktuo","part":{"id":"prt_dc921d87a001bxsE7IavXPYb7y","messageID":"msg_dc921d0cc0019n22dalP2wpcsM","sessionID":"ses_236de2f88ffelF7vZL1234ktuo","snapshot":"71d15fdb784d9ded9ba1d49f3a39f1cf39590674","type":"step-start"}}
+
+# stderr
+============================================================
+Bun v1.3.13 (bf2e2cec) Linux x64 (baseline)
+Linux Kernel v6.19.11 | glibc v2.43
+CPU: sse42 popcnt avx avx2 avx512
+Args: "/home/letsrtfm/.npm-global/lib/node_modules/opencode-ai/bin/.opencode" "--user-agent=opencode/1.14.25" "--use-system-ca" "--" "run" "--dir" "/tmp/swebench-work/django__django-11283" "--model" "sglang/coder-reap-25b" "--form"...
+Features: Bun.stderr(2) Bun.stdin(2) Bun.stdout(2) fetch(3) jsc spawn(16) standalone_executable napi_module_register process_dlopen 
+Builtins: "bun:ffi" "bun:main" "bun:sqlite" "node:assert" "node:async_hooks" "node:buffer" "node:child_process" "node:console" "node:crypto" "node:dns" "node:events" "node:fs" "node:fs/promises" "node:http" "node:https" "node:module" "node:net" "node:os" "node:path" "node:process" "node:querystring" "node:readline" "node:stream" "node:stream/consumers" "node:stream/promises" "node:string_decoder" "node:timers" "node:timers/promises" "node:tls" "node:tty" "node:url" "node:util" "undici" "ws" "node:v8" "node:http2" "node:diagnostics_channel" "node:dgram" 
+Elapsed: 2755ms | User: 1262ms | Sys: 183ms
+RSS: 84.02MB | Peak: 0.36GB | Commit: 84.02MB | Faults: 0 | Machine: 0.10TB
+
+panic(main thread): Segmentation fault at address 0x0
+oh no: Bun has crashed. This indicates a bug in Bun, not your code.
+
+To send a redacted crash report to Bun's team,
+please file a GitHub issue using the link below:
+
+ https://bun.report/1.3.13/Ba1bf2e2cemgGugogC4vyi7E+sxPy8zhtF4lootF60iwtFyinotF6o8xnEqvzj+Cuuhi+Cwksh9C45m5rEyg+q8Cy4+n2Cmj1n2Cgs7Jw/7J6iyn2CA2AA
+
+

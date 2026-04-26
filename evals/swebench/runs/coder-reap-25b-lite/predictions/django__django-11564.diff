@@ -1,0 +1,52 @@
+diff --git a/django/contrib/staticfiles/storage.py b/django/contrib/staticfiles/storage.py
+index ba3b62620d..1c591341ef 100644
+--- a/django/contrib/staticfiles/storage.py
++++ b/django/contrib/staticfiles/storage.py
+@@ -36,10 +36,22 @@ class StaticFilesStorage(FileSystemStorage):
+     def path(self, name):
+         if not self.location:
+             raise ImproperlyConfigured("You're using the staticfiles app "
+-                                       "without having set the STATIC_ROOT "
+-                                       "setting to a filesystem path.")
++                                        "without having set the STATIC_ROOT "
++                                        "setting to a filesystem path.")
+         return super().path(name)
+ 
++    def url(self, name):
++        # Respect SCRIPT_NAME for relative URLs
++        from django.urls import get_script_prefix
++        url = super().url(name)
++        # Only modify URL if it's a relative path starting with /
++        if url.startswith('/'):
++            script_prefix = get_script_prefix()
++            # If we have a script prefix that's not already in the URL, prepend it
++            if script_prefix != '/' and not url.startswith(script_prefix):
++                url = script_prefix.rstrip('/') + url
++        return url
++
+ 
+ class HashedFilesMixin:
+     default_template = """url("%s")"""
+diff --git a/django/templatetags/static.py b/django/templatetags/static.py
+index 39712aaba0..e67d3265cd 100644
+--- a/django/templatetags/static.py
++++ b/django/templatetags/static.py
+@@ -117,7 +117,17 @@ class StaticNode(template.Node):
+             from django.contrib.staticfiles.storage import staticfiles_storage
+             return staticfiles_storage.url(path)
+         else:
+-            return urljoin(PrefixNode.handle_simple("STATIC_URL"), quote(path))
++            # Respect SCRIPT_NAME for relative URLs
++            from django.urls import get_script_prefix
++            from django.utils.encoding import iri_to_uri
++            static_url = PrefixNode.handle_simple("STATIC_URL")
++            # If static_url is a relative path (starts with /), prepend script prefix
++            if static_url.startswith('/'):
++                script_prefix = get_script_prefix()
++                # Only prepend if static_url doesn't already start with the script prefix
++                if not static_url.startswith(script_prefix):
++                    static_url = script_prefix.rstrip('/') + static_url
++            return urljoin(static_url, quote(path))
+ 
+     @classmethod
+     def handle_token(cls, parser, token):

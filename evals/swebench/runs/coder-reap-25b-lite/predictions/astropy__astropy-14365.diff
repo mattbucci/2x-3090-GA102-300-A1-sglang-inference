@@ -1,0 +1,310 @@
+diff --git a/analyze_issue.py b/analyze_issue.py
+new file mode 100644
+index 0000000000..5a16dac105
+--- /dev/null
++++ b/analyze_issue.py
+@@ -0,0 +1,79 @@
++#!/usr/bin/env python
++"""
++Analyze what the issue might be about based on the code inspection.
++"""
++
++# Let's look at what the correct command pattern should be
++import re
++
++def analyze_qdp_patterns():
++    print("=== ANALYZING QDP PATTERN ISSUES ===")
++    
++    # Current buggy patterns from qdp.py
++    _decimal_re = r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?"
++    _command_re_buggy = r"[Rr][Ee][Aa][Dd] [Tt][Ss][Ee][Rr][Rr](\s+[0-9]+)+"
++    sep = r"\s+"
++    _new_re = rf"NO({sep}NO)+"
++    _data_re_buggy = rf"({_decimal_re}|NO|[-+]?nan)({sep}({_decimal_re}|NO|[-+]?nan))*)"
++    _type_re_buggy = rf"^\s*((?P<command>{_command_re_buggy})|(?P<new>{_new_re})|(?P<data>{_data_re_buggy})?\s*(\!(?P<comment>.*))?\s*$"
++    
++    # What it SHOULD be according to standard QDP format
++    _command_re_correct = r"[Rr][Ee][Aa][Dd] [Ss][Ee][Rr][Rr](\s+[0-9]+)+"
++    _data_re_correct = rf"({_decimal_re}|NO|[-+]?nan)({sep}({_decimal_re}|NO|[-+]?nan))*"
++    _type_re_correct = rf"^\s*((?P<command>{_command_re_correct})|(?P<new>{_new_re})|(?P<data>{_data_re_correct})?\s*(\!(?P<comment>.*))?\s*$"
++    
++    print("Buggy patterns:")
++    print(f"_command_re: {_command_re_buggy}")
++    print(f"_data_re: {_data_re_buggy}")
++    print(f"_type_re: {_type_re_buggy}")
++    print()
++    print("Corrected patterns:")
++    print(f"_command_re: {_command_re_correct}")
++    print(f"_data_re: {_data_re_correct}")
++    print(f"_type_re: {_type_re_correct}")
++    print()
++    
++    # Test with correct patterns
++    print("=== TESTING WITH CORRECTED PATTERNS ===")
++    
++    # Compile corrected regex
++    _line_type_re_correct = re.compile(_type_re_correct)
++    
++    # Test cases
++    test_cases = [
++        "READ SERR 3",
++        "read serr 1", 
++        "! comment here",
++        "21345.45",
++        "21345.45 1.53e-3 1e-3 .04 NO nan",
++        "NO NO NO NO NO",
++        "   ",
++        "21345.45,1.53e-3,1e-3,.04,NO,nan"
++    ]
++    
++    for line in test_cases:
++        line_stripped = line.strip()
++        if not line_stripped:
++            result = "comment"
++        else:
++            match = _line_type_re_correct.match(line)
++            if match is None:
++                result = f"ERROR - No match for: '{line}'"
++            else:
++                # Find which group matched
++                matched_groups = {k: v for k, v in match.groupdict().items() if v is not None}
++                if 'data' in matched_groups:
++                    # For data lines, count columns
++                    parts = line_stripped.split()
++                    result = f"data,{len(parts)}"
++                else:
++                    # Find which type it matched
++                    for key, value in matched_groups.items():
++                        if value is not None:
++                            result = key
++                            break
++        
++        print(f"'{line}' -> {result}")
++
++if __name__ == "__main__":
++    analyze_qdp_patterns()
+diff --git a/astropy/io/ascii/qdp.py b/astropy/io/ascii/qdp.py
+index 83a4f004aa..3ee3015b2e 100644
+--- a/astropy/io/ascii/qdp.py
++++ b/astropy/io/ascii/qdp.py
+@@ -60,7 +60,7 @@ def _line_type(line, delimiter=None):
+     ValueError: Unrecognized QDP line...
+     """
+     _decimal_re = r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?"
+-    _command_re = r"READ [TS]ERR(\s+[0-9]+)+"
++    _command_re = r"[Rr][Ee][Aa][Dd] [Tt][Ss][Ee][Rr][Rr](\s+[0-9]+)+"
+ 
+     sep = delimiter
+     if delimiter is None:
+diff --git a/simple_qdp_test.py b/simple_qdp_test.py
+new file mode 100644
+index 0000000000..17c4c1141e
+--- /dev/null
++++ b/simple_qdp_test.py
+@@ -0,0 +1,66 @@
++#!/usr/bin/env python
++"""
++Simple test of QDP regex patterns to check if they can parse example from issue.
++"""
++
++import re
++
++def test_regex_patterns():
++    """Test the regex patterns used in qdp.py line parsing"""
++    
++    # These are the exact regex patterns from the qdp.py file
++    _decimal_re = r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?"
++    _command_re = r"[Rr][Ee][Aa][Dd] [Tt][Ss][Ee][Rr][Rr](\s+[0-9]+)+"
++    sep = r"\s+"
++    _new_re = rf"NO({sep}NO)+"
++    _data_re = rf"({_decimal_re}|NO|[-+]?nan)({sep}({_decimal_re}|NO|[-+]?nan))*)"
++    _type_re = rf"^\s*((?P<command>{_command_re})|(?P<new>{_new_re})|(?P<data>{_data_re})?\s*(\!(?P<comment>.*))?\s*$"
++    
++    print("Regex patterns:")
++    print(f"_decimal_re: {_decimal_re}")
++    print(f"_command_re: {_command_re}")  
++    print(f"_new_re: {_new_re}")
++    print(f"_data_re: {_data_re}")
++    print(f"_type_re: {_type_re}")
++    
++    # Compile the regex
++    _line_type_re = re.compile(_type_re)
++    
++    # Test cases that should work based on the issue description
++    test_cases = [
++        "READ SERR 3",
++        "! some comment", 
++        "21345.45",
++        "21345.45 1.53e-3 1e-3 .04 NO nan",
++        "NO NO NO NO NO",
++        "   ",
++        "21345.45,1.53e-3,1e-3,.04,NO,nan"
++    ]
++    
++    print("\nTesting regex matching:")
++    for line in test_cases:
++        line_stripped = line.strip()
++        if not line_stripped:
++            result = "comment"
++        else:
++            match = _line_type_re.match(line)
++            if match is None:
++                result = f"ERROR - No match for: '{line}'"
++            else:
++                # Find which group matched
++                matched_groups = {k: v for k, v in match.groupdict().items() if v is not None}
++                if 'data' in matched_groups:
++                    # For data lines, count columns
++                    parts = line_stripped.split()
++                    result = f"data,{len(parts)}"
++                else:
++                    # Find which type it matched
++                    for key, value in matched_groups.items():
++                        if value is not None:
++                            result = key
++                            break
++        
++        print(f"'{line}' -> {result}")
++
++if __name__ == "__main__":
++    test_regex_patterns()
+diff --git a/test.qdp b/test.qdp
+new file mode 100644
+index 0000000000..4d2b41b1bf
+--- /dev/null
++++ b/test.qdp
+@@ -0,0 +1,2 @@
++read serr 1 2 
++1 0.5 1 0.5
+\ No newline at end of file
+diff --git a/test_qdp_parsing.py b/test_qdp_parsing.py
+new file mode 100644
+index 0000000000..48665b57b3
+--- /dev/null
++++ b/test_qdp_parsing.py
+@@ -0,0 +1,125 @@
++#!/usr/bin/env python
++"""
++Test script to verify qdp.py file can parse examples from issue description.
++"""
++
++import sys
++import os
++
++# Add the astropy package to path
++sys.path.insert(0, '/tmp/swebench-work/astropy__astropy-14365')
++
++from astropy.io.ascii.qdp import _line_type, _get_type_from_list_of_lines, _read_table_qdp
++from astropy.table import Table
++import numpy as np
++
++
++def test_line_parsing():
++    """Test parsing of individual lines"""
++    print("Testing line type parsing...")
++    
++    # Test various types of lines
++    test_lines = [
++        "READ SERR 3",
++        "! some comment",
++        "   ",
++        "21345.45",
++        "21345.45 1.53e-3 1e-3 .04 NO nan",
++        "NO NO NO NO NO",
++        "21345.45,1.53e-3,1e-3,.04,NO,nan"
++    ]
++    
++    for line in test_lines:
++        try:
++            result = _line_type(line)
++            print(f"Line: '{line}' -> {result}")
++        except Exception as e:
++            print(f"Line: '{line}' -> ERROR: {e}")
++
++
++def test_full_parsing():
++    """Test full table parsing with example from docs"""
++    print("\nTesting full table parsing...")
++    
++    # This is the example from the docstring
++    example_qdp = """
++    ! Initial comment line 1
++    ! Initial comment line 2
++    READ TERR 1
++    READ SERR 3
++    ! Table 0 comment
++    !a a(pos) a(neg) b c ce d
++    53000.5   0.25  -0.5   1  1.5  3.5 2
++    54000.5   1.25  -1.5   2  2.5  4.5 3
++    NO NO NO NO NO
++    ! Table 1 comment
++    !a a(pos) a(neg) b c ce d
++    54000.5   2.25  -2.5   NO  3.5  5.5 5
++    55000.5   3.25  -3.5   4  4.5  6.5 nan
++    """
++    
++    try:
++        # Try to read using the function directly
++        tables = _read_table_qdp(example_qdp, names=["a", "b", "c", "d"], table_id=1)
++        print("SUCCESS: Parsed table with 2 rows")
++        print(f"Table columns: {tables.colnames}")
++        print(f"Table data shape: {tables.shape}")
++        
++        # Check specific values
++        print(f"First row 'a' column: {tables['a'][0]}")
++        print(f"Second row 'd' column: {tables['d'][1]}")
++        return True
++        
++    except Exception as e:
++        print(f"ERROR: Failed to parse table: {e}")
++        import traceback
++        traceback.print_exc()
++        return False
++
++
++def test_with_comma_delimiter():
++    """Test parsing with comma delimiter"""
++    print("\nTesting comma-delimited parsing...")
++    
++    example_qdp = """
++    ! Initial comment line 1
++    ! Initial comment line 2
++    READ TERR 1
++    READ SERR 3
++    ! Table 0 comment
++    !a,a(pos),a(neg),b,c,ce,d
++    53000.5,0.25,-0.5,1,1.5,3.5,2
++    54000.5,1.25,-1.5,2,2.5,4.5,3
++    NO,NO,NO,NO,NO,NO,NO
++    ! Table 1 comment
++    !a,a(pos),a(neg),b,c,ce,d
++    54000.5,2.25,-2.5,NO,3.5,5.5,5
++    55000.5,3.25,-3.5,4,4.5,6.5,nan
++    """
++    
++    try:
++        # Try to read using the function directly with comma delimiter
++        tables = _read_table_qdp(example_qdp, names=["a", "b", "c", "d"], table_id=1, delimiter=",")
++        print("SUCCESS: Parsed comma-delimited table with 2 rows")
++        print(f"Table columns: {tables.colnames}")
++        print(f"Table data shape: {tables.shape}")
++        return True
++        
++    except Exception as e:
++        print(f"ERROR: Failed to parse comma-delimited table: {e}")
++        import traceback
++        traceback.print_exc()
++        return False
++
++
++if __name__ == "__main__":
++    print("Testing QDP parser functionality...")
++    
++    test_line_parsing()
++    success1 = test_full_parsing()
++    success2 = test_with_comma_delimiter()
++    
++    if success1 and success2:
++        print("\n✓ All tests passed - qdp.py can properly parse examples")
++    else:
++        print("\n✗ Some tests failed")

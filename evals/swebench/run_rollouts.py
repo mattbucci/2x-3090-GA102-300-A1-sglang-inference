@@ -48,7 +48,55 @@ def parse_args():
                    help="Where to clone task repos")
     p.add_argument("--skip-existing", action="store_true",
                    help="Skip instances that already have a prediction")
+    p.add_argument("--server-url", default="http://127.0.0.1:23334",
+                   help="SGLang server base URL (used for preflight)")
+    p.add_argument("--served-name", default=None,
+                   help="Served model name on the server (defaults to model id after slash)")
+    p.add_argument("--max-empty-streak", type=int, default=10,
+                   help="Abort if this many consecutive instances produce empty diffs")
     return p.parse_args()
+
+
+def preflight_canary(server_url: str, served_name: str) -> tuple[bool, str]:
+    """Send a chat request that mimics opencode's wire format — assistant turn
+    with prior tool_calls (arguments as JSON string per OpenAI spec) — to catch
+    chat-template bugs BEFORE burning hours on rollouts.
+    """
+    import urllib.request
+    payload = {
+        "model": served_name,
+        "messages": [
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "",
+             "tool_calls": [{"id": "1", "type": "function",
+                             "function": {"name": "glob",
+                                          "arguments": '{"pattern": "**/*.py"}'}}]},
+            {"role": "tool", "tool_call_id": "1", "content": "a.py\nb.py"},
+            {"role": "user", "content": "continue"},
+        ],
+        "max_tokens": 30,
+        "temperature": 0.0,
+    }
+    req = urllib.request.Request(
+        f"{server_url}/v1/chat/completions",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            body = json.loads(r.read())
+            if "choices" in body and body["choices"]:
+                content = body["choices"][0]["message"].get("content") or ""
+                return True, f"OK ({len(content)}B content)"
+            return False, f"unexpected response: {body!r}"
+    except urllib.error.HTTPError as e:
+        try:
+            err = json.loads(e.read())["message"]
+        except Exception:
+            err = str(e)
+        return False, f"{e.code}: {err}"
+    except Exception as e:
+        return False, f"{type(e).__name__}: {e}"
 
 
 def load_dataset(dataset_id: str, split: str):
@@ -141,6 +189,15 @@ def capture_diff(repo_dir: Path) -> str:
 def main():
     args = parse_args()
 
+    served = args.served_name or args.model.split("/", 1)[-1]
+    print(f"Preflight: canary chat completion against {args.server_url} (model={served})...", flush=True)
+    ok, info = preflight_canary(args.server_url, served)
+    if not ok:
+        print(f"  PREFLIGHT FAILED: {info}", flush=True)
+        print(f"  refusing to start rollout — fix the server / chat template first", flush=True)
+        sys.exit(2)
+    print(f"  preflight {info}", flush=True)
+
     out = Path(args.out)
     (out / "predictions").mkdir(parents=True, exist_ok=True)
     (out / "logs").mkdir(parents=True, exist_ok=True)
@@ -167,6 +224,7 @@ def main():
             except Exception:
                 pass
 
+    empty_streak = 0
     with predictions_path.open("a") as fp:
         for i, row in enumerate(ds):
             iid = row["instance_id"]
@@ -203,6 +261,15 @@ def main():
 
             non_empty = "yes" if diff.strip() else "EMPTY"
             print(f"  done rc={rc} elapsed={entry['rollout_seconds']}s diff={non_empty} ({len(diff)}B)", flush=True)
+
+            if diff.strip():
+                empty_streak = 0
+            else:
+                empty_streak += 1
+                if empty_streak >= args.max_empty_streak:
+                    print(f"\nABORT: {empty_streak} consecutive empty diffs — likely a server/template/permissions regression. "
+                          f"Re-run preflight before resuming.", flush=True)
+                    sys.exit(3)
 
 
 if __name__ == "__main__":

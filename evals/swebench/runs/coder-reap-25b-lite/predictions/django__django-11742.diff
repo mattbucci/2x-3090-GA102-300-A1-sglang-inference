@@ -1,0 +1,87 @@
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index 9ce46e3f73..9b0c78c8ad 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -202,6 +202,7 @@ class Field(RegisterLookupMixin):
+         return [
+             *self._check_field_name(),
+             *self._check_choices(),
++            *self._check_max_length_for_choices(),
+             *self._check_db_index(),
+             *self._check_null_allowed_for_primary_keys(),
+             *self._check_backend_specific_checks(**kwargs),
+@@ -291,6 +292,46 @@ class Field(RegisterLookupMixin):
+             )
+         ]
+ 
++    def _check_max_length_for_choices(self):
++        """
++        Check that max_length is sufficient for the longest choice value.
++        This prevents errors when trying to save records with values that are too long.
++        """
++        if not self.choices or self.max_length is None:
++            return []
++        
++        # Find the longest choice value (not the display name)
++        longest_choice_length = 0
++        for choice in self.choices:
++            if isinstance(choice, (list, tuple)) and len(choice) >= 2:
++                # Handle grouped choices like [('group', [(val, disp), ...]), ...]
++                if len(choice) == 2 and isinstance(choice[1], (list, tuple)):
++                    # It's a group - check each item in the group
++                    for sub_choice in choice[1]:
++                        if isinstance(sub_choice, (list, tuple)) and len(sub_choice) >= 2:
++                            choice_value = sub_choice[0]
++                            longest_choice_length = max(longest_choice_length, len(str(choice_value)))
++                else:
++                    # Regular choice format: (value, display)
++                    choice_value = choice[0]
++                    longest_choice_length = max(longest_choice_length, len(str(choice_value)))
++            else:
++                # Simple choice format: ['value1', 'value2', ...]
++                choice_value = choice
++                longest_choice_length = max(longest_choice_length, len(str(choice_value)))
++        
++        # If max_length is less than the longest choice, it's insufficient
++        if longest_choice_length > self.max_length:
++            return [
++                checks.Error(
++                    "max_length must be at least %d to accommodate the longest choice value. "
++                    "Current max_length is %d." % (longest_choice_length, self.max_length),
++                    obj=self,
++                    id='fields.E180',
++                )
++            ]
++        return []
++
+     def _check_db_index(self):
+         if self.db_index not in (None, True, False):
+             return [
+diff --git a/tests/model_fields/test_charfield.py b/tests/model_fields/test_charfield.py
+index 051be2eeec..b1324928b7 100644
+--- a/tests/model_fields/test_charfield.py
++++ b/tests/model_fields/test_charfield.py
+@@ -80,3 +80,23 @@ class ValidationTests(SimpleTestCase):
+         f = models.CharField(null=False)
+         with self.assertRaises(ValidationError):
+             f.clean(None, None)
++
++    def test_charfield_with_insufficient_max_length_for_choices(self):
++        """
++        Test that CharField raises an error when max_length is too small for choices.
++        """
++        # This should raise an error because 'very_long_choice_value' is longer than max_length=5
++        from django.core.checks import Error
++        f = models.CharField(max_length=5, choices=[('short', 'Short'), ('very_long_choice_value', 'Very Long')])
++        errors = f.check()
++        # Should have at least one error about max_length being insufficient
++        self.assertTrue(any('E180' in str(error) for error in errors))
++        
++    def test_charfield_with_sufficient_max_length_for_choices(self):
++        """
++        Test that CharField doesn't raise an error when max_length is sufficient.
++        """
++        f = models.CharField(max_length=25, choices=[('short', 'Short'), ('very_long_choice_value', 'Very Long')])
++        errors = f.check()
++        # Should not have any errors about max_length
++        self.assertFalse(any('E180' in str(error) for error in errors))

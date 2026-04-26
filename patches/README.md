@@ -111,6 +111,28 @@ First successful vision-preserving self-calibration. Recipe: `thinking_vision`, 
 ### Qwen3.5-28B REAP thinking recalibration — cancelled 2026-04-19
 v1 died at layer 13/41 on harness restart (lost 7h 45min — this is where the `setsid` detach rule came from). v2 killed at layer 1/41 because R9700 shipped a working thinking-preserving Qwen3.5-27B-AWQ v2 (`mattbucci/Qwen3.5-27B-AWQ-4bit-calibrated`, basic FAIL→PASS) and Qwen3.6-35B-A3B GPTQ passes the thinking validator on both rigs — the regression this was fixing is superseded by switching long-ctx thinking workloads to `qwen36` or `qwen3-ream`. May be re-opened once we have free calibration cycles + the upgraded `thinking_vision_video_audio` recipe R9700 shipped after v2 started.
 
+### Coder-REAP-25B-A3B AWQ — shipped 2026-04-25
+Cerebras's REAP prune of Coder-30B (103 routed experts vs 128). First boot hung at CUDA-graph capture; `--disable-piecewise-cuda-graph` cleared it. Validator basic PASS, code probes (Fibonacci, lambda) compile clean. R9700's HF upload `mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ` serves directly — no calibration burn. Preset `coder-reap-25b` in `scripts/launch.sh`. Currently being benched on SWE-bench Lite as the first SWE-bench eval candidate.
+
+### Qwen3-VL-30B MoE AWQ self-calibration — closed 2026-04-25 (loader bug, not calibration)
+Three calibration attempts (10.9h v1 + 1.5h v2 smoke + 1.3h v3 smoke) all produced identical multilingual garbage (`各项工作` repetition). v3 used the EXACT pattern R9700 ships successfully for Qwen3MoE / Coder-30B-A3B (`SequentialQwen3VLMoeTextExperts` registered for `Qwen3VLMoeTextExperts`, parent `Qwen3VLMoeTextSparseMoeBlock.forward` untouched). Same failure → calibration is fine; **SGLang's `Qwen3VLMoeForConditionalGeneration` loader is broken on both CT and AWQ output**. The community vLLM AWQ for this class produces the same garbage — broken layer is on load/serve side. To unblock: trace `load_weights` for missing weight or shape mismatch, or wait for upstream SGLang fix. Vendored llmcompressor pattern at `components/llmcompressor/` (commit `30845208`) is REUSABLE for any future Qwen3MoE/Qwen3VLMoe calibration on this stack.
+
+### Calibration ignore-list audit — closed 2026-04-25
+After R9700 flagged a `shared_experts` plural typo, swept all our self-calibrated checkpoints. Findings:
+- Qwen3-VL-32B-CT (117 entries): vision blocks preserved ✓
+- Qwen3.6-27B-CT (207 entries): vision blocks preserved ✓
+- gemma-4-26B-A4B-it-AWQ-4bit (312 entries): per-layer `mlp.gate_proj` + `router.proj` + vision tower preserved ✓
+- gemma-4-21b-REAP-AWQ-thinking-vision (0 entries): empty `ignore=[]`, everything went INT4. Re-cal v2 with explicit ignore list completed 2026-04-25; output still broken (clippable_linear shim suspected, see Gemma 4 entry in main README).
+
+### R9700 cross-team thread — Qwen3.6-35B-A3B AWQ-native upload + audit fixes (2026-04-24/25)
+- R9700 published `mattbucci/Qwen3.6-35B-A3B-AWQ-native-thinking-vision` (19 GB, 10 files) so 3090 users skip the CT→AWQ conversion. R9700 numbers: 21.6 tok/s short / 20.6 @131K flat (ROCm triton moe_wna16). Our 33 short / 2.6 @250K curve on Ampere is +55% short / 8x worse @250K — flashinfer asymmetry, not quant.
+- HF upload lesson: plain `hf upload <repo> <dir>` completed the 19 GB push in ~1 minute after `hf upload-large-folder` stalled 11h at `committed: 0/9` (XET worker deadlock). Plain upload for ≤25 GB; large-folder only past 50 GB.
+- R9700 fixed: `convert_moe_ct_to_awq.py` now copies `quantization_config.ignore` through (one-line); patched 4 affected HF configs in place.
+- R9700 corrected the "native AWQ required for NVIDIA" framing to "required for NVIDIA on SGLang" (vLLM/autoawq/TGI handle CT correctly). Both CT model cards now ship a per-stack recommendation table.
+- R9700 fixed `gemma-4-31B-it-AutoRound-AWQ` arch field to `Gemma4ForConditionalGeneration` so the multimodal loader engages.
+- R9700 confirmed `mattbucci/gemma-4-26B-AWQ` serves clean text + thinking on RDNA4 → strongly implicates our `clippable_linear` shim as the bug for Gemma 4 generation on 3090 (vision crashes for separate SWA reasons there). Two diagnostic suggestions: (a) `git grep -n soft_cap` in upstream Gemma 4 model code to find the actual clip op, then check whether our shim path bypasses it; (b) A/B with `EXTRA_ARGS="--attention-backend torch_native"` to rule out attention-kernel involvement.
+- R9700 advice on the 35B long-ctx regression: patch 011 (FP32 online-softmax accumulation) might port via `--attention-backend triton` + the patch — same bug class hit RDNA4 and Blackwell; flashinfer probably already does FP32 internally so this is an A/B worth running.
+
 ---
 
 ## Cross-team findings (3090 ⟷ R9700)

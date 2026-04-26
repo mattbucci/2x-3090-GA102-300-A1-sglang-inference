@@ -1,0 +1,32 @@
+diff --git a/django/utils/autoreload.py b/django/utils/autoreload.py
+index 7ca0d68fae..1eeb7f177d 100644
+--- a/django/utils/autoreload.py
++++ b/django/utils/autoreload.py
+@@ -114,12 +114,22 @@ def iter_modules_and_files(modules, extra_files):
+         # During debugging (with PyDev) the 'typing.io' and 'typing.re' objects
+         # are added to sys.modules, however they are types not modules and so
+         # cause issues here.
+-        if not isinstance(module, ModuleType) or getattr(module, '__spec__', None) is None:
++        if not isinstance(module, ModuleType):
+             continue
+-        spec = module.__spec__
+-        # Modules could be loaded from places without a concrete location. If
+-        # this is the case, skip them.
+-        if spec.has_location:
++        spec = getattr(module, '__spec__', None)
++        # Handle modules where __spec__ is None (e.g., __main__ for manage.py)
++        # These modules still have a file location we want to watch.
++        if spec is None:
++            # Check if this is a special case like __main__ which may have a filename
++            try:
++                # For modules with __spec__ = None, check if they have a __file__ attribute
++                # This handles the case of manage.py which gets loaded as __main__
++                if hasattr(module, '__file__') and module.__file__:
++                    sys_file_paths.append(module.__file__)
++            except Exception:
++                # If we can't get the file path, skip this module
++                continue
++        elif spec.has_location:
+             origin = spec.loader.archive if isinstance(spec.loader, zipimporter) else spec.origin
+             sys_file_paths.append(origin)
+ 

@@ -1,0 +1,20 @@
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index 0c64748ccd..484beacf96 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -1688,6 +1688,7 @@ class FilePathField(Field):
+     def deconstruct(self):
+         name, path, args, kwargs = super().deconstruct()
+         if self.path != '':
++            # Handle callable paths by storing them as-is for serialization
+             kwargs['path'] = self.path
+         if self.match is not None:
+             kwargs['match'] = self.match
+@@ -1708,6 +1709,7 @@ class FilePathField(Field):
+         return str(value)
+ 
+     def formfield(self, **kwargs):
++        # If path is callable, we should pass it through so that form can handle it
+         return super().formfield(**{
+             'path': self.path,
+             'match': self.match,
