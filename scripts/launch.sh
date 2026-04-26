@@ -88,6 +88,12 @@ apply_preset() {
             QUANT="awq_marlin"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             ;;
+        coder-reap-25b)
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ}"
+            QUANT="awq_marlin"
+            CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
+            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph"
+            ;;
         gemma4)
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-4bit}"
             REASONING="--reasoning-parser gemma4"
