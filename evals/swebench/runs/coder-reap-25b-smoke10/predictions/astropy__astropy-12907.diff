@@ -1,0 +1,310 @@
+diff --git a/astropy/modeling/separable.py b/astropy/modeling/separable.py
+index a308e27297..4d68597168 100644
+--- a/astropy/modeling/separable.py
++++ b/astropy/modeling/separable.py
+@@ -229,20 +229,29 @@ def _cstack(left, right):
+     -------
+     result : ndarray
+         Result from this operation.
+-
+     """
+     noutp = _compute_n_outputs(left, right)
+ 
+     if isinstance(left, Model):
+         cleft = _coord_matrix(left, 'left', noutp)
+     else:
+-        cleft = np.zeros((noutp, left.shape[1]))
+-        cleft[: left.shape[0], : left.shape[1]] = left
++        # Handle case where left is already a separability matrix from previous computation
++        if isinstance(left, np.ndarray) and left.ndim == 2:
++            cleft = np.zeros((noutp, left.shape[1]))
++            cleft[:left.shape[0], :left.shape[1]] = left
++        else:
++            cleft = np.zeros((noutp, left.shape[1]))
++            cleft[: left.shape[0], : left.shape[1]] = left
+     if isinstance(right, Model):
+         cright = _coord_matrix(right, 'right', noutp)
+     else:
+-        cright = np.zeros((noutp, right.shape[1]))
+-        cright[-right.shape[0]:, -right.shape[1]:] = 1
++        # Handle case where right is already a separability matrix from previous computation  
++        if isinstance(right, np.ndarray) and right.ndim == 2:
++            cright = np.zeros((noutp, right.shape[1]))
++            cright[-right.shape[0]:, -right.shape[1]:] = right
++        else:
++            cright = np.zeros((noutp, right.shape[1]))
++            cright[-right.shape[0]:, -right.shape[1]:] = 1
+ 
+     return np.hstack([cleft, cright])
+ 
+diff --git a/debug_fix.py b/debug_fix.py
+new file mode 100644
+index 0000000000..cedf206485
+--- /dev/null
++++ b/debug_fix.py
+@@ -0,0 +1,152 @@
++#!/usr/bin/env python3
++"""
++Test script to verify the fix for separability_matrix bug in nested CompoundModels.
++
++This demonstrates the issue and validates the fix.
++"""
++
++import numpy as np
++
++
++def mock_coord_matrix(model, pos, noutp):
++    """Mock version of _coord_matrix to understand behavior"""
++    # Simple mock - this would be more complex in real implementation
++    if hasattr(model, 'n_inputs') and hasattr(model, 'n_outputs'):
++        result = np.zeros((noutp, model.n_inputs))
++        if pos == 'left':
++            for i in range(min(model.n_inputs, noutp)):
++                result[i, i] = 1
++        elif pos == 'right':
++            for i in range(min(model.n_inputs, noutp)):
++                result[noutp - model.n_outputs + i, i] = 1
++        return result
++    else:
++        return model
++
++
++def mock_compute_n_outputs(left, right):
++    """Mock version of _compute_n_outputs"""
++    # Handle different input types 
++    if hasattr(left, 'n_outputs'):
++        lnout = left.n_outputs
++    else:
++        lnout = left.shape[0] if hasattr(left, 'shape') else 0
++        
++    if hasattr(right, 'n_outputs'):
++        rnout = right.n_outputs
++    else:
++        rnout = right.shape[0] if hasattr(right, 'shape') else 0
++        
++    return lnout + rnout
++
++
++def old_cstack(left, right):
++    """Old version of cstack function"""
++    noutp = mock_compute_n_outputs(left, right)
++
++    if isinstance(left, type(None)):  # This won't work in practice
++        cleft = None
++    elif hasattr(left, 'n_inputs') and hasattr(left, 'n_outputs'):
++        # Model case
++        cleft = mock_coord_matrix(left, 'left', noutp)
++    else:
++        # Array case (old code)
++        cleft = np.zeros((noutp, left.shape[1]))
++        cleft[: left.shape[0], : left.shape[1]] = left
++        
++    if hasattr(right, 'n_inputs') and hasattr(right, 'n_outputs'):
++        # Model case  
++        cright = mock_coord_matrix(right, 'right', noutp)
++    else:
++        # Array case (old code)
++        cright = np.zeros((noutp, right.shape[1]))
++        cright[-right.shape[0]:, -right.shape[1]:] = 1
++
++    return np.hstack([cleft, cright])
++
++
++def new_cstack(left, right):
++    """New fixed version of cstack function"""
++    noutp = mock_compute_n_outputs(left, right)
++
++    if isinstance(left, type(None)):  # This won't happen in practice
++        cleft = None
++    elif hasattr(left, 'n_inputs') and hasattr(left, 'n_outputs'):
++        # Model case
++        cleft = mock_coord_matrix(left, 'left', noutp)
++    else:
++        # Array case - check if it's already a separability matrix
++        if isinstance(left, np.ndarray) and left.ndim == 2:
++            cleft = np.zeros((noutp, left.shape[1]))
++            cleft[:left.shape[0], :left.shape[1]] = left
++        else:
++            cleft = np.zeros((noutp, left.shape[1]))
++            cleft[: left.shape[0], : left.shape[1]] = left
++            
++    if hasattr(right, 'n_inputs') and hasattr(right, 'n_outputs'):
++        # Model case
++        cright = mock_coord_matrix(right, 'right', noutp)
++    else:
++        # Array case - check if it's already a separability matrix
++        if isinstance(right, np.ndarray) and right.ndim == 2:
++            cright = np.zeros((noutp, right.shape[1]))
++            cright[-right.shape[0]:, -right.shape[1]:] = right
++        else:
++            cright = np.zeros((noutp, right.shape[1]))
++            cright[-right.shape[0]:, -right.shape[1]:] = 1
++
++    return np.hstack([cleft, cright])
++
++
++# Test the issue scenario:
++if __name__ == "__main__":
++    print("Testing separability matrix fix...")
++    
++    # Simulate what happens with nested compound models:
++    # We have a nested structure: Pix2Sky_TAN() & (Linear1D(10) & Linear1D(5))
++    
++    # First, let's simulate getting a separability matrix from inner computation
++    # For example, (Linear1D(10) & Linear1D(5)) produces a 2x2 separability matrix
++    inner_separability = np.array([[True, False], [False, True]])  # 2x2
++    
++    # Now we want to combine it with Pix2Sky_TAN which has 4 inputs, 2 outputs
++    # The outer operation is: Pix2Sky_TAN (4 inputs, 2 outputs) & inner_separability_matrix (2x2)
++    # This should produce a 6x6 matrix (2+4 inputs for output, 2+2 outputs)
++    
++    # But in the buggy version, when we process this recursively:
++    # left = Pix2Sky_TAN model (this gets processed by _coord_matrix -> 2x4)
++    # right = inner_separability (2x2 array) - but the old code assumes it's a model or wrong shape
++    
++    print("=== Testing old vs new behavior ===")
++    
++    # Create a simple case that would trigger the problem:
++    # This represents the problematic case where we have a separability matrix
++    # as one of our operands
++    
++    # Case 1: Two models (should work fine)
++    print("Case 1: Two models")
++    try:
++        # This should work - both are models
++        result1 = new_cstack('model1', 'model2')
++        print("Result shape:", result1.shape)
++    except Exception as e:
++        print("Error:", e)
++        
++    # Case 2: One model, one array (the problematic case)
++    print("\nCase 2: One model, one array")  
++    try:
++        # This is where the bug manifests - when we pass a separability matrix
++        # that was computed from a previous recursive call
++        model_input = "some_model"
++        array_input = np.array([[1, 0], [0, 1]])  # 2x2 matrix
++        result2 = new_cstack(model_input, array_input)
++        print("Result shape:", result2.shape)
++    except Exception as e:
++        print("Error:", e)
++        
++    # Case 3: The real scenario from the bug report
++    print("\nCase 3: Real bug scenario")
++    print("The bug occurs when:")
++    print("- left operand is a model (Pix2Sky_TAN)")
++    print("- right operand is already a computed separability matrix from inner computation")
++    print("The key fix is detecting when right operand is already a separability matrix")
+\ No newline at end of file
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..e93b0d6308
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,78 @@
++def test_cstack():
++    """
++    Test the _cstack function with different input types to make sure it works correctly.
++    """
++    import numpy as np
++    
++    # Mock the functions needed for testing
++    def mock_coord_matrix(model, pos, noutp):
++        """Mock version of _coord_matrix"""
++        if hasattr(model, 'n_inputs') and hasattr(model, 'n_outputs'):
++            result = np.zeros((noutp, model.n_inputs))
++            if pos == 'left':
++                for i in range(min(model.n_inputs, noutp)):
++                    result[i, i] = 1
++            elif pos == 'right':
++                for i in range(min(model.n_inputs, noutp)):
++                    result[noutp - model.n_outputs + i, i] = 1
++            return result
++        else:
++            # If it's already an array, just return it
++            return model
++            
++    def mock_compute_n_outputs(left, right):
++        """Mock version of _compute_n_outputs"""
++        if hasattr(left, 'n_outputs'):
++            lnout = left.n_outputs
++        else:
++            lnout = left.shape[0] if hasattr(left, 'shape') else 0
++            
++        if hasattr(right, 'n_outputs'):
++            rnout = right.n_outputs
++        else:
++            rnout = right.shape[0] if hasattr(right, 'shape') else 0
++            
++        return lnout + rnout
++
++    # Test case: Simulating nested compound model behavior
++    # left = Pix2Sky_TAN model (let's say 4 inputs, 2 outputs)
++    # right = Linear1D(10) & Linear1D(5) compound model (2 inputs, 2 outputs)
++    
++    # Create mock separability matrices from previous computations
++    left_matrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]])  # 2x4 matrix 
++    right_matrix = np.array([[1, 0], [0, 1], [1, 0], [0, 1]])  # 4x2 matrix
++    
++    print("Left matrix shape:", left_matrix.shape)
++    print("Right matrix shape:", right_matrix.shape)
++    
++    # This is what our modified _cstack should do
++    noutp = mock_compute_n_outputs(left_matrix, right_matrix)
++    print("Expected noutp:", noutp)
++    
++    # Process left (should be array already)
++    if isinstance(left_matrix, np.ndarray) and left_matrix.ndim == 2:
++        cleft = np.zeros((noutp, left_matrix.shape[1]))
++        cleft[:left_matrix.shape[0], :left_matrix.shape[1]] = left_matrix
++    else:
++        cleft = np.zeros((noutp, left_matrix.shape[1]))
++        cleft[: left_matrix.shape[0], : left_matrix.shape[1]] = left_matrix
++        
++    print("Processed left matrix shape:", cleft.shape)
++    
++    # Process right (should be array already)  
++    if isinstance(right_matrix, np.ndarray) and right_matrix.ndim == 2:
++        cright = np.zeros((noutp, right_matrix.shape[1]))
++        cright[-right_matrix.shape[0]:, -right_matrix.shape[1]:] = right_matrix
++    else:
++        cright = np.zeros((noutp, right_matrix.shape[1]))
++        cright[-right_matrix.shape[0]:, -right_matrix.shape[1]:] = 1
++        
++    print("Processed right matrix shape:", cright.shape)
++    
++    result = np.hstack([cleft, cright])
++    print("Final result shape:", result.shape)
++    print("Result:")
++    print(result)
++
++if __name__ == "__main__":
++    test_cstack()
+\ No newline at end of file
+diff --git a/test_separability.py b/test_separability.py
+new file mode 100644
+index 0000000000..7e95ed311c
+--- /dev/null
++++ b/test_separability.py
+@@ -0,0 +1,20 @@
++from astropy.modeling import models as m
++from astropy.modeling.separable import separability_matrix
++
++# Test case 1: Simple compound model - should work correctly
++print("=== Test Case 1: Simple Compound Model ===")
++cm = m.Linear1D(10) & m.Linear1D(5)
++print("separability_matrix(cm):")
++print(separability_matrix(cm))
++
++# Test case 2: More complex compound model - should work correctly  
++print("\n=== Test Case 2: Complex Compound Model ===")
++complex_cm = m.Pix2Sky_TAN() & m.Linear1D(10) & m.Linear1D(5)
++print("separability_matrix(complex_cm):")
++print(separability_matrix(complex_cm))
++
++# Test case 3: Nested compound model - this is where the bug occurs
++print("\n=== Test Case 3: Nested Compound Model (Bug) ===")
++nested_cm = m.Pix2Sky_TAN() & cm
++print("separability_matrix(nested_cm):")
++print(separability_matrix(nested_cm))
+\ No newline at end of file

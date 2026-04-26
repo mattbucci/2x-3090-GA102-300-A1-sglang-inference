@@ -1,0 +1,22 @@
+diff --git a/astropy/wcs/wcs.py b/astropy/wcs/wcs.py
+index d3a06f2b31..c8e8056aec 100644
+--- a/astropy/wcs/wcs.py
++++ b/astropy/wcs/wcs.py
+@@ -1212,6 +1212,17 @@ reduce these to 2 dimensions using the naxis kwarg.
+         """
+ 
+         def _return_list_of_arrays(axes, origin):
++            # Handle empty arrays case
++            if all(len(x) == 0 for x in axes):
++                # Return empty arrays with correct shapes
++                shapes = [x.shape for x in axes]
++                if ra_dec_order and sky == 'output':
++                    # For RA/DEC order, return tuple of arrays
++                    return tuple(np.array([]).reshape(shape) for shape in shapes)
++                else:
++                    # Return list of arrays
++                    return [np.array([]).reshape(shape) for shape in shapes]
++            
+             try:
+                 axes = np.broadcast_arrays(*axes)
+             except ValueError:

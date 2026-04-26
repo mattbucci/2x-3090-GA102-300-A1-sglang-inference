@@ -1,0 +1,82 @@
+diff --git a/astropy/modeling/separable.py b/astropy/modeling/separable.py
+index a308e27297..b895515d4e 100644
+--- a/astropy/modeling/separable.py
++++ b/astropy/modeling/separable.py
+@@ -229,7 +229,6 @@ def _cstack(left, right):
+     -------
+     result : ndarray
+         Result from this operation.
+-
+     """
+     noutp = _compute_n_outputs(left, right)
+ 
+@@ -238,11 +237,21 @@ def _cstack(left, right):
+     else:
+         cleft = np.zeros((noutp, left.shape[1]))
+         cleft[: left.shape[0], : left.shape[1]] = left
++        
+     if isinstance(right, Model):
+         cright = _coord_matrix(right, 'right', noutp)
+     else:
++        # When right is already a coordinate matrix (from previous processing),
++        # we need to properly align and preserve its structure
+         cright = np.zeros((noutp, right.shape[1]))
+-        cright[-right.shape[0]:, -right.shape[1]:] = 1
++        # For nested compound models, properly place existing matrix
++        if (right.shape[0] <= noutp and right.shape[1] <= noutp and 
++            right.shape[0] > 0 and right.shape[1] > 0):
++            # Copy the existing matrix values to the appropriate position
++            cright[-right.shape[0]:, -right.shape[1]:] = right
++        else:
++            # Handle edge cases gracefully
++            cright[-right.shape[0]:, -right.shape[1]:] = 1
+ 
+     return np.hstack([cleft, cright])
+ 
+diff --git a/test_separability.py b/test_separability.py
+new file mode 100644
+index 0000000000..be33d7cedd
+--- /dev/null
++++ b/test_separability.py
+@@ -0,0 +1,40 @@
++#!/usr/bin/env python
++
++from astropy.modeling import models as m
++from astropy.modeling.separable import separability_matrix
++
++print("Testing separability matrix issue...")
++
++# Create the compound model as described in the issue
++cm = m.Linear1D(10) & m.Linear1D(5)
++
++print("Simple compound model (cm):")
++print(f"n_inputs: {cm.n_inputs}")
++print(f"n_outputs: {cm.n_outputs}")
++result1 = separability_matrix(cm)
++print("Separability matrix:")
++print(result1)
++print()
++
++# Test with Pix2Sky_TAN
++print("Complex model with Pix2Sky_TAN:")
++complex_model = m.Pix2Sky_TAN() & m.Linear1D(10) & m.Linear1D(5)
++print(f"n_inputs: {complex_model.n_inputs}")
++print(f"n_outputs: {complex_model.n_outputs}")
++result2 = separability_matrix(complex_model)
++print("Separability matrix:")
++print(result2)
++print()
++
++# Test nested compound model - this is where the bug occurs
++print("Nested compound model (cm nested in complex_model):")
++nested_model = m.Pix2Sky_TAN() & cm
++print(f"n_inputs: {nested_model.n_inputs}")
++print(f"n_outputs: {nested_model.n_outputs}")
++result3 = separability_matrix(nested_model)
++print("Separability matrix:")
++print(result3)
++print()
++
++print("Expected behavior: The last matrix should be diagonal like the first one.")
++print("But it's showing dependencies between outputs which shouldn't exist.")
+\ No newline at end of file
