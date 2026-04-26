@@ -25,6 +25,7 @@ import argparse
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -160,20 +161,33 @@ def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path
     env = os.environ.copy()
     env["PATH"] = f"{Path.home()}/.npm-global/bin:{env.get('PATH','')}"
     t0 = time.time()
+    # Run in a fresh process group so SIGKILL on timeout reaps the Node spawned
+    # children too (default subprocess kill leaves them dangling — observed at
+    # instance 23 where the parent died but a child kept the rollout stalled).
+    proc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        env=env, start_new_session=True,
+    )
     try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout, env=env
-        )
+        stdout, stderr = proc.communicate(timeout=timeout)
+        rc = proc.returncode
         elapsed = time.time() - t0
         log_path.write_text(
             f"# command\n{' '.join(cmd[:-1])} <PROMPT>\n# elapsed {elapsed:.1f}s\n"
-            f"# returncode {proc.returncode}\n"
-            f"# stdout\n{proc.stdout}\n# stderr\n{proc.stderr}\n"
+            f"# returncode {rc}\n# stdout\n{stdout}\n# stderr\n{stderr}\n"
         )
-        return proc.returncode, proc.stdout, proc.stderr
-    except subprocess.TimeoutExpired as e:
-        log_path.write_text(f"# TIMEOUT after {timeout}s\n# stdout\n{e.stdout}\n# stderr\n{e.stderr}\n")
-        return 124, e.stdout or "", e.stderr or ""
+        return rc, stdout, stderr
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        try:
+            stdout, stderr = proc.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            stdout, stderr = "", ""
+        log_path.write_text(f"# TIMEOUT after {timeout}s (process group SIGKILLed)\n# stdout\n{stdout}\n# stderr\n{stderr}\n")
+        return 124, stdout or "", stderr or ""
 
 
 def capture_diff(repo_dir: Path) -> str:
