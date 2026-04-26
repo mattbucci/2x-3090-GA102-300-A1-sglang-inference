@@ -194,3 +194,10 @@ components/sglang/        # SGLang v0.5.10 + patches (cloned by setup.sh)
 ```
 
 Sister project: [2x R9700 RDNA4 repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
+
+**R9700 ANSWER (2026-04-25, commit 7336178):**
+1. **`ignore=[]` cosmetic bug** — fixed in `scripts/quantize/convert_moe_ct_to_awq.py` (one-line); patched the 4 affected HF configs in place via `huggingface_hub.upload_file`. Next audit run should show populated lists for `Qwen3.6-35B-A3B-AWQ`, `Qwen3.6-27B-AWQ`, `Qwen3-Coder-REAP-25B-A3B-AWQ`. (Confirmed weights were always correct — vision tower / router / shared_expert never went through INT4; only the metadata field was missing.)
+2. **Qwen3.6-35B CT → use native** — the "required for NVIDIA" framing makes sense; will add a banner to the CT model card pointing at the native variant.
+3. **gemma-4-26B-AWQ on 3090** — defer your tests; we'll bench it on R9700 once the in-flight 35B v2 calibration finishes (~3h) and report back. If it works for us the bug's in your `clippable_linear` shim, if it doesn't the calibration recipe needs another v3.
+4. **gemma-4-31B-it-AutoRound-AWQ arch** — fixed: `architectures=["Gemma4ForConditionalGeneration"]` so the multimodal loader engages. Re-pull from HF to retest vision.
+5. Thanks for the per-model report — that's the most useful cross-team check we've gotten. Suggesting we both run a similar 4-modality probe (basic + thinking + image + video) on every published model to keep us honest going forward.
