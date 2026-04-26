@@ -53,7 +53,7 @@ MODEL_PATH = os.environ.get(
 )
 OUTPUT_DIR = os.environ.get(
     "OUTPUT_DIR",
-    os.path.expanduser("~/AI/models/Qwen3.5-28B-A3B-REAP-CT-thinking"),
+    os.path.expanduser("~/AI/models/Qwen3.5-28B-A3B-REAP-CT-thinking-vision-video"),
 )
 NUM_SAMPLES = int(os.environ.get("NUM_SAMPLES", "256"))
 MAX_SEQ_LEN = int(os.environ.get("MAX_SEQ_LEN", "2048"))  # thinking traces are long
@@ -61,7 +61,7 @@ MAX_SEQ_LEN = int(os.environ.get("MAX_SEQ_LEN", "2048"))  # thinking traces are 
 
 print(f"Model:       {MODEL_PATH}")
 print(f"Output:      {OUTPUT_DIR}")
-print(f"Calibration: recipe=thinking_text  {NUM_SAMPLES} samples x {MAX_SEQ_LEN} tokens")
+print(f"Calibration: recipe=thinking_vision_video  {NUM_SAMPLES} samples x {MAX_SEQ_LEN} tokens")
 
 
 # ---- 1. Load BF16 model on CPU ----
@@ -139,9 +139,9 @@ del ckpt  # free RAM
 
 # ---- 3. Build thinking-aware calibration set ----
 
-print("\n[3/5] Building calibration dataset (recipe=thinking_text)...")
+print("\n[3/5] Building calibration dataset (recipe=thinking_vision_video)...")
 rows = build_calibration_dataset(
-    recipe="thinking_text",
+    recipe="thinking_vision_video",
     num_samples=NUM_SAMPLES,
     seed=42,
 )
