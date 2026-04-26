@@ -122,7 +122,23 @@ def ensure_repo(repo: str, base_commit: str, work_root: Path, instance_id: str) 
         )
 
     if inst_dir.exists():
-        shutil.rmtree(inst_dir)
+        # Rename-then-delete: rmtree on a tmpfs entry can SIGSEGV the process
+        # (observed at django__django-11797 — kernel corruption left invisible
+        # entries that ls/find skip but rmdir/rm refuse). Renaming gets the
+        # path out of the way so clone succeeds even if cleanup fails; the
+        # orphaned trash dir gets reaped on next reboot.
+        trash = inst_dir.with_name(inst_dir.name + f".trash.{int(time.time())}")
+        try:
+            inst_dir.rename(trash)
+        except OSError:
+            pass
+        try:
+            shutil.rmtree(trash, ignore_errors=True)
+        except Exception:
+            pass
+        # Belt and suspenders: if rename failed and the dir still exists, abort.
+        if inst_dir.exists():
+            raise RuntimeError(f"could not clear {inst_dir}; tmpfs corruption?")
     subprocess.run(["git", "clone", str(mirror), str(inst_dir)], check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(["git", "checkout", base_commit], cwd=inst_dir, check=True,
@@ -249,41 +265,53 @@ def main():
             print(f"[{i+1}/{len(ds)}] {iid}  repo={row['repo']}  base={row['base_commit'][:8]}", flush=True)
             t0 = time.time()
             try:
-                inst_dir = ensure_repo(row["repo"], row["base_commit"], workdir, iid)
-            except subprocess.CalledProcessError as e:
-                print(f"  CLONE FAIL: {e}", flush=True)
+                try:
+                    inst_dir = ensure_repo(row["repo"], row["base_commit"], workdir, iid)
+                except subprocess.CalledProcessError as e:
+                    print(f"  CLONE FAIL: {e}", flush=True)
+                    continue
+
+                prompt = PROMPT_TEMPLATE.format(
+                    problem_statement=row["problem_statement"],
+                    hints=row.get("hints_text", "") or "(none)",
+                )
+                log_path = out / "logs" / f"{iid}.log"
+                rc, _stdout, _stderr = run_opencode(args.model, inst_dir, prompt, args.timeout, log_path)
+                diff = capture_diff(inst_dir)
+                (out / "predictions" / f"{iid}.diff").write_text(diff)
+
+                entry = {
+                    "instance_id": iid,
+                    "model_name_or_path": args.model,
+                    "model_patch": diff,
+                    "rollout_returncode": rc,
+                    "rollout_seconds": round(time.time() - t0, 1),
+                }
+                fp.write(json.dumps(entry) + "\n")
+                fp.flush()
+
+                non_empty = "yes" if diff.strip() else "EMPTY"
+                print(f"  done rc={rc} elapsed={entry['rollout_seconds']}s diff={non_empty} ({len(diff)}B)", flush=True)
+
+                if diff.strip():
+                    empty_streak = 0
+                else:
+                    empty_streak += 1
+                    if empty_streak >= args.max_empty_streak:
+                        print(f"\nABORT: {empty_streak} consecutive empty diffs — likely a server/template/permissions regression. "
+                              f"Re-run preflight before resuming.", flush=True)
+                        sys.exit(3)
+            except Exception as e:
+                # Per-instance safety net: log and skip so one bad task can't kill 300.
+                import traceback
+                print(f"  SKIP (instance crashed): {type(e).__name__}: {e}", flush=True)
+                traceback.print_exc()
+                fp.write(json.dumps({"instance_id": iid, "model_name_or_path": args.model,
+                                     "model_patch": "", "rollout_returncode": -1,
+                                     "rollout_error": f"{type(e).__name__}: {e}",
+                                     "rollout_seconds": round(time.time() - t0, 1)}) + "\n")
+                fp.flush()
                 continue
-
-            prompt = PROMPT_TEMPLATE.format(
-                problem_statement=row["problem_statement"],
-                hints=row.get("hints_text", "") or "(none)",
-            )
-            log_path = out / "logs" / f"{iid}.log"
-            rc, _stdout, _stderr = run_opencode(args.model, inst_dir, prompt, args.timeout, log_path)
-            diff = capture_diff(inst_dir)
-            (out / "predictions" / f"{iid}.diff").write_text(diff)
-
-            entry = {
-                "instance_id": iid,
-                "model_name_or_path": args.model,
-                "model_patch": diff,
-                "rollout_returncode": rc,
-                "rollout_seconds": round(time.time() - t0, 1),
-            }
-            fp.write(json.dumps(entry) + "\n")
-            fp.flush()
-
-            non_empty = "yes" if diff.strip() else "EMPTY"
-            print(f"  done rc={rc} elapsed={entry['rollout_seconds']}s diff={non_empty} ({len(diff)}B)", flush=True)
-
-            if diff.strip():
-                empty_streak = 0
-            else:
-                empty_streak += 1
-                if empty_streak >= args.max_empty_streak:
-                    print(f"\nABORT: {empty_streak} consecutive empty diffs — likely a server/template/permissions regression. "
-                          f"Re-run preflight before resuming.", flush=True)
-                    sys.exit(3)
 
 
 if __name__ == "__main__":
