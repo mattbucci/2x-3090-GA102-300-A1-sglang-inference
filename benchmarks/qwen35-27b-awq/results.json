@@ -1,0 +1,59 @@
+{
+  "model": "Qwen3.5-27B-AWQ-DeltaNet",
+  "engine": "SGLang v0.5.10 + patches",
+  "hardware": "2x RTX 3090 TP=2",
+  "timestamp": "2026-04-13 03:16:30",
+  "output_tokens": 256,
+  "context_sweep": [
+    {
+      "context": 128,
+      "tok_per_sec": 13.3,
+      "ttft_ms": 175.4,
+      "tpot_ms": 75.4,
+      "tokens": 256
+    },
+    {
+      "context": 512,
+      "tok_per_sec": 13.5,
+      "ttft_ms": 511.4,
+      "tpot_ms": 73.9,
+      "tokens": 256
+    },
+    {
+      "context": 1024,
+      "tok_per_sec": 13.5,
+      "ttft_ms": 986.2,
+      "tpot_ms": 74.2,
+      "tokens": 256
+    },
+    {
+      "context": 2048,
+      "tok_per_sec": 12.9,
+      "ttft_ms": 1919.6,
+      "tpot_ms": 77.8,
+      "tokens": 225
+    },
+    {
+      "context": 4096,
+      "tok_per_sec": 13.6,
+      "ttft_ms": 3849.7,
+      "tpot_ms": 74.2,
+      "tokens": 164
+    },
+    {
+      "context": 8192,
+      "tok_per_sec": 13.4,
+      "ttft_ms": 3474.6,
+      "tpot_ms": 74.7,
+      "tokens": 256
+    },
+    {
+      "context": 16384,
+      "tok_per_sec": 12.9,
+      "ttft_ms": 4947.0,
+      "tpot_ms": 77.9,
+      "tokens": 179
+    }
+  ],
+  "throughput_sweep": []
+}
