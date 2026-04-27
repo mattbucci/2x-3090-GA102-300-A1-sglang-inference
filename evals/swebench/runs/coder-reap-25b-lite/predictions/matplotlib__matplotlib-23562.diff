@@ -1,0 +1,42 @@
+diff --git a/lib/mpl_toolkits/mplot3d/art3d.py b/lib/mpl_toolkits/mplot3d/art3d.py
+index 8fe6e7a9c1..494c4be120 100644
+--- a/lib/mpl_toolkits/mplot3d/art3d.py
++++ b/lib/mpl_toolkits/mplot3d/art3d.py
+@@ -765,6 +765,17 @@ class Poly3DCollection(PolyCollection):
+         self._facecolor3d = PolyCollection.get_facecolor(self)
+         self._edgecolor3d = PolyCollection.get_edgecolor(self)
+         self._alpha3d = PolyCollection.get_alpha(self)
++        
++        # Initialize _facecolors2d and _edgecolors2d to prevent AttributeError
++        # when get_facecolors/get_edgecolors are called before drawing
++        try:
++            self._facecolors2d = self._facecolor3d
++            self._edgecolors2d = self._edgecolor3d
++        except Exception:
++            # Fallback to empty arrays if getting colors fails
++            self._facecolors2d = np.empty((0, 4))
++            self._edgecolors2d = np.empty((0, 4))
++            
+         self.stale = True
+ 
+     def set_sort_zpos(self, val):
+@@ -867,9 +878,19 @@ class Poly3DCollection(PolyCollection):
+         self.stale = True
+ 
+     def get_facecolor(self):
++        # Ensure _facecolors2d is initialized before accessing it
++        if not hasattr(self, '_facecolors2d'):
++            # This can happen when get_facecolors is called before drawing
++            # Initialize with default values similar to what do_3d_projection does
++            self._facecolors2d = np.empty((0, 4))
+         return self._facecolors2d
+ 
+     def get_edgecolor(self):
++        # Ensure _edgecolors2d is initialized before accessing it
++        if not hasattr(self, '_edgecolors2d'):
++            # This can happen when get_edgecolor is called before drawing
++            # Initialize with default values similar to what do_3d_projection does
++            self._edgecolors2d = np.empty((0, 4))
+         return self._edgecolors2d
+ 
+ 

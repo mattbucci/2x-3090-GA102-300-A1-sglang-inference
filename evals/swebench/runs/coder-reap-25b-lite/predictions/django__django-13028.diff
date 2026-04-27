@@ -1,0 +1,160 @@
+diff --git a/django/db/models/sql/query.py b/django/db/models/sql/query.py
+index ce18098fd2..7d289edd8d 100644
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -1124,7 +1124,8 @@ class Query(BaseExpression):
+ 
+     def check_filterable(self, expression):
+         """Raise an error if expression cannot be used in a WHERE clause."""
+-        if not getattr(expression, 'filterable', True):
++        # Only check filterable attribute for actual expressions, not plain objects
++        if hasattr(expression, 'resolve_expression') and not getattr(expression, 'filterable', True):
+             raise NotSupportedError(
+                 expression.__class__.__name__ + ' is disallowed in the filter '
+                 'clause.'
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..4a421107ca
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,139 @@
++#!/usr/bin/env python
++"""
++Test script to verify the fix for the filterable=False bug.
++This reproduces the scenario from the bug report.
++"""
++
++import os
++import sys
++import django
++from django.conf import settings
++
++# Add the project root to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-13028')
++
++# Configure Django settings
++if not settings.configured:
++    settings.configure(
++        DEBUG=True,
++        DATABASES={
++            'default': {
++                'ENGINE': 'django.db.backends.sqlite3',
++                'NAME': ':memory:',
++            }
++        },
++        INSTALLED_APPS=[
++            'django.contrib.contenttypes',
++            'django.contrib.auth',
++            'django.contrib.sites',
++            'django.contrib.admin',
++            'django.contrib.messages',
++            'django.contrib.sessions',
++            'django.contrib.staticfiles',
++            'django.contrib.humanize',
++            'django.contrib.redirects',
++            'django.contrib.gis',
++            'django.contrib.webdesign',
++            'django.contrib.flatpages',
++            'django.contrib.sitemaps',
++            'django.contrib.syndication',
++            'django.contrib.admindocs',
++            'django.contrib.auth.models',
++            'django.contrib.contenttypes.models',
++            'django.contrib.sessions.models',
++            'django.contrib.messages.models',
++            'django.contrib.sites.models',
++            'django.contrib.humanize.templatetags.humanize',
++            'django.contrib.flatpages.models',
++            'django.contrib.redirects.models',
++            'django.contrib.sitemaps.models',
++            'django.contrib.syndication.models',
++            'django.contrib.admindocs.models',
++            'django.contrib.auth.context_processors.auth',
++            'django.contrib.messages.context_processors.messages',
++            'django.contrib.sessions.context_processors.session',
++            'django.contrib.staticfiles.context_processors.staticfiles',
++            'django.contrib.humanize.context_processors.humanize',
++            'django.contrib.flatpages.context_processors.flatpages',
++            'django.contrib.redirects.context_processors.redirects',
++            'django.contrib.sitemaps.context_processors.sitemap',
++            'django.contrib.syndication.context_processors.syndication',
++            'django.contrib.admindocs.context_processors.admindocs',
++        ],
++        USE_TZ=True,
++        SECRET_KEY='test-secret-key-for-testing',
++    )
++
++django.setup()
++
++# Now let's define the models as in the bug report
++from django.db import models
++from django.utils.translation import gettext_lazy as _
++
++class ProductMetaDataType(models.Model):
++    label = models.CharField(max_length=255, unique=True, blank=False, null=False)
++    filterable = models.BooleanField(default=False, verbose_name=_("filterable"))
++    
++    class Meta:
++        app_label = "adminpricing"
++        verbose_name = _("product meta data type")
++        verbose_name_plural = _("product meta data types")
++
++class Produit(models.Model):
++    name = models.CharField(max_length=255)
++    
++    class Meta:
++        app_label = "adminpricing"
++
++class Plateforme(models.Model):
++    name = models.CharField(max_length=255)
++    
++    class Meta:
++        app_label = "adminpricing"
++
++class ProductMetaData(models.Model):
++    id = models.BigAutoField(primary_key=True)
++    product = models.ForeignKey(
++        Produit, null=False, blank=False, on_delete=models.CASCADE
++    )
++    value = models.TextField(null=False, blank=False)
++    marketplace = models.ForeignKey(
++        Plateforme, null=False, blank=False, on_delete=models.CASCADE
++    )
++    date_created = models.DateTimeField(null=True, default=django.utils.timezone.now)
++    metadata_type = models.ForeignKey(
++        ProductMetaDataType, null=False, blank=False, on_delete=models.CASCADE
++    )
++    
++    class Meta:
++        app_label = "adminpricing"
++        verbose_name = _("product meta data")
++        verbose_name_plural = _("product meta datas")
++
++def test_filter_with_filterable_false():
++    """Test that filtering with a model instance having filterable=False works."""
++    print("Creating test objects...")
++    
++    # Create test data
++    meta_type = ProductMetaDataType.objects.create(label="test", filterable=False)
++    produit = Produit.objects.create(name="Test Product")
++    platform = Plateforme.objects.create(name="Test Platform")
++    
++    # This should work without raising NotSupportedError
++    try:
++        result = ProductMetaData.objects.filter(value="Dark Vador", metadata_type=meta_type)
++        print("SUCCESS: Filter worked without error!")
++        return True
++    except Exception as e:
++        print(f"FAILED: {e}")
++        return False
++
++if __name__ == "__main__":
++    print("Testing the fix for filterable=False bug...")
++    success = test_filter_with_filterable_false()
++    if success:
++        print("Test PASSED")
++        sys.exit(0)
++    else:
++        print("Test FAILED")
++        sys.exit(1)
+\ No newline at end of file

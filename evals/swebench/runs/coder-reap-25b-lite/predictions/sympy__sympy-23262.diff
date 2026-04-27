@@ -1,0 +1,65 @@
+diff --git a/fix_summary.md b/fix_summary.md
+new file mode 100644
+index 0000000000..121bd0b5d7
+--- /dev/null
++++ b/fix_summary.md
+@@ -0,0 +1,30 @@
++# Fix Summary: Python Code Printer Tuple Bug
++
++## Issue
++In SymPy 1.10, when `lambdify` was called with a Python tuple containing a single element like `tuple([1])`, it generated incorrect Python code:
++```python
++return (1)   # Incorrect - interpreted as integer expression
++```
++
++Instead of the correct output:
++```python
++return (1,)  # Correct - proper single-element tuple
++```
++
++## Root Cause
++The issue was in the `_recursive_to_string` function in `sympy/utilities/lambdify.py`. When processing Python tuples with exactly one element, the function wasn't adding the trailing comma needed for proper Python tuple syntax.
++
++## Solution
++Modified the `_recursive_to_string` function to properly handle single-element tuples by ensuring that when a tuple has exactly one element, it adds a trailing comma to make it syntactically valid Python tuple syntax.
++
++### Key Changes Made:
++1. **Detection**: Added logic to detect single-element tuples (`len(arg) == 1 and isinstance(arg, tuple)`)
++2. **Formatting**: Modified the string formatting to add trailing comma for single-element tuples 
++3. **Compatibility**: Maintained full backward compatibility for all other cases
++
++## Verification Results
++✅ `tuple([1])` → `return (1,)` (FIXED)
++✅ `tuple([1, 2])` → `return (1, 2)` (unchanged)
++✅ `Tuple(1)` → `return (1,)` (already worked)
++
++The fix is minimal, targeted, and preserves all existing functionality while resolving the specific bug described in the issue.
+\ No newline at end of file
+diff --git a/sympy/utilities/lambdify.py b/sympy/utilities/lambdify.py
+index da67263b19..e8042c82b2 100644
+--- a/sympy/utilities/lambdify.py
++++ b/sympy/utilities/lambdify.py
+@@ -956,12 +956,20 @@ def _recursive_to_string(doprint, arg):
+         return doprint(arg)
+     elif iterable(arg):
+         if isinstance(arg, list):
+-            left, right = "[]"
++            left, right = "[", "]"
+         elif isinstance(arg, tuple):
+-            left, right = "()"
++            left, right = "(", ")"
+         else:
+             raise NotImplementedError("unhandled type: %s, %s" % (type(arg), arg))
+-        return left +', '.join(_recursive_to_string(doprint, e) for e in arg) + right
++        # For single-element tuples, ensure proper Python syntax by adding trailing comma
++        elements = [_recursive_to_string(doprint, e) for e in arg]
++        joined = ', '.join(elements)
++        # Special handling for single element tuples
++        if len(arg) == 1 and isinstance(arg, tuple):
++            # When we have a single element tuple like (1,), we want to make sure 
++            # it's formatted correctly: (1,)
++            return left + joined + ',' + right
++        return left + joined + right
+     elif isinstance(arg, str):
+         return arg
+     else:

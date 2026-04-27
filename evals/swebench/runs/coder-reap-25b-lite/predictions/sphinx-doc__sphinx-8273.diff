@@ -1,0 +1,29 @@
+diff --git a/sphinx/builders/manpage.py b/sphinx/builders/manpage.py
+index 4166dece9..07e074975 100644
+--- a/sphinx/builders/manpage.py
++++ b/sphinx/builders/manpage.py
+@@ -80,7 +80,15 @@ class ManualPageBuilder(Builder):
+             docsettings.authors = authors
+             docsettings.section = section
+ 
+-            targetname = '%s.%s' % (name, section)
++            if self.config.man_use_section_directories:
++                # Create directory structure: section/name
++                targetdir = str(section)
++                targetname = path.join(targetdir, name)
++                # Ensure directory exists
++                from os import makedirs
++                makedirs(path.join(self.outdir, targetdir), exist_ok=True)
++            else:
++                targetname = '%s.%s' % (name, section)
+             logger.info(darkgreen(targetname) + ' { ', nonl=True)
+             destination = FileOutput(
+                 destination_path=path.join(self.outdir, targetname),
+@@ -115,6 +123,7 @@ def setup(app: Sphinx) -> Dict[str, Any]:
+ 
+     app.add_config_value('man_pages', default_man_pages, None)
+     app.add_config_value('man_show_urls', False, None)
++    app.add_config_value('man_use_section_directories', False, None)
+ 
+     return {
+         'version': 'builtin',

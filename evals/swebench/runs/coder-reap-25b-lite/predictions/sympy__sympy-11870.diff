@@ -1,0 +1,65 @@
+diff --git a/sympy/simplify/trigsimp.py b/sympy/simplify/trigsimp.py
+index 34a3bab3fc..b8bd1a9065 100644
+--- a/sympy/simplify/trigsimp.py
++++ b/sympy/simplify/trigsimp.py
+@@ -804,6 +804,12 @@ def _trigpats():
+         (a*cosh(b + c), a*(cosh(b)*cosh(c) + sinh(b)*sinh(c))),
+         (a*tanh(b + c), a*((tanh(b) + tanh(c))/(1 + tanh(b)*tanh(c)))),
+ 
++        # Add patterns for exponential to trig conversion
++        # Pattern: 1/2*(-I*exp(I*k) + I*exp(-I*k)) -> sin(k)
++        (S.Half*(-I*exp(I*b) + I*exp(-I*b)), sin(b)),
++        # Pattern: 1/(2*I*k)*(-I*exp(I*k) + I*exp(-I*k)) -> sinc(k)
++        (S.One/(2*I*b)*(-I*exp(I*b) + I*exp(-I*b)), sinc(b)),
++
+     )
+ 
+     # Reduce any lingering artifacts, such as sin(x)**2 changing
+diff --git a/test_sinc_issue.py b/test_sinc_issue.py
+new file mode 100644
+index 0000000000..5b65590698
+--- /dev/null
++++ b/test_sinc_issue.py
+@@ -0,0 +1,41 @@
++from sympy import *
++import sympy as sym
++
++# Test case 1: Basic sinc simplification (should work)
++print("=== Test Case 1: Basic sinc simplification ===")
++f = S(1) / 2 * (-I*exp(I*k) + I*exp(-I*k))
++print(f"f = {f}")
++result = trigsimp(f)
++print(f"trigsimp(f) = {result}")
++
++# Try the suggested workaround:
++print("\n=== Test Case 2: Using rewrite(sin).simplify() ===")
++try:
++    result2 = f.rewrite(sin).simplify()
++    print(f"f.rewrite(sin).simplify() = {result2}")
++except Exception as e:
++    print(f"Error with rewrite(sin): {e}")
++
++# Test case 3: Try to get sinc function directly  
++print("\n=== Test Case 3: Direct sinc function ===")
++try:
++    # This should be sin(k)/k which is sinc(k) when k != 0
++    expr = sin(k)/k
++    print(f"sin(k)/k = {expr}")
++    result3 = expr.rewrite(sinc)
++    print(f"sin(k)/k.rewrite(sinc) = {result3}")
++except Exception as e:
++    print(f"Error with sinc rewrite: {e}")
++
++# Test case 4: The integral example from the issue
++print("\n=== Test Case 4: Integral example ===")
++try:
++    omega = sym.symbols('omega', real=True)
++    k = sym.symbols('k', real=True)
++    f = 1 / 2 / pi * sym.exp(sym.I * omega * k)
++    F = sym.integrate(f, (omega, -pi, pi))
++    print(f"F = {F}")
++    result4 = F.rewrite(sinc).simplify()
++    print(f"F.rewrite(sinc).simplify() = {result4}")
++except Exception as e:
++    print(f"Error with integral example: {e}")
+\ No newline at end of file

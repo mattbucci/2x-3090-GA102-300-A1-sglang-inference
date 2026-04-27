@@ -1,0 +1,54 @@
+diff --git a/requests/models.py b/requests/models.py
+index d8456375..b332188f 100644
+--- a/requests/models.py
++++ b/requests/models.py
+@@ -149,7 +149,12 @@ class Request(object):
+         hooks = hooks or {}
+ 
+         for (k, v) in list(hooks.items()):
+-            self.register_hook(event=k, hook=v)
++            if isinstance(v, list):
++                # Handle lists of hooks properly
++                for hook in v:
++                    self.register_hook(event=k, hook=hook)
++            else:
++                self.register_hook(event=k, hook=v)
+ 
+         #: Session.
+         self.session = session
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 00000000..1d05252e
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,29 @@
++#!/usr/bin/env python
++"""
++Test script to verify the hooks list fix.
++This tests that the fix properly handles lists in hook values.
++"""
++
++# Test the logic directly
++def test_hook_handling():
++    # This simulates what happens in the fixed code
++    hooks = {
++        'pre_request': [lambda x: x, lambda x: x],  # List of hooks
++        'post_request': lambda x: x,  # Single hook (callable)
++        'response': None  # None value
++    }
++    
++    # Simulate the old behavior (problematic):
++    print("Old behavior would do:")
++    for k, v in list(hooks.items()):
++        print(f"  {k}: {v} -> register_hook({k}, {v})")
++        
++    print("\nNew behavior should do:")
++    for k, v in list(hooks.items()):
++        if isinstance(v, list):
++            print(f"  {k}: {v} -> register_hook({k}, {v[0]}), register_hook({k}, {v[1]})")
++        else:
++            print(f"  {k}: {v} -> register_hook({k}, {v})")
++
++if __name__ == "__main__":
++    test_hook_handling()
+\ No newline at end of file

@@ -1,0 +1,36 @@
+diff --git a/lib/matplotlib/legend.py b/lib/matplotlib/legend.py
+index 9e5b903d59..004bbde4f4 100644
+--- a/lib/matplotlib/legend.py
++++ b/lib/matplotlib/legend.py
+@@ -242,6 +242,12 @@ bbox_transform : None or `matplotlib.transforms.Transform`
+     of ``None`` (default) the Axes'
+     :data:`~matplotlib.axes.Axes.transAxes` transform will be used.
+ 
++draggable : bool, default: None
++    Whether the legend is draggable with the mouse. If ``True``, the legend
++    can be moved by clicking and dragging it with the mouse. If ``False``,
++    the legend cannot be dragged. If ``None`` (the default), the legend
++    is not draggable.
++
+ title : str or None
+     The legend's title. Default is no title (``None``).
+ 
+@@ -341,6 +347,7 @@ class Legend(Artist):
+         handler_map=None,
+         title_fontproperties=None,  # properties for the legend title
+         alignment="center",       # control the alignment within the legend box
++        draggable=None,       # enable mouse dragging support
+         *,
+         ncol=1  # synonym for ncols (backward compatibility)
+     ):
+@@ -538,6 +545,10 @@ class Legend(Artist):
+ 
+         self.set_title(title, prop=title_prop_fp)
+         self._draggable = None
++        
++        # Set draggable state if specified
++        if draggable is not None:
++            self.set_draggable(draggable)
+ 
+         # set the text color
+ 

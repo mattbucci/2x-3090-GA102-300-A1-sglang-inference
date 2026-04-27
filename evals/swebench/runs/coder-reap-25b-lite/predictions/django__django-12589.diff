@@ -1,0 +1,125 @@
+diff --git a/django/db/models/sql/query.py b/django/db/models/sql/query.py
+index 78c4f47b5b..35742d6524 100644
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -1929,6 +1929,18 @@ class Query(BaseExpression):
+         """
+         group_by = list(self.select)
+         if self.annotation_select:
++            # Get all column names from tables in alias_map to check for collisions
++            table_column_names = set()
++            for alias, join in self.alias_map.items():
++                if hasattr(join, 'table_name') and hasattr(join, 'join_field'):
++                    # For regular joins, collect column names
++                    if hasattr(join.join_field, 'related_fields'):
++                        for field in join.join_field.related_fields:
++                            table_column_names.add(field.column)
++                    elif hasattr(join.join_field, 'field'):
++                        # For direct foreign keys
++                        table_column_names.add(join.join_field.field.column)
++            
+             for alias, annotation in self.annotation_select.items():
+                 signature = inspect.signature(annotation.get_group_by_cols)
+                 if 'alias' not in signature.parameters:
+@@ -1940,7 +1952,8 @@ class Query(BaseExpression):
+                     warnings.warn(msg, category=RemovedInDjango40Warning)
+                     group_by_cols = annotation.get_group_by_cols()
+                 else:
+-                    if not allow_aliases:
++                    # Check for collision with table columns and disable alias if needed
++                    if not allow_aliases or (alias and alias in table_column_names):
+                         alias = None
+                     group_by_cols = annotation.get_group_by_cols(alias=alias)
+                 group_by.extend(group_by_cols)
+diff --git a/test_groupby_fix.py b/test_groupby_fix.py
+new file mode 100644
+index 0000000000..54ee036666
+--- /dev/null
++++ b/test_groupby_fix.py
+@@ -0,0 +1,85 @@
++#!/usr/bin/env python
++"""
++Test script to verify the GROUP BY collision fix.
++This reproduces the issue described in the bug report.
++"""
++
++import os
++import sys
++import django
++from django.conf import settings
++
++# Configure Django settings
++if not settings.configured:
++    settings.configure(
++        DEBUG=True,
++        DATABASES={
++            'default': {
++                'ENGINE': 'django.db.backends.sqlite3',
++                'NAME': ':memory:',
++            }
++        },
++        INSTALLED_APPS=[
++            'django.contrib.contenttypes',
++            'django.contrib.auth',
++            'test_app',  # We'll create this app for testing
++        ],
++        USE_TZ=True,
++        SECRET_KEY='test-secret-key-for-testing',
++    )
++
++django.setup()
++
++# Now we can import Django models and test
++from django.db import models
++from django.db.models import Q, Count, Subquery, OuterRef
++
++# Create test models as described in the issue
++class A(models.Model):
++    bs = models.ManyToManyField('B', related_name="a", through="AB")
++
++class B(models.Model):
++    pass
++
++class AB(models.Model):
++    a = models.ForeignKey(A, on_delete=models.CASCADE, related_name="ab_a")
++    b = models.ForeignKey(B, on_delete=models.CASCADE, related_name="ab_b")
++    status = models.IntegerField()
++
++class C(models.Model):
++    a = models.ForeignKey(
++        A,
++        null=True,
++        blank=True,
++        on_delete=models.SET_NULL,
++        related_name="c",
++        verbose_name="a"
++    )
++    status = models.IntegerField()
++
++def test_group_by_collision():
++    """Test that reproduces the GROUP BY collision issue."""
++    
++    # This should not raise an exception anymore
++    try:
++        ab_query = AB.objects.filter(a=OuterRef("pk"), b=1)
++        filter_conditions = Q(pk=1) | Q(ab_a__b=1)
++        query = A.objects.\
++            filter(filter_conditions).\
++            annotate(
++                status=Subquery(ab_query.values("status")),
++                c_count=Count("c"),
++            )
++        answer = query.values("status").annotate(total_count=Count("status"))
++        
++        # Try to execute the query (this would fail before the fix)
++        result = list(answer)
++        print("SUCCESS: Query executed without collision error")
++        return True
++    except Exception as e:
++        print(f"FAILED: {e}")
++        return False
++
++if __name__ == "__main__":
++    success = test_group_by_collision()
++    sys.exit(0 if success else 1)
+\ No newline at end of file

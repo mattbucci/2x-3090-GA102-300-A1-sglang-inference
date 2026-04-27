@@ -1,0 +1,34 @@
+diff --git a/lib/matplotlib/widgets.py b/lib/matplotlib/widgets.py
+index da5b40a5ef..957181bf92 100644
+--- a/lib/matplotlib/widgets.py
++++ b/lib/matplotlib/widgets.py
+@@ -692,6 +692,9 @@ class RangeSlider(SliderBase):
+             valinit = np.array([valmin + extent * 0.25,
+                                 valmin + extent * 0.75])
+         else:
++            # Check for edge case where both values are equal
++            if valinit[0] == valinit[1]:
++                raise ValueError("valinit must have different minimum and maximum values")
+             valinit = self._value_in_bounds(valinit)
+         self.val = valinit
+         self.valinit = valinit
+@@ -903,13 +906,17 @@ class RangeSlider(SliderBase):
+             xy[1] = .25, val[1]
+             xy[2] = .75, val[1]
+             xy[3] = .75, val[0]
+-            xy[4] = .25, val[0]
++            # Handle case where poly has only 4 vertices (when valinit[0] == valinit[1])
++            if len(xy) > 4:
++                xy[4] = .25, val[0]
+         else:
+             xy[0] = val[0], .25
+             xy[1] = val[0], .75
+             xy[2] = val[1], .75
+             xy[3] = val[1], .25
+-            xy[4] = val[0], .25
++            # Handle case where poly has only 4 vertices (when valinit[0] == valinit[1])
++            if len(xy) > 4:
++                xy[4] = val[0], .25
+         self.poly.xy = xy
+         self.valtext.set_text(self._format(val))
+         if self.drawon:

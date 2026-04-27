@@ -1,0 +1,104 @@
+diff --git a/django/db/models/base.py b/django/db/models/base.py
+index 7bb3fa4706..388abeb746 100644
+--- a/django/db/models/base.py
++++ b/django/db/models/base.py
+@@ -1926,6 +1926,10 @@ class Model(metaclass=ModelBase):
+                         id='models.W038',
+                     )
+                 )
++            # Validate fields in UniqueConstraint
++            for constraint in cls._meta.constraints:
++                if isinstance(constraint, UniqueConstraint):
++                    errors.extend(cls._check_local_fields(constraint.fields, "constraints"))
+         return errors
+ 
+ 
+diff --git a/test_unique_constraint_fix.py b/test_unique_constraint_fix.py
+new file mode 100644
+index 0000000000..30845572d7
+--- /dev/null
++++ b/test_unique_constraint_fix.py
+@@ -0,0 +1,82 @@
++#!/usr/bin/env python
++"""
++Test script to verify the UniqueConstraint field validation fix.
++"""
++import os
++import sys
++import django
++from django.conf import settings
++
++# Configure Django settings
++if not settings.configured:
++    settings.configure(
++        DEBUG=True,
++        DATABASES={
++            'default': {
++                'ENGINE': 'django.db.backends.sqlite3',
++                'NAME': ':memory:',
++            }
++        },
++        INSTALLED_APPS=[
++            'django.contrib.contenttypes',
++            'django.contrib.auth',
++            'django.contrib.sites',
++            'django.contrib.admin',
++            'django.contrib.messages',
++            'django.contrib.sessions',
++            'django.contrib.staticfiles',
++            'django.contrib.humanize',
++            'django.contrib.gis',
++            'django.contrib.redirects',
++            'django.contrib.flatpages',
++            'django.contrib.syndication',
++            'django.contrib.sitemaps',
++            'django.contrib.admindocs',
++            'django.contrib.webdesign',
++            'django.contrib.auth.models',
++            'django.contrib.contenttypes.models',
++            'django.contrib.sessions.models',
++            'django.contrib.messages.models',
++            'django.contrib.sites.models',
++            'django.contrib.admin.models',
++            'django.contrib.humanize.models',
++            'django.contrib.gis.models',
++            'django.contrib.redirects.models',
++            'django.contrib.flatpages.models',
++            'django.contrib.syndication.models',
++            'django.contrib.sitemaps.models',
++            'django.contrib.admindocs.models',
++            'django.contrib.webdesign.models',
++        ],
++        USE_TZ=True,
++        SECRET_KEY='test-secret-key',
++    )
++
++django.setup()
++
++# Now test our fix
++from django.db import models
++from django.core.checks import Error
++
++# Test model with invalid UniqueConstraint field
++class TestModel(models.Model):
++    name = models.CharField(max_length=100)
++    
++    class Meta:
++        constraints = [
++            models.UniqueConstraint(fields=['nonexistent_field'], name='test_constraint')
++        ]
++
++# Test that the error is properly raised
++try:
++    from django.core.checks import run_checks
++    errors = TestModel.check()
++    print("Errors found:", len(errors))
++    for error in errors:
++        if error.id == 'models.E012':
++            print("SUCCESS: Found E012 error for nonexistent field")
++            break
++    else:
++        print("ERROR: No E012 error found")
++except Exception as e:
++    print(f"Error running checks: {e}")
+\ No newline at end of file

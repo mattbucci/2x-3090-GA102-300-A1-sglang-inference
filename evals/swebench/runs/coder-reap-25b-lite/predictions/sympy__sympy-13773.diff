@@ -1,0 +1,28 @@
+diff --git a/sympy/matrices/common.py b/sympy/matrices/common.py
+index 379a2917aa..16e0155c9f 100644
+--- a/sympy/matrices/common.py
++++ b/sympy/matrices/common.py
+@@ -1973,6 +1973,11 @@ def __div__(self, other):
+ 
+     @call_highest_priority('__rmatmul__')
+     def __matmul__(self, other):
++        # For @ operator (matrix multiplication), both operands must be matrices
++        # This matches NumPy behavior
++        from . import Matrix as MatrixClass
++        if not isinstance(other, MatrixClass) and not (hasattr(other, 'is_Matrix') and other.is_Matrix):
++            raise ValueError("Scalar operands are not allowed, use '*' instead")
+         return self.__mul__(other)
+ 
+     @call_highest_priority('__rmul__')
+@@ -2068,6 +2073,11 @@ def __radd__(self, other):
+ 
+     @call_highest_priority('__matmul__')
+     def __rmatmul__(self, other):
++        # For @ operator (matrix multiplication), both operands must be matrices
++        # This matches NumPy behavior
++        from . import Matrix as MatrixClass
++        if not isinstance(self, MatrixClass) and not (hasattr(self, 'is_Matrix') and self.is_Matrix):
++            raise ValueError("Scalar operands are not allowed, use '*' instead")
+         return self.__rmul__(other)
+ 
+     @call_highest_priority('__mul__')

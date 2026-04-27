@@ -1,0 +1,45 @@
+diff --git a/sympy/printing/mathematica.py b/sympy/printing/mathematica.py
+index ea7e3a2d94..703f0fc141 100644
+--- a/sympy/printing/mathematica.py
++++ b/sympy/printing/mathematica.py
+@@ -94,6 +94,10 @@ def _print_list(self, expr):
+     _print_Tuple = _print_list
+ 
+     def _print_Function(self, expr):
++        # Handle Max and Min specially since they should use square brackets in Mathematica
++        if expr.func.__name__ in ('Max', 'Min'):
++            return "%s[%s]" % (expr.func.__name__, self.stringify(expr.args, ", "))
++        
+         if expr.func.__name__ in self.known_functions:
+             cond_mfunc = self.known_functions[expr.func.__name__]
+             for cond, mfunc in cond_mfunc:
+@@ -129,3 +133,5 @@ def mathematica_code(expr, **settings):
+     '(1/120)*x^5 - 1/6*x^3 + x'
+     """
+     return MCodePrinter(settings).doprint(expr)
++
++# This line was added to force recompilation
+diff --git a/test_mathematica_fix.py b/test_mathematica_fix.py
+new file mode 100644
+index 0000000000..5a05c684c2
+--- /dev/null
++++ b/test_mathematica_fix.py
+@@ -0,0 +1,17 @@
++from sympy import symbols, mathematica_code, Max, Min
++
++# Test case from the issue
++x = symbols('x')
++result_max = mathematica_code(Max(x, 2))
++print("Max(x, 2) ->", result_max)
++
++result_min = mathematica_code(Min(x, 2))
++print("Min(x, 2) ->", result_min)
++
++# Test with regular functions to make sure we didn't break anything
++from sympy import sin, cos
++result_sin = mathematica_code(sin(x))
++print("sin(x) ->", result_sin)
++
++result_cos = mathematica_code(cos(x))
++print("cos(x) ->", result_cos)
+\ No newline at end of file

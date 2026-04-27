@@ -1,0 +1,118 @@
+diff --git a/lib/matplotlib/axes/_axes.py b/lib/matplotlib/axes/_axes.py
+index fdac0f3560..de4a99f71d 100644
+--- a/lib/matplotlib/axes/_axes.py
++++ b/lib/matplotlib/axes/_axes.py
+@@ -2182,11 +2182,19 @@ class Axes(_AxesBase):
+                 x0 = cbook._safe_first_finite(x0)
+             except (TypeError, IndexError, KeyError):
+                 pass
++            except StopIteration:
++                # this means we found no finite element, fall back to first
++                # element unconditionally
++                x0 = cbook.safe_first_element(x0)
+ 
+             try:
+                 x = cbook._safe_first_finite(xconv)
+             except (TypeError, IndexError, KeyError):
+                 x = xconv
++            except StopIteration:
++                # this means we found no finite element, fall back to first
++                # element unconditionally
++                x = cbook.safe_first_element(xconv)
+ 
+             delist = False
+             if not np.iterable(dx):
+diff --git a/test_bar_nan_fix.py b/test_bar_nan_fix.py
+new file mode 100644
+index 0000000000..601633e6e5
+--- /dev/null
++++ b/test_bar_nan_fix.py
+@@ -0,0 +1,40 @@
++"""
++Test for the fix of ax.bar with all-NaN data.
++This is a regression test for the issue where ax.bar raised an exception
++when passed only NaN data in matplotlib 3.6.1.
++"""
++
++import numpy as np
++import matplotlib.pyplot as plt
++import pytest
++
++
++def test_bar_all_nan():
++    """Test that ax.bar works with all-NaN data."""
++    fig, ax = plt.subplots()
++    
++    # This should not raise an exception
++    result = ax.bar([np.nan], [np.nan])
++    
++    # Verify we get a BarContainer back
++    assert len(result) == 1
++    
++    # The resulting bar should have NaN values
++    bar = result[0]
++    assert np.isnan(bar.get_x())
++    assert np.isnan(bar.get_height())
++
++
++def test_bar_mixed_data():
++    """Test that ax.bar still works with mixed finite/NaN data."""
++    fig, ax = plt.subplots()
++    
++    # Mixed data should work as before
++    result = ax.bar([0, np.nan], [1, 2])
++    assert len(result) == 2
++
++
++if __name__ == "__main__":
++    test_bar_all_nan()
++    test_bar_mixed_data()
++    print("All tests passed!")
+\ No newline at end of file
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..8d991ee997
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,40 @@
++import numpy as np
++import matplotlib.pyplot as plt
++
++# Test case from the bug report
++print("Testing all-NaN data...")
++try:
++    f, ax = plt.subplots()
++    result = ax.bar([np.nan], [np.nan])
++    print("SUCCESS: All-NaN case works")
++    print(f"Result type: {type(result)}")
++    print(f"Number of bars: {len(result)}")
++except Exception as e:
++    print(f"FAILED: {e}")
++
++# Additional test cases
++print("\nTesting other edge cases...")
++
++# Test with some finite values
++try:
++    f, ax = plt.subplots()
++    result = ax.bar([0, np.nan], [1, 2])
++    print("SUCCESS: Mixed finite/NaN case works")
++except Exception as e:
++    print(f"FAILED: {e}")
++
++# Test with zero height but finite x
++try:
++    f, ax = plt.subplots()
++    result = ax.bar([np.nan], [0])
++    print("SUCCESS: NaN x with zero height works")
++except Exception as e:
++    print(f"FAILED: {e}")
++
++# Test with finite x and NaN height
++try:
++    f, ax = plt.subplots()
++    result = ax.bar([0], [np.nan])
++    print("SUCCESS: Finite x with NaN height works")
++except Exception as e:
++    print(f"FAILED: {e}")
+\ No newline at end of file

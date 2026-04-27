@@ -1,0 +1,77 @@
+diff --git a/sklearn/neighbors/base.py b/sklearn/neighbors/base.py
+index 3e5e729c27..eb6845381e 100644
+--- a/sklearn/neighbors/base.py
++++ b/sklearn/neighbors/base.py
+@@ -24,6 +24,7 @@ from ..externals import six
+ from ..externals.joblib import Parallel, delayed
+ from ..exceptions import NotFittedError
+ from ..exceptions import DataConversionWarning
++from numbers import Integral
+ 
+ VALID_METRICS = dict(ball_tree=BallTree.valid_metrics,
+                      kd_tree=KDTree.valid_metrics,
+@@ -106,7 +107,15 @@ class NeighborsBase(six.with_metaclass(ABCMeta, BaseEstimator)):
+     def __init__(self, n_neighbors=None, radius=None,
+                  algorithm='auto', leaf_size=30, metric='minkowski',
+                  p=2, metric_params=None, n_jobs=1):
+-
++        # Validate n_neighbors parameter
++        if n_neighbors is not None and not isinstance(n_neighbors, (Integral, np.integer)):
++            if isinstance(n_neighbors, float) and n_neighbors.is_integer():
++                # Allow floats that are whole numbers to be converted to int
++                n_neighbors = int(n_neighbors)
++            else:
++                raise ValueError("n_neighbors must be an integer. Got %s of type %s." %
++                                (n_neighbors, type(n_neighbors).__name__))
++        
+         self.n_neighbors = n_neighbors
+         self.radius = radius
+         self.algorithm = algorithm
+@@ -327,6 +336,15 @@ class KNeighborsMixin(object):
+ 
+         if n_neighbors is None:
+             n_neighbors = self.n_neighbors
++        else:
++            # Validate n_neighbors parameter when passed to kneighbors
++            if not isinstance(n_neighbors, (Integral, np.integer)):
++                if isinstance(n_neighbors, float) and n_neighbors.is_integer():
++                    # Allow floats that are whole numbers to be converted to int
++                    n_neighbors = int(n_neighbors)
++                else:
++                    raise ValueError("n_neighbors must be an integer. Got %s of type %s." %
++                                    (n_neighbors, type(n_neighbors).__name__))
+ 
+         if X is not None:
+             query_is_train = False
+diff --git a/test_bug.py b/test_bug.py
+new file mode 100644
+index 0000000000..a70afb859f
+--- /dev/null
++++ b/test_bug.py
+@@ -0,0 +1,25 @@
++from sklearn.neighbors import NearestNeighbors
++from sklearn.datasets import make_blobs
++import numpy as np
++
++# Reproduce the bug from the issue description
++X, y = make_blobs(n_samples=10, centers=2, n_features=2, random_state=42)
++neighbors = NearestNeighbors(n_neighbors=3.)
++print("Created NearestNeighbors with float n_neighbors=3.0")
++
++try:
++    neighbors.fit(X)
++    print("Fit successful")
++    result = neighbors.kneighbors(X)
++    print("kneighbors successful:", result)
++except Exception as e:
++    print(f"Error: {type(e).__name__}: {e}")
++
++# Test the second case mentioned in the issue
++try:
++    neighbors2 = NearestNeighbors(n_neighbors=5)  # integer this time
++    neighbors2.fit(X)
++    result2 = neighbors2.kneighbors(X, n_neighbors=3.)  # float parameter
++    print("kneighbors with float n_neighbors parameter successful:", result2)
++except Exception as e:
++    print(f"Error with float n_neighbors parameter: {type(e).__name__}: {e}")
+\ No newline at end of file

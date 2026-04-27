@@ -1,0 +1,113 @@
+diff --git a/sklearn/preprocessing/_encoders.py b/sklearn/preprocessing/_encoders.py
+index 1e05aba597..e80ac1be2b 100644
+--- a/sklearn/preprocessing/_encoders.py
++++ b/sklearn/preprocessing/_encoders.py
+@@ -103,7 +103,7 @@ class _BaseEncoder(BaseEstimator, TransformerMixin):
+             if not np.all(valid_mask):
+                 if handle_unknown == 'error':
+                     msg = ("Found unknown categories {0} in column {1}"
+-                           " during transform".format(diff, i))
++                            " during transform".format(diff, i))
+                     raise ValueError(msg)
+                 else:
+                     # Set the problematic rows to an acceptable value and
+@@ -111,6 +111,23 @@ class _BaseEncoder(BaseEstimator, TransformerMixin):
+                     # removed later.
+                     X_mask[:, i] = valid_mask
+                     Xi = Xi.copy()
++                    # Handle case where we're assigning long strings to 
++                    # short string arrays to prevent truncation errors
++                    if (Xi.dtype.kind in ('U', 'S') and 
++                        len(str(self.categories_[i][0])) > 0):
++                        # Check if we need to convert to object dtype to avoid
++                        # string truncation when assigning longer strings
++                        replacement_len = len(str(self.categories_[i][0]))
++                        # For Unicode strings, check existing max length
++                        if Xi.dtype.kind == 'U' and len(Xi) > 0:
++                            current_max_len = max(len(str(x)) for x in Xi if str(x) != '')
++                            if replacement_len > current_max_len:
++                                Xi = Xi.astype(object)
++                        # For byte strings, we do the same check
++                        elif Xi.dtype.kind == 'S' and len(Xi) > 0:
++                            current_max_len = max(len(str(x)) for x in Xi if str(x) != '')
++                            if replacement_len > current_max_len:
++                                Xi = Xi.astype(object)
+                     Xi[~valid_mask] = self.categories_[i][0]
+             _, encoded = _encode(Xi, self.categories_[i], encode=True)
+             X_int[:, i] = encoded
+diff --git a/test_bug.py b/test_bug.py
+new file mode 100644
+index 0000000000..cd9103f139
+--- /dev/null
++++ b/test_bug.py
+@@ -0,0 +1,17 @@
++import numpy as np
++from sklearn.preprocessing import OneHotEncoder
++
++
++# It needs to be numpy arrays, the error does not appear 
++# is you have lists of lists because it gets treated like an array of objects.
++train  = np.array([ '22','333','4444','11111111' ]).reshape((-1,1))
++test   = np.array([ '55555',  '22' ]).reshape((-1,1))
++
++ohe = OneHotEncoder(dtype=bool,handle_unknown='ignore')
++
++ohe.fit( train )
++enc_test = ohe.transform( test )
++
++print("Success! Encoded matrix shape:", enc_test.shape)
++print("Encoded matrix:")
++print(enc_test.toarray())
+\ No newline at end of file
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..2cf9898d21
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,45 @@
++#!/usr/bin/env python
++
++# Test script to reproduce and verify the fix for the OneHotEncoder bug
++
++import sys
++import os
++
++# Add the current directory to Python path so we can import sklearn
++sys.path.insert(0, '/tmp/swebench-work2/scikit-learn__scikit-learn-12471')
++
++try:
++    import numpy as np
++    from sklearn.preprocessing import OneHotEncoder
++
++    # Exact reproduction of the bug report
++    train  = np.array([ '22','333','4444','11111111' ]).reshape((-1,1))
++    test   = np.array([ '55555',  '22' ]).reshape((-1,1))
++
++    print("Training data:", train.flatten())
++    print("Test data:", test.flatten())
++
++    ohe = OneHotEncoder(dtype=bool, handle_unknown='ignore')
++
++    ohe.fit(train)
++    enc_test = ohe.transform(test)
++
++    print("Success! Encoded matrix shape:", enc_test.shape)
++    print("Encoded matrix:")
++    print(enc_test.toarray())
++    
++    # Verify the expected result
++    expected = np.array([[0, 0, 0, 0], [1, 0, 0, 0]])  # First row: all zeros (unknown), second row: [1,0,0,0] (known '22')
++    actual = enc_test.toarray()
++    
++    if np.array_equal(actual, expected):
++        print("✓ Test passed - result matches expected output")
++    else:
++        print("✗ Test failed - result does not match expected output")
++        print("Expected:", expected)
++        print("Actual  :", actual)
++        
++except Exception as e:
++    print("Error occurred:", str(e))
++    import traceback
++    traceback.print_exc()
+\ No newline at end of file

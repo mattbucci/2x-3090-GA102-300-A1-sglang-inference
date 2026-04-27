@@ -1,0 +1,18 @@
+diff --git a/sympy/physics/units/prefixes.py b/sympy/physics/units/prefixes.py
+index ca6a642156..72ed217882 100644
+--- a/sympy/physics/units/prefixes.py
++++ b/sympy/physics/units/prefixes.py
+@@ -85,7 +85,12 @@ def __mul__(self, other):
+ 
+         fact = self.scale_factor * other.scale_factor
+ 
+-        if fact == 1:
++        if fact == 1 and not isinstance(other, Prefix):
++            # When multiplying prefix with a regular unit (not another prefix),
++            # don't return just 1; instead return the scaled quantity
++            # This handles cases like milli * W -> should be equivalent to W * milli
++            return self.scale_factor * other
++        elif fact == 1:
+             return 1
+         elif isinstance(other, Prefix):
+             # simplify prefix

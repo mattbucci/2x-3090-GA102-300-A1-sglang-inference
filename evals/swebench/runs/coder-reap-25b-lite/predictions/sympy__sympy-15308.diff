@@ -1,0 +1,17 @@
+diff --git a/sympy/printing/latex.py b/sympy/printing/latex.py
+index a0eb97792e..5c0fb96943 100644
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -1470,6 +1470,12 @@ def _print_Adjoint(self, expr):
+         else:
+             return r"%s^\dagger" % self._print(mat)
+ 
++    def _print_Trace(self, expr):
++        # For Trace expressions, use \operatorname{Tr} as suggested in hints
++        # This follows the pattern used for other mathematical operators
++        arg = self._print(expr.args[0])
++        return r"\operatorname{Tr}\left(%s\right)" % arg
++
+     def _print_MatAdd(self, expr):
+         terms = [self._print(t) for t in expr.args]
+         l = []

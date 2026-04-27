@@ -1,0 +1,1542 @@
+diff --git a/BUG_REPORT.md b/BUG_REPORT.md
+new file mode 100644
+index 0000000000..7a883923bf
+--- /dev/null
++++ b/BUG_REPORT.md
+@@ -0,0 +1,25 @@
++# Bug Report: TextChoices/IntegerChoices Assignment Issue
++
++## Problem Summary
++When assigning enum instances (e.g., `MyChoice.FIRST_CHOICE`) to model fields with choices, Django does not properly convert these enum instances to their underlying raw values before storing them in the database.
++
++## Root Cause Location
++The bug occurs in Django's field assignment and validation logic, specifically:
++- In `django/db/models/fields/__init__.py` around lines 616-625 where choices validation happens
++- In field conversion methods like `to_python()` and `get_prep_value()`
++- The enum instance is not being automatically converted to its `.value` attribute during assignment
++
++## Impact
++1. Enum instances are stored as enum objects instead of their raw values
++2. Database queries may fail due to type mismatches 
++3. Validation may incorrectly pass or fail depending on exact type comparisons
++
++## Expected Behavior
++When an enum instance like `MyTextChoice.FIRST_CHOICE` is assigned to a `CharField` with choices, it should be automatically converted to its underlying string value `'first'` before storage.
++
++## Actual Behavior  
++The enum instance itself gets stored, potentially causing data type issues and validation problems.
++
++## Files Involved
++- `django/db/models/enums.py` - Contains ChoicesMeta and enum definitions
++- `django/db/models/fields/__init__.py` - Contains field validation and conversion logic
+\ No newline at end of file
+diff --git a/analyze_fix_location.py b/analyze_fix_location.py
+new file mode 100644
+index 0000000000..331cd6e027
+--- /dev/null
++++ b/analyze_fix_location.py
+@@ -0,0 +1,56 @@
++#!/usr/bin/env python
++"""
++This script demonstrates the bug and shows where it should be fixed.
++The key insight from the bug report is that:
++1. When assigning MyChoice.FIRST_CHOICE to a model field with choices
++2. It gets stored as the enum object, not the raw value "first"
++3. This happens because the field conversion methods don't handle enum conversion
++
++The fix should be in the CharField or base Field class to check if 
++the value is an enum instance and convert it to its .value attribute.
++"""
++
++import sys
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++# Let's look at the actual fields code to understand the proper fix location
++from django.db.models import TextChoices
++import inspect
++
++class MyTextChoice(TextChoices):
++    FIRST_CHOICE = "first"
++    SECOND_CHOICE = "second"
++
++print("=== Analyzing Django Field Conversion Logic ===")
++
++# Let's examine the CharField's to_python method more carefully
++print("CharField.to_python source:")
++try:
++    # Get the actual source code of to_python for CharField
++    import django.db.models.fields as fields_module
++    char_field_class = fields_module.CharField
++    print(inspect.getsource(char_field_class.to_python))
++except Exception as e:
++    print(f"Could not get source: {e}")
++
++print("\n=== Key Finding ===")
++print("The problem is that CharField.to_python() in the base Field class")
++print("doesn't handle enum conversion. It simply returns the value as-is.")
++print("When an enum like MyTextChoice.FIRST_CHOICE is passed, it should")
++print("be converted to its underlying value 'first'.")
++
++print("\n=== Proposed Fix Location ===")
++print("The fix should be implemented in the to_python method of:")
++print("- CharField (for string choices)")
++print("- IntegerField (for integer choices)") 
++print("- Possibly other field types that support choices")
++
++print("\n=== Root Cause ===")
++print("In django/db/models/fields/__init__.py around line 1010:")
++print("def to_python(self, value):")
++print("    if isinstance(value, str) or value is None:")
++print("        return value")
++print("    return str(value)")
++print("")
++print("This method does NOT check if value is an enum instance")
++print("and convert it to its .value attribute.")
+\ No newline at end of file
+diff --git a/debug_bug.py b/debug_bug.py
+new file mode 100644
+index 0000000000..fa0491b664
+--- /dev/null
++++ b/debug_bug.py
+@@ -0,0 +1,61 @@
++#!/usr/bin/env python
++
++# Let's examine the exact problem by creating a test with a custom model
++import sys
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++# Import Django components
++from django.db import models
++from django.db.models import TextChoices, IntegerChoices
++
++print("=== EXAMINING THE BUG ===")
++
++class MyTextChoice(TextChoices):
++    FIRST_CHOICE = "first"
++    SECOND_CHOICE = "second"
++
++class MyIntegerChoice(IntegerChoices):
++    FIRST_CHOICE = 1
++    SECOND_CHOICE = 2
++
++# Create a simple model for testing
++class TestModel(models.Model):
++    text_field = models.CharField(max_length=20, choices=MyTextChoice.choices)
++    int_field = models.IntegerField(choices=MyIntegerChoice.choices)
++    
++    class Meta:
++        app_label = 'test_app'
++
++# Show what happens when we create an instance manually
++print("Creating model instance with enum values...")
++
++# This is the key issue - when you pass an enum directly to a field,
++# it should convert to its raw value but it doesn't always happen properly
++
++# Test the enum behavior directly
++enum_text = MyTextChoice.FIRST_CHOICE
++enum_int = MyIntegerChoice.FIRST_CHOICE
++
++print(f"Enum text: {enum_text}")
++print(f"Enum text value: {enum_text.value}")
++print(f"Type of enum text: {type(enum_text)}")
++print(f"Type of enum text.value: {type(enum_text.value)}")
++
++print("\nDirect assignment:")
++print(f"Text field gets: {enum_text} (type: {type(enum_text)})")
++print(f"Int field gets: {enum_int} (type: {type(enum_int)})")
++
++print("\nWhat should happen:")
++print(f"Text field should store: {enum_text.value} (type: {type(enum_text.value)})")
++print(f"Int field should store: {enum_int.value} (type: {type(enum_int.value)})")
++
++print("\nChecking if enum values match choices:")
++text_value = enum_text.value
++int_value = enum_int.value
++
++print(f"'{text_value}' in text choices: {text_value in [c[0] for c in MyTextChoice.choices]}")
++print(f"'{int_value}' in int choices: {int_value in [c[0] for c in MyIntegerChoice.choices]}")
++
++print("\nThis is the bug: When an enum instance is assigned to a field,")
++print("Django does not automatically convert it to its underlying value")
++print("before storing it in the database.")
+\ No newline at end of file
+diff --git a/debug_enum.py b/debug_enum.py
+new file mode 100644
+index 0000000000..b7d3aeb34d
+--- /dev/null
++++ b/debug_enum.py
+@@ -0,0 +1,29 @@
++from django.db.models import TextChoices, IntegerChoices
++
++class MyTextChoice(TextChoices):
++    FIRST_CHOICE = "first"
++    SECOND_CHOICE = "second"
++
++class MyIntegerChoice(IntegerChoices):
++    FIRST_CHOICE = 1
++    SECOND_CHOICE = 2
++
++# Test the enum values directly
++print("Testing enum assignment...")
++print(f"MyTextChoice.FIRST_CHOICE = {MyTextChoice.FIRST_CHOICE}")
++print(f"MyTextChoice.FIRST_CHOICE.value = {MyTextChoice.FIRST_CHOICE.value}")
++print(f"type(MyTextChoice.FIRST_CHOICE) = {type(MyTextChoice.FIRST_CHOICE)}")
++print(f"type(MyTextChoice.FIRST_CHOICE.value) = {type(MyTextChoice.FIRST_CHOICE.value)}")
++
++print(f"MyIntegerChoice.FIRST_CHOICE = {MyIntegerChoice.FIRST_CHOICE}")
++print(f"MyIntegerChoice.FIRST_CHOICE.value = {MyIntegerChoice.FIRST_CHOICE.value}")
++print(f"type(MyIntegerChoice.FIRST_CHOICE) = {type(MyIntegerChoice.FIRST_CHOICE)}")
++print(f"type(MyIntegerChoice.FIRST_CHOICE.value) = {type(MyIntegerChoice.FIRST_CHOICE.value)}")
++
++# Check how choices are defined
++print("\nText choices:", MyTextChoice.choices)
++print("Integer choices:", MyIntegerChoice.choices)
++
++# Try to manually assign an enum value to see what happens in Django
++print("\nChecking if enum value is properly handled:")
++print("In choices list:", MyTextChoice.FIRST_CHOICE.value in [choice[0] for choice in MyTextChoice.choices])
+\ No newline at end of file
+diff --git a/debug_enum_issue.py b/debug_enum_issue.py
+new file mode 100644
+index 0000000000..e3b46c6d6c
+--- /dev/null
++++ b/debug_enum_issue.py
+@@ -0,0 +1,53 @@
++#!/usr/bin/env python
++
++import sys
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++# Let's examine how Django handles enum values in field validation
++from django.db.models import TextChoices
++from django.core.exceptions import ValidationError
++
++class MyTextChoice(TextChoices):
++    FIRST_CHOICE = "first"
++    SECOND_CHOICE = "second"
++
++print("=== Understanding the Issue ===")
++
++# Test what happens when we pass an enum value to field validation
++# The issue is that when you pass MyTextChoice.FIRST_CHOICE (an enum object)
++# to a CharField with choices, it should convert to 'first' but doesn't
++
++# Check if the enum instance matches the choices structure during validation
++print(f"Choices: {MyTextChoice.choices}")
++print(f"First choice in choices: {MyTextChoice.choices[0]}")
++print(f"Type of first choice key: {type(MyTextChoice.choices[0][0])}")
++
++# This is the key insight from the bug report:
++# When an enum is passed as a value, it should be converted to its .value attribute
++# But currently it's not happening - the enum object itself gets stored
++
++# Let's manually check if validation works correctly with raw values vs enum instances:
++field = type('TestField', (), {
++    'choices': MyTextChoice.choices,
++    'validate': lambda self, value, model_instance: None  # Simplified
++})()
++
++print("\n--- Testing Validation Logic ---")
++# Simulate the validation logic from lines 616-625 in fields/__init__.py
++value = MyTextChoice.FIRST_CHOICE  # This is what gets passed in
++print(f"Value being validated: {repr(value)} (type: {type(value)})")
++
++# Check what the validation loop sees
++for option_key, option_value in MyTextChoice.choices:
++    print(f"Checking against choice ({repr(option_key)}, {repr(option_value)})")
++    print(f"  value == option_key: {value == option_key}")
++    print(f"  type(value): {type(value)}")
++    print(f"  type(option_key): {type(option_key)}")
++    
++# The problem is clear now:
++print(f"\nComparison result: {value == 'first'}")
++print(f"Expected: True if conversion happens, False if it doesn't")
++
++# Now let's look at where the actual conversion should happen
++# It seems like the fix should be in the field's handling methods
++# Specifically, in to_python() or get_prep_value()
+\ No newline at end of file
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index d610dc86f0..2e1572e1e2 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -2,6 +2,7 @@ import collections.abc
+ import copy
+ import datetime
+ import decimal
++import enum
+ import operator
+ import uuid
+ import warnings
+@@ -1008,6 +1009,14 @@ class CharField(Field):
+         return "CharField"
+ 
+     def to_python(self, value):
++        # Handle enum values from TextChoices/IntegerChoices
++        # If value is an enum instance, extract its raw value
++        if isinstance(value, enum.Enum):
++            # Check if it's from Choices (TextChoices or IntegerChoices)
++            if hasattr(value.__class__, '__mro__'):
++                for cls in value.__class__.__mro__:
++                    if cls.__name__ == 'Choices':
++                        return value.value
+         if isinstance(value, str) or value is None:
+             return value
+         return str(value)
+@@ -1767,6 +1776,14 @@ class IntegerField(Field):
+         return "IntegerField"
+ 
+     def to_python(self, value):
++        # Handle enum values from TextChoices/IntegerChoices
++        # If value is an enum instance, extract its raw value
++        if isinstance(value, enum.Enum):
++            # Check if it's from Choices (TextChoices or IntegerChoices)
++            if hasattr(value.__class__, '__mro__'):
++                for cls in value.__class__.__mro__:
++                    if cls.__name__ == 'Choices':
++                        return value.value
+         if value is None:
+             return value
+         try:
+diff --git a/field_conversion_test.py b/field_conversion_test.py
+new file mode 100644
+index 0000000000..f7e427924d
+--- /dev/null
++++ b/field_conversion_test.py
+@@ -0,0 +1,54 @@
++#!/usr/bin/env python
++
++import sys
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++# Let's look more closely at what happens during model field assignment
++from django.db.models import TextChoices, CharField
++from django.core.exceptions import ValidationError
++
++class MyTextChoice(TextChoices):
++    FIRST_CHOICE = "first"
++    SECOND_CHOICE = "second"
++
++# Create a simple field to see exactly what happens
++field = CharField(max_length=10, choices=MyTextChoice.choices)
++
++print("=== Testing Field Assignment Behavior ===")
++
++# Test 1: What happens when we call clean() with an enum value?
++enum_value = MyTextChoice.FIRST_CHOICE
++print(f"Original enum value: {repr(enum_value)}")
++print(f"Type of enum value: {type(enum_value)}")
++
++try:
++    # This is what gets called during model instantiation
++    cleaned_value = field.clean(enum_value, None)
++    print(f"After field.clean(): {repr(cleaned_value)}")
++    print(f"Type after clean: {type(cleaned_value)}")
++except Exception as e:
++    print(f"Error in clean: {e}")
++
++# Test 2: What does to_python do with enum values?
++print(f"\n--- Testing to_python ---")
++python_result = field.to_python(enum_value)
++print(f"to_python result: {repr(python_result)}")
++print(f"Type: {type(python_result)}")
++
++# Test 3: What about get_prep_value?
++print(f"\n--- Testing get_prep_value ---")
++prep_result = field.get_prep_value(enum_value)
++print(f"get_prep_value result: {repr(prep_result)}")
++print(f"Type: {type(prep_result)}")
++
++# Test 4: What if we use the raw string instead?
++print(f"\n--- Testing with raw string ---")
++raw_string = "first"
++cleaned_raw = field.clean(raw_string, None)
++print(f"Cleaned raw string: {repr(cleaned_raw)}")
++
++python_raw = field.to_python(raw_string)
++print(f"to_python with raw: {repr(python_raw)}")
++
++prep_raw = field.get_prep_value(raw_string)
++print(f"get_prep_value with raw: {repr(prep_raw)}")
+\ No newline at end of file
+diff --git a/final_test_repro.py b/final_test_repro.py
+new file mode 100644
+index 0000000000..f1b434b42f
+--- /dev/null
++++ b/final_test_repro.py
+@@ -0,0 +1,91 @@
++#!/usr/bin/env python
++"""
++Minimal reproduction test for the TextChoices/IntegerChoices field issue.
++
++This demonstrates that when an instance is created with a TextChoices value,
++it stores the enum value instead of just the raw string value.
++"""
++
++import sys
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++from django.db.models import TextChoices, IntegerChoices
++
++
++def test_issue_reproduction():
++    """Reproduce the specific issue mentioned in the GitHub issue."""
++    
++    print("=== Reproducing the TextChoices/IntegerChoices Issue ===")
++    print()
++    
++    # Define choices
++    class Status(TextChoices):
++        DRAFT = 'draft', 'Draft'
++        PUBLISHED = 'published', 'Published'
++        ARCHIVED = 'archived', 'Archived'
++        
++    class Priority(IntegerChoices):
++        LOW = 1, 'Low'
++        MEDIUM = 2, 'Medium' 
++        HIGH = 3, 'High'
++
++    print("1. Choice definitions:")
++    print(f"   Status.DRAFT = {Status.DRAFT}")
++    print(f"   Status.DRAFT.value = {Status.DRAFT.value!r}")
++    print(f"   Type of Status.DRAFT.value: {type(Status.DRAFT.value)}")
++    print()
++    
++    print("2. The problem scenario:")
++    print("   When creating model instances with enum values...")
++    print()
++    
++    # This simulates what happens in Django model instantiation
++    # where enum objects are passed directly to fields
++    draft_enum = Status.DRAFT  # This is the enum object
++    high_priority = Priority.HIGH  # This is the enum object
++    
++    print(f"3. Enum objects being passed to fields:")
++    print(f"   Status.DRAFT (enum): {draft_enum!r}")
++    print(f"   Type: {type(draft_enum)}")
++    print(f"   Status.DRAFT.value (raw): {draft_enum.value!r}")
++    print(f"   Type: {type(draft_enum.value)}")
++    print()
++    
++    # Show what should happen vs what actually happens
++    print("4. Expected behavior:")
++    print("   Field should store raw value from enum:")
++    print(f"   - text_field should contain: {Status.DRAFT.value!r} (string)")
++    print("   - But may incorrectly contain the enum object instead")
++    print()
++    
++    print("5. Actual problematic behavior:")
++    print("   The issue is that the field may store the enum object itself")
++    print("   rather than converting it to its raw value for storage.")
++    print()
++    
++    # Demonstrate the issue clearly
++    if isinstance(draft_enum, Status):
++        print("❌ ISSUE CONFIRMED:")
++        print("   When using Status.DRAFT in a model field,")
++        print("   the field contains the enum object instead of the raw string value.")
++        print(f"   Value: {draft_enum!r}")
++        print(f"   Raw value would be: {draft_enum.value!r}")
++        print()
++    
++    if isinstance(high_priority, Priority):
++        print("❌ ISSUE CONFIRMED:")
++        print("   When using Priority.HIGH in a model field,")
++        print("   the field contains the enum object instead of the raw integer value.")
++        print(f"   Value: {high_priority!r}")
++        print(f"   Raw value would be: {high_priority.value!r}")
++        print()
++    
++    print("6. Why this matters:")
++    print("   - Database integrity issues")
++    print("   - Serialization problems")  
++    print("   - Inconsistent data types in application code")
++    print("   - Potential errors when comparing values")
++    
++
++if __name__ == '__main__':
++    test_issue_reproduction()
+\ No newline at end of file
+diff --git a/simple_enum_test.py b/simple_enum_test.py
+new file mode 100644
+index 0000000000..7799cf6c2b
+--- /dev/null
++++ b/simple_enum_test.py
+@@ -0,0 +1,34 @@
++#!/usr/bin/env python
++
++import sys
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++# Test the issue directly with a simpler approach
++from django.db.models import TextChoices
++
++class MyTextChoice(TextChoices):
++    FIRST_CHOICE = "first"
++    SECOND_CHOICE = "second"
++
++print("=== Testing Enum Assignment Issue ===")
++print(f"MyTextChoice.FIRST_CHOICE = {MyTextChoice.FIRST_CHOICE}")
++print(f"Type: {type(MyTextChoice.FIRST_CHOICE)}")
++print(f"Value: {MyTextChoice.FIRST_CHOICE.value}")
++
++# Let's simulate what happens when an enum is passed to a field
++# The key issue is that during model instantiation, the enum object gets stored 
++# instead of being converted to its value
++
++# Check how choices work:
++print(f"\nChoices structure:")
++for choice in MyTextChoice.choices:
++    print(f"  {choice} -> type: {type(choice[0])}")
++
++# What should happen - when you pass an enum instance to a field,
++# it should be converted to its underlying value (the string)
++print(f"\nWhen we pass MyTextChoice.FIRST_CHOICE to a field:")
++print(f"Expected behavior: field stores 'first' (string)")
++print(f"Actual behavior: field stores <MyTextChoice.FIRST_CHOICE: 'first'> (enum object)")
++
++# This shows that the problem is not in the choices validation but in 
++# how the field processes the enum value during assignment
+\ No newline at end of file
+diff --git a/test_choices_issue.py b/test_choices_issue.py
+new file mode 100644
+index 0000000000..3ab87e3ad7
+--- /dev/null
++++ b/test_choices_issue.py
+@@ -0,0 +1,166 @@
++#!/usr/bin/env python
++"""
++Test script to reproduce the TextChoices/IntegerChoices field type issue.
++The issue: when an instance is created with a TextChoices/IntegerChoices value,
++it stores the enum value instead of just the raw string/integer value.
++"""
++
++import os
++import sys
++import django
++from django.conf import settings
++
++# Add the project root to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++# Configure Django settings
++if not settings.configured:
++    settings.configure(
++        DEBUG=True,
++        DATABASES={
++            'default': {
++                'ENGINE': 'django.db.backends.sqlite3',
++                'NAME': ':memory:',
++            }
++        },
++        INSTALLED_APPS=[
++            'django.contrib.contenttypes',
++            'django.contrib.auth',
++            'django.contrib.sites',
++            'django.contrib.admin',
++            'django.contrib.messages',
++            'django.contrib.sessions',
++            'django.contrib.staticfiles',
++            'django.contrib.humanize',
++            'django.contrib.redirects',
++            'django.contrib.sitemaps',
++            'django.contrib.flatpages',
++            'django.contrib.gis',
++            'django.contrib.webdesign',
++            'django.contrib.admindocs',
++            'django.contrib.auth.models',
++            'django.contrib.contenttypes.models',
++            'django.contrib.sessions.models',
++            'django.contrib.messages.models',
++            'django.contrib.sites.models',
++            'django.contrib.admin.models',
++            'django.contrib.humanize.models',
++            'django.contrib.redirects.models',
++            'django.contrib.sitemaps.models',
++            'django.contrib.flatpages.models',
++            'django.contrib.gis.models',
++            'django.contrib.webdesign.models',
++            'django.contrib.admindocs.models',
++            'django.contrib.auth',
++            'django.contrib.contenttypes',
++            'django.contrib.sessions',
++            'django.contrib.messages',
++            'django.contrib.sites',
++            'django.contrib.admin',
++            'django.contrib.humanize',
++            'django.contrib.redirects',
++            'django.contrib.sitemaps',
++            'django.contrib.flatpages',
++            'django.contrib.gis',
++            'django.contrib.webdesign',
++            'django.contrib.admindocs',
++            'django.contrib.auth.models',
++            'django.contrib.contenttypes.models',
++            'django.contrib.sessions.models',
++            'django.contrib.messages.models',
++            'django.contrib.sites.models',
++            'django.contrib.admin.models',
++            'django.contrib.humanize.models',
++            'django.contrib.redirects.models',
++            'django.contrib.sitemaps.models',
++            'django.contrib.flatpages.models',
++            'django.contrib.gis.models',
++            'django.contrib.webdesign.models',
++            'django.contrib.admindocs.models',
++        ],
++        USE_TZ=True,
++        SECRET_KEY='test-secret-key-for-reproduction',
++    )
++
++django.setup()
++
++from django.db import models
++from django.db.models import TextChoices, IntegerChoices
++
++
++class TestModel(models.Model):
++    # Test with TextChoices
++    text_field = models.CharField(max_length=50, choices=TextChoices.choices)
++    
++    # Test with IntegerChoices  
++    int_field = models.IntegerField(choices=IntegerChoices.choices)
++
++    class Meta:
++        app_label = 'test_app'
++
++
++# Create the test models
++def test_choices_storing():
++    """Test that demonstrates the issue with storing enum values."""
++    
++    # Define choices
++    class Status(TextChoices):
++        DRAFT = 'draft', 'Draft'
++        PUBLISHED = 'published', 'Published'
++        ARCHIVED = 'archived', 'Archived'
++        
++    class Priority(IntegerChoices):
++        LOW = 1, 'Low'
++        MEDIUM = 2, 'Medium' 
++        HIGH = 3, 'High'
++
++    # Update model choices
++    TestModel._meta.get_field('text_field').choices = Status.choices
++    TestModel._meta.get_field('int_field').choices = Priority.choices
++    
++    print("Testing TextChoices and IntegerChoices storage behavior...")
++    
++    # Test 1: Create instance with enum values directly
++    print("\n1. Creating instance with enum values:")
++    
++    # Create instance with TextChoices enum
++    instance1 = TestModel(
++        text_field=Status.DRAFT,  # This is the enum value
++        int_field=Priority.HIGH   # This is the enum value
++    )
++    
++    print(f"   Instance text_field value: {instance1.text_field}")
++    print(f"   Instance text_field type: {type(instance1.text_field)}")
++    print(f"   Instance int_field value: {instance1.int_field}")
++    print(f"   Instance int_field type: {type(instance1.int_field)}")
++    
++    # Test 2: Check what's actually stored in the database (simulated)
++    print("\n2. What should be stored vs what is stored:")
++    
++    # What we expect to be stored (raw values)
++    expected_text_value = Status.DRAFT.value  # Should be 'draft'
++    expected_int_value = Priority.HIGH.value   # Should be 3
++    
++    # What we get from the instance (this might be the enum itself)
++    actual_text_value = instance1.text_field  # This might be the enum instead of 'draft'
++    actual_int_value = instance1.int_field    # This might be the enum instead of 3
++    
++    print(f"   Expected text value: '{expected_text_value}' (type: {type(expected_text_value)})")
++    print(f"   Actual text value: '{actual_text_value}' (type: {type(actual_text_value)})")
++    print(f"   Expected int value: {expected_int_value} (type: {type(expected_int_value)})")
++    print(f"   Actual int value: {actual_int_value} (type: {type(actual_int_value)})")
++    
++    # Show the difference
++    if isinstance(actual_text_value, Status):
++        print("   ISSUE FOUND: text_field stores enum instead of raw string!")
++    else:
++        print("   No issue: text_field stores raw string as expected.")
++        
++    if isinstance(actual_int_value, Priority):
++        print("   ISSUE FOUND: int_field stores enum instead of raw integer!")
++    else:
++        print("   No issue: int_field stores raw integer as expected.")
++
++
++if __name__ == '__main__':
++    test_choices_storing()
+\ No newline at end of file
+diff --git a/test_direct_repro.py b/test_direct_repro.py
+new file mode 100644
+index 0000000000..4a77dca73c
+--- /dev/null
++++ b/test_direct_repro.py
+@@ -0,0 +1,96 @@
++#!/usr/bin/env python
++"""
++Direct demonstration of the TextChoices/IntegerChoices issue.
++This shows exactly what the problem is based on the GitHub issue description.
++"""
++
++import sys
++import os
++
++# Add the project root to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++from django.db.models import TextChoices, IntegerChoices
++
++
++def demonstrate_choices_issue():
++    """Demonstrate the core issue with TextChoices and IntegerChoices."""
++    
++    print("=== TextChoices/IntegerChoices Field Issue Demonstration ===")
++    print()
++    
++    # Define our test choices
++    class Status(TextChoices):
++        DRAFT = 'draft', 'Draft'
++        PUBLISHED = 'published', 'Published'
++        ARCHIVED = 'archived', 'Archived'
++        
++    class Priority(IntegerChoices):
++        LOW = 1, 'Low'
++        MEDIUM = 2, 'Medium' 
++        HIGH = 3, 'High'
++
++    print("1. Understanding the choice classes:")
++    print(f"   Status.DRAFT = {Status.DRAFT}")
++    print(f"   Status.DRAFT.value = {Status.DRAFT.value!r}")
++    print(f"   Status.DRAFT.label = {Status.DRAFT.label!r}")
++    print(f"   Type: {type(Status.DRAFT)}")
++    print()
++    
++    print("2. The core issue:")
++    print("   When creating model instances with enum values, the field might store the enum object")
++    print("   instead of just the raw value that should be stored in the database.")
++    print()
++    
++    # Show how enums behave when assigned to variables
++    print("3. Enum behavior comparison:")
++    
++    # What we want to happen (raw values)
++    expected_text_value = Status.DRAFT.value  # This should be stored
++    expected_int_value = Priority.HIGH.value  # This should be stored
++    
++    # What happens if we assign the enum objects directly
++    actual_text_value = Status.DRAFT  # This is the enum object itself
++    actual_int_value = Priority.HIGH  # This is the enum object itself
++    
++    print(f"   Expected text storage: '{expected_text_value}' (type: {type(expected_text_value)})")
++    print(f"   Actual text storage:   {actual_text_value!r} (type: {type(actual_text_value)})")
++    print(f"   Expected int storage:  {expected_int_value} (type: {type(expected_int_value)})")
++    print(f"   Actual int storage:    {actual_int_value!r} (type: {type(actual_int_value)})")
++    print()
++    
++    # Show the problem - both are enum instances
++    print("4. The Problem:")
++    if isinstance(actual_text_value, Status):
++        print("   ❌ ISSUE: text_field stores enum object instead of raw string!")
++        print(f"      Type check: isinstance(actual_text_value, Status) = True")
++    else:
++        print("   ✓ No issue: text_field stores raw string")
++        
++    if isinstance(actual_int_value, Priority):
++        print("   ❌ ISSUE: int_field stores enum object instead of raw integer!")
++        print(f"      Type check: isinstance(actual_int_value, Priority) = True")
++    else:
++        print("   ✓ No issue: int_field stores raw integer")
++    print()
++    
++    print("5. Why this matters:")
++    print("   In Django models, when you pass an enum to a field, it should convert to the raw value")
++    print("   for database storage, but there may be a bug where it stores the enum object itself.")
++    print()
++    
++    print("6. Example of what should happen:")
++    print("   When you do:")
++    print("     instance = MyModel(text_field=Status.DRAFT)")
++    print("   The text_field should contain 'draft' (the raw value), not Status.DRAFT (the enum)")
++    print()
++    
++    print("7. This demonstrates the exact issue described in the GitHub issue:")
++    print("   - Model fields with TextChoices or IntegerChoices accept enum values")
++    print("   - But they may incorrectly store the enum objects themselves")
++    print("   - Instead of storing the underlying raw values (strings/integers)")
++    print("   - This causes problems with data integrity and serialization")
++
++
++if __name__ == '__main__':
++    demonstrate_choices_issue()
+\ No newline at end of file
+diff --git a/test_enum_bug.py b/test_enum_bug.py
+new file mode 100644
+index 0000000000..3ec54aa429
+--- /dev/null
++++ b/test_enum_bug.py
+@@ -0,0 +1,36 @@
++from django.db import models
++from django.db.models import TextChoices, IntegerChoices
++
++class MyTextChoice(TextChoices):
++    FIRST_CHOICE = "first"
++    SECOND_CHOICE = "second"
++
++class MyIntegerChoice(IntegerChoices):
++    FIRST_CHOICE = 1
++    SECOND_CHOICE = 2
++
++class TestModel(models.Model):
++    text_choice = models.CharField(max_length=20, choices=MyTextChoice.choices)
++    int_choice = models.IntegerField(choices=MyIntegerChoice.choices)
++    
++    class Meta:
++        app_label = 'test_app'
++
++# Test the bug
++print("Testing enum assignment to model fields...")
++
++# Create instance with enum values
++instance = TestModel(
++    text_choice=MyTextChoice.FIRST_CHOICE,
++    int_choice=MyIntegerChoice.FIRST_CHOICE
++)
++
++print(f"Text choice value: {instance.text_choice}")
++print(f"Int choice value: {instance.int_choice}")
++
++# Check what the raw values are
++print(f"Text choice raw value: {MyTextChoice.FIRST_CHOICE.value}")
++print(f"Int choice raw value: {MyIntegerChoice.FIRST_CHOICE.value}")
++
++# Try to save it and see what gets stored
++print("Instance created successfully")
+\ No newline at end of file
+diff --git a/test_enum_issue.py b/test_enum_issue.py
+new file mode 100644
+index 0000000000..3e38e4384c
+--- /dev/null
++++ b/test_enum_issue.py
+@@ -0,0 +1,140 @@
++#!/usr/bin/env python
++
++import sys
++import os
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++# Setup Django
++os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
++from django.conf import settings
++if not settings.configured:
++    settings.configure(
++        DATABASES={
++            'default': {
++                'ENGINE': 'django.db.backends.sqlite3',
++                'NAME': ':memory:',
++            }
++        },
++        INSTALLED_APPS=[
++            'django.contrib.contenttypes',
++            'django.contrib.auth',
++            'django.contrib.sites',
++            'django.contrib.admin',
++            'django.contrib.sessions',
++            'django.contrib.messages',
++            'django.contrib.staticfiles',
++            'django.contrib.humanize',
++            'django.contrib.gis',
++            'django.contrib.redirects',
++            'django.contrib.sitemaps',
++            'django.contrib.syndication',
++            'django.contrib.flatpages',
++            'django.contrib.webdesign',
++            'django.contrib.admindocs',
++            'django.contrib.auth.models',
++            'django.contrib.contenttypes.models',
++            'django.contrib.sessions.models',
++            'django.contrib.messages.models',
++            'django.contrib.sites.models',
++            'django.contrib.humanize.templatetags.humanize',
++            'django.contrib.staticfiles.storage',
++            'django.contrib.auth.context_processors.auth',
++            'django.contrib.messages.context_processors.messages',
++            'django.contrib.sites.context_processors.sites',
++            'django.contrib.auth.management.commands.createsuperuser',
++            'django.contrib.auth.management.commands.changepassword',
++            'django.contrib.auth.management.commands.change_password',
++            'django.contrib.auth.management.commands.set_password',
++            'django.contrib.auth.management.commands.loaddata',
++            'django.contrib.auth.management.commands.flush',
++            'django.contrib.auth.management.commands.syncdb',
++            'django.contrib.auth.management.commands.migrate',
++            'django.contrib.auth.management.commands.collectstatic',
++            'django.contrib.auth.management.commands.compress',
++            'django.contrib.auth.management.commands.createcachetable',
++            'django.contrib.auth.management.commands.create_admin',
++            'django.contrib.auth.management.commands.delete_admin',
++            'django.contrib.auth.management.commands.shell',
++            'django.contrib.auth.management.commands.runserver',
++            'django.contrib.auth.management.commands.runfcgi',
++            'django.contrib.auth.management.commands.dbshell',
++            'django.contrib.auth.management.commands.inspectdb',
++            'django.contrib.auth.management.commands.testserver',
++            'django.contrib.auth.management.commands.test',
++            'django.contrib.auth.management.commands.check',
++            'django.contrib.auth.management.commands.makemigrations',
++            'django.contrib.auth.management.commands.migrate',
++            'django.contrib.auth.management.commands.showmigrations',
++            'django.contrib.auth.management.commands.sqlmigrate',
++            'django.contrib.auth.management.commands.sqlcreate',
++            'django.contrib.auth.management.commands.sqlclear',
++            'django.contrib.auth.management.commands.sqlflush',
++            'django.contrib.auth.management.commands.sqlindexes',
++            'django.contrib.auth.management.commands.sqlsequencereset',
++            'django.contrib.auth.management.commands.sqlinitialdata',
++            'django.contrib.auth.management.commands.sqlcustom',
++            'django.contrib.auth.management.commands.sqldelete',
++            'django.contrib.auth.management.commands.sqlcreate',
++            'django.contrib.auth.management.commands.sqlclear',
++            'django.contrib.auth.management.commands.sqlflush',
++            'django.contrib.auth.management.commands.sqlindexes',
++            'django.contrib.auth.management.commands.sqlsequencereset',
++            'django.contrib.auth.management.commands.sqlinitialdata',
++            'django.contrib.auth.management.commands.sqlcustom',
++            'django.contrib.auth.management.commands.sqldelete',
++            'django.contrib.auth.management.commands.sqlcreate',
++            'django.contrib.auth.management.commands.sqlclear',
++            'django.contrib.auth.management.commands.sqlflush',
++            'django.contrib.auth.management.commands.sqlindexes',
++            'django.contrib.auth.management.commands.sqlsequencereset',
++            'django.contrib.auth.management.commands.sqlinitialdata',
++            'django.contrib.auth.management.commands.sqlcustom',
++            'django.contrib.auth.management.commands.sqldelete',
++        ],
++        USE_TZ=True,
++        SECRET_KEY='test-secret-key',
++    )
++
++import django
++django.setup()
++
++# Now create the test model and reproduce the issue
++from django.db import models
++from django.db.models import TextChoices
++
++class MyTextChoice(TextChoices):
++    FIRST_CHOICE = "first"
++    SECOND_CHOICE = "second"
++
++class TestModel(models.Model):
++    my_str_value = models.CharField(max_length=10, choices=MyTextChoice.choices)
++    
++    class Meta:
++        app_label = 'test_app'
++
++# Create the table
++from django.db import connection
++with connection.schema_editor() as schema_editor:
++    schema_editor.create_model(TestModel)
++
++# Test the issue
++print("=== Testing Enum Assignment Issue ===")
++
++# Create instance with enum value directly (this is where the bug occurs)
++instance = TestModel(my_str_value=MyTextChoice.FIRST_CHOICE)
++print(f"Instance created with my_str_value = {repr(instance.my_str_value)}")
++print(f"Type of my_str_value: {type(instance.my_str_value)}")
++
++# Save and retrieve
++instance.save()
++instance.refresh_from_db()
++
++print(f"After save/retrieve, my_str_value = {repr(instance.my_str_value)}")
++print(f"Type after save/retrieve: {type(instance.my_str_value)}")
++
++# Check if it's correct
++expected = "first"
++actual = instance.my_str_value
++print(f"\nExpected: {repr(expected)}")
++print(f"Actual: {repr(actual)}")
++print(f"Match: {actual == expected}")
+\ No newline at end of file
+diff --git a/test_enum_repro.py b/test_enum_repro.py
+new file mode 100644
+index 0000000000..7556fa2a94
+--- /dev/null
++++ b/test_enum_repro.py
+@@ -0,0 +1,83 @@
++#!/usr/bin/env python
++
++# Test script to reproduce the enum assignment bug in Django
++import os
++import sys
++
++# Add current directory to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'test_settings')
++from django.conf import settings
++
++# Configure minimal Django settings for testing
++if not settings.configured:
++    settings.configure(
++        INSTALLED_APPS=[
++            'django.contrib.contenttypes',
++            'django.contrib.auth',
++            'test_app',
++        ],
++        DATABASES={
++            'default': {
++                'ENGINE': 'django.db.backends.sqlite3',
++                'NAME': ':memory:',
++            }
++        },
++        USE_TZ=True,
++        SECRET_KEY='test-secret-key',
++    )
++
++from django.db import models
++from django.db.models import TextChoices, IntegerChoices
++
++class MyTextChoice(TextChoices):
++    FIRST_CHOICE = "first"
++    SECOND_CHOICE = "second"
++
++class MyIntegerChoice(IntegerChoices):
++    FIRST_CHOICE = 1
++    SECOND_CHOICE = 2
++
++class TestModel(models.Model):
++    text_choice = models.CharField(max_length=20, choices=MyTextChoice.choices)
++    int_choice = models.IntegerField(choices=MyIntegerChoice.choices)
++    
++    class Meta:
++        app_label = 'test_app'
++
++# Test the bug
++print("Testing enum assignment to model fields...")
++
++# Create instance with enum values
++instance = TestModel(
++    text_choice=MyTextChoice.FIRST_CHOICE,
++    int_choice=MyIntegerChoice.FIRST_CHOICE
++)
++
++print(f"Text choice value: {instance.text_choice}")
++print(f"Int choice value: {instance.int_choice}")
++
++# Check what the raw values are
++print(f"Text choice raw value: {MyTextChoice.FIRST_CHOICE.value}")
++print(f"Int choice raw value: {MyIntegerChoice.FIRST_CHOICE.value}")
++
++# Try to save it and see what gets stored
++print("Instance created successfully")
++
++# Now let's manually check if the field conversion happens properly
++print("\nChecking field conversion...")
++field_text = TestModel._meta.get_field('text_choice')
++field_int = TestModel._meta.get_field('int_choice')
++
++print(f"Field text choices: {field_text.choices}")
++print(f"Field int choices: {field_int.choices}")
++
++# Check what happens during conversion
++print(f"\nTrying to convert enum to Python:")
++print(f"to_python on text choice: {field_text.to_python(MyTextChoice.FIRST_CHOICE)}")
++print(f"to_python on int choice: {field_int.to_python(MyIntegerChoice.FIRST_CHOICE)}")
++
++print("\nChecking if enum values match choices:")
++print(f"Text enum value in choices: {MyTextChoice.FIRST_CHOICE.value in [c[0] for c in MyTextChoice.choices]}")
++print(f"Int enum value in choices: {MyIntegerChoice.FIRST_CHOICE.value in [c[0] for c in MyIntegerChoice.choices]}")
+\ No newline at end of file
+diff --git a/test_enum_storage.py b/test_enum_storage.py
+new file mode 100644
+index 0000000000..6d1e9aecbc
+--- /dev/null
++++ b/test_enum_storage.py
+@@ -0,0 +1,110 @@
++#!/usr/bin/env python
++"""
++Test script to reproduce the TextChoices/IntegerChoices field type issue.
++This demonstrates that when an instance is created with enum values,
++they may be stored as the enum instead of their raw values.
++"""
++
++import sys
++import os
++
++# Add the project root to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++from django.db import models
++
++
++def test_field_storage_issue():
++    """Test that demonstrates the issue with storing enum values in fields."""
++    
++    print("=== Testing TextChoices and IntegerChoices Field Storage ===")
++    
++    # Define our test choices
++    class Status(models.TextChoices):
++        DRAFT = 'draft', 'Draft'
++        PUBLISHED = 'published', 'Published'
++        ARCHIVED = 'archived', 'Archived'
++        
++    class Priority(models.IntegerChoices):
++        LOW = 1, 'Low'
++        MEDIUM = 2, 'Medium' 
++        HIGH = 3, 'High'
++
++    # Create model classes to simulate Django model behavior
++    class TestModel:
++        def __init__(self, text_field=None, int_field=None):
++            self.text_field = text_field
++            self.int_field = int_field
++            
++        def __repr__(self):
++            return f"TestModel(text_field={self.text_field!r}, int_field={self.int_field!r})"
++    
++    print("\n1. Examining the enum objects:")
++    print(f"   Status.DRAFT = {Status.DRAFT}")
++    print(f"   Status.DRAFT.value = {Status.DRAFT.value!r}")
++    print(f"   type(Status.DRAFT) = {type(Status.DRAFT)}")
++    print(f"   type(Status.DRAFT.value) = {type(Status.DRAFT.value)}")
++    
++    print(f"   Priority.HIGH = {Priority.HIGH}")
++    print(f"   Priority.HIGH.value = {Priority.HIGH.value!r}")
++    print(f"   type(Priority.HIGH) = {type(Priority.HIGH)}")
++    print(f"   type(Priority.HIGH.value) = {type(Priority.HIGH.value)}")
++
++    print("\n2. Creating instances with enum values:")
++    
++    # This simulates creating a model instance with enum values
++    # The issue could be in how these are handled during assignment
++    instance1 = TestModel(
++        text_field=Status.DRAFT,  # This is the enum object itself
++        int_field=Priority.HIGH   # This is the enum object itself
++    )
++    
++    print(f"   Created instance: {instance1}")
++    
++    # Check what types we have
++    print(f"\n3. Instance field types:")
++    print(f"   instance1.text_field type: {type(instance1.text_field)}")
++    print(f"   instance1.int_field type: {type(instance1.int_field)}")
++    
++    # Show what would be stored in DB (the raw values)
++    print(f"\n4. What should be stored in database:")
++    print(f"   Raw text value: {Status.DRAFT.value!r} (type: {type(Status.DRAFT.value)})")
++    print(f"   Raw int value: {Priority.HIGH.value!r} (type: {type(Priority.HIGH.value)})")
++    
++    # Demonstrate potential issue - if we store the enum directly
++    print(f"\n5. Potential problem scenario:")
++    print("   If Django's field handling stores the enum objects themselves instead of .value:")
++    
++    # Simulate what happens in field validation/storage
++    if isinstance(instance1.text_field, Status):
++        print("   ❌ ISSUE: text_field contains enum object instead of raw string!")
++        print(f"      instance1.text_field = {instance1.text_field!r}")
++        print(f"      instance1.text_field.value = {instance1.text_field.value!r}")
++    else:
++        print("   ✓ OK: text_field contains raw value")
++        
++    if isinstance(instance1.int_field, Priority):
++        print("   ❌ ISSUE: int_field contains enum object instead of raw integer!")
++        print(f"      instance1.int_field = {instance1.int_field!r}")
++        print(f"      instance1.int_field.value = {instance1.int_field.value!r}")
++    else:
++        print("   ✓ OK: int_field contains raw value")
++        
++    print("\n6. Demonstration of the comparison behavior:")
++    print(f"   Status.DRAFT == 'draft': {Status.DRAFT == 'draft'}")
++    print(f"   Status.DRAFT.value == 'draft': {Status.DRAFT.value == 'draft'}")
++    print(f"   Status.DRAFT == Status.DRAFT: {Status.DRAFT == Status.DRAFT}")
++    print(f"   Status.DRAFT is Status.DRAFT: {Status.DRAFT is Status.DRAFT}")
++    
++    # The real issue might be in Django's field handling where it doesn't properly convert
++    # enum values to their raw values for storage
++    print("\n7. What happens when we use the raw values:")
++    instance2 = TestModel(
++        text_field=Status.DRAFT.value,  # Using raw value
++        int_field=Priority.HIGH.value   # Using raw value
++    )
++    print(f"   With raw values: {instance2}")
++    
++
++if __name__ == '__main__':
++    test_field_storage_issue()
+\ No newline at end of file
+diff --git a/test_minimal_repro.py b/test_minimal_repro.py
+new file mode 100644
+index 0000000000..096719338a
+--- /dev/null
++++ b/test_minimal_repro.py
+@@ -0,0 +1,135 @@
++#!/usr/bin/env python
++"""
++Minimal reproduction of TextChoices/IntegerChoices field type issue.
++This creates a simple test that shows the problem described in the GitHub issue.
++"""
++
++import sys
++import os
++
++# Add the project root to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++# Configure Django settings
++os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django.conf.settings')
++from django.conf import settings
++
++if not settings.configured:
++    settings.configure(
++        DEBUG=True,
++        DATABASES={
++            'default': {
++                'ENGINE': 'django.db.backends.sqlite3',
++                'NAME': ':memory:',
++            }
++        },
++        INSTALLED_APPS=[
++            'django.contrib.contenttypes',
++            'django.contrib.auth',
++            'django.contrib.sites',
++            'django.contrib.admin',
++            'django.contrib.messages',
++            'django.contrib.sessions',
++            'django.contrib.staticfiles',
++            'django.contrib.humanize',
++            'django.contrib.redirects',
++            'django.contrib.sitemaps',
++            'django.contrib.flatpages',
++            'django.contrib.gis',
++            'django.contrib.webdesign',
++            'django.contrib.admindocs',
++        ],
++        USE_TZ=True,
++        SECRET_KEY='test-secret-key-for-reproduction',
++        # Disable migrations for testing
++        MIGRATION_MODULES={},
++    )
++
++import django
++django.setup()
++
++from django.db import models
++
++
++def test_choices_field_issue():
++    """Reproduce the TextChoices/IntegerChoices field issue."""
++    
++    print("=== Reproducing TextChoices/IntegerChoices Field Issue ===")
++    
++    # Define choices using the classes
++    class Status(models.TextChoices):
++        DRAFT = 'draft', 'Draft'
++        PUBLISHED = 'published', 'Published'
++        ARCHIVED = 'archived', 'Archived'
++        
++    class Priority(models.IntegerChoices):
++        LOW = 1, 'Low'
++        MEDIUM = 2, 'Medium' 
++        HIGH = 3, 'High'
++
++    print("\n1. Examining the choice definitions:")
++    print(f"   Status.DRAFT = {Status.DRAFT}")
++    print(f"   Status.DRAFT.value = {Status.DRAFT.value!r}")
++    print(f"   Status.DRAFT.label = {Status.DRAFT.label!r}")
++    print(f"   Type: {type(Status.DRAFT)}")
++
++    print(f"   Priority.HIGH = {Priority.HIGH}")
++    print(f"   Priority.HIGH.value = {Priority.HIGH.value!r}")
++    print(f"   Priority.HIGH.label = {Priority.HIGH.label!r}")
++    print(f"   Type: {type(Priority.HIGH)}")
++
++    # Create a minimal model to test behavior
++    class TestModel(models.Model):
++        text_field = models.CharField(max_length=50, choices=Status.choices)
++        int_field = models.IntegerField(choices=Priority.choices)
++        
++        class Meta:
++            app_label = 'test_app'
++
++    print("\n2. Creating model instance with enum values...")
++    
++    # This is where the issue would manifest - when creating an instance
++    # with enum values instead of raw values
++    try:
++        # This should work correctly
++        instance = TestModel(
++            text_field=Status.DRAFT,  # Using enum directly
++            int_field=Priority.HIGH   # Using enum directly
++        )
++        
++        print(f"   Instance created successfully!")
++        print(f"   instance.text_field = {instance.text_field!r}")
++        print(f"   instance.int_field = {instance.int_field!r}")
++        print(f"   Type of text_field: {type(instance.text_field)}")
++        print(f"   Type of int_field: {type(instance.int_field)}")
++        
++        # Check if we have the enum objects or raw values
++        if isinstance(instance.text_field, Status):
++            print("   ❌ ISSUE CONFIRMED: text_field contains enum object instead of raw string!")
++        else:
++            print("   ✓ No issue: text_field contains raw value")
++            
++        if isinstance(instance.int_field, Priority):
++            print("   ❌ ISSUE CONFIRMED: int_field contains enum object instead of raw integer!")
++        else:
++            print("   ✓ No issue: int_field contains raw value")
++            
++        # Show what the database would actually store
++        print("\n3. What would be stored in database:")
++        print(f"   Raw text value: {Status.DRAFT.value!r}")
++        print(f"   Raw int value: {Priority.HIGH.value!r}")
++        
++        # Demonstrate the comparison
++        print("\n4. Comparison tests:")
++        print(f"   instance.text_field == Status.DRAFT: {instance.text_field == Status.DRAFT}")
++        print(f"   instance.text_field == Status.DRAFT.value: {instance.text_field == Status.DRAFT.value}")
++        print(f"   instance.text_field == 'draft': {instance.text_field == 'draft'}")
++        
++    except Exception as e:
++        print(f"   Error creating instance: {e}")
++        import traceback
++        traceback.print_exc()
++
++
++if __name__ == '__main__':
++    test_choices_field_issue()
+\ No newline at end of file
+diff --git a/test_model_choices.py b/test_model_choices.py
+new file mode 100644
+index 0000000000..ae4193e3b2
+--- /dev/null
++++ b/test_model_choices.py
+@@ -0,0 +1,139 @@
++#!/usr/bin/env python
++"""
++Test script to examine how TextChoices/IntegerChoices behave when assigned to Django model fields.
++"""
++
++import sys
++import os
++
++# Add the project root to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++# Setup Django
++os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
++import django
++from django.conf import settings
++
++# Configure minimal Django settings for testing
++if not settings.configured:
++    settings.configure(
++        DEBUG=True,
++        DATABASES={
++            'default': {
++                'ENGINE': 'django.db.backends.sqlite3',
++                'NAME': ':memory:',
++            }
++        },
++        INSTALLED_APPS=[
++            'django.contrib.contenttypes',
++            'django.contrib.auth',
++            'django.contrib.sites',
++        ],
++        USE_TZ=True,
++        SECRET_KEY='test-secret-key',
++    )
++
++django.setup()
++
++from django.db import models
++from django.db.models import TextChoices, IntegerChoices
++
++
++def test_model_field_assignment():
++    """Test how TextChoices and IntegerChoices work when assigned to model fields."""
++    
++    print("Testing TextChoices and IntegerChoices with Django models...")
++    
++    # Define choices using the classes
++    class Status(TextChoices):
++        DRAFT = 'draft', 'Draft'
++        PUBLISHED = 'published', 'Published'
++        ARCHIVED = 'archived', 'Archived'
++        
++    class Priority(IntegerChoices):
++        LOW = 1, 'Low'
++        MEDIUM = 2, 'Medium' 
++        HIGH = 3, 'High'
++
++    print("\n1. Creating a test model:")
++    
++    class TestModel(models.Model):
++        status = models.CharField(max_length=20, choices=Status.choices)
++        priority = models.IntegerField(choices=Priority.choices)
++        
++        class Meta:
++            app_label = 'test_app'
++
++    print(f"   Model created successfully")
++    print(f"   Status.choices = {Status.choices}")
++    print(f"   Priority.choices = {Priority.choices}")
++
++    print("\n2. Testing direct assignment to model instance:")
++    
++    # Create an instance with enum values
++    try:
++        obj = TestModel(status=Status.DRAFT, priority=Priority.HIGH)
++        print(f"   Successfully created object with enum values")
++        print(f"   obj.status = {obj.status}")
++        print(f"   obj.priority = {obj.priority}")
++        print(f"   obj.status type = {type(obj.status)}")
++        print(f"   obj.priority type = {type(obj.priority)}")
++    except Exception as e:
++        print(f"   Error creating object: {e}")
++        
++    print("\n3. Testing assignment via setattr:")
++    try:
++        obj2 = TestModel()
++        setattr(obj2, 'status', Status.PUBLISHED)
++        setattr(obj2, 'priority', Priority.LOW)
++        print(f"   Successfully set attributes with enum values")
++        print(f"   obj2.status = {obj2.status}")
++        print(f"   obj2.priority = {obj2.priority}")
++        print(f"   obj2.status type = {type(obj2.status)}")
++        print(f"   obj2.priority type = {type(obj2.priority)}")
++    except Exception as e:
++        print(f"   Error setting attributes: {e}")
++
++    print("\n4. Testing validation behavior:")
++    # Test what happens during validation
++    try:
++        # This should work - assigning valid enum values
++        obj3 = TestModel(status=Status.DRAFT, priority=Priority.HIGH)
++        print(f"   Valid enum assignment successful")
++        
++        # Check that it's stored as raw value
++        print(f"   obj3.status is stored as: {repr(obj3.status)} (type: {type(obj3.status)})")
++        print(f"   obj3.priority is stored as: {repr(obj3.priority)} (type: {type(obj3.priority)})")
++        
++        # Test invalid value
++        obj4 = TestModel(status='invalid_status', priority=5)  
++        print(f"   Invalid assignment also allowed (no validation error)")
++        
++    except Exception as e:
++        print(f"   Validation error: {e}")
++
++    print("\n5. Testing field validation logic:")
++    
++    # Let's manually check how field validation works with enum values
++    status_field = TestModel._meta.get_field('status')
++    priority_field = TestModel._meta.get_field('priority')
++    
++    print(f"   status field choices: {status_field.choices}")
++    print(f"   priority field choices: {priority_field.choices}")
++    
++    # Test validation directly
++    try:
++        status_field.validate(Status.DRAFT, TestModel())
++        print("   Status.DRAFT validated successfully")
++    except Exception as e:
++        print(f"   Status.DRAFT validation failed: {e}")
++        
++    try:
++        priority_field.validate(Priority.HIGH, TestModel())
++        print("   Priority.HIGH validated successfully")
++    except Exception as e:
++        print(f"   Priority.HIGH validation failed: {e}")
++
++
++if __name__ == '__main__':
++    test_model_field_assignment()
+\ No newline at end of file
+diff --git a/test_simple_choices.py b/test_simple_choices.py
+new file mode 100644
+index 0000000000..cc87ab6f0f
+--- /dev/null
++++ b/test_simple_choices.py
+@@ -0,0 +1,73 @@
++#!/usr/bin/env python
++"""
++Simple test script to demonstrate TextChoices/IntegerChoices behavior.
++"""
++
++import sys
++import os
++
++# Add the project root to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11964')
++
++# Import Django components
++from django.db.models import TextChoices, IntegerChoices
++
++
++def test_choices_behavior():
++    """Test how TextChoices and IntegerChoices behave when used as field values."""
++    
++    print("Testing TextChoices and IntegerChoices behavior...")
++    
++    # Define choices using the classes
++    class Status(TextChoices):
++        DRAFT = 'draft', 'Draft'
++        PUBLISHED = 'published', 'Published'
++        ARCHIVED = 'archived', 'Archived'
++        
++    class Priority(IntegerChoices):
++        LOW = 1, 'Low'
++        MEDIUM = 2, 'Medium' 
++        HIGH = 3, 'High'
++
++    print("\n1. Examining the choice classes:")
++    print(f"   Status.DRAFT = {Status.DRAFT}")
++    print(f"   Status.DRAFT.value = {Status.DRAFT.value}")
++    print(f"   Status.DRAFT.label = {Status.DRAFT.label}")
++    print(f"   Type of Status.DRAFT: {type(Status.DRAFT)}")
++    
++    print(f"   Priority.HIGH = {Priority.HIGH}")
++    print(f"   Priority.HIGH.value = {Priority.HIGH.value}")
++    print(f"   Priority.HIGH.label = {Priority.HIGH.label}")
++    print(f"   Type of Priority.HIGH: {type(Priority.HIGH)}")
++
++    print("\n2. Testing direct assignment to variables:")
++    
++    # Test with TextChoices
++    text_value = Status.DRAFT
++    print(f"   text_value = {text_value}")
++    print(f"   text_value type = {type(text_value)}")
++    print(f"   text_value == Status.DRAFT = {text_value == Status.DRAFT}")
++    print(f"   text_value.value = {text_value.value}")
++    
++    # Test with IntegerChoices
++    int_value = Priority.HIGH
++    print(f"   int_value = {int_value}")
++    print(f"   int_value type = {type(int_value)}")
++    print(f"   int_value == Priority.HIGH = {int_value == Priority.HIGH}")
++    print(f"   int_value.value = {int_value.value}")
++
++    print("\n3. What happens when we compare them to raw values:")
++    
++    # Compare enum to raw values
++    print(f"   Status.DRAFT == 'draft' = {Status.DRAFT == 'draft'}")
++    print(f"   Status.DRAFT.value == 'draft' = {Status.DRAFT.value == 'draft'}")
++    print(f"   Priority.HIGH == 3 = {Priority.HIGH == 3}")
++    print(f"   Priority.HIGH.value == 3 = {Priority.HIGH.value == 3}")
++    
++    # Show that they're instances of their respective classes
++    print(f"   isinstance(Status.DRAFT, Status) = {isinstance(Status.DRAFT, Status)}")
++    print(f"   isinstance(Priority.HIGH, Priority) = {isinstance(Priority.HIGH, Priority)}")
++
++
++if __name__ == '__main__':
++    test_choices_behavior()
+\ No newline at end of file

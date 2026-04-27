@@ -1,0 +1,64 @@
+diff --git a/test_bug_reproduction.py b/test_bug_reproduction.py
+new file mode 100644
+index 0000000000..1a6ab6c9d0
+--- /dev/null
++++ b/test_bug_reproduction.py
+@@ -0,0 +1,57 @@
++"""
++Test script to reproduce the QuerySet.none() bug with combined queries.
++"""
++from django.test import TestCase
++from django.db import models
++
++# Create simple models for testing
++class Publication(models.Model):
++    name = models.CharField(max_length=100)
++
++class Article(models.Model):
++    title = models.CharField(max_length=100)
++    publications = models.ManyToManyField(Publication, blank=True, null=True)
++
++class TestNoneOnCombinedQueries(TestCase):
++    def setUp(self):
++        # Create test data
++        self.pub1 = Publication.objects.create(name="Pub1")
++        self.pub2 = Publication.objects.create(name="Pub2")
++        self.pub3 = Publication.objects.create(name="Pub3")
++        
++        self.article1 = Article.objects.create(title="Article 1")
++        self.article2 = Article.objects.create(title="Article 2")
++        
++        # Link articles to publications
++        self.article1.publications.set([self.pub1, self.pub2])
++        self.article2.publications.set([self.pub3])
++
++    def test_none_on_combined_query_returns_empty(self):
++        """Test that none() on combined query returns empty queryset."""
++        # This is the problematic case from the bug report
++        qs1 = Publication.objects.filter(id__lt=2)
++        qs2 = Publication.objects.filter(id__gt=5)
++        
++        # Combined using OR (|)
++        combined_or = qs1 | qs2
++        
++        # This should return an empty queryset but currently doesn't
++        empty_combined_or = combined_or.none()
++        
++        # Count should be 0
++        self.assertEqual(empty_combined_or.count(), 0)
++        
++        # Test with AND (&) as well
++        combined_and = qs1 & qs2
++        empty_combined_and = combined_and.none()
++        
++        # Count should also be 0
++        self.assertEqual(empty_combined_and.count(), 0)
++        
++        # Test that regular queries work correctly
++        regular_empty = Publication.objects.filter(id__lt=0).none()
++        self.assertEqual(regular_empty.count(), 0)
++        
++        # Test that non-empty combined queries work correctly  
++        regular_combined = qs1 | qs2
++        self.assertEqual(regular_combined.count(), 2)  # Should have pub1 and pub3
+\ No newline at end of file

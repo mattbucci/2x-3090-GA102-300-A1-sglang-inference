@@ -1,0 +1,58 @@
+diff --git a/pylint/reporters/text.py b/pylint/reporters/text.py
+index 29bd46798..1303d4b33 100644
+--- a/pylint/reporters/text.py
++++ b/pylint/reporters/text.py
+@@ -175,14 +175,51 @@ class TextReporter(BaseReporter):
+         self._template = template
+ 
+         # Check to see if all parameters in the template are attributes of the Message
+-        arguments = re.findall(r"\{(.+?)(:.*)?\}", template)
++        def extract_arguments(template_str):
++            """Extract arguments from template, handling escaped braces properly."""
++            arguments = []
++            i = 0
++            while i < len(template_str) - 1:
++                if template_str[i:i+2] == '{{':
++                    # Skip escaped braces
++                    i += 2
++                    continue
++                elif template_str[i] == '{':
++                    # Find matching closing brace
++                    j = i + 1
++                    brace_count = 1
++                    while j < len(template_str) and brace_count > 0:
++                        if template_str[j] == '{':
++                            brace_count += 1
++                        elif template_str[j] == '}':
++                            brace_count -= 1
++                        j += 1
++                    
++                    if brace_count == 0:
++                        # Extract content between braces
++                        content = template_str[i+1:j-1]
++                        # Split into field and format part
++                        if ':' in content:
++                            arg_name, format_spec = content.split(':', 1)
++                        else:
++                            arg_name = content
++                            format_spec = ''
++                        arguments.append((arg_name.strip(), format_spec))
++                    i = j
++                else:
++                    i += 1
++            return arguments
++
++        arguments = extract_arguments(template)
+         for argument in arguments:
+             if argument[0] not in MESSAGE_FIELDS:
+                 warnings.warn(
+                     f"Don't recognize the argument '{argument[0]}' in the --msg-template. "
+                     "Are you sure it is supported on the current version of pylint?"
+                 )
+-                template = re.sub(r"\{" + argument[0] + r"(:.*?)?\}", "", template)
++                # Remove the entire argument pattern from template
++                pattern = r"\{" + re.escape(argument[0]) + r"(:.*?)?\}"
++                template = re.sub(pattern, "", template)
+         self._fixed_template = template
+ 
+     def write_message(self, msg: Message) -> None:

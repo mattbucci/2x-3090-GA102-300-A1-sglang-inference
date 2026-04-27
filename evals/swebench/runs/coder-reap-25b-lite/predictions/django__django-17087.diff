@@ -1,0 +1,110 @@
+diff --git a/django/db/migrations/serializer.py b/django/db/migrations/serializer.py
+index d88cda6e20..06657ebaab 100644
+--- a/django/db/migrations/serializer.py
++++ b/django/db/migrations/serializer.py
+@@ -168,7 +168,7 @@ class FunctionTypeSerializer(BaseSerializer):
+         ):
+             klass = self.value.__self__
+             module = klass.__module__
+-            return "%s.%s.%s" % (module, klass.__name__, self.value.__name__), {
++            return "%s.%s.%s" % (module, klass.__qualname__, self.value.__name__), {
+                 "import %s" % module
+             }
+         # Further error checking
+diff --git a/test_name_qualname.py b/test_name_qualname.py
+new file mode 100644
+index 0000000000..b03851ff1d
+--- /dev/null
++++ b/test_name_qualname.py
+@@ -0,0 +1,36 @@
++#!/usr/bin/env python
++
++# Test script to demonstrate the difference between __name__ and __qualname__
++# for nested classes
++
++import sys
++sys.path.insert(0, '.')
++
++class OuterClass:
++    class NestedClass:
++        @classmethod
++        def default(cls):
++            return [cls.BASIC]
++        
++        BASIC = "basic"
++
++# Test the difference between __name__ and __qualname__
++print("Testing __name__ vs __qualname__:")
++print(f"NestedClass.__name__: {OuterClass.NestedClass.__name__}")
++print(f"NestedClass.__qualname__: {OuterClass.NestedClass.__qualname__}")
++
++# Test with a method from the nested class
++method = OuterClass.NestedClass.default
++print(f"\nMethod info:")
++print(f"method.__self__: {method.__self__}")
++print(f"method.__self__.__name__: {method.__self__.__name__}")
++print(f"method.__self__.__qualname__: {method.__self__.__qualname__}")
++
++# Show the difference in serialization
++module = method.__self__.__module__
++name_serialization = "%s.%s.%s" % (module, method.__self__.__name__, method.__name__)
++qualname_serialization = "%s.%s.%s" % (module, method.__self__.__qualname__, method.__name__)
++
++print(f"\nSerialization results:")
++print(f"With __name__: {name_serialization}")
++print(f"With __qualname__: {qualname_serialization}")
+\ No newline at end of file
+diff --git a/test_nested_class_method.py b/test_nested_class_method.py
+new file mode 100644
+index 0000000000..b2291c13e5
+--- /dev/null
++++ b/test_nested_class_method.py
+@@ -0,0 +1,47 @@
++"""
++Test for nested class method serialization in migrations.
++This test ensures that when a class method from a nested class is used as a Field.default,
++the correct qualified name is used in the migration.
++"""
++
++from django.db import models
++from django.test import TestCase
++
++
++class Profile(models.Model):
++    class Capability(models.TextChoices):
++        BASIC = ("BASIC", "Basic")
++        PROFESSIONAL = ("PROFESSIONAL", "Professional")
++
++        @classmethod
++        def default(cls) -> list[str]:
++            return [cls.BASIC]
++
++    class Meta:
++        app_label = 'test_app'
++
++
++class NestedClassMethodTest(TestCase):
++    def test_nested_class_method_serialization(self):
++        """
++        Test that nested class methods are properly serialized with their full qualified name.
++        This tests the fix for the bug where nested class methods would be serialized 
++        incorrectly as 'appname.models.Capability.default' instead of 
++        'appname.models.Profile.Capability.default'.
++        """
++        # Create a field with a nested class method as default
++        field = models.ArrayField(
++            models.CharField(choices=Profile.Capability.choices, max_length=30, blank=True),
++            null=True,
++            default=Profile.Capability.default
++        )
++        
++        # Serialize the field to check the default value serialization
++        from django.db.migrations.writer import MigrationWriter
++        
++        # This should not raise an exception and should serialize correctly
++        string, imports = MigrationWriter.serialize(field)
++        
++        # The serialized string should contain the correct qualified name
++        # It should be something like: 'test_app.models.Profile.Capability.default'
++        self.assertIn('Profile.Capability.default', string)
+\ No newline at end of file

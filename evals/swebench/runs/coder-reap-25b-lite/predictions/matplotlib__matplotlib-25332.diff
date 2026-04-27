@@ -1,0 +1,31 @@
+diff --git a/lib/matplotlib/figure.py b/lib/matplotlib/figure.py
+index b4c38368bf..d80af2f92f 100644
+--- a/lib/matplotlib/figure.py
++++ b/lib/matplotlib/figure.py
+@@ -2352,6 +2352,26 @@ class Figure(FigureBase):
+                             "Figure.canvas.callbacks")
+         )(property(lambda self: self._fig_callbacks))
+ 
++    def __reduce__(self):
++        """
++        Return the state of the figure for pickling.
++        
++        This method ensures that weakref objects within the align_label_groups
++        are properly cleaned before pickling to avoid TypeError.
++        """
++        # Clean up the grouper objects to remove any dead weakrefs 
++        # that would cause pickling to fail
++        try:
++            for key in ['x', 'y']:
++                if key in self._align_label_groups:
++                    self._align_label_groups[key].clean()
++        except Exception:
++            # If cleaning fails, continue anyway - this is defensive
++            pass
++        
++        # Call the parent's reduce method or return the standard reduction
++        return (Figure.__new__, (Figure,), self.__getstate__())
++
+     def __str__(self):
+         return "Figure(%gx%g)" % tuple(self.bbox.size)
+ 

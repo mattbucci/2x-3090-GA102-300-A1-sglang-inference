@@ -1,0 +1,22 @@
+diff --git a/lib/matplotlib/figure.py b/lib/matplotlib/figure.py
+index c55864243a..e4598fe2df 100644
+--- a/lib/matplotlib/figure.py
++++ b/lib/matplotlib/figure.py
+@@ -3043,8 +3043,17 @@ class Figure(FigureBase):
+ 
+         self.__dict__ = state
+ 
++        # Store the original dpi before creating canvas to avoid double DPI adjustment
++        # on high-DPI systems during unpickling
++        original_dpi = self.dpi
++        
+         # re-initialise some of the unstored state information
+         FigureCanvasBase(self)  # Set self.canvas.
++        
++        # Restore the original dpi after canvas initialization to prevent 
++        # double DPI adjustment in high-DPI environments
++        if hasattr(self, 'canvas') and hasattr(self.canvas, '_original_dpi'):
++            self.canvas._original_dpi = original_dpi
+ 
+         if restore_to_pylab:
+             # lazy import to avoid circularity

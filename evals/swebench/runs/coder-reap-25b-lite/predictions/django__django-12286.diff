@@ -1,0 +1,108 @@
+diff --git a/django/core/checks/translation.py b/django/core/checks/translation.py
+index 138ed07ff8..9978b650bb 100644
+--- a/django/core/checks/translation.py
++++ b/django/core/checks/translation.py
+@@ -57,5 +57,11 @@ def check_language_settings_consistent(app_configs, **kwargs):
+     """Error if language settings are not consistent with each other."""
+     available_tags = {i for i, _ in settings.LANGUAGES} | {'en-us'}
+     if settings.LANGUAGE_CODE not in available_tags:
+-        return [E004]
++        # Check if there's a matching base language (e.g., 'de' for 'de-at')
++        # This allows sublanguages to work even when not explicitly listed
++        lang_code = settings.LANGUAGE_CODE
++        lang_base = lang_code.split('-')[0]
++        if lang_base not in available_tags:
++            # If the base language is also not available, then it's truly invalid
++            return [E004]
+     return []
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..31833d78c1
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,30 @@
++#!/usr/bin/env python
++import os
++import sys
++import django
++from django.conf import settings
++
++# Add the project root to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-12286')
++
++# Configure Django settings
++os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django.conf.global_settings')
++django.setup()
++
++# Test our fix
++from django.core.checks.translation import check_language_settings_consistent
++
++# Test case 1: de-at should be allowed when de is available
++with settings.config(LANGUAGE_CODE='de-at', LANGUAGES=[('de', 'German')]):
++    result = check_language_settings_consistent(None)
++    print(f"Test 1 - de-at with de available: {result}")
++
++# Test case 2: es-ar should work (as mentioned in the issue)
++with settings.config(LANGUAGE_CODE='es-ar', LANGUAGES=[('es', 'Spanish')]):
++    result = check_language_settings_consistent(None)
++    print(f"Test 2 - es-ar with es available: {result}")
++
++# Test case 3: Invalid language code should still fail
++with settings.config(LANGUAGE_CODE='invalid-lang', LANGUAGES=[('de', 'German')]):
++    result = check_language_settings_consistent(None)
++    print(f"Test 3 - invalid-lang: {result}")
+\ No newline at end of file
+diff --git a/test_fix_detailed.py b/test_fix_detailed.py
+new file mode 100644
+index 0000000000..d8c34aca20
+--- /dev/null
++++ b/test_fix_detailed.py
+@@ -0,0 +1,47 @@
++#!/usr/bin/env python
++import os
++import sys
++
++# Add the project root to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-12286')
++
++# Configure Django settings
++os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django.conf.global_settings')
++
++# Import django after setting up path
++import django
++from django.conf import settings
++
++# Setup Django
++django.setup()
++
++# Test our specific fix
++from django.core.checks.translation import check_language_settings_consistent
++
++print("Testing the fix for translation.E004 issue:")
++
++# Test case 1: de-at should be allowed when de is available (the main issue)
++print("\nTest 1 - LANGUAGE_CODE='de-at' with LANGUAGES=[('de', 'German')]:")
++settings.configure(LANGUAGE_CODE='de-at', LANGUAGES=[('de', 'German')])
++result = check_language_settings_consistent(None)
++print(f"Result: {result}")
++if not result:
++    print("✓ PASS: No error raised for sublanguage when base language is available")
++
++# Test case 2: es-ar should work as mentioned in issue  
++print("\nTest 2 - LANGUAGE_CODE='es-ar' with LANGUAGES=[('es', 'Spanish')]:")
++settings.configure(LANGUAGE_CODE='es-ar', LANGUAGES=[('es', 'Spanish')])
++result = check_language_settings_consistent(None)
++print(f"Result: {result}")
++if not result:
++    print("✓ PASS: No error raised for es-ar when es is available")
++
++# Test case 3: Invalid language code should still fail
++print("\nTest 3 - LANGUAGE_CODE='invalid-lang' with LANGUAGES=[('de', 'German')]:")
++settings.configure(LANGUAGE_CODE='invalid-lang', LANGUAGES=[('de', 'German')])
++result = check_language_settings_consistent(None)
++print(f"Result: {result}")
++if result:
++    print("✓ PASS: Error correctly raised for truly invalid language code")
++
++print("\nAll tests completed.")
+\ No newline at end of file

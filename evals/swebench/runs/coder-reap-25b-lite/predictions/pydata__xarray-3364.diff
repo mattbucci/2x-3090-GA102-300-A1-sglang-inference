@@ -1,0 +1,116 @@
+diff --git a/xarray/core/concat.py b/xarray/core/concat.py
+index ecae2566..ff9985a1 100644
+--- a/xarray/core/concat.py
++++ b/xarray/core/concat.py
+@@ -16,6 +16,7 @@ def concat(
+     positions=None,
+     fill_value=dtypes.NA,
+     join="outer",
++    ignore_missing=False,
+ ):
+     """Concatenate xarray objects along a new or existing dimension.
+ 
+@@ -90,6 +91,9 @@ def concat(
+         - 'override': if indexes are of same size, rewrite indexes to be
+           those of the first object with that dimension. Indexes for the same
+           dimension must have the same size in all objects.
++    ignore_missing : bool, optional
++        If True, allow concatenation of datasets with different sets of variables.
++        Missing variables will be filled with fill_value.
+ 
+     indexers, mode, concat_over : deprecated
+ 
+@@ -128,7 +132,7 @@ def concat(
+             "can only concatenate xarray Dataset and DataArray "
+             "objects, got %s" % type(first_obj)
+         )
+-    return f(objs, dim, data_vars, coords, compat, positions, fill_value, join)
++    return f(objs, dim, data_vars, coords, compat, positions, fill_value, join, ignore_missing)
+ 
+ 
+ def _calc_concat_dim_coord(dim):
+@@ -269,6 +273,7 @@ def _dataset_concat(
+     positions,
+     fill_value=dtypes.NA,
+     join="outer",
++    ignore_missing=False,
+ ):
+     """
+     Concatenate a sequence of datasets along a new or existing dimension
+@@ -311,16 +316,52 @@ def _dataset_concat(
+     if variables_to_merge:
+         to_merge = {var: [] for var in variables_to_merge}
+ 
+-        for ds in datasets:
+-            absent_merge_vars = variables_to_merge - set(ds.variables)
+-            if absent_merge_vars:
+-                raise ValueError(
+-                    "variables %r are present in some datasets but not others. "
+-                    % absent_merge_vars
+-                )
++        # Handle missing variables if ignore_missing is True
++        if ignore_missing:
++            # For each dataset, check if all variables are present
++            # If not, create a default variable with fill_value
++            for ds in datasets:
++                for var in variables_to_merge:
++                    if var in ds.variables:
++                        to_merge[var].append(ds.variables[var])
++                    else:
++                        # Create a variable filled with fill_value for missing variables
++                        # We need to get the reference variable structure from another dataset
++                        ref_var = None
++                        for other_ds in datasets:
++                            if var in other_ds.variables:
++                                ref_var = other_ds.variables[var]
++                                break
++                        
++                        if ref_var is not None:
++                            # Create an array with fill_value and appropriate shape
++                            import numpy as np
++                            from .variable import Variable
++                            # Create a new variable with fill_value for missing variables
++                            shape = list(ref_var.shape)
++                            new_data = np.full(shape, fill_value, dtype=ref_var.dtype)
++                            new_var = Variable(ref_var.dims, new_data, attrs=ref_var.attrs)
++                            to_merge[var].append(new_var)
++                        else:
++                            # If no reference found, we can't proceed safely
++                            raise ValueError(
++                                "Cannot infer dimensions for missing variable %r. "
++                                "Consider using 'compat' parameter or specify variables explicitly."
++                                % var
++                            )
++        else:
++            # Original behavior - raise error if variables are missing
++            for ds in datasets:
++                absent_merge_vars = variables_to_merge - set(ds.variables)
++                if absent_merge_vars:
++                    raise ValueError(
++                        "variables %r are present in some datasets but not others. "
++                        "Use ignore_missing=True to allow missing variables."
++                        % absent_merge_vars
++                    )
+ 
+-            for var in variables_to_merge:
+-                to_merge[var].append(ds.variables[var])
++                for var in variables_to_merge:
++                    to_merge[var].append(ds.variables[var])
+ 
+         for var in variables_to_merge:
+             result_vars[var] = unique_variable(
+@@ -394,6 +435,7 @@ def _dataarray_concat(
+     positions,
+     fill_value=dtypes.NA,
+     join="outer",
++    ignore_missing=False,
+ ):
+     arrays = list(arrays)
+ 
+@@ -422,5 +464,6 @@ def _dataarray_concat(
+         positions,
+         fill_value=fill_value,
+         join=join,
++        ignore_missing=ignore_missing,
+     )
+     return arrays[0]._from_temp_dataset(ds, name)

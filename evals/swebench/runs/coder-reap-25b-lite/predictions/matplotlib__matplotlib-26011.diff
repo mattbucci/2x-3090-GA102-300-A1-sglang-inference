@@ -1,0 +1,25 @@
+diff --git a/lib/matplotlib/axis.py b/lib/matplotlib/axis.py
+index e6e7e29f11..e06c4c1865 100644
+--- a/lib/matplotlib/axis.py
++++ b/lib/matplotlib/axis.py
+@@ -1242,10 +1242,16 @@ class Axis(martist.Artist):
+             # Call all of the other axes that are shared with this one
+             for other in self._get_shared_axes():
+                 if other is not self.axes:
+-                    other._axis_map[name]._set_lim(
+-                        v0, v1, emit=False, auto=auto)
+-                    if other.figure != self.figure:
+-                        other.figure.canvas.draw_idle()
++                    # Only emit callbacks on the shared axes if limits have changed
++                    if name == 'x':
++                        current_interval = other.viewLim.intervalx
++                    else:
++                        current_interval = other.viewLim.intervaly
++                    if not np.allclose(current_interval, (v0, v1)):
++                        other._axis_map[name]._set_lim(
++                            v0, v1, emit=True, auto=auto)
++                        if other.figure != self.figure:
++                            other.figure.canvas.draw_idle()
+ 
+         self.stale = True
+         return v0, v1

@@ -1,0 +1,70 @@
+diff --git a/sympy/core/power.py b/sympy/core/power.py
+index 984398c760..0418fc21c3 100644
+--- a/sympy/core/power.py
++++ b/sympy/core/power.py
+@@ -299,6 +299,8 @@ def __new__(cls, b, e, evaluate=None):
+                 return b
+             elif e == -1 and not b:
+                 return S.ComplexInfinity
++            elif e is S.NegativeInfinity and b is S.Zero:
++                return S.ComplexInfinity
+             # Only perform autosimplification if exponent or base is a Symbol or number
+             elif (b.is_Symbol or b.is_number) and (e.is_Symbol or e.is_number) and\
+                 e.is_integer and _coeff_isneg(b):
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..46eeb6a4e6
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,20 @@
++from sympy import *
++from sympy.core.numbers import zoo
++
++# Test for the specific bug fix: 0**-oo should return zoo, not 0
++def test_zero_power_negative_infinity():
++    # This is the main fix: 0**-oo should return zoo (ComplexInfinity)
++    result = 0**(-oo)
++    assert result == zoo, f"Expected zoo but got {result}"
++    
++    # Verify it's actually ComplexInfinity
++    assert result.is_ComplexInfinity
++    
++    # Test some related cases still work
++    assert (0**oo) == 0
++    assert (0**5) == 0
++    
++    print("All tests passed!")
++
++if __name__ == "__main__":
++    test_zero_power_negative_infinity()
+\ No newline at end of file
+diff --git a/test_zero_neg_oo_fix.py b/test_zero_neg_oo_fix.py
+new file mode 100644
+index 0000000000..cd1c57a01d
+--- /dev/null
++++ b/test_zero_neg_oo_fix.py
+@@ -0,0 +1,23 @@
++def test_zero_power_negative_infinity():
++    """
++    Test for issue with 0**-oo returning 0 instead of zoo.
++    
++    According to the documentation in Pow class:
++    | 0**-oo       | zoo     | This is not strictly true, as 0**oo may be    |
++    |              |         | oscillating between positive and negative   |
++    |              |         | values or rotating in the complex plane.    |
++    |              |         | It is convenient, however, when the base    |
++    |              |         | is positive.                                |
++    """
++    from sympy import S, zoo
++    
++    # Test the fix: 0**-oo should return zoo (ComplexInfinity)
++    result = S.Zero**S.NegativeInfinity
++    assert result == zoo
++    
++    # Verify it's actually ComplexInfinity
++    assert result.is_ComplexInfinity
++    
++    # Make sure other cases still work
++    assert S.Zero**S.Infinity == 0  # Should be 0 according to docs
++    assert S.Zero**5 == 0          # Should be 0
+\ No newline at end of file

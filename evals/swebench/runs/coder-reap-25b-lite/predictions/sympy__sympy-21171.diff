@@ -1,0 +1,148 @@
+diff --git a/sympy/printing/latex.py b/sympy/printing/latex.py
+index 43f9e6ad8d..d055d9b51e 100644
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -1968,10 +1968,12 @@ def _print_DiracDelta(self, expr, exp=None):
+             tex = r"\left(%s\right)^{%s}" % (tex, exp)
+         return tex
+ 
+-    def _print_SingularityFunction(self, expr):
++    def _print_SingularityFunction(self, expr, exp=None):
+         shift = self._print(expr.args[0] - expr.args[1])
+         power = self._print(expr.args[2])
+         tex = r"{\left\langle %s \right\rangle}^{%s}" % (shift, power)
++        if exp:
++            tex = r"\left(%s\right)^{%s}" % (tex, exp)
+         return tex
+ 
+     def _print_Heaviside(self, expr, exp=None):
+diff --git a/test_comprehensive.py b/test_comprehensive.py
+new file mode 100644
+index 0000000000..31c0e7f108
+--- /dev/null
++++ b/test_comprehensive.py
+@@ -0,0 +1,58 @@
++#!/usr/bin/env python3
++"""
++Test script that reproduces the exact issue from the bug report.
++This should work without throwing TypeError: _print_SingularityFunction() got an unexpected keyword argument 'exp'
++"""
++
++from sympy import *
++from sympy.physics.continuum_mechanics import Beam
++from sympy.printing import latex
++
++def test_singularity_function_power_latex():
++    """Test that SingularityFunction raised to power works in LaTeX printing."""
++    
++    # Reproduce the exact code from the issue
++    # Young's modulus
++    E = symbols("E")
++    # length of the beam
++    L = symbols("L")
++    # concentrated load at the end tip of the beam
++    F = symbols("F")
++    # square cross section
++    B, H = symbols("B, H")
++    I = B * H**3 / 12
++    # numerical values (material: steel)
++    d = {B: 1e-02, H: 1e-02, E: 210e09, L: 0.2, F: 100}
++
++    b2 = Beam(L, E, I)
++    b2.apply_load(-F, L / 2, -1)
++    b2.apply_support(0, "fixed")
++    R0, M0 = symbols("R_0, M_0")
++    b2.solve_for_reaction_loads(R0, M0)
++
++    # This line was causing the error before the fix
++    result = b2.shear_force()
++    
++    # Test that LaTeX printing works (this is what fails in Jupyter)
++    latex_result = latex(result)
++    
++    print("SUCCESS: No TypeError thrown!")
++    print("LaTeX output contains:", "SingularityFunction" if "SingularityFunction" in latex_result else "No SingularityFunction")
++    print("LaTeX output length:", len(latex_result))
++    
++    # Also verify that powers of SingularityFunctions work properly
++    x, a, n = symbols('x a n')
++    expr_with_power = SingularityFunction(x, a, n)**2
++    latex_power = latex(expr_with_power)
++    
++    print("Power expression LaTeX:", latex_power)
++    
++    return True
++
++if __name__ == "__main__":
++    try:
++        test_singularity_function_power_latex()
++        print("All tests passed!")
++    except Exception as e:
++        print(f"Test failed with error: {e}")
++        raise
+\ No newline at end of file
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..6951b932d4
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,24 @@
++from sympy import *
++from sympy.physics.continuum_mechanics import Beam
++
++# Young's modulus
++E = symbols("E")
++# length of the beam
++L = symbols("L")
++# concentrated load at the end tip of the beam
++F = symbols("F")
++# square cross section
++B, H = symbols("B, H")
++I = B * H**3 / 12
++# numerical values (material: steel)
++d = {B: 1e-02, H: 1e-02, E: 210e09, L: 0.2, F: 100}
++
++b2 = Beam(L, E, I)
++b2.apply_load(-F, L / 2, -1)
++b2.apply_support(0, "fixed")
++R0, M0 = symbols("R_0, M_0")
++b2.solve_for_reaction_loads(R0, M0)
++
++# This should now work without throwing the TypeError
++result = b2.shear_force()
++print(result)
+\ No newline at end of file
+diff --git a/test_latex_fix.py b/test_latex_fix.py
+new file mode 100644
+index 0000000000..c4e4deee51
+--- /dev/null
++++ b/test_latex_fix.py
+@@ -0,0 +1,27 @@
++from sympy import *
++from sympy.physics.continuum_mechanics import Beam
++from sympy.printing import latex
++
++# Young's modulus
++E = symbols("E")
++# length of the beam
++L = symbols("L")
++# concentrated load at the end tip of the beam
++F = symbols("F")
++# square cross section
++B, H = symbols("B, H")
++I = B * H**3 / 12
++# numerical values (material: steel)
++d = {B: 1e-02, H: 1e-02, E: 210e09, L: 0.2, F: 100}
++
++b2 = Beam(L, E, I)
++b2.apply_load(-F, L / 2, -1)
++b2.apply_support(0, "fixed")
++R0, M0 = symbols("R_0, M_0")
++b2.solve_for_reaction_loads(R0, M0)
++
++# Test LaTeX printing which was causing the error
++result = b2.shear_force()
++latex_result = latex(result)
++print("LaTeX output:")
++print(latex_result)
+\ No newline at end of file

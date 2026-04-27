@@ -1,0 +1,132 @@
+diff --git a/src/_pytest/assertion/rewrite.py b/src/_pytest/assertion/rewrite.py
+index 157903faf..9bf79f1e1 100644
+--- a/src/_pytest/assertion/rewrite.py
++++ b/src/_pytest/assertion/rewrite.py
+@@ -676,6 +676,7 @@ class AssertionRewriter(ast.NodeVisitor):
+                 expect_docstring
+                 and isinstance(item, ast.Expr)
+                 and isinstance(item.value, ast.Constant)
++                and isinstance(item.value.value, str)
+             ):
+                 doc = item.value.value
+                 if self.is_rewrite_disabled(doc):
+diff --git a/test_exact_issue.py b/test_exact_issue.py
+new file mode 100644
+index 000000000..c3167e882
+--- /dev/null
++++ b/test_exact_issue.py
+@@ -0,0 +1,49 @@
++#!/usr/bin/env python3
++"""Test that reproduces the exact issue from the bug report."""
++
++import tempfile
++import os
++from pathlib import Path
++
++def test_exact_issue_reproduction():
++    """Reproduce the exact issue: file starting with integer."""
++    
++    # Create a temporary file that reproduces the original issue
++    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
++        f.write("0\n")  # This is the minimal reproducer from the issue
++        temp_file = f.name
++    
++    try:
++        # This should not raise "TypeError: argument of type 'int' is not iterable"
++        # when pytest tries to rewrite assertions
++        import ast
++        from _pytest.assertion.rewrite import AssertionRewriter
++        
++        with open(temp_file, 'r') as file:
++            content = file.read()
++        
++        tree = ast.parse(content)
++        rewriter = AssertionRewriter(str(temp_file), None, content.encode())
++        
++        # This line was failing before the fix
++        rewriter.run(tree)
++        
++        print("SUCCESS: File with integer at start no longer causes TypeError")
++        return True
++        
++    except TypeError as e:
++        if "'int' object is not iterable" in str(e):
++            print(f"FAILED: Original bug still present: {e}")
++            return False
++        else:
++            raise e
++    finally:
++        os.unlink(temp_file)
++
++if __name__ == "__main__":
++    print("Testing exact issue reproduction...")
++    success = test_exact_issue_reproduction()
++    if success:
++        print("Issue has been fixed!")
++    else:
++        print("Issue still exists!")
+\ No newline at end of file
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 000000000..c22708346
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1 @@
++0
+\ No newline at end of file
+diff --git a/test_fix_verification.py b/test_fix_verification.py
+new file mode 100644
+index 000000000..48c7edc77
+--- /dev/null
++++ b/test_fix_verification.py
+@@ -0,0 +1,49 @@
++#!/usr/bin/env python3
++"""Test to verify the fix for integer docstring issue."""
++
++import ast
++from _pytest.assertion.rewrite import AssertionRewriter
++
++def test_integer_not_treated_as_docstring():
++    """Test that an integer at the start of file is not treated as docstring."""
++    # This should not raise TypeError
++    code = "0\n"
++    tree = ast.parse(code)
++    
++    # This should not raise: "TypeError: argument of type 'int' is not iterable"
++    rewriter = AssertionRewriter(None, None, b"")
++    try:
++        rewriter.run(tree)
++        print("SUCCESS: No error when parsing integer as first statement")
++        return True
++    except TypeError as e:
++        if "'int' object is not iterable" in str(e):
++            print(f"FAILED: Got the original bug: {e}")
++            return False
++        else:
++            raise e
++
++def test_string_still_works():
++    """Test that string docstrings still work properly."""
++    # This should work as before
++    code = "\"\"\"This is a docstring\"\"\"\nprint(1)"
++    tree = ast.parse(code)
++    
++    rewriter = AssertionRewriter(None, None, b"")
++    try:
++        rewriter.run(tree)
++        print("SUCCESS: String docstring handling still works")
++        return True
++    except Exception as e:
++        print(f"FAILED: String docstring failed: {e}")
++        return False
++
++if __name__ == "__main__":
++    print("Testing fix for integer docstring issue...")
++    test1 = test_integer_not_treated_as_docstring()
++    test2 = test_string_still_works()
++    
++    if test1 and test2:
++        print("All tests passed!")
++    else:
++        print("Some tests failed!")
+\ No newline at end of file

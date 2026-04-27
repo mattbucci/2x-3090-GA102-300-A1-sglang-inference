@@ -1,0 +1,229 @@
+diff --git a/django/db/migrations/serializer.py b/django/db/migrations/serializer.py
+index 27b5cbd379..5928dd5f5e 100644
+--- a/django/db/migrations/serializer.py
++++ b/django/db/migrations/serializer.py
+@@ -120,9 +120,9 @@ class EnumSerializer(BaseSerializer):
+     def serialize(self):
+         enum_class = self.value.__class__
+         module = enum_class.__module__
+-        v_string, v_imports = serializer_factory(self.value.value).serialize()
++        _, v_imports = serializer_factory(self.value.value).serialize()
+         imports = {'import %s' % module, *v_imports}
+-        return "%s.%s(%s)" % (module, enum_class.__name__, v_string), imports
++        return "%s.%s['%s']" % (module, enum_class.__name__, self.value.name), imports
+ 
+ 
+ class FloatSerializer(BaseSimpleSerializer):
+diff --git a/simple_test.py b/simple_test.py
+new file mode 100644
+index 0000000000..dc6eb9a720
+--- /dev/null
++++ b/simple_test.py
+@@ -0,0 +1,42 @@
++#!/usr/bin/env python
++import sys
++import os
++
++# Add the project root to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11815')
++
++# Import the serializer directly to test our fix
++from django.db.migrations.serializer import EnumSerializer
++
++# Test with a simple enum
++from enum import Enum
++from django.utils.translation import gettext_lazy as _
++
++class Status(Enum):
++    GOOD = _('Good')
++    BAD = _('Bad')
++
++    def __str__(self):
++        return self.name
++
++print("Testing enum serialization fix...")
++try:
++    # Test the serialization of Status.GOOD
++    serializer = EnumSerializer(Status.GOOD)
++    result, imports = serializer.serialize()
++    print(f"Serialized result: {result}")
++    print(f"Imports: {imports}")
++    
++    # Verify it's using the name, not the value
++    if "['GOOD']" in result:
++        print("SUCCESS: Fix is working correctly - using enum name")
++        print("The serialized code will be: Status['GOOD'] instead of Status('Good')")
++    elif "(" in result and "Good" in result:
++        print("FAILURE: Still using enum value (old behavior)")
++    else:
++        print(f"UNEXPECTED: Result format: {result}")
++        
++except Exception as e:
++    print(f"Error during serialization: {e}")
++    import traceback
++    traceback.print_exc()
+\ No newline at end of file
+diff --git a/test_enum_migration.py b/test_enum_migration.py
+new file mode 100644
+index 0000000000..cd264e7085
+--- /dev/null
++++ b/test_enum_migration.py
+@@ -0,0 +1,17 @@
++from enum import Enum
++from django.utils.translation import gettext_lazy as _
++from django.db import models
++
++# Test the issue described in the bug report
++class Status(Enum):
++    GOOD = _('Good')
++    BAD = _('Bad')
++
++    def __str__(self):
++        return self.name
++
++class Item(models.Model):
++    status = models.CharField(default=Status.GOOD, max_length=128)
++    
++    class Meta:
++        app_label = 'test_app'
+\ No newline at end of file
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..31b03e681c
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,88 @@
++#!/usr/bin/env python
++import os
++import sys
++import django
++from django.conf import settings
++
++# Add the project root to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11815')
++
++# Configure Django settings
++if not settings.configured:
++    settings.configure(
++        DEBUG=True,
++        DATABASES={
++            'default': {
++                'ENGINE': 'django.db.backends.sqlite3',
++                'NAME': ':memory:',
++            }
++        },
++        INSTALLED_APPS=[
++            'django.contrib.contenttypes',
++            'django.contrib.auth',
++            'django.contrib.sites',
++            'django.contrib.admin',
++            'django.contrib.messages',
++            'django.contrib.sessions',
++            'django.contrib.staticfiles',
++            'django.contrib.humanize',
++            'django.contrib.redirects',
++            'django.contrib.sitemaps',
++            'django.contrib.gis',
++            'django.contrib.webdesign',
++            'django.contrib.flatpages',
++            'django.contrib.syndication',
++            'django.contrib.admindocs',
++            'django.contrib.auth',
++            'django.contrib.contenttypes',
++            'django.contrib.sessions',
++            'django.contrib.messages',
++            'django.contrib.staticfiles',
++            'django.contrib.humanize',
++            'django.contrib.redirects',
++            'django.contrib.sitemaps',
++            'django.contrib.gis',
++            'django.contrib.webdesign',
++            'django.contrib.flatpages',
++            'django.contrib.syndication',
++            'django.contrib.admindocs',
++            'test_app',
++        ],
++        USE_TZ=True,
++        SECRET_KEY='test-secret-key',
++    )
++
++django.setup()
++
++# Now test our fix
++from enum import Enum
++from django.utils.translation import gettext_lazy as _
++from django.db import models
++from django.db.migrations.serializer import serializer_factory
++
++class Status(Enum):
++    GOOD = _('Good')
++    BAD = _('Bad')
++
++    def __str__(self):
++        return self.name
++
++# Test the serialization
++print("Testing enum serialization...")
++try:
++    # This should now serialize as Status['GOOD'] instead of Status('Good')
++    serializer = serializer_factory(Status.GOOD)
++    result, imports = serializer.serialize()
++    print(f"Serialized result: {result}")
++    print(f"Imports: {imports}")
++    
++    # Verify it's using the name, not the value
++    if "['GOOD']" in result:
++        print("SUCCESS: Fix is working correctly - using enum name")
++    elif "(" in result and "Good" in result:
++        print("FAILURE: Still using enum value (old behavior)")
++    else:
++        print(f"UNEXPECTED: Result format: {result}")
++        
++except Exception as e:
++    print(f"Error during serialization: {e}")
+\ No newline at end of file
+diff --git a/verify_fix.py b/verify_fix.py
+new file mode 100644
+index 0000000000..81a5e4c7cc
+--- /dev/null
++++ b/verify_fix.py
+@@ -0,0 +1,38 @@
++#!/usr/bin/env python
++# Test that demonstrates the fix for enum serialization in Django migrations
++
++# This test directly tests the EnumSerializer class behavior
++import sys
++import os
++sys.path.insert(0, '/tmp/swebench-work2/django__django-11815')
++
++from django.db.migrations.serializer import EnumSerializer
++
++# Create a simple test enum without translation to avoid Django settings issues
++from enum import Enum
++
++class TestEnum(Enum):
++    VALUE1 = "value1"
++    VALUE2 = "value2"
++
++print("Testing the EnumSerializer fix:")
++print("=" * 40)
++
++# Test serialization of enum values
++serializer1 = EnumSerializer(TestEnum.VALUE1)
++result1, imports1 = serializer1.serialize()
++print(f"TestEnum.VALUE1 serializes to: {result1}")
++
++serializer2 = EnumSerializer(TestEnum.VALUE2)
++result2, imports2 = serializer2.serialize()
++print(f"TestEnum.VALUE2 serializes to: {result2}")
++
++# Verify the expected format
++if "['VALUE1']" in result1 and "['VALUE2']" in result2:
++    print("\n✅ SUCCESS: Fix is working correctly!")
++    print("   - Using bracket notation with enum name instead of value")
++    print("   - This prevents issues with translated enum values")
++elif "(" in result1 and "value1" in result1:
++    print("\n❌ FAILURE: Still using old format (value-based)")
++else:
++    print(f"\n❓ UNEXPECTED: Result format not as expected: {result1}")
+\ No newline at end of file

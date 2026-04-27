@@ -1,0 +1,74 @@
+diff --git a/django/core/exceptions.py b/django/core/exceptions.py
+index dc084b8692..392ddde3a6 100644
+--- a/django/core/exceptions.py
++++ b/django/core/exceptions.py
+@@ -141,6 +141,69 @@ class ValidationError(Exception):
+             self.params = params
+             self.error_list = [self]
+ 
++    def __eq__(self, other):
++        """
++        Allow ValidationErrors to equal each other when created identically.
++        Comparison is independent of order in which errors were raised.
++        """
++        if not isinstance(other, ValidationError):
++            return False
++            
++        # Compare based on error structure
++        if hasattr(self, 'error_dict') and hasattr(other, 'error_dict'):
++            # Both have error_dict - compare dictionaries
++            if set(self.error_dict.keys()) != set(other.error_dict.keys()):
++                return False
++                
++            # Check each field's errors
++            for field in self.error_dict:
++                if field not in other.error_dict:
++                    return False
++                    
++                # Compare error lists (order independent)
++                self_errors = self.error_dict[field]
++                other_errors = other.error_dict[field]
++                
++                # For proper comparison, we need to check individual errors
++                # Create list of error representations that include message, code, params
++                def get_error_repr(error):
++                    if hasattr(error, 'message') and hasattr(error, 'code') and hasattr(error, 'params'):
++                        return (error.message, error.code, error.params)
++                    return str(error)
++                
++                self_error_reps = [get_error_repr(err) for err in self_errors]
++                other_error_reps = [get_error_repr(err) for err in other_errors]
++                
++                # Sort by representation to make comparison order-independent
++                self_error_reps.sort()
++                other_error_reps.sort()
++                
++                if self_error_reps != other_error_reps:
++                    return False
++                    
++            return True
++            
++        elif hasattr(self, 'error_list') and hasattr(other, 'error_list'):
++            # Both have error_list - compare lists
++            # Create list of error representations that include message, code, params
++            def get_error_repr(error):
++                if hasattr(error, 'message') and hasattr(error, 'code') and hasattr(error, 'params'):
++                    return (error.message, error.code, error.params)
++                return str(error)
++            
++            self_error_reps = [get_error_repr(err) for err in self.error_list]
++            other_error_reps = [get_error_repr(err) for err in other.error_list]
++            
++            # Sort by representation to make comparison order-independent
++            self_error_reps.sort()
++            other_error_reps.sort()
++            
++            return self_error_reps == other_error_reps
++            
++        else:
++            # One has error_dict, the other has error_list - not equal
++            return False
++
+     @property
+     def message_dict(self):
+         # Trigger an AttributeError if this ValidationError

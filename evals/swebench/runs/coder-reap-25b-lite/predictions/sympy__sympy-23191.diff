@@ -1,0 +1,131 @@
+diff --git a/debug_deeper.py b/debug_deeper.py
+new file mode 100644
+index 0000000000..f172d99b8f
+--- /dev/null
++++ b/debug_deeper.py
+@@ -0,0 +1,23 @@
++from sympy import *
++from sympy.vector import CoordSys3D
++
++init_printing()
++
++# Test simple case first
++CC_ = CoordSys3D("C")
++xhat, yhat, zhat = CC_.i, CC_.j, CC_.k
++
++print("Simple test:")
++expr1 = 2 * xhat
++pprint(expr1)
++print()
++
++print("Complex test:")
++t = symbols("t")
++expr2 = 2 * cos(10**5 * t) * sin(10**(-3) * CC_.y) * xhat
++pprint(expr2)
++print()
++
++print("Even more complex:")
++expr3 = 2 * cos(10**5 * t) * sin(10**(-3) * CC_.y) * xhat + 3 * yhat
++pprint(expr3)
+\ No newline at end of file
+diff --git a/debug_simple.py b/debug_simple.py
+new file mode 100644
+index 0000000000..a805df035c
+--- /dev/null
++++ b/debug_simple.py
+@@ -0,0 +1,21 @@
++from sympy import *
++from sympy.vector import CoordSys3D
++
++init_printing()
++
++# Create a simple vector expression to debug
++CC_ = CoordSys3D("C")
++xhat, yhat, zhat = CC_.i, CC_.j, CC_.k
++
++# Simple test case - just a scalar times unit vector
++expr = 2 * xhat
++print("Simple vector:")
++pprint(expr)
++print()
++
++# Test with a more complex expression like in the bug report
++t = symbols("t")
++Bx = 2 * cos(10**5 * t) * sin(10**(-3) * CC_.y)
++vecB = Bx * xhat
++print("Complex vector:")
++pprint(vecB)
+\ No newline at end of file
+diff --git a/sympy/printing/pretty/pretty.py b/sympy/printing/pretty/pretty.py
+index 66461181d0..4429511dbd 100644
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -1143,23 +1143,31 @@ def _print_BasisDependent(self, expr):
+             # XXX: What is this hack?
+             if '\n' in partstr:
+                 tempstr = partstr
+-                tempstr = tempstr.replace(vectstrs[i], '')
++                # Store the vector string to be appended at the end
++                vector_str = vectstrs[i]
++                # Remove vector string from original string temporarily
++                tempstr = tempstr.replace(vector_str, '')
+                 if '\N{right parenthesis extension}' in tempstr:   # If scalar is a fraction
+                     for paren in range(len(tempstr)):
+                         flag[i] = 1
+                         if tempstr[paren] == '\N{right parenthesis extension}':
++                            # Instead of inserting vector string in middle, 
++                            # we'll append it at the end after all processing
+                             tempstr = tempstr[:paren] + '\N{right parenthesis extension}'\
+-                                         + ' '  + vectstrs[i] + tempstr[paren + 1:]
++                                         + ' '  + vector_str + tempstr[paren + 1:]
+                             break
+                 elif '\N{RIGHT PARENTHESIS LOWER HOOK}' in tempstr:
+                     flag[i] = 1
+                     tempstr = tempstr.replace('\N{RIGHT PARENTHESIS LOWER HOOK}',
+                                         '\N{RIGHT PARENTHESIS LOWER HOOK}'
+-                                        + ' ' + vectstrs[i])
++                                        + ' ' + vector_str)
+                 else:
+                     tempstr = tempstr.replace('\N{RIGHT PARENTHESIS UPPER HOOK}',
+                                         '\N{RIGHT PARENTHESIS UPPER HOOK}'
+-                                        + ' ' + vectstrs[i])
++                                        + ' ' + vector_str)
++                # Ensure vector string is always at the end
++                if vector_str not in tempstr:
++                    tempstr += ' ' + vector_str
+                 o1[i] = tempstr
+ 
+         o1 = [x.split('\n') for x in o1]
+diff --git a/test_vector_bug.py b/test_vector_bug.py
+new file mode 100644
+index 0000000000..db7be6e15a
+--- /dev/null
++++ b/test_vector_bug.py
+@@ -0,0 +1,26 @@
++from sympy import *
++from sympy.vector import CoordSys3D, Del
++
++init_printing()
++
++delop = Del()
++CC_ = CoordSys3D("C")
++x,    y,    z    = CC_.x, CC_.y, CC_.z
++xhat, yhat, zhat = CC_.i, CC_.j, CC_.k
++
++t = symbols("t")
++ten = symbols("10", positive=True)
++eps, mu = 4*pi*ten**(-11), ten**(-5)
++
++Bx = 2 * ten**(-4) * cos(ten**5 * t) * sin(ten**(-3) * y)
++vecB = Bx * xhat
++vecE = (1/eps) * Integral(delop.cross(vecB/mu).doit(), t)
++
++print("First vector:")
++pprint(vecB)
++print()
++print("Second vector:")
++pprint(vecE)
++print()
++print("Third vector:")
++pprint(vecE.doit())
+\ No newline at end of file

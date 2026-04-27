@@ -1,0 +1,71 @@
+diff --git a/reproduce_bug.py b/reproduce_bug.py
+new file mode 100644
+index 0000000000..083d206b77
+--- /dev/null
++++ b/reproduce_bug.py
+@@ -0,0 +1,24 @@
++import numpy as np
++import pandas as pd
++from sklearn.compose import ColumnTransformer
++from sklearn.impute import SimpleImputer
++from sklearn.pipeline import Pipeline
++from sklearn.preprocessing import RobustScaler
++from sklearn.linear_model import LogisticRegression
++
++X = pd.DataFrame(data=[[1.0, 2.0, 3.0, 4.0], [4, 2, 2, 5]],
++                 columns=["a", "b", "c", "d"])
++y = np.array([0, 1])
++categorical_features = []
++numerical_features = ["a", "b", "c"]
++model_preprocessing = ("preprocessing",
++                       ColumnTransformer([
++                           ('categorical', 'passthrough', categorical_features),
++                           ('numerical', Pipeline([("scaler", RobustScaler()),
++                                                   ("imputer", SimpleImputer(strategy="median"))
++                                                   ]), numerical_features),
++                       ], remainder='drop'))
++pipeline = Pipeline([model_preprocessing, ("classifier", LogisticRegression())]).set_output(transform="pandas")
++print("About to fit...")
++pipeline.fit(X, y)
++print("Fit successful!")
+\ No newline at end of file
+diff --git a/sklearn/compose/_column_transformer.py b/sklearn/compose/_column_transformer.py
+index a261451177..5832c35404 100644
+--- a/sklearn/compose/_column_transformer.py
++++ b/sklearn/compose/_column_transformer.py
+@@ -862,10 +862,32 @@ class ColumnTransformer(TransformerMixin, _BaseComposition):
+                 if not self.verbose_feature_names_out:
+                     return output
+ 
+-                transformer_names = [
+-                    t[0] for t in self._iter(fitted=True, replace_strings=True)
+-                ]
++                # Filter out transformers with no features when creating feature names
++                # to match the number of Xs results
++                transformer_iter = list(self._iter(fitted=True, replace_strings=True))
++                transformer_names = [t[0] for t in transformer_iter]
+                 feature_names_outs = [X.columns for X in Xs]
++                
++                # If there's a mismatch between transformer names and Xs (due to empty columns),
++                # we need to filter out the empty column transformers from both lists
++                if len(transformer_names) != len(Xs):
++                    # Create filtered lists by excluding transformers with empty columns
++                    filtered_transformers = []
++                    filtered_Xs = []
++                    filtered_feature_names = []
++                    
++                    for i, (name, trans, columns, _) in enumerate(transformer_iter):
++                        # Skip transformers with empty column selections
++                        if not _is_empty_column_selection(columns):
++                            filtered_transformers.append((name, trans, columns))
++                            filtered_Xs.append(Xs[i])
++                            filtered_feature_names.append(Xs[i].columns)
++                    
++                    # Update variables for consistent lengths
++                    transformer_names = [t[0] for t in filtered_transformers]
++                    feature_names_outs = filtered_feature_names
++                    Xs = filtered_Xs
++                
+                 names_out = self._add_prefix_for_feature_names_out(
+                     list(zip(transformer_names, feature_names_outs))
+                 )

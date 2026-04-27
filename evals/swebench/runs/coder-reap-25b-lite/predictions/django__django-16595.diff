@@ -1,0 +1,339 @@
+diff --git a/django/db/migrations/operations/fields.py b/django/db/migrations/operations/fields.py
+index cd3aab43ad..e2682aeac0 100644
+--- a/django/db/migrations/operations/fields.py
++++ b/django/db/migrations/operations/fields.py
+@@ -264,6 +264,10 @@ class AlterField(FieldOperation):
+                     field=self.field,
+                 ),
+             ]
++        elif isinstance(operation, AlterField) and self.is_same_field_operation(
++            operation
++        ):
++            return [operation]
+         return super().reduce(operation, app_label)
+ 
+ 
+diff --git a/simple_test.py b/simple_test.py
+new file mode 100644
+index 0000000000..4e7e253466
+--- /dev/null
++++ b/simple_test.py
+@@ -0,0 +1,71 @@
++#!/usr/bin/env python
++"""
++Simple test to demonstrate the AlterField optimization bug.
++"""
++import sys
++import os
++
++# Add Django to path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-16595')
++
++# Import Django components directly
++from django.db import migrations, models
++from django.db.migrations.optimizer import MigrationOptimizer
++
++def test_multiple_alter_field_optimization():
++    """Test that multiple AlterField operations are properly optimized."""
++    
++    # Create operations as described in the bug report
++    operations = [
++        migrations.AddField(
++            model_name="book",
++            name="title",
++            field=models.CharField(max_length=256, null=True),
++        ),
++        migrations.AlterField(
++            model_name="book",
++            name="title",
++            field=models.CharField(max_length=128, null=True),
++        ),
++        migrations.AlterField(
++            model_name="book",
++            name="title",
++            field=models.CharField(max_length=128, null=True, help_text="help"),
++        ),
++        migrations.AlterField(
++            model_name="book",
++            name="title",
++            field=models.CharField(max_length=128, null=True, help_text="help", default=None),
++        ),
++    ]
++    
++    print("Original operations:")
++    for i, op in enumerate(operations):
++        print(f"  {i}: {op}")
++    
++    # Test the optimizer behavior with just the AlterFields (as described in the issue)
++    optimizer = MigrationOptimizer()
++    
++    # This is the key test case - when we start from the second operation 
++    # (which is an AlterField) and try to optimize it with subsequent AlterFields,
++    # it should reduce them but currently doesn't
++    result = optimizer.optimize(operations[1:], "books")  # Skip AddField
++    
++    print("\nOptimized operations (starting from second operation):")
++    for i, op in enumerate(result):
++        print(f"  {i}: {op}")
++        
++    print(f"\nNumber of operations after optimization: {len(result)}")
++    
++    # The expected result should be just one AlterField operation 
++    # that contains all the changes (the last one)
++    if len(result) == 1 and isinstance(result[0], migrations.AlterField):
++        print("✓ Optimization worked correctly - only one AlterField returned")
++        return True
++    else:
++        print("✗ Optimization failed - multiple AlterField operations returned")
++        return False
++
++if __name__ == "__main__":
++    success = test_multiple_alter_field_optimization()
++    sys.exit(0 if success else 1)
+\ No newline at end of file
+diff --git a/test_bug_reproduction.py b/test_bug_reproduction.py
+new file mode 100644
+index 0000000000..24ac541aeb
+--- /dev/null
++++ b/test_bug_reproduction.py
+@@ -0,0 +1,113 @@
++#!/usr/bin/env python
++"""
++Test script to reproduce the AlterField optimization bug.
++"""
++import os
++import sys
++import django
++from django.conf import settings
++
++# Add the project root to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-16595')
++
++# Configure Django settings
++if not settings.configured:
++    settings.configure(
++        DEBUG=True,
++        DATABASES={
++            'default': {
++                'ENGINE': 'django.db.backends.sqlite3',
++                'NAME': ':memory:',
++            }
++        },
++        INSTALLED_APPS=[
++            'django.contrib.contenttypes',
++            'django.contrib.auth',
++            'django.contrib.sites',
++            'django.contrib.admin',
++            'django.contrib.sessions',
++            'django.contrib.messages',
++            'django.contrib.staticfiles',
++            'django.contrib.humanize',
++            'django.contrib.gis',
++            'django.contrib.redirects',
++            'django.contrib.flatpages',
++            'django.contrib.syndication',
++            'django.contrib.sitemaps',
++            'django.contrib.admindocs',
++            'django.contrib.auth.models',
++            'django.contrib.contenttypes.models',
++            'django.contrib.sessions.models',
++            'django.contrib.messages.models',
++            'django.contrib.staticfiles.models',
++            'django.contrib.humanize.models',
++            'django.contrib.gis.models',
++            'django.contrib.redirects.models',
++            'django.contrib.flatpages.models',
++            'django.contrib.syndication.models',
++            'django.contrib.sitemaps.models',
++            'django.contrib.admindocs.models',
++            'migrations',
++        ],
++        USE_TZ=True,
++        SECRET_KEY='test-secret-key',
++    )
++
++django.setup()
++
++from django.db import migrations, models
++from django.db.migrations.optimizer import MigrationOptimizer
++
++def test_multiple_alter_field_optimization():
++    """Test that multiple AlterField operations are properly optimized."""
++    
++    # Create operations as described in the bug report
++    operations = [
++        migrations.AddField(
++            model_name="book",
++            name="title",
++            field=models.CharField(max_length=256, null=True),
++        ),
++        migrations.AlterField(
++            model_name="book",
++            name="title",
++            field=models.CharField(max_length=128, null=True),
++        ),
++        migrations.AlterField(
++            model_name="book",
++            name="title",
++            field=models.CharField(max_length=128, null=True, help_text="help"),
++        ),
++        migrations.AlterField(
++            model_name="book",
++            name="title",
++            field=models.CharField(max_length=128, null=True, help_text="help", default=None),
++        ),
++    ]
++    
++    print("Original operations:")
++    for i, op in enumerate(operations):
++        print(f"  {i}: {op}")
++    
++    # Test the optimizer behavior with just the AlterFields (as described in the issue)
++    optimizer = MigrationOptimizer()
++    result = optimizer.optimize(operations[1:], "books")  # Skip AddField
++    
++    print("\nOptimized operations (starting from second operation):")
++    for i, op in enumerate(result):
++        print(f"  {i}: {op}")
++        
++    print(f"\nNumber of operations after optimization: {len(result)}")
++    
++    # The expected result should be just one AlterField operation 
++    # that contains all the changes (the last one)
++    if len(result) == 1 and isinstance(result[0], migrations.AlterField):
++        print("✓ Optimization worked correctly - only one AlterField returned")
++        return True
++    else:
++        print("✗ Optimization failed - multiple AlterField operations returned")
++        return False
++
++if __name__ == "__main__":
++    success = test_multiple_alter_field_optimization()
++    sys.exit(0 if success else 1)
+\ No newline at end of file
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..eebd9105ac
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,61 @@
++#!/usr/bin/env python
++"""
++Test to verify the fix for multiple AlterField optimization.
++This should be added to the Django test suite.
++"""
++
++import sys
++import os
++
++# Add Django to path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-16595')
++
++from django.db import migrations, models
++from django.db.migrations.optimizer import MigrationOptimizer
++
++def test_multiple_alter_field_optimization():
++    """Test that multiple consecutive AlterField operations are optimized."""
++    
++    # Create operations as described in the bug report
++    operations = [
++        migrations.AddField(
++            model_name="book",
++            name="title",
++            field=models.CharField(max_length=256, null=True),
++        ),
++        migrations.AlterField(
++            model_name="book",
++            name="title",
++            field=models.CharField(max_length=128, null=True),
++        ),
++        migrations.AlterField(
++            model_name="book",
++            name="title",
++            field=models.CharField(max_length=128, null=True, help_text="help"),
++        ),
++        migrations.AlterField(
++            model_name="book",
++            name="title",
++            field=models.CharField(max_length=128, null=True, help_text="help", default=None),
++        ),
++    ]
++    
++    # Test the specific case mentioned in the bug report:
++    # When we start from an AlterField operation (not preceded by AddField)
++    optimizer = MigrationOptimizer()
++    result = optimizer.optimize(operations[1:], "books")  # Skip AddField
++    
++    # Should reduce to just one AlterField operation
++    assert len(result) == 1
++    assert isinstance(result[0], migrations.AlterField)
++    assert result[0].model_name == "book"
++    assert result[0].name == "title"
++    assert result[0].field.help_text == "help"  # Last AlterField's field
++    assert result[0].field.default is None  # Last AlterField's field
++    
++    print("✓ Multiple AlterField optimization test passed!")
++    return True
++
++if __name__ == "__main__":
++    success = test_multiple_alter_field_optimization()
++    sys.exit(0 if success else 1)
+\ No newline at end of file
+diff --git a/test_for_django_suite.py b/test_for_django_suite.py
+new file mode 100644
+index 0000000000..1b4913da63
+--- /dev/null
++++ b/test_for_django_suite.py
+@@ -0,0 +1,51 @@
++"""
++Test case that should be added to Django's test suite.
++This test verifies the fix for the bug where multiple AlterField operations 
++are not properly optimized when they follow an AddField operation or start from 
++an AlterField operation.
++"""
++
++from django.db import migrations, models
++from django.test import SimpleTestCase
++
++
++class MultipleAlterFieldOptimizationTest(SimpleTestCase):
++    def test_multiple_alter_field_optimization(self):
++        """
++        Test that multiple consecutive AlterField operations on the same field
++        are properly optimized into a single operation.
++        
++        This is a regression test for a bug where the optimizer would not reduce
++        multiple AlterField operations when they didn't start with an AddField.
++        """
++        # Create a sequence of AlterField operations on the same field
++        operations = [
++            migrations.AlterField(
++                model_name="book",
++                name="title",
++                field=models.CharField(max_length=128, null=True),
++            ),
++            migrations.AlterField(
++                model_name="book",
++                name="title",
++                field=models.CharField(max_length=128, null=True, help_text="help"),
++            ),
++            migrations.AlterField(
++                model_name="book",
++                name="title",
++                field=models.CharField(max_length=128, null=True, help_text="help", default=None),
++            ),
++        ]
++        
++        # Optimize the operations
++        optimizer = migrations.optimizer.MigrationOptimizer()
++        result = optimizer.optimize(operations, "books")
++        
++        # Should be reduced to just one AlterField operation (the last one)
++        self.assertEqual(len(result), 1)
++        self.assertIsInstance(result[0], migrations.AlterField)
++        self.assertEqual(result[0].model_name, "book")
++        self.assertEqual(result[0].name, "title")
++        # Verify it has the properties from the final AlterField
++        self.assertEqual(result[0].field.help_text, "help")
++        self.assertIsNone(result[0].field.default)
+\ No newline at end of file

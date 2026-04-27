@@ -1,0 +1,58 @@
+diff --git a/sympy/printing/mathml.py b/sympy/printing/mathml.py
+index 1aa0ee01a2..46681a1849 100644
+--- a/sympy/printing/mathml.py
++++ b/sympy/printing/mathml.py
+@@ -443,6 +443,15 @@ def _print_Function(self, e):
+             x.appendChild(self._print(arg))
+         return x
+ 
++    def _print_Indexed(self, e):
++        # Print Indexed objects properly - these are indexed expressions like A[i,j]
++        # The structure is: Indexed(base, *indices)
++        x = self.dom.createElement('indexed')
++        x.appendChild(self._print(e.base))
++        for arg in e.indices:
++            x.appendChild(self._print(arg))
++        return x
++
+     def _print_Basic(self, e):
+         x = self.dom.createElement(self.mathml_tag(e))
+         for arg in e.args:
+@@ -1006,6 +1015,37 @@ def _print_polylog(self, expr, exp=None):
+         mrow.appendChild(brac)
+         return mrow
+ 
++    def _print_IndexedBase(self, e):
++        # Print IndexedBase objects properly - these are the base arrays like A
++        x = self.dom.createElement('indexedbase')
++        x.appendChild(self._print(e.label))
++        return x
++
++    def _print_Indexed(self, e):
++        # Print Indexed objects properly - these are indexed expressions like A[i,j]
++        # For presentation printer, we want to represent as subscripts: a_{i}
++        if len(e.indices) == 1:
++            # Single index case: a_i (subscript)
++            mrow = self.dom.createElement('mrow')
++            msub = self.dom.createElement('msub')
++            msub.appendChild(self._print(e.base))
++            msub.appendChild(self._print(e.indices[0]))
++            mrow.appendChild(msub)
++            return mrow
++        else:
++            # Multi-index case: create nested structure or simple representation
++            x = self.dom.createElement('mrow')
++            mi = self.dom.createElement('mi')
++            mi.appendChild(self.dom.createTextNode('indexed'))
++            x.appendChild(mi)
++            mfenced = self.dom.createElement('mfenced')
++            # Add base and indices
++            mfenced.appendChild(self._print(e.base))
++            for arg in e.indices:
++                mfenced.appendChild(self._print(arg))
++            x.appendChild(mfenced)
++            return x
++
+     def _print_Basic(self, e):
+         mrow = self.dom.createElement('mrow')
+         mi = self.dom.createElement('mi')

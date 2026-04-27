@@ -1,0 +1,25 @@
+diff --git a/sympy/tensor/array/ndim_array.py b/sympy/tensor/array/ndim_array.py
+index 6490a655a4..b2c9c086ea 100644
+--- a/sympy/tensor/array/ndim_array.py
++++ b/sympy/tensor/array/ndim_array.py
+@@ -194,6 +194,10 @@ def f(pointer):
+             if not isinstance(pointer, Iterable):
+                 return [pointer], ()
+ 
++            # Handle empty iterable case
++            if len(pointer) == 0:
++                return [], ()
++
+             result = []
+             elems, shapes = zip(*[f(i) for i in pointer])
+             if len(set(shapes)) != 1:
+@@ -224,6 +228,9 @@ def _handle_ndarray_creation_inputs(cls, iterable=None, shape=None, **kwargs):
+             # Construct N-dim array from an iterable (numpy arrays included):
+             elif isinstance(iterable, Iterable):
+                 iterable, shape = cls._scan_iterable_shape(iterable)
++                # Handle empty iterable case - default to 1D array with shape (0,)
++                if len(iterable) == 0 and shape == ():
++                    shape = (0,)
+ 
+             # Construct N-dim array from a Matrix:
+             elif isinstance(iterable, MatrixBase):

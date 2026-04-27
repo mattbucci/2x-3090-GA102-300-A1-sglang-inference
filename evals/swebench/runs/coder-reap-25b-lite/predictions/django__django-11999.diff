@@ -1,0 +1,55 @@
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index ee45bb941e..342cb327f9 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -755,7 +755,7 @@ class Field(RegisterLookupMixin):
+         """
+         self.set_attributes_from_name(name)
+         self.model = cls
+-        cls._meta.add_field(self, private=private_only)
++        cls._meta.add_field(self, private=private=private_only)
+         if self.column:
+             # Don't override classmethods with the descriptor. This means that
+             # if you have a classmethod and a field with the same name, then
+@@ -763,8 +763,12 @@ class Field(RegisterLookupMixin):
+             if not getattr(cls, self.attname, None):
+                 setattr(cls, self.attname, self.descriptor_class(self))
+         if self.choices is not None:
+-            setattr(cls, 'get_%s_display' % self.name,
+-                    partialmethod(cls._get_FIELD_display, field=self))
++            # Only set get_FOO_display if it doesn't already exist to allow
++            # users to override it
++            display_method_name = 'get_%s_display' % self.name
++            if not hasattr(cls, display_method_name):
++                setattr(cls, display_method_name,
++                        partialmethod(cls._get_FIELD_display, field=self))
+ 
+     def get_filter_kwargs_for_object(self, obj):
+         """
+diff --git a/test_display_bug.py b/test_display_bug.py
+new file mode 100644
+index 0000000000..a48ede08a0
+--- /dev/null
++++ b/test_display_bug.py
+@@ -0,0 +1,20 @@
++from django.db import models
++from django.test import TestCase
++
++
++class FooBar(models.Model):
++    foo_bar = models.CharField(_('foo'), choices=[(1, 'foo'), (2, 'bar')])
++    
++    def __str__(self):
++        return self.get_foo_bar_display()  # This returns 'foo' or 'bar' in 2.2, but 'something' in 2.1
++    
++    def get_foo_bar_display(self):
++        return "something"
++
++
++class TestDisplayOverride(TestCase):
++    def test_display_override(self):
++        # This should return "something" but currently returns "foo" or "bar"
++        instance = FooBar(foo_bar=1)
++        result = instance.get_foo_bar_display()
++        self.assertEqual(result, "something")
+\ No newline at end of file

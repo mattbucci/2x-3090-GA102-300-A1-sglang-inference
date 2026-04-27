@@ -1,0 +1,25 @@
+diff --git a/sklearn/calibration.py b/sklearn/calibration.py
+index 2c4a33616d..2011a23b4d 100644
+--- a/sklearn/calibration.py
++++ b/sklearn/calibration.py
+@@ -760,7 +760,19 @@ class _CalibratedClassifier:
+                 # When binary, `predictions` consists only of predictions for
+                 # clf.classes_[1] but `pos_class_indices` = 0
+                 class_idx += 1
+-            proba[:, class_idx] = calibrator.predict(this_pred)
++            # Ensure we get a numpy array from calibrator.predict to avoid issues
++            # when transform_output="pandas" is set globally
++            pred_result = calibrator.predict(this_pred)
++            # Handle case where predict returns pandas objects (e.g., DataFrame/Series)
++            # This can happen with IsotonicRegression when transform_output="pandas"
++            if hasattr(pred_result, 'values') or hasattr(pred_result, 'to_numpy'):
++                # Convert pandas Series/DataFrame to numpy array
++                try:
++                    pred_result = np.asarray(pred_result).squeeze()
++                except Exception:
++                    # Fallback: just convert to numpy
++                    pred_result = np.asarray(pred_result)
++            proba[:, class_idx] = pred_result
+ 
+         # Normalize the probabilities
+         if n_classes == 2:

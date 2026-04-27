@@ -1,0 +1,66 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 62631f7ff..4406b4169 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -114,7 +114,14 @@ def inherited_members_option(arg: Any) -> Union[object, Set[str]]:
+     if arg in (None, True):
+         return 'object'
+     else:
+-        return arg
++        # Support both single class name and list of class names
++        if isinstance(arg, str):
++            return {arg}
++        else:
++            # Handle comma-separated string or list of class names
++            if isinstance(arg, str):
++                arg = [x.strip() for x in arg.split(',') if x.strip()]
++            return set(arg)
+ 
+ 
+ def member_order_option(arg: Any) -> Optional[str]:
+@@ -681,16 +688,35 @@ class Documenter:
+         """
+         def is_filtered_inherited_member(name: str, obj: Any) -> bool:
+             if inspect.isclass(self.object):
+-                for cls in self.object.__mro__:
+-                    if cls.__name__ == self.options.inherited_members and cls != self.object:
+-                        # given member is a member of specified *super class*
+-                        return True
+-                    elif name in cls.__dict__:
+-                        return False
+-                    elif name in self.get_attr(cls, '__annotations__', {}):
+-                        return False
+-                    elif isinstance(obj, ObjectMember) and obj.class_ is cls:
+-                        return False
++                # Handle both single class and multiple classes
++                inherited_classes = self.options.inherited_members
++                if inherited_classes == 'object':
++                    # Default behavior - ignore object class and its superclasses
++                    return True
++                elif isinstance(inherited_classes, set):
++                    # Multiple classes case
++                    for cls in self.object.__mro__:
++                        if cls.__name__ in inherited_classes and cls != self.object:
++                            # given member is a member of specified *super class*
++                            return True
++                        elif name in cls.__dict__:
++                            return False
++                        elif name in self.get_attr(cls, '__annotations__', {}):
++                            return False
++                        elif isinstance(obj, ObjectMember) and obj.class_ is cls:
++                            return False
++                else:
++                    # Single class case (backward compatibility)
++                    for cls in self.object.__mro__:
++                        if cls.__name__ == inherited_classes and cls != self.object:
++                            # given member is a member of specified *super class*
++                            return True
++                        elif name in cls.__dict__:
++                            return False
++                        elif name in self.get_attr(cls, '__annotations__', {}):
++                            return False
++                        elif isinstance(obj, ObjectMember) and obj.class_ is cls:
++                            return False
+ 
+             return False
+ 

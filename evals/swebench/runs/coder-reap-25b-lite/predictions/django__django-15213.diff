@@ -1,0 +1,215 @@
+diff --git a/debug_q.py b/debug_q.py
+new file mode 100644
+index 0000000000..1f969a78ea
+--- /dev/null
++++ b/debug_q.py
+@@ -0,0 +1,70 @@
++#!/usr/bin/env python
++
++import os
++import sys
++
++# Add the current directory to Python path  
++sys.path.insert(0, '/tmp/swebench-work2/django__django-15213')
++
++# Create a simple test to examine what happens when we call compiler.compile on different Q objects
++from django.db.models import Q, BooleanField
++from django.db.models.expressions import ExpressionWrapper
++
++# Mock compiler to inspect behavior
++class MockCompiler:
++    def __init__(self):
++        self.query = None
++        
++    def compile(self, expression):
++        # This simulates what happens in real compilation
++        try:
++            print(f"Compiling expression: {expression}")
++            print(f"Expression type: {type(expression)}")
++            if hasattr(expression, 'resolve_expression'):
++                resolved = expression.resolve_expression(None)
++                print(f"Resolved to: {resolved} (type: {type(resolved)})")
++            else:
++                print("No resolve_expression method")
++            
++            # Try to call as_sql directly 
++            if hasattr(expression, 'as_sql'):
++                result = expression.as_sql(self, None)
++                print(f"as_sql result: {result}")
++                return result
++            else:
++                print("No as_sql method - will use compiler.compile")
++                return "compiled_result", []
++                
++        except Exception as e:
++            print(f"Error during compilation: {e}")
++            import traceback
++            traceback.print_exc()
++            return "", []
++
++def test_q_compilation():
++    print("=== Testing Q object compilation ===")
++    
++    # Test 1: Normal Q(pk__in=[])
++    print("\n1. Testing Q(pk__in=[]):")
++    q1 = Q(pk__in=[])
++    print(f"Q object: {q1}")
++    print(f"Negated: {q1.negated}")
++    
++    # Test 2: Negated Q(pk__in=[])
++    print("\n2. Testing ~Q(pk__in=[]):")
++    q2 = ~Q(pk__in=[])
++    print(f"Negated Q object: {q2}")
++    print(f"Negated: {q2.negated}")
++    
++    # Test 3: ExpressionWrapper with normal Q
++    print("\n3. Testing ExpressionWrapper(Q(pk__in=[])):")
++    expr1 = ExpressionWrapper(Q(pk__in=[]), output_field=BooleanField())
++    print(f"ExpressionWrapper: {expr1}")
++    
++    # Test 4: ExpressionWrapper with negated Q
++    print("\n4. Testing ExpressionWrapper(~Q(pk__in=[])):")
++    expr2 = ExpressionWrapper(~Q(pk__in=[]), output_field=BooleanField())
++    print(f"ExpressionWrapper: {expr2}")
++
++if __name__ == "__main__":
++    test_q_compilation()
+\ No newline at end of file
+diff --git a/django/db/models/expressions.py b/django/db/models/expressions.py
+index 8642e1f151..d8fe880ff8 100644
+--- a/django/db/models/expressions.py
++++ b/django/db/models/expressions.py
+@@ -979,6 +979,16 @@ class ExpressionWrapper(SQLiteNumericMixin, Expression):
+         return super().get_group_by_cols()
+ 
+     def as_sql(self, compiler, connection):
++        # Ensure the expression is properly resolved before compilation to handle Q objects correctly
++        if hasattr(self.expression, 'resolve_expression'):
++            try:
++                resolved_expression = self.expression.resolve_expression(
++                    compiler.query if hasattr(compiler, 'query') else None
++                )
++                return compiler.compile(resolved_expression)
++            except Exception:
++                # Fallback to original behavior if resolution fails
++                pass
+         return compiler.compile(self.expression)
+ 
+     def __repr__(self):
+diff --git a/test_reproduce.py b/test_reproduce.py
+new file mode 100644
+index 0000000000..3393bd0247
+--- /dev/null
++++ b/test_reproduce.py
+@@ -0,0 +1,110 @@
++#!/usr/bin/env python
++
++import os
++import sys
++import django
++from django.conf import settings
++
++# Add the current directory to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-15213')
++
++# Configure Django settings
++if not settings.configured:
++    settings.configure(
++        DEBUG=True,
++        DATABASES={
++            'default': {
++                'ENGINE': 'django.db.backends.sqlite3',
++                'NAME': ':memory:',
++            }
++        },
++        INSTALLED_APPS=[
++            'django.contrib.contenttypes',
++            'django.contrib.auth',
++            'django.contrib.sites',
++            'django.contrib.admin',
++            'django.contrib.sessions',
++            'django.contrib.messages',
++            'django.contrib.staticfiles',
++            'django.contrib.humanize',
++            'django.contrib.gis',
++            'django.contrib.postgres',
++            'django.contrib.webdesign',
++            'django.contrib.redirects',
++            'django.contrib.flatpages',
++            'django.contrib.syndication',
++            'django.contrib.sitemaps',
++            'django.contrib.admindocs',
++            'django.contrib.auth.models',
++            'django.contrib.contenttypes.models',
++            'django.contrib.sessions.models',
++            'django.contrib.messages.models',
++            'django.contrib.staticfiles.models',
++            'django.contrib.humanize.models',
++            'django.contrib.gis.models',
++            'django.contrib.postgres.models',
++            'django.contrib.webdesign.models',
++            'django.contrib.redirects.models',
++            'django.contrib.flatpages.models',
++            'django.contrib.syndication.models',
++            'django.contrib.sitemaps.models',
++            'django.contrib.admindocs.models',
++            'django.contrib.auth',
++            'django.contrib.contenttypes',
++            'django.contrib.sessions',
++            'django.contrib.messages',
++            'django.contrib.staticfiles',
++            'django.contrib.humanize',
++            'django.contrib.gis',
++            'django.contrib.postgres',
++            'django.contrib.webdesign',
++            'django.contrib.redirects',
++            'django.contrib.flatpages',
++            'django.contrib.syndication',
++            'django.contrib.sitemaps',
++            'django.contrib.admindocs',
++            'tests.annotations',
++        ],
++        USE_TZ=True,
++        SECRET_KEY='test-secret-key',
++    )
++
++django.setup()
++
++# Now let's try to reproduce the bug
++from django.db.models import Q, BooleanField
++from django.db.models.expressions import ExpressionWrapper
++from django.db import models
++
++class Book(models.Model):
++    title = models.CharField(max_length=100)
++    
++    class Meta:
++        app_label = 'annotations'
++
++# Test the working case
++print("Testing working case: ExpressionWrapper(Q(pk__in=[]))")
++try:
++    from django.db.models import F
++    from django.db.models.expressions import Value
++    
++    # Create a queryset and try to annotate with ExpressionWrapper(Q(pk__in=[]))
++    books = Book.objects.all()
++    result = books.annotate(selected=ExpressionWrapper(Q(pk__in=[]), output_field=BooleanField())).values('selected')
++    print("Query:", str(result.query))
++    print("SUCCESS - Working case works")
++except Exception as e:
++    print("ERROR in working case:", e)
++
++# Test the failing case  
++print("\nTesting failing case: ExpressionWrapper(~Q(pk__in=[]))")
++try:
++    # This should fail according to the bug report
++    books = Book.objects.all()
++    result = books.annotate(selected=ExpressionWrapper(~Q(pk__in=[]), output_field=BooleanField())).values('selected')
++    print("Query:", str(result.query))
++    print("SUCCESS - Failing case works too")
++except Exception as e:
++    print("ERROR in failing case:", e)
++    import traceback
++    traceback.print_exc()
+\ No newline at end of file

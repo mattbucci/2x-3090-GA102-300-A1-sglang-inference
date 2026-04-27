@@ -1,0 +1,51 @@
+diff --git a/src/_pytest/assertion/rewrite.py b/src/_pytest/assertion/rewrite.py
+index 456681ab2..51e62d3c1 100644
+--- a/src/_pytest/assertion/rewrite.py
++++ b/src/_pytest/assertion/rewrite.py
+@@ -903,7 +903,13 @@ class AssertionRewriter(ast.NodeVisitor):
+ 
+             # Passed
+             fmt_pass = self.helper("_format_explanation", msg)
+-            orig = _get_assertion_exprs(self.source)[assert_.lineno]
++            # Use a fallback mechanism to get the original assertion expression
++            # to avoid issues with line number mapping in certain Python versions
++            try:
++                orig = _get_assertion_exprs(self.source)[assert_.lineno]
++            except (KeyError, IndexError):
++                # Fallback: use the raw assertion text if we can't find it by line number
++                orig = f"assert {ast.unparse(assert_.test) if hasattr(ast, 'unparse') else '...'}"
+             hook_call_pass = ast.Expr(
+                 self.helper(
+                     "_call_assertion_pass",
+diff --git a/test_reproduce.py b/test_reproduce.py
+new file mode 100644
+index 000000000..28e060c41
+--- /dev/null
++++ b/test_reproduce.py
+@@ -0,0 +1,25 @@
++from pytest import fixture
++
++
++def t(foo):
++    return foo
++
++
++@fixture
++def foo():
++    return 1
++
++
++def test_right_statement(foo):
++    assert foo == (3 + 2) * (6 + 9)
++
++    @t
++    def inner():
++        return 2
++
++    assert 2 == inner
++
++
++@t
++def outer():
++    return 2
+\ No newline at end of file

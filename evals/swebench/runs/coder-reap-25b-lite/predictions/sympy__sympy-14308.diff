@@ -1,0 +1,13 @@
+diff --git a/sympy/physics/vector/vector.py b/sympy/physics/vector/vector.py
+index a048ee57f1..c86f1f9e6c 100644
+--- a/sympy/physics/vector/vector.py
++++ b/sympy/physics/vector/vector.py
+@@ -276,7 +276,7 @@ def render(self, *args, **kwargs):
+                         elif ar[i][0][j] != 0:
+                             # If the basis vector coeff is not 1 or -1,
+                             # we might wrap it in parentheses, for readability.
+-                            if isinstance(ar[i][0][j], Add):
++                            if isinstance(ar[i][0][j], (Add, Pow)):
+                                 pform = vp._print(
+                                     ar[i][0][j]).parens()
+                             else:

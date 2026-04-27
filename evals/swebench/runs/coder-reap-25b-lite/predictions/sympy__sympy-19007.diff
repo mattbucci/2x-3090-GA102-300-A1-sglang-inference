@@ -1,0 +1,127 @@
+diff --git a/debug_blockmatrix.py b/debug_blockmatrix.py
+new file mode 100644
+index 0000000000..140cc94690
+--- /dev/null
++++ b/debug_blockmatrix.py
+@@ -0,0 +1,18 @@
++from sympy import *
++n, i = symbols('n, i', integer=True)
++A = MatrixSymbol('A', 1, 1)
++B = MatrixSymbol('B', n, 1)
++C = BlockMatrix([[A], [B]])
++print('C is')
++pprint(C)
++print()
++print('Shape of C:', C.shape)
++print('Blocks of C:', C.blocks)
++print('Row block sizes:', C.rowblocksizes)  
++print('Col block sizes:', C.colblocksizes)
++print()
++print('C[0, 0] is:')
++pprint(C[0, 0])
++print()
++print('C[1, 0] is:')  
++pprint(C[1, 0])
+\ No newline at end of file
+diff --git a/debug_indexing.py b/debug_indexing.py
+new file mode 100644
+index 0000000000..a242ca5eac
+--- /dev/null
++++ b/debug_indexing.py
+@@ -0,0 +1,20 @@
++from sympy import *
++n, i = symbols('n, i', integer=True)
++A = MatrixSymbol('A', 1, 1)
++B = MatrixSymbol('B', n, 1)
++C = BlockMatrix([[A], [B]])
++
++print("Testing what happens with direct indexing:")
++try:
++    result = C[i, 0]
++    print("Direct access result type:", type(result))
++    print("Direct access result:", result)
++except Exception as e:
++    print("Error:", e)
++
++# Try to see what the expression looks like in more detail
++print("\nTrying to understand the structure...")
++print("C has shape:", C.shape)
++print("C blocks:", C.blocks)
++print("C rowblocksizes:", C.rowblocksizes)
++print("C colblocksizes:", C.colblocksizes)
+\ No newline at end of file
+diff --git a/exact_test.py b/exact_test.py
+new file mode 100644
+index 0000000000..b3ab8c2b93
+--- /dev/null
++++ b/exact_test.py
+@@ -0,0 +1,9 @@
++from sympy import *
++n, i = symbols('n, i', integer=True)
++A = MatrixSymbol('A', 1, 1)
++B = MatrixSymbol('B', n, 1)
++C = BlockMatrix([[A], [B]])
++print('C is')
++pprint(C)
++print('C[i, 0] is')
++pprint(C[i, 0])
+\ No newline at end of file
+diff --git a/sympy/matrices/expressions/blockmatrix.py b/sympy/matrices/expressions/blockmatrix.py
+index b821c42845..295ab8423b 100644
+--- a/sympy/matrices/expressions/blockmatrix.py
++++ b/sympy/matrices/expressions/blockmatrix.py
+@@ -233,7 +233,16 @@ def transpose(self):
+         return self._eval_transpose()
+ 
+     def _entry(self, i, j, **kwargs):
+-        # Find row entry
++        # For symbolic indices, we cannot determine which block contains the element,
++        # so return an unevaluated expression that preserves the BlockMatrix structure
++        from sympy.core import Symbol, Expr
++        if isinstance(i, (Symbol, Expr)) or isinstance(j, (Symbol, Expr)):
++            # Return unevaluated indexed access to prevent incorrect simplification
++            # This ensures C[i, 0] stays as C[i, 0], not (A)[i, 0]
++            from sympy import Indexed
++            return Indexed(self, i, j)
++            
++        # Find row entry for numeric indices
+         for row_block, numrows in enumerate(self.rowblocksizes):
+             if (i < numrows) != False:
+                 break
+diff --git a/test_blockmatrix.py b/test_blockmatrix.py
+new file mode 100644
+index 0000000000..b3ab8c2b93
+--- /dev/null
++++ b/test_blockmatrix.py
+@@ -0,0 +1,9 @@
++from sympy import *
++n, i = symbols('n, i', integer=True)
++A = MatrixSymbol('A', 1, 1)
++B = MatrixSymbol('B', n, 1)
++C = BlockMatrix([[A], [B]])
++print('C is')
++pprint(C)
++print('C[i, 0] is')
++pprint(C[i, 0])
+\ No newline at end of file
+diff --git a/test_symbolic.py b/test_symbolic.py
+new file mode 100644
+index 0000000000..128e71a987
+--- /dev/null
++++ b/test_symbolic.py
+@@ -0,0 +1,14 @@
++from sympy import *
++n, i = symbols('n, i', integer=True)
++A = MatrixSymbol('A', 1, 1)
++B = MatrixSymbol('B', n, 1)
++C = BlockMatrix([[A], [B]])
++
++# Test with specific integer values
++print("Testing with specific values:")
++print("C[0, 0] =", C[0, 0])  
++print("C[1, 0] =", C[1, 0])
++
++# What should happen - C[i, 0] should remain unevaluated
++print("\nWhat should happen with symbolic index:")
++print("C[i, 0] should stay as C[i, 0], not become (A)[i, 0]")
+\ No newline at end of file

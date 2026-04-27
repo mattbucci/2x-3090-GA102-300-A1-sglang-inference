@@ -1,0 +1,36 @@
+diff --git a/test_path_error.py b/test_path_error.py
+new file mode 100644
+index 000000000..a879dd6c0
+--- /dev/null
++++ b/test_path_error.py
+@@ -0,0 +1,29 @@
++import os
++import errno
++import shutil
++
++import pytest
++
++
++@pytest.fixture
++def private_dir():  # or (monkeypatch)
++    out_dir = 'ddd'
++
++    try:
++        shutil.rmtree(out_dir)
++    except OSError as ex:
++        if ex.errno != errno.ENOENT:
++            raise
++    os.mkdir(out_dir)
++
++    old_dir = os.getcwd()
++    os.chdir(out_dir)
++    yield out_dir
++    os.chdir(old_dir)
++
++    # Same issue if using:
++    # monkeypatch.chdir(out_dir)
++
++
++def test_show_wrong_path(private_dir):
++    assert False
+\ No newline at end of file

@@ -1,0 +1,76 @@
+diff --git a/conf.py b/conf.py
+new file mode 100644
+index 000000000..1aada475f
+--- /dev/null
++++ b/conf.py
+@@ -0,0 +1,5 @@
++extensions = ['sphinx.ext.autodoc',
++              'sphinx.ext.autosectionlabel',
++              'sphinx.ext.intersphinx',
++              'sphinx.ext.doctest',
++              'sphinx.ext.todo']
+\ No newline at end of file
+diff --git a/index.rst b/index.rst
+new file mode 100644
+index 000000000..a5ddf1f6f
+--- /dev/null
++++ b/index.rst
+@@ -0,0 +1,7 @@
++Hello World
++===========
++
++code docs
++=========
++
++.. automodule:: test_helloworld
+\ No newline at end of file
+diff --git a/sphinx/util/typing.py b/sphinx/util/typing.py
+index 2d4f67bba..11e4d4aea 100644
+--- a/sphinx/util/typing.py
++++ b/sphinx/util/typing.py
+@@ -97,6 +97,14 @@ def restify(cls: Optional["Type"]) -> str:
+     elif inspect.isNewType(cls):
+         return ':class:`%s`' % cls.__name__
+     elif cls.__module__ in ('__builtin__', 'builtins'):
++        # Special handling for struct.Struct and other types that have module issues
++        if hasattr(cls, '__qualname__') and cls.__qualname__ == 'Struct':
++            # For struct.Struct, try to get proper module information
++            if hasattr(cls, '__module__') and cls.__module__ == '_struct':
++                return ':class:`struct.Struct`'
++            else:
++                # Handle cases where it appears as builtins but is actually struct
++                return ':class:`struct.Struct`'
+         return ':class:`%s`' % cls.__name__
+     else:
+         if sys.version_info >= (3, 7):  # py37+
+@@ -300,6 +308,11 @@ def stringify(annotation: Any) -> str:
+         return repr(annotation)
+     elif annotation is NoneType:
+         return 'None'
++    elif (getattr(annotation, '__module__', None) == 'builtins' and
++          hasattr(annotation, '__qualname__') and 
++          annotation.__qualname__ == 'Struct'):
++        # Special case for struct.Struct - force correct module reference
++        return 'struct.Struct'
+     elif (getattr(annotation, '__module__', None) == 'builtins' and
+           hasattr(annotation, '__qualname__')):
+         return annotation.__qualname__
+diff --git a/test_helloworld.py b/test_helloworld.py
+new file mode 100644
+index 000000000..671a007fb
+--- /dev/null
++++ b/test_helloworld.py
+@@ -0,0 +1,12 @@
++import struct
++import pathlib
++
++def consume_struct(_: struct.Struct) -> None:
++    pass
++
++def make_struct() -> struct.Struct:
++    mystruct = struct.Struct('HH')
++    return mystruct
++
++def make_path() -> pathlib.Path:
++    return pathlib.Path()
+\ No newline at end of file

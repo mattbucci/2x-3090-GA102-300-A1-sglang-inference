@@ -1,0 +1,165 @@
+diff --git a/django/utils/numberformat.py b/django/utils/numberformat.py
+index 488d6a77cd..e952af3fdc 100644
+--- a/django/utils/numberformat.py
++++ b/django/utils/numberformat.py
+@@ -68,7 +68,7 @@ def format(
+             str_number = "{:f}".format(number)
+     else:
+         str_number = str(number)
+-    if str_number[0] == "-":
++    if str_number and str_number[0] == "-":
+         sign = "-"
+         str_number = str_number[1:]
+     # decimal part
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..ad56314c2e
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,55 @@
++#!/usr/bin/env python
++"""
++Test script to verify the fix for string index out of range error in numberformat.py
++"""
++
++# Test the specific case that was causing the issue
++def test_fix():
++    # This simulates what would happen in the original code:
++    # When str_number is empty, accessing str_number[0] would cause IndexError
++    
++    # Test 1: Empty string (the main issue)
++    str_number = ""
++    try:
++        # This is what the old code did - would fail with IndexError
++        if str_number[0] == "-":  # This line would crash
++            print("ERROR: Should not reach here")
++        else:
++            print("Empty string test passed")
++    except IndexError as e:
++        print(f"OLD CODE WOULD FAIL WITH: {e}")
++    
++    # Test 2: Our fixed version
++    str_number = ""
++    try:
++        # This is what our fixed code does
++        if str_number and str_number[0] == "-":
++            print("Fixed version correctly handled empty string")
++        else:
++            print("Fixed version correctly handled empty string")
++    except Exception as e:
++        print(f"FIXED VERSION FAILED: {e}")
++    
++    # Test 3: Normal negative number
++    str_number = "-123"
++    try:
++        if str_number and str_number[0] == "-":
++            print("Negative number correctly detected")
++        else:
++            print("ERROR: Negative number not detected")
++    except Exception as e:
++        print(f"ERROR: {e}")
++        
++    # Test 4: Normal positive number
++    str_number = "123"
++    try:
++        if str_number and str_number[0] == "-":
++            print("ERROR: Positive number incorrectly detected as negative")
++        else:
++            print("Positive number correctly handled")
++    except Exception as e:
++        print(f"ERROR: {e}")
++
++if __name__ == "__main__":
++    print("Testing the fix for string index out of range error...")
++    test_fix()
+\ No newline at end of file
+diff --git a/test_null_scenario.py b/test_null_scenario.py
+new file mode 100644
+index 0000000000..b809b4cc87
+--- /dev/null
++++ b/test_null_scenario.py
+@@ -0,0 +1,51 @@
++#!/usr/bin/env python
++"""
++Test to reproduce the exact scenario from the bug report:
++When str_number[0] == "-" encounters a number field that's null when formatting for admin list_display
++"""
++
++# Mock the function with our fix to test the specific case
++def test_null_handling():
++    """
++    This simulates what happens in Django admin when a null field gets formatted.
++    The original code would crash with "IndexError: string index out of range"
++    """
++    
++    # Test cases that could cause the original error:
++    test_cases = [
++        "",           # Empty string - this was causing IndexError
++        "0",          # Zero as string
++        "-123",       # Negative number 
++        "123",        # Positive number
++        None,         # None value
++    ]
++    
++    print("Testing various inputs that might come from null fields:")
++    
++    for i, test_input in enumerate(test_cases):
++        print(f"\nTest {i+1}: input={repr(test_input)}")
++        
++        # Simulate the OLD problematic code:
++        try:
++            str_number = str(test_input)
++            # OLD CODE (would crash):
++            # if str_number[0] == "-":
++            if str_number[0] == "-":  # This line crashes on empty string
++                print("  OLD CODE WOULD CRASH HERE!")
++        except IndexError as e:
++            print(f"  OLD CODE CRASHES: {e}")
++        except Exception as e:
++            print(f"  OLD CODE ERROR: {e}")
++            
++        # NEW CODE (our fix):
++        try:
++            str_number = str(test_input)
++            if str_number and str_number[0] == "-":  # Our fix
++                print("  NEW CODE: Negative number detected")
++            else:
++                print(f"  NEW CODE: Processed as '{str_number}'")
++        except Exception as e:
++            print(f"  NEW CODE ERROR: {e}")
++
++if __name__ == "__main__":
++    test_null_handling()
+\ No newline at end of file
+diff --git a/tests/utils_tests/test_numberformat_null_fix.py b/tests/utils_tests/test_numberformat_null_fix.py
+new file mode 100644
+index 0000000000..8f2e98fbf5
+--- /dev/null
++++ b/tests/utils_tests/test_numberformat_null_fix.py
+@@ -0,0 +1,25 @@
++from decimal import Decimal
++from django.test import SimpleTestCase
++from django.utils.numberformat import format as nformat
++
++
++class TestNumberFormatNullFix(SimpleTestCase):
++    def test_format_with_empty_string(self):
++        # Test that empty string doesn't cause IndexError
++        self.assertEqual(nformat("", "."), "")
++        
++    def test_format_with_none(self):
++        # Test that None doesn't cause IndexError
++        self.assertEqual(nformat(None, "."), "None")
++        
++    def test_format_with_zero(self):
++        # Test that zero works correctly
++        self.assertEqual(nformat(0, "."), "0")
++        
++    def test_format_with_negative_zero(self):
++        # Test negative zero handling
++        self.assertEqual(nformat(-0, "."), "0")
++        
++    def test_format_with_empty_string_number(self):
++        # Test with empty string number
++        self.assertEqual(nformat("0", "."), "0")
+\ No newline at end of file

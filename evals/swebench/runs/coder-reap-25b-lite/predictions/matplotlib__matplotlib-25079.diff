@@ -1,0 +1,38 @@
+diff --git a/lib/matplotlib/colors.py b/lib/matplotlib/colors.py
+index f9e4dcbd62..6230e2c430 100644
+--- a/lib/matplotlib/colors.py
++++ b/lib/matplotlib/colors.py
+@@ -1692,7 +1692,16 @@ def _make_norm_from_scale(
+             if clip:
+                 value = np.clip(value, self.vmin, self.vmax)
+             t_value = self._trf.transform(value).reshape(np.shape(value))
+-            t_vmin, t_vmax = self._trf.transform([self.vmin, self.vmax])
++            # Ensure vmin and vmax are valid before transforming them
++            # Handle case where autoscale_None might not have set them yet
++            if self.vmin is None or self.vmax is None:
++                # If vmin/vmax are still None after autoscale_None, 
++                # use safe fallback values for the transform check
++                vmin_for_check = 1e-10 if self.vmin is None else self.vmin
++                vmax_for_check = 1.0 if self.vmax is None else self.vmax
++                t_vmin, t_vmax = self._trf.transform([vmin_for_check, vmax_for_check])
++            else:
++                t_vmin, t_vmax = self._trf.transform([self.vmin, self.vmax])
+             if not np.isfinite([t_vmin, t_vmax]).all():
+                 raise ValueError("Invalid vmin or vmax")
+             t_value -= t_vmin
+@@ -1705,7 +1714,14 @@ def _make_norm_from_scale(
+                 raise ValueError("Not invertible until scaled")
+             if self.vmin > self.vmax:
+                 raise ValueError("vmin must be less or equal to vmax")
+-            t_vmin, t_vmax = self._trf.transform([self.vmin, self.vmax])
++            # Ensure vmin and vmax are valid before transforming them
++            if self.vmin is None or self.vmax is None:
++                # If vmin/vmax are still None, use safe fallback values
++                vmin_for_check = 1e-10 if self.vmin is None else self.vmin
++                vmax_for_check = 1.0 if self.vmax is None else self.vmax
++                t_vmin, t_vmax = self._trf.transform([vmin_for_check, vmax_for_check])
++            else:
++                t_vmin, t_vmax = self._trf.transform([self.vmin, self.vmax])
+             if not np.isfinite([t_vmin, t_vmax]).all():
+                 raise ValueError("Invalid vmin or vmax")
+             value, is_scalar = self.process_value(value)

@@ -1,0 +1,21 @@
+diff --git a/django/contrib/admin/checks.py b/django/contrib/admin/checks.py
+index 0fefe65e48..85b9b7315c 100644
+--- a/django/contrib/admin/checks.py
++++ b/django/contrib/admin/checks.py
+@@ -901,6 +901,16 @@ class ModelAdminChecks(BaseModelAdminChecks):
+             try:
+                 field = getattr(obj.model, item)
+             except AttributeError:
++                # Check for reverse foreign key relationships
++                try:
++                    # Try to find reverse foreign key relationship with this name
++                    for related_field in obj.model._meta.get_fields():
++                        if (hasattr(related_field, 'get_accessor_name') and 
++                            related_field.get_accessor_name() == item):
++                            # This is a valid reverse foreign key relationship
++                            return []
++                except (FieldDoesNotExist, AttributeError):
++                    pass
+                 return [
+                     checks.Error(
+                         "The value of '%s' refers to '%s', which is not a "

@@ -1,0 +1,35 @@
+diff --git a/django/db/models/sql/query.py b/django/db/models/sql/query.py
+index 33cc636b22..d1b0604bb7 100644
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -748,7 +748,11 @@ class Query(BaseExpression):
+                     cur_model = source.related_model
+                 else:
+                     cur_model = source.remote_field.model
+-                opts = cur_model._meta
++                # Use concrete_model for proxy models to avoid issues with pk lookup
++                if hasattr(cur_model._meta, 'proxy') and cur_model._meta.proxy:
++                    opts = cur_model._meta.concrete_model._meta
++                else:
++                    opts = cur_model._meta
+                 # Even if we're "just passing through" this model, we must add
+                 # both the current model's pk and the related reference field
+                 # (if it's not a reverse relation) to the things we select.
+diff --git a/tests/proxy_models/tests.py b/tests/proxy_models/tests.py
+index f2f465678b..075de5c1a5 100644
+--- a/tests/proxy_models/tests.py
++++ b/tests/proxy_models/tests.py
+@@ -398,6 +398,13 @@ class ProxyModelTests(TestCase):
+     def test_eq(self):
+         self.assertEqual(MyPerson(id=100), Person(id=100))
+ 
++    def test_select_related_only(self):
++        # Test for proxy model with select_related() and only()
++        user = ProxyTrackerUser.objects.create(name="Joe Doe", status="test")
++        issue = Issue.objects.create(summary="New issue", assignee=user)
++        qs = Issue.objects.select_related("assignee").only("assignee__status")
++        self.assertEqual(qs.get(), issue)
++
+ 
+ @override_settings(ROOT_URLCONF="proxy_models.urls")
+ class ProxyModelAdminTests(TestCase):

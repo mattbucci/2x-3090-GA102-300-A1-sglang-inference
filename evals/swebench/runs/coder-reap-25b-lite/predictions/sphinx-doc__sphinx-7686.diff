@@ -1,0 +1,29 @@
+diff --git a/sphinx/ext/autosummary/generate.py b/sphinx/ext/autosummary/generate.py
+index a57c73fb7..3f837fdd0 100644
+--- a/sphinx/ext/autosummary/generate.py
++++ b/sphinx/ext/autosummary/generate.py
+@@ -246,7 +246,23 @@ def generate_autosummary_content(name: str, obj: Any, parent: Any,
+     ns.update(context)
+ 
+     if doc.objtype == 'module':
+-        ns['members'] = dir(obj)
++        # Get all members respecting the imported_members flag
++        all_members = dir(obj)
++        if not imported_members:
++            # Filter out imported members
++            filtered_members = []
++            for name in all_members:
++                try:
++                    value = safe_getattr(obj, name)
++                    # Only include members that are defined in this module
++                    if getattr(value, '__module__', None) == obj.__name__:
++                        filtered_members.append(name)
++                except AttributeError:
++                    # Skip members that cannot be accessed
++                    continue
++            ns['members'] = filtered_members
++        else:
++            ns['members'] = all_members
+         ns['functions'], ns['all_functions'] = \
+             get_members(obj, {'function'}, imported=imported_members)
+         ns['classes'], ns['all_classes'] = \

@@ -1,0 +1,20 @@
+diff --git a/sympy/matrices/sparse.py b/sympy/matrices/sparse.py
+index e6f36cdf35..1d54ac7659 100644
+--- a/sympy/matrices/sparse.py
++++ b/sympy/matrices/sparse.py
+@@ -1193,6 +1193,15 @@ def row_join(self, other):
+         """
+         if not self:
+             return type(self)(other)
++        # Handle special case where self has 0 rows but other doesn't
++        # This fixes hstack behavior with empty matrices
++        if self.rows == 0 and other.rows != 0:
++            # Create new matrix with proper dimensions
++            result = self.copy()
++            result.cols = self.cols + other.cols
++            # Don't copy elements since self is empty, just set correct dimensions
++            return result
++            
+         A, B = self, other
+         if not A.rows == B.rows:
+             raise ShapeError()

@@ -1,0 +1,42 @@
+diff --git a/fix.patch b/fix.patch
+new file mode 100644
+index 0000000000..d91ee2a41a
+--- /dev/null
++++ b/fix.patch
+@@ -0,0 +1,35 @@
++diff --git a/django/db/migrations/autodetector.py b/django/db/migrations/autodetector.py
++index 5f41053283..765d00b95c 100644
++--- a/django/db/migrations/autodetector.py
+++++ b/django/db/migrations/autodetector.py
++@@ -1210,6 +1210,20 @@ class MigrationAutodetector:
++                 else:
++                     # We cannot alter between m2m and concrete fields
+++                    # Ensure proper ordering for unique_together constraints
+++                    # When changing from ForeignKey to ManyToManyField or vice versa,
+++                    # we must ensure AlterUniqueTogether operations happen before RemoveField
+++                    old_model = self.from_state.models[app_label, old_model_name]
+++                    new_model = self.to_state.models[app_label, model_name]
+++
+++                    # Check if there are unique_together constraints referencing this field
+++                    if hasattr(old_model, 'options') and 'unique_together' in old_model.options:
+++                        old_unique_together = old_model.options['unique_together']
+++                        for constraint in old_unique_together:
+++                            if field_name in constraint:
+++                                # Generate AlterUniqueTogether to remove constraint before removing field
+++                                new_unique_together = set()
+++                                for constraint_set in old_unique_together:
+++                                    if field_name not in constraint_set:
+++                                        new_unique_together.add(constraint_set)
+++                                if len(new_unique_together) < len(old_unique_together):
+++                                    self.add_operation(
+++                                        app_label,
+++                                        operations.AlterUniqueTogether(
+++                                            name=model_name,
+++                                            unique_together=new_unique_together,
+++                                        ),
+++                                        dependencies=[],
+++                                    )
+++
++                     self._generate_removed_field(app_label, model_name, field_name)
++                     self._generate_added_field(app_label, model_name, field_name)
+\ No newline at end of file

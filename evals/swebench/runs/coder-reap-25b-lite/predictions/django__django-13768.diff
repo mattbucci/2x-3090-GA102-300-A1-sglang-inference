@@ -1,0 +1,27 @@
+diff --git a/django/dispatch/dispatcher.py b/django/dispatch/dispatcher.py
+index b7d9d26389..269170fdb4 100644
+--- a/django/dispatch/dispatcher.py
++++ b/django/dispatch/dispatcher.py
+@@ -1,3 +1,4 @@
++import logging
+ import threading
+ import warnings
+ import weakref
+@@ -17,6 +18,9 @@ NONE_ID = _make_id(None)
+ # A marker for caching
+ NO_RECEIVERS = object()
+ 
++# Logger for signal exceptions
++logger = logging.getLogger('django.dispatch')
++
+ 
+ class Signal:
+     """
+@@ -208,6 +212,7 @@ class Signal:
+             try:
+                 response = receiver(signal=self, sender=sender, **named)
+             except Exception as err:
++                logger.exception('Error calling %s in send_robust()', receiver)
+                 responses.append((receiver, err))
+             else:
+                 responses.append((receiver, response))

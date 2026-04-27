@@ -1,0 +1,44 @@
+diff --git a/sympy/functions/elementary/complexes.py b/sympy/functions/elementary/complexes.py
+index 66a96335eb..beb7da01f5 100644
+--- a/sympy/functions/elementary/complexes.py
++++ b/sympy/functions/elementary/complexes.py
+@@ -607,6 +607,10 @@ def eval(cls, arg):
+             arg2 = -S.ImaginaryUnit * arg
+             if arg2.is_extended_nonnegative:
+                 return arg2
++        # If arg is already real, don't process further to avoid recursion
++        if arg.is_extended_real:
++            return
++        
+         # reject result if all new conjugates are just wrappers around
+         # an expression that was already in the arg
+         conj = signsimp(arg.conjugate(), evaluate=False)
+diff --git a/test_recursion_fix.py b/test_recursion_fix.py
+new file mode 100644
+index 0000000000..d748b20eab
+--- /dev/null
++++ b/test_recursion_fix.py
+@@ -0,0 +1,22 @@
++"""
++Test for the specific recursion bug fix.
++This test verifies that the fix for the recursion error when checking is_zero 
++of cosh expression works correctly.
++"""
++
++from sympy import sympify
++
++def test_cosh_recursion_fix():
++    """Test that cosh(acos(-i + acosh(-g + i))) doesn't cause recursion error."""
++    # This expression previously caused RecursionError
++    expr = sympify("cosh(acos(-i + acosh(-g + i)))")
++    
++    # This should not raise RecursionError anymore
++    result = expr.is_zero
++    
++    # The result should be None (not zero, but we don't know if it's zero or not)
++    assert result is None, f"Expected None, got {result}"
++
++if __name__ == "__main__":
++    test_cosh_recursion_fix()
++    print("Test passed: No recursion error occurred!")
+\ No newline at end of file

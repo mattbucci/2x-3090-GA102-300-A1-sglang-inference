@@ -1,0 +1,47 @@
+diff --git a/pylint/config/arguments_manager.py b/pylint/config/arguments_manager.py
+index eda1a583d..47f805dde 100644
+--- a/pylint/config/arguments_manager.py
++++ b/pylint/config/arguments_manager.py
+@@ -252,9 +252,18 @@ class _ArgumentsManager:
+ 
+     def _parse_configuration_file(self, arguments: list[str]) -> None:
+         """Parse the arguments found in a configuration file into the namespace."""
+-        self.config, parsed_args = self._arg_parser.parse_known_args(
+-            arguments, self.config
+-        )
++        try:
++            self.config, parsed_args = self._arg_parser.parse_known_args(
++                arguments, self.config
++            )
++        except re.error as e:
++            # Handle invalid regex patterns gracefully
++            if "bad escape" in str(e):
++                # This handles cases like \p{Han} which are not supported by Python's re module
++                raise _UnrecognizedOptionError(
++                    options=[f"Invalid regex pattern detected: {e}"]
++                )
++            raise
+         unrecognized_options: list[str] = []
+         for opt in parsed_args:
+             if opt.startswith("--"):
+@@ -780,7 +789,16 @@ class _ArgumentsManager:
+                 DeprecationWarning,
+             )
+ 
+-        self.config = self._arg_parser.parse_known_args(
+-            [f"--{optname.replace('_', '-')}", _parse_rich_type_value(value)],
+-            self.config,
+-        )[0]
++        # Handle regex pattern validation for better error messages
++        try:
++            self.config = self._arg_parser.parse_known_args(
++                [f"--{optname.replace('_', '-')}", _parse_rich_type_value(value)],
++                self.config,
++            )[0]
++        except re.error as e:
++            # Provide better error message for invalid regex patterns
++            if "bad escape" in str(e) and "\\p" in str(e):
++                raise _UnrecognizedOptionError(
++                    options=[f"Invalid regex pattern '{value}' contains unsupported escape sequence '\\p': {e}"]
++                )
++            raise

@@ -1,0 +1,23 @@
+diff --git a/lib/matplotlib/axis.py b/lib/matplotlib/axis.py
+index af0815d41d..b0b3d38ab4 100644
+--- a/lib/matplotlib/axis.py
++++ b/lib/matplotlib/axis.py
+@@ -2024,6 +2024,18 @@ class Axis(martist.Artist):
+         result = self._set_tick_locations(ticks, minor=minor)
+         if labels is not None:
+             self.set_ticklabels(labels, minor=minor, **kwargs)
++        elif kwargs:
++            # Validate kwargs - they should be valid Text properties
++            # but raise an error if labels are not provided as per issue description
++            from matplotlib.text import Text
++            # Create a dummy text object to validate kwargs
++            dummy_text = Text(0, 0)
++            try:
++                dummy_text._internal_update(kwargs)
++            except Exception:
++                # Re-raise with a more descriptive message
++                raise ValueError(f"Invalid kwargs for set_ticks: {kwargs}. "
++                                "These kwargs are only valid when labels are provided.")
+         return result
+ 
+     def _get_tick_boxes_siblings(self, renderer):

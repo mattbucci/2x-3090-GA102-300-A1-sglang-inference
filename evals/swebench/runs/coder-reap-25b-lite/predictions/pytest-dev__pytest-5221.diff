@@ -1,0 +1,89 @@
+diff --git a/README_FIX.md b/README_FIX.md
+new file mode 100644
+index 000000000..b2a4e3c0a
+--- /dev/null
++++ b/README_FIX.md
+@@ -0,0 +1,27 @@
++# Test demonstrating the new fixture scope display functionality
++
++## Before the fix:
++pytest --fixtures would show:
++function_fixture
++    A function-scoped fixture.
++module_fixture  
++    A module-scoped fixture.
++session_fixture
++    A session-scoped fixture.
++
++## After the fix:
++pytest --fixtures will show:
++function_fixture [function]
++    A function-scoped fixture.
++module_fixture [module]
++    A module-scoped fixture.
++session_fixture [session]
++    A session-scoped fixture.
++
++## With verbose mode (-v):
++function_fixture [function] -- path/to/test_fixture_scope.py
++    A function-scoped fixture.
++module_fixture [module] -- path/to/test_fixture_scope.py
++    A module-scoped fixture.
++session_fixture [session] -- path/to/test_fixture_scope.py
++    A session-scoped fixture.
+\ No newline at end of file
+diff --git a/src/_pytest/python.py b/src/_pytest/python.py
+index 377357846..ee39bc760 100644
+--- a/src/_pytest/python.py
++++ b/src/_pytest/python.py
+@@ -1328,13 +1328,14 @@ def _showfixtures_main(config, session):
+                     fixturedef.func.__module__,
+                     curdir.bestrelpath(loc),
+                     fixturedef.argname,
++                    fixturedef.scope,
+                     fixturedef,
+                 )
+             )
+ 
+     available.sort()
+     currentmodule = None
+-    for baseid, module, bestrel, argname, fixturedef in available:
++    for baseid, module, bestrel, argname, scope, fixturedef in available:
+         if currentmodule != module:
+             if not module.startswith("_pytest."):
+                 tw.line()
+@@ -1343,9 +1344,9 @@ def _showfixtures_main(config, session):
+         if verbose <= 0 and argname[0] == "_":
+             continue
+         if verbose > 0:
+-            funcargspec = "%s -- %s" % (argname, bestrel)
++            funcargspec = "%s [%s] -- %s" % (argname, scope, bestrel)
+         else:
+-            funcargspec = argname
++            funcargspec = "%s [%s]" % (argname, scope)
+         tw.line(funcargspec, green=True)
+         loc = getlocation(fixturedef.func, curdir)
+         doc = fixturedef.func.__doc__ or ""
+diff --git a/test_fixture_scope.py b/test_fixture_scope.py
+new file mode 100644
+index 000000000..63b73a827
+--- /dev/null
++++ b/test_fixture_scope.py
+@@ -0,0 +1,16 @@
++import pytest
++
++@pytest.fixture(scope="function")
++def function_fixture():
++    """A function-scoped fixture."""
++    return "function"
++
++@pytest.fixture(scope="module")
++def module_fixture():
++    """A module-scoped fixture."""
++    return "module"
++
++@pytest.fixture(scope="session")
++def session_fixture():
++    """A session-scoped fixture."""
++    return "session"
+\ No newline at end of file

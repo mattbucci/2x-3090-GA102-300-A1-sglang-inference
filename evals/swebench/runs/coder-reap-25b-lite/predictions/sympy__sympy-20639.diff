@@ -1,0 +1,16 @@
+diff --git a/sympy/printing/pretty/pretty.py b/sympy/printing/pretty/pretty.py
+index df7452ee87..43e6d48715 100644
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -1954,7 +1954,10 @@ def _print_Pow(self, power):
+             if e is S.NegativeOne:
+                 return prettyForm("1")/self._print(b)
+             n, d = fraction(e)
+-            if n is S.One and d.is_Atom and not e.is_Integer and self._settings['root_notation']:
++            # Only use root notation for rational exponents of the form 1/n
++            if (n is S.One and d.is_Atom and not e.is_Integer and 
++                self._settings['root_notation'] and 
++                (isinstance(d, Rational) or (hasattr(d, 'is_Rational') and d.is_Rational))):
+                 return self._print_nth_root(b, e)
+             if e.is_Rational and e < 0:
+                 return prettyForm("1")/self._print(Pow(b, -e, evaluate=False))

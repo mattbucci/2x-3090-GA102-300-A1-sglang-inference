@@ -1,0 +1,29 @@
+diff --git a/sklearn/mixture/gaussian_mixture.py b/sklearn/mixture/gaussian_mixture.py
+index d58a9e326c..c28012dda5 100644
+--- a/sklearn/mixture/gaussian_mixture.py
++++ b/sklearn/mixture/gaussian_mixture.py
+@@ -748,3 +748,24 @@ class GaussianMixture(BaseMixture):
+             The lower the better.
+         """
+         return -2 * self.score(X) * X.shape[0] + 2 * self._n_parameters()
++
++    def fit_predict(self, X, y=None):
++        """Compute cluster centers and predict cluster index for each sample.
++
++        Convenience method; equivalent to calling fit(X) followed by
++        predict(X).
++
++        Parameters
++        ----------
++        X : array-like, shape (n_samples, n_features)
++            List of n_features-dimensional data points. Each row
++            corresponds to a single data point.
++
++        y : Ignored
++
++        Returns
++        -------
++        labels : array, shape (n_samples,)
++            Cluster labels.
++        """
++        return self.fit(X, y).predict(X)

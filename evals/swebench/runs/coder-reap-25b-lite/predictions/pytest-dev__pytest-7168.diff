@@ -1,0 +1,92 @@
+diff --git a/src/_pytest/_io/saferepr.py b/src/_pytest/_io/saferepr.py
+index 23af4d0bb..dba48f339 100644
+--- a/src/_pytest/_io/saferepr.py
++++ b/src/_pytest/_io/saferepr.py
+@@ -19,8 +19,18 @@ def _format_repr_exception(exc: BaseException, obj: Any) -> str:
+         raise
+     except BaseException as exc:
+         exc_info = "unpresentable exception ({})".format(_try_repr_or_str(exc))
++    
++    # Handle cases where __getattribute__ is overridden to raise exceptions
++    try:
++        class_name = obj.__class__.__name__
++    except BaseException:
++        try:
++            class_name = type(obj).__name__
++        except BaseException:
++            class_name = "unknown"
++            
+     return "<[{} raised in repr()] {} object at 0x{:x}>".format(
+-        exc_info, obj.__class__.__name__, id(obj)
++        exc_info, class_name, id(obj)
+     )
+ 
+ 
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 000000000..7f2a776a2
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,21 @@
++#!/usr/bin/env python3
++
++# Test script to verify the fix for the INTERNALERROR when exception in __repr__
++
++class SomeClass:
++    def __getattribute__(self, attr):
++        raise Exception("Broken __getattribute__")
++    def __repr__(self):
++        raise Exception("Broken __repr__")
++
++def test():
++    # This should not cause an INTERNALERROR anymore
++    try:
++        obj = SomeClass()
++        repr(obj)  # This would trigger the bug
++        print("Test passed - no INTERNALERROR!")
++    except Exception as e:
++        print(f"Exception caught: {e}")
++
++if __name__ == "__main__":
++    test()
+\ No newline at end of file
+diff --git a/test_saferepr_fix.py b/test_saferepr_fix.py
+new file mode 100644
+index 000000000..4a3226de3
+--- /dev/null
++++ b/test_saferepr_fix.py
+@@ -0,0 +1,33 @@
++#!/usr/bin/env python3
++
++# Test script to verify the fix for the INTERNALERROR when exception in __repr__
++import sys
++sys.path.insert(0, '/tmp/swebench-work2/pytest-dev__pytest-7168/src')
++
++from _pytest._io.saferepr import saferepr
++
++class SomeClass:
++    def __getattribute__(self, attr):
++        raise Exception("Broken __getattribute__")
++    def __repr__(self):
++        raise Exception("Broken __repr__")
++
++def test_saferepr_fix():
++    """Test that saferepr handles broken __repr__ and __getattribute__ gracefully"""
++    try:
++        obj = SomeClass()
++        result = saferepr(obj)
++        print(f"SUCCESS: saferepr returned: {result}")
++        return True
++    except Exception as e:
++        print(f"FAILED: Exception caught: {e}")
++        import traceback
++        traceback.print_exc()
++        return False
++
++if __name__ == "__main__":
++    success = test_saferepr_fix()
++    if success:
++        print("Fix verified successfully!")
++    else:
++        print("Fix verification failed!")
+\ No newline at end of file

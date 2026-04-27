@@ -1,0 +1,64 @@
+diff --git a/sklearn/svm/base.py b/sklearn/svm/base.py
+index 64cebe8375..ec2de03f3d 100644
+--- a/sklearn/svm/base.py
++++ b/sklearn/svm/base.py
+@@ -286,12 +286,17 @@ class BaseLibSVM(BaseEstimator, metaclass=ABCMeta):
+             n_class = 1
+         n_SV = self.support_vectors_.shape[0]
+ 
+-        dual_coef_indices = np.tile(np.arange(n_SV), n_class)
+-        dual_coef_indptr = np.arange(0, dual_coef_indices.size + 1,
+-                                     dual_coef_indices.size / n_class)
+-        self.dual_coef_ = sp.csr_matrix(
+-            (dual_coef_data, dual_coef_indices, dual_coef_indptr),
+-            (n_class, n_SV))
++        # Handle edge case where there are no support vectors
++        if n_SV == 0:
++            # Create empty dual_coef_ matrix with correct dimensions
++            self.dual_coef_ = sp.csr_matrix((n_class, 0))
++        else:
++            dual_coef_indices = np.tile(np.arange(n_SV), n_class)
++            dual_coef_indptr = np.arange(0, dual_coef_indices.size + 1,
++                                        dual_coef_indices.size / n_class)
++            self.dual_coef_ = sp.csr_matrix(
++                (dual_coef_data, dual_coef_indices, dual_coef_indptr),
++                (n_class, n_SV))
+ 
+     def predict(self, X):
+         """Perform regression on samples in X.
+diff --git a/test_reproduce.py b/test_reproduce.py
+new file mode 100644
+index 0000000000..af64e8805f
+--- /dev/null
++++ b/test_reproduce.py
+@@ -0,0 +1,29 @@
++import numpy as np
++import scipy
++import sklearn
++from sklearn.svm import SVR
++
++# Test case from the issue
++x_train = np.array([[0, 1, 0, 0],
++                    [0, 0, 0, 1],
++                    [0, 0, 1, 0],
++                    [0, 0, 0, 1]])
++y_train = np.array([0.04, 0.04, 0.10, 0.16])
++
++print("Testing with dense data...")
++model = SVR(C=316.227766017, cache_size=200, coef0=0.0, degree=3, epsilon=0.1,
++            gamma=1.0, kernel='linear', max_iter=15000,
++            shrinking=True, tol=0.001, verbose=False)
++
++# This should work fine
++model.fit(x_train, y_train)
++print("Dense data fit successful")
++
++print("\nTesting with sparse data...")
++# Convert to sparse
++xtrain = scipy.sparse.csr_matrix(x_train)
++try:
++    model.fit(xtrain, y_train)
++    print("Sparse data fit successful")
++except Exception as e:
++    print(f"Error: {type(e).__name__}: {e}")
+\ No newline at end of file

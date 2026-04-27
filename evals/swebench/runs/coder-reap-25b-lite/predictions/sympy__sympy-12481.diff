@@ -1,0 +1,29 @@
+diff --git a/sympy/combinatorics/permutations.py b/sympy/combinatorics/permutations.py
+index 136ed5a478..3fc554a6d3 100644
+--- a/sympy/combinatorics/permutations.py
++++ b/sympy/combinatorics/permutations.py
+@@ -858,7 +858,23 @@ def __new__(cls, *args, **kwargs):
+         ok = True
+         if not args:  # a
+             return _af_new(list(range(size or 0)))
+-        elif len(args) > 1:  # c
++        elif len(args) > 1:  # e - multiple cycle lists, apply left-to-right
++            try:
++                # Handle case like Permutation([[0,1]],[[0,1]])
++                # Apply each cycle list from left to right by creating a single permutation
++                c = Cycle()
++                for arg in args:
++                    if isinstance(arg, list) and len(arg) > 0 and isinstance(arg[0], list):
++                        # This is a list of cycles like [[0,1],[0,1]]
++                        for cycle in arg:
++                            c = c(*cycle)
++                    else:
++                        # Single cycle like [0,1]
++                        c = c(*arg)
++                return _af_new(c.list(size))
++            except Exception:
++                # Fall back to original logic if there's an error
++                pass
+             return _af_new(Cycle(*args).list(size))
+         if len(args) == 1:
+             a = args[0]

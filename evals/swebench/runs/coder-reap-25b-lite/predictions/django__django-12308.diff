@@ -1,0 +1,27 @@
+diff --git a/django/contrib/admin/utils.py b/django/contrib/admin/utils.py
+index e4ddc8f017..cfbc27795f 100644
+--- a/django/contrib/admin/utils.py
++++ b/django/contrib/admin/utils.py
+@@ -398,6 +398,22 @@ def display_for_field(value, field, empty_value_display):
+         return formats.number_format(value)
+     elif isinstance(field, models.FileField) and value:
+         return format_html('<a href="{}">{}</a>', value.url, value)
++    # Handle JSONField specially for readonly display
++    elif isinstance(field, models.JSONField):
++        # Use the field's get_prep_value method to ensure proper formatting
++        try:
++            # For readonly fields, we want to show valid JSON representation
++            # This avoids showing Python dict representations like {'foo': 'bar'}
++            # instead of proper JSON {"foo": "bar"}  
++            prepared = field.get_prep_value(value)
++            if isinstance(prepared, str):
++                return prepared
++            else:
++                # If it's not a string, fall back to regular display
++                pass
++        except Exception:
++            # If there's any error, fall through to normal handling
++            pass
+     else:
+         return display_for_value(value, empty_value_display)
+ 

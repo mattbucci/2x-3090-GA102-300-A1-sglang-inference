@@ -1,0 +1,20 @@
+diff --git a/src/_pytest/tmpdir.py b/src/_pytest/tmpdir.py
+index 29c7e19d7..37432dddd 100644
+--- a/src/_pytest/tmpdir.py
++++ b/src/_pytest/tmpdir.py
+@@ -152,9 +152,14 @@ def get_user() -> Optional[str]:
+     """Return the current user name, or None if getuser() does not work
+     in the current environment (see #1010)."""
+     import getpass
++    import re
+ 
+     try:
+-        return getpass.getuser()
++        user = getpass.getuser()
++        # Sanitize user name for use as directory name
++        # Replace invalid characters with underscore
++        sanitized = re.sub(r'[<>:"/\\|?*]', '_', user)
++        return sanitized
+     except (ImportError, KeyError):
+         return None
+ 

@@ -1,0 +1,118 @@
+diff --git a/sklearn/decomposition/kernel_pca.py b/sklearn/decomposition/kernel_pca.py
+index bb91d0cbba..7173fc86a0 100644
+--- a/sklearn/decomposition/kernel_pca.py
++++ b/sklearn/decomposition/kernel_pca.py
+@@ -13,6 +13,7 @@ from ..exceptions import NotFittedError
+ from ..base import BaseEstimator, TransformerMixin, _UnstableOn32BitMixin
+ from ..preprocessing import KernelCenterer
+ from ..metrics.pairwise import pairwise_kernels
++from ..utils.extmath import svd_flip
+ 
+ 
+ class KernelPCA(BaseEstimator, TransformerMixin, _UnstableOn32BitMixin):
+@@ -209,6 +210,8 @@ class KernelPCA(BaseEstimator, TransformerMixin, _UnstableOn32BitMixin):
+                                                 tol=self.tol,
+                                                 maxiter=self.max_iter,
+                                                 v0=v0)
++            # flip eigenvectors' sign to enforce deterministic output
++            self.alphas_ = svd_flip(self.alphas_, self.alphas_)[0]
+ 
+         # sort eigenvectors in descending order
+         indices = self.lambdas_.argsort()[::-1]
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..ea33b9291a
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,66 @@
++#!/usr/bin/env python3
++"""Test script to demonstrate the KernelPCA sign flip fix"""
++
++# This is a simplified version of what the fix should do
++import numpy as np
++from scipy.sparse.linalg import eigsh
++
++def simulate_original_behavior():
++    """Simulate the original behavior that causes sign flips"""
++    # Create a test kernel matrix (simplified)
++    K = np.array([[1.0, 0.5, 0.3], 
++                  [0.5, 1.0, 0.4],
++                  [0.3, 0.4, 1.0]])
++    
++    # Simulate what happens in eigsh - it can return vectors with arbitrary signs
++    # Let's say we get two different runs with opposite signs
++    lambdas1, alphas1 = eigsh(K, 2, which="LA", v0=[1, -1, 1])
++    lambdas2, alphas2 = eigsh(K, 2, which="LA", v0=[-1, 1, -1]) 
++    
++    print("Run 1 - eigenvalues:", lambdas1)
++    print("Run 1 - eigenvectors:")
++    print(alphas1)
++    print()
++    print("Run 2 - eigenvalues:", lambdas2)  
++    print("Run 2 - eigenvectors:")
++    print(alphas2)
++    print()
++    
++    # Show the sign difference
++    print("Sign difference in first column:", np.sign(alphas1[:,0]) * np.sign(alphas2[:,0]))
++
++def test_svd_flip_fix():
++    """Show how svd_flip would fix this"""
++    from sklearn.utils.extmath import svd_flip
++    
++    # Same scenario but apply svd_flip
++    K = np.array([[1.0, 0.5, 0.3], 
++                  [0.5, 1.0, 0.4],
++                  [0.3, 0.4, 1.0]])
++    
++    # Two different runs
++    lambdas1, alphas1 = eigsh(K, 2, which="LA", v0=[1, -1, 1])
++    lambdas2, alphas2 = eigsh(K, 2, which="LA", v0=[-1, 1, -1]) 
++    
++    # Apply the fix: svd_flip
++    alphas1_fixed = svd_flip(alphas1, alphas1)[0]
++    alphas2_fixed = svd_flip(alphas2, alphas2)[0]
++    
++    print("After applying svd_flip:")
++    print("Fixed Run 1 - eigenvalues:", lambdas1)
++    print("Fixed Run 1 - eigenvectors:")
++    print(alphas1_fixed)
++    print()
++    print("Fixed Run 2 - eigenvalues:", lambdas2)  
++    print("Fixed Run 2 - eigenvectors:")
++    print(alphas2_fixed)
++    print()
++    
++    # Now they should be consistent (same signs)
++    print("Fixed results are consistent:", np.allclose(np.abs(alphas1_fixed), np.abs(alphas2_fixed)))
++
++if __name__ == "__main__":
++    print("=== Original Behavior ===")
++    simulate_original_behavior()
++    print("\n=== With svd_flip Fix ===") 
++    test_svd_flip_fix()
+\ No newline at end of file
+diff --git a/test_reproduce.py b/test_reproduce.py
+new file mode 100644
+index 0000000000..c5e6025461
+--- /dev/null
++++ b/test_reproduce.py
+@@ -0,0 +1,17 @@
++import numpy as np
++from sklearn.decomposition import KernelPCA
++
++# Test data from the issue
++data = np.arange(12).reshape(4, 3)
++
++print("Testing KernelPCA sign flips with arpack solver:")
++for i in range(5):
++    kpca = KernelPCA(n_components=2, eigen_solver='arpack')
++    result = kpca.fit_transform(data)
++    print(f"Run {i+1}: {result[0]}")
++    
++print("\nWith fixed random_state:")
++for i in range(5):
++    kpca = KernelPCA(n_components=2, eigen_solver='arpack', random_state=0)
++    result = kpca.fit_transform(data)
++    print(f"Run {i+1}: {result[0]}")
+\ No newline at end of file

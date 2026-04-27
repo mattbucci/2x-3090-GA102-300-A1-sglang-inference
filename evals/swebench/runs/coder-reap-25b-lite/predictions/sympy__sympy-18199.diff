@@ -1,0 +1,63 @@
+diff --git a/sympy/ntheory/residue_ntheory.py b/sympy/ntheory/residue_ntheory.py
+index 9a3052d4c3..f367a5ae4d 100644
+--- a/sympy/ntheory/residue_ntheory.py
++++ b/sympy/ntheory/residue_ntheory.py
+@@ -749,7 +749,7 @@ def nthroot_mod(a, n, p, all_roots=False):
+ 
+     Parameters
+     ==========
+-
++    
+     a : integer
+     n : positive integer
+     p : positive integer
+@@ -776,6 +776,49 @@ def nthroot_mod(a, n, p, all_roots=False):
+     if not isprime(p):
+         raise NotImplementedError("Not implemented for composite p")
+ 
++    # Handle special case: when a % p == 0, x = 0 is always a solution
++    # since 0^n = 0 for any n > 0
++    if a % p == 0:
++        # For all roots case, ensure 0 is included
++        if all_roots:
++            # Get the other roots using the normal algorithm
++            other_roots = None
++            if (p - 1) % n == 0:
++                other_roots = _nthroot_mod1(a, n, p, True)
++            else:
++                # Use the general algorithm path 
++                pa = n
++                pb = p - 1
++                b = 1
++                if pa < pb:
++                    a, pa, b, pb = b, pb, a, pa
++                while pb:
++                    q, r = divmod(pa, pb)
++                    c = pow(b, q, p)
++                    c = igcdex(c, p)[0]
++                    c = (c * a) % p
++                    pa, pb = pb, r
++                    a, b = b, c
++                if pa == 1:
++                    other_roots = [a] if all_roots else a
++                elif pa == 2:
++                    other_roots = sqrt_mod(a, p, True)
++                else:
++                    other_roots = _nthroot_mod1(a, pa, p, True)
++            
++            # Return 0 and other roots, ensuring no duplicates
++            result = [0]
++            if isinstance(other_roots, list):
++                for root in other_roots:
++                    if root != 0 and root not in result:
++                        result.append(root)
++            elif other_roots is not None and other_roots != 0:
++                result.append(other_roots)
++            return sorted(result)
++        else:
++            # For single root case, 0 is valid so return it directly
++            return 0
++
+     if (p - 1) % n == 0:
+         return _nthroot_mod1(a, n, p, all_roots)
+     # The roots of ``x**n - a = 0 (mod p)`` are roots of

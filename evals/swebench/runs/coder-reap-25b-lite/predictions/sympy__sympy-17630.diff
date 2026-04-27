@@ -1,0 +1,46 @@
+diff --git a/sympy/matrices/expressions/blockmatrix.py b/sympy/matrices/expressions/blockmatrix.py
+index 95302a05ca..d08905e43a 100644
+--- a/sympy/matrices/expressions/blockmatrix.py
++++ b/sympy/matrices/expressions/blockmatrix.py
+@@ -149,10 +149,40 @@ def blocks(self):
+     @property
+     def rowblocksizes(self):
+         return [self.blocks[i, 0].rows for i in range(self.blockshape[0])]
++    def _cols_or_shape(self, matrix):
++        """Safely get column count from matrix or Zero object."""
++    @property
++    def colblocksizes(self):
++        result = []
++        for i in range(self.blockshape[1]):
++            block = self.blocks[0, i]
++            # Handle case where block might not have .cols attribute (e.g., Zero objects)
++            if hasattr(block, "cols"):
++                result.append(block.cols)
++            elif hasattr(block, "shape"):
++                # For objects with shape attribute like ZeroMatrix
++                result.append(block.shape[1])
++            else:
++                # Fallback - try to get cols or default to 0
++                try:
++                    result.append(block.cols)
++                except AttributeError:
++                    result.append(0)
++        return result
++        # For objects with shape (like ZeroMatrix)
++        elif hasattr(matrix, "shape"):
++            return matrix.shape[1]
++        # Fallback for other cases
++        else:
++            try:
++                return matrix.cols
++            except AttributeError:
++                return 0
++
+ 
+     @property
+     def colblocksizes(self):
+-        return [self.blocks[0, i].cols for i in range(self.blockshape[1])]
++        return [self.blocks[0, i]._cols_or_shape() for i in range(self.blockshape[1])]
+ 
+     def structurally_equal(self, other):
+         return (isinstance(other, BlockMatrix)

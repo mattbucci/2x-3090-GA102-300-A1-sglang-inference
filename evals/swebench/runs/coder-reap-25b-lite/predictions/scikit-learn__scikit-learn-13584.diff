@@ -1,0 +1,40 @@
+diff --git a/sklearn/utils/_pprint.py b/sklearn/utils/_pprint.py
+index b8686dba5b..5bd1751462 100644
+--- a/sklearn/utils/_pprint.py
++++ b/sklearn/utils/_pprint.py
+@@ -65,6 +65,7 @@ BaseEstimator.__repr__ for pretty-printing estimators"""
+ 
+ from inspect import signature
+ import pprint
++import numpy as np
+ from collections import OrderedDict
+ 
+ from ..base import BaseEstimator
+@@ -95,8 +96,25 @@ def _changed_params(estimator):
+     init_params = signature(init_func).parameters
+     init_params = {name: param.default for name, param in init_params.items()}
+     for k, v in params.items():
+-        if (v != init_params[k] and
+-                not (is_scalar_nan(init_params[k]) and is_scalar_nan(v))):
++        # Handle comparison of numpy arrays properly to avoid "ambiguous truth value"
++        # when comparing arrays using != operator
++        try:
++            # For numpy arrays, we need special handling
++            if isinstance(v, np.ndarray) or isinstance(init_params[k], np.ndarray):
++                # Use array_equal for array comparisons to avoid boolean array issues
++                if isinstance(v, np.ndarray) and isinstance(init_params[k], np.ndarray):
++                    changed = not np.array_equal(v, init_params[k])
++                else:
++                    # One is an array, the other isn't - they're different
++                    changed = True
++            else:
++                # For scalar values, use normal comparison
++                changed = v != init_params[k]
++        except (ValueError, TypeError):
++            # If comparison fails, treat as different
++            changed = True
++            
++        if changed and not (is_scalar_nan(init_params[k]) and is_scalar_nan(v)):
+             filtered_params[k] = v
+     return filtered_params
+ 

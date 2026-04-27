@@ -1,0 +1,169 @@
+diff --git a/comprehensive_test.py b/comprehensive_test.py
+new file mode 100644
+index 0000000000..2c058cafc4
+--- /dev/null
++++ b/comprehensive_test.py
+@@ -0,0 +1,91 @@
++#!/usr/bin/env python
++"""
++Comprehensive test for the messages framework bug fix.
++This tests all edge cases for extra_tags serialization/deserialization.
++"""
++import sys
++import os
++sys.path.insert(0, '/tmp/swebench-work2/django__django-15347')
++
++from django.conf import settings
++settings.configure()
++
++from django.contrib.messages.storage.base import Message
++from django.contrib.messages.storage.cookie import MessageEncoder, MessageDecoder
++
++def test_case(name, original_extra_tags, expected_extra_tags=None):
++    """Test a specific case and report results."""
++    print(f"\n=== {name} ===")
++    
++    # Create message with specified extra_tags
++    original_message = Message(10, "Test message", extra_tags=original_extra_tags)
++    print(f"Original extra_tags: {repr(original_message.extra_tags)}")
++    
++    # Encode and decode
++    encoded_message = MessageEncoder().encode(original_message)
++    decoded_message = MessageDecoder().decode(encoded_message)
++    
++    print(f"Encoded message: {encoded_message}")
++    print(f"Decoded extra_tags: {repr(decoded_message.extra_tags)}")
++    
++    # Check if result matches expectation
++    if expected_extra_tags is None:
++        expected_extra_tags = original_extra_tags
++    
++    success = decoded_message.extra_tags == expected_extra_tags
++    print(f"Test {'PASSED' if success else 'FAILED'}")
++    
++    return success
++
++# Run all test cases
++print("Testing messages framework extra_tags serialization fix...")
++all_passed = True
++
++# Test 1: Empty string (the main bug case)
++all_passed &= test_case(
++    "Empty string (main bug case)", 
++    "", 
++    ""
++)
++
++# Test 2: None (should remain None)
++all_passed &= test_case(
++    "None value", 
++    None, 
++    None
++)
++
++# Test 3: Regular tag content
++all_passed &= test_case(
++    "Regular tag content", 
++    "foo bar", 
++    "foo bar"
++)
++
++# Test 4: Single tag
++all_passed &= test_case(
++    "Single tag", 
++    "warning", 
++    "warning"
++)
++
++# Test 5: Empty string with spaces
++all_passed &= test_case(
++    "Empty string with spaces", 
++    "   ", 
++    "   "
++)
++
++# Test 6: Empty string with special characters
++all_passed &= test_case(
++    "Empty string with special chars", 
++    "\t\n", 
++    "\t\n"
++)
++
++if all_passed:
++    print("\n✅ All tests PASSED!")
++else:
++    print("\n❌ Some tests FAILED!")
++
++exit(0 if all_passed else 1)
+\ No newline at end of file
+diff --git a/django/contrib/messages/storage/cookie.py b/django/contrib/messages/storage/cookie.py
+index 1d390c71dd..e48d4edb08 100644
+--- a/django/contrib/messages/storage/cookie.py
++++ b/django/contrib/messages/storage/cookie.py
+@@ -19,7 +19,7 @@ class MessageEncoder(json.JSONEncoder):
+             # Using 0/1 here instead of False/True to produce more compact json
+             is_safedata = 1 if isinstance(obj.message, SafeData) else 0
+             message = [self.message_key, is_safedata, obj.level, obj.message]
+-            if obj.extra_tags:
++            if obj.extra_tags is not None:
+                 message.append(obj.extra_tags)
+             return message
+         return super().default(obj)
+diff --git a/test_bug.py b/test_bug.py
+new file mode 100644
+index 0000000000..c8ce4c1741
+--- /dev/null
++++ b/test_bug.py
+@@ -0,0 +1,18 @@
++from django.conf import settings
++settings.configure()
++from django.contrib.messages.storage.base import Message
++from django.contrib.messages.storage.cookie import MessageEncoder, MessageDecoder
++
++# Create a message with empty extra_tags
++original_message = Message(10, "Here is a message", extra_tags="")
++print("Original extra_tags:", repr(original_message.extra_tags))
++print("Original extra_tags is empty string:", original_message.extra_tags == "")
++
++# Encode and decode
++encoded_message = MessageEncoder().encode(original_message)
++decoded_message = MessageDecoder().decode(encoded_message)
++
++print("Encoded message:", encoded_message)
++print("Decoded extra_tags:", repr(decoded_message.extra_tags))
++print("Decoded extra_tags is None:", decoded_message.extra_tags is None)
++print("Bug reproduced:", original_message.extra_tags == "" and decoded_message.extra_tags is None)
+\ No newline at end of file
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..a51c0975bd
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,26 @@
++from django.conf import settings
++settings.configure()
++from django.contrib.messages.storage.base import Message
++from django.contrib.messages.storage.cookie import MessageEncoder, MessageDecoder
++
++# Test with None (should not be included)
++original_message = Message(10, "Here is a message", extra_tags=None)
++print("Original extra_tags (None):", repr(original_message.extra_tags))
++
++encoded_message = MessageEncoder().encode(original_message)
++decoded_message = MessageDecoder().decode(encoded_message)
++
++print("Encoded message:", encoded_message)
++print("Decoded extra_tags (None):", repr(decoded_message.extra_tags))
++print("None case works correctly:", decoded_message.extra_tags is None)
++
++# Test with actual tag content
++original_message2 = Message(10, "Here is a message", extra_tags="foo")
++print("\nOriginal extra_tags (with content):", repr(original_message2.extra_tags))
++
++encoded_message2 = MessageEncoder().encode(original_message2)
++decoded_message2 = MessageDecoder().decode(encoded_message2)
++
++print("Encoded message:", encoded_message2)
++print("Decoded extra_tags (with content):", repr(decoded_message2.extra_tags))
++print("Content case works correctly:", decoded_message2.extra_tags == "foo")
+\ No newline at end of file

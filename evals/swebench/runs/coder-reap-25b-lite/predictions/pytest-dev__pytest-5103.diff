@@ -1,0 +1,42 @@
+diff --git a/src/_pytest/assertion/rewrite.py b/src/_pytest/assertion/rewrite.py
+index 2903b8995..43c7b39c8 100644
+--- a/src/_pytest/assertion/rewrite.py
++++ b/src/_pytest/assertion/rewrite.py
+@@ -968,6 +968,37 @@ warn_explicit(
+         """
+         visit `ast.Call` nodes on Python3.5 and after
+         """
++        # Special handling for all() and any() to provide better error reporting
++        # This helps with the specific issue where all() and any() show unhelpful 
++        # error messages like "all(<generator object>)"
++        if isinstance(call.func, ast.Name) and call.func.id in ('all', 'any') and len(call.args) == 1:
++            # For all() and any(), we want to ensure they produce meaningful error messages
++            # by making sure their arguments are properly represented in error messages
++            new_func, func_expl = self.visit(call.func)
++            arg_expls = []
++            new_args = []
++            new_kwargs = []
++            for arg in call.args:
++                res, expl = self.visit(arg)
++                arg_expls.append(expl)
++                new_args.append(res)
++            for keyword in call.keywords:
++                res, expl = self.visit(keyword.value)
++                new_kwargs.append(ast.keyword(keyword.arg, res))
++                if keyword.arg:
++                    arg_expls.append(keyword.arg + "=" + expl)
++                else:  # **args have `arg` keywords with an .arg of None
++                    arg_expls.append("**" + expl)
++
++            expl = "%s(%s)" % (func_expl, ", ".join(arg_expls))
++            new_call = ast.Call(new_func, new_args, new_kwargs)
++            res = self.assign(new_call)
++            res_expl = self.explanation_param(self.display(res))
++            # Ensure that all/any calls are formatted properly for error messages
++            outer_expl = "%s\n{%s = %s\n}" % (res_expl, res_expl, expl)
++            return res, outer_expl
++        
++        # Regular handling for other calls
+         new_func, func_expl = self.visit(call.func)
+         arg_expls = []
+         new_args = []

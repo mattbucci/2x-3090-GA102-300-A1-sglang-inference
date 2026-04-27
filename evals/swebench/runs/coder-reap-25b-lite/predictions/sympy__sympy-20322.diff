@@ -1,0 +1,63 @@
+diff --git a/sympy/simplify/radsimp.py b/sympy/simplify/radsimp.py
+index 4609da209c..879ffffdc9 100644
+--- a/sympy/simplify/radsimp.py
++++ b/sympy/simplify/radsimp.py
+@@ -1074,7 +1074,14 @@ def fraction(expr, exact=False):
+ 
+     numer, denom = [], []
+ 
+-    for term in Mul.make_args(expr):
++    def mul_args(e):
++        for term in Mul.make_args(e):
++            if term.is_Mul:
++                yield from mul_args(term)
++            else:
++                yield term
++
++    for term in mul_args(expr):
+         if term.is_commutative and (term.is_Pow or isinstance(term, exp)):
+             b, ex = term.as_base_exp()
+             if ex.is_negative:
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..a344c5a306
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,36 @@
++#!/usr/bin/env python
++
++import sympy
++from sympy import Symbol, Mul, S, Pow
++
++def test_ceiling_fix():
++    # Test the original issue cases
++    print("Testing ceiling(x-1/2) with evaluate=False:")
++    expr1 = sympy.sympify('ceiling(x-1/2)', evaluate=False)
++    print(f"Result: {expr1}")
++    
++    print("\nTesting 4*ceiling(x/4 - 3/4) with evaluate=False:")
++    expr2 = sympy.sympify('4*ceiling(x/4 - 3/4)', evaluate=False)
++    simplified2 = expr2.simplify()
++    print(f"Result: {simplified2}")
++    
++    print("\nTesting 4*ceiling(x/4 - 3/4) with evaluate=True:")
++    expr3 = sympy.sympify('4*ceiling(x/4 - 3/4)', evaluate=True)
++    simplified3 = expr3.simplify()
++    print(f"Result: {simplified3}")
++    
++    # Verify that both results are consistent
++    print(f"\nAre results consistent? {simplified2 == simplified3}")
++    
++    # Test that the behavior is now consistent
++    x = Symbol('x')
++    expr1_eval_false = sympy.sympify('ceiling(x-1/2)', evaluate=False)
++    expr1_eval_true = sympy.sympify('ceiling(x-1/2)', evaluate=True)
++    
++    print(f"\nDirect test of ceiling(x-1/2):")
++    print(f"evaluate=False: {expr1_eval_false}")
++    print(f"evaluate=True: {expr1_eval_true}")
++    print(f"Are they equal? {expr1_eval_false == expr1_eval_true}")
++
++if __name__ == "__main__":
++    test_ceiling_fix()
+\ No newline at end of file

@@ -1,0 +1,62 @@
+diff --git a/test_units.py b/test_units.py
+new file mode 100644
+index 00000000..9ea7c2e2
+--- /dev/null
++++ b/test_units.py
+@@ -0,0 +1,22 @@
++#!/usr/bin/env python
++
++import xarray as xr
++import numpy as np
++
++# Create a sample dataset with units in attrs
++data = {
++    'rainfall': (['time', 'y', 'x'], np.random.rand(3, 10, 10)),
++    'max_temp': (['time', 'y', 'x'], np.random.rand(3, 10, 10))
++}
++
++coords = {
++    'x': ('x', np.arange(10), {'units': 'metre'}),
++    'y': ('y', np.arange(10), {'units': 'metre'}), 
++    'time': ('time', pd.date_range('2000-01-01', periods=3), {'units': 'second'})
++}
++
++# Create dataset
++ds = xr.Dataset(data, coords=coords)
++
++print("Dataset representation:")
++print(ds)
+\ No newline at end of file
+diff --git a/xarray/core/formatting.py b/xarray/core/formatting.py
+index 28eaae5f..b3cbb94b 100644
+--- a/xarray/core/formatting.py
++++ b/xarray/core/formatting.py
+@@ -268,6 +268,16 @@ def inline_variable_array_repr(var, max_width):
+         return "..."
+ 
+ 
++def _get_units_from_attrs(var):
++    """Extract units information from variable attributes."""
++    # Check for units in attrs
++    if hasattr(var, 'attrs') and 'units' in var.attrs:
++        units = var.attrs['units']
++        if isinstance(units, str) and units:
++            return f" [{units}]"
++    return ""
++
++
+ def summarize_variable(
+     name: Hashable, var, col_width: int, marker: str = " ", max_width: int = None
+ ):
+@@ -283,7 +293,10 @@ def summarize_variable(
+         dims_str = "({}) ".format(", ".join(map(str, var.dims)))
+     else:
+         dims_str = ""
+-    front_str = f"{first_col}{dims_str}{var.dtype} "
++        
++    # Add units information if available
++    units_str = _get_units_from_attrs(var.variable)
++    front_str = f"{first_col}{dims_str}{var.dtype}{units_str} "
+ 
+     values_width = max_width - len(front_str)
+     values_str = inline_variable_array_repr(var, values_width)

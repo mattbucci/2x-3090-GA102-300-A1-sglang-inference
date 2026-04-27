@@ -1,0 +1,39 @@
+diff --git a/sklearn/feature_selection/mutual_info_.py b/sklearn/feature_selection/mutual_info_.py
+index d5d1b7fb59..500b8311a4 100644
+--- a/sklearn/feature_selection/mutual_info_.py
++++ b/sklearn/feature_selection/mutual_info_.py
+@@ -247,19 +247,27 @@ def _estimate_mi(X, y, discrete_features='auto', discrete_target=False,
+     X, y = check_X_y(X, y, accept_sparse='csc', y_numeric=not discrete_target)
+     n_samples, n_features = X.shape
+ 
+-    if discrete_features == 'auto':
++    # Handle the case when discrete_features is an array/list but not 'auto'
++    # Check if we're dealing with the string 'auto' first to avoid numpy array comparison issues
++    if isinstance(discrete_features, str) and discrete_features == 'auto':
+         discrete_features = issparse(X)
++    elif isinstance(discrete_features, (list, np.ndarray)):
++        # Handle case where discrete_features is an array/list
++        # Convert to boolean mask for consistency
++        discrete_features_array = np.asarray(discrete_features)
++        if discrete_features_array.dtype != 'bool':
++            # If it's an array of indices, convert to boolean mask
++            discrete_mask = np.zeros(n_features, dtype=bool)
++            discrete_mask[discrete_features_array] = True
++            discrete_features = discrete_mask
++        else:
++            discrete_features = discrete_features_array
+ 
+     if isinstance(discrete_features, bool):
+         discrete_mask = np.empty(n_features, dtype=bool)
+         discrete_mask.fill(discrete_features)
+     else:
+-        discrete_features = np.asarray(discrete_features)
+-        if discrete_features.dtype != 'bool':
+-            discrete_mask = np.zeros(n_features, dtype=bool)
+-            discrete_mask[discrete_features] = True
+-        else:
+-            discrete_mask = discrete_features
++        discrete_mask = discrete_features
+ 
+     continuous_mask = ~discrete_mask
+     if np.any(continuous_mask) and issparse(X):

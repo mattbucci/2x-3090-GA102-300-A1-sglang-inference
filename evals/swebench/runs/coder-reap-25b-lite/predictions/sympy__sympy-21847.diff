@@ -1,0 +1,88 @@
+diff --git a/comprehensive_test.py b/comprehensive_test.py
+new file mode 100644
+index 0000000000..432923351e
+--- /dev/null
++++ b/comprehensive_test.py
+@@ -0,0 +1,38 @@
++import sympy as sp
++from sympy.polys.orderings import monomial_key
++
++# Test the original issue case
++print("=== Testing Original Issue ===")
++x1, x2, x3 = sp.symbols('x1, x2, x3')
++states = [x1, x2, x3]
++max_degrees = 3
++min_degrees = 3
++monomials = sorted(sp.itermonomials(states, max_degrees, min_degrees=min_degrees), 
++                   key=monomial_key('grlex', states))
++print("Result:", monomials)
++print("Length:", len(monomials))
++
++# Verify we get expected combinations like x1*x2**2, etc.
++expected_patterns = ['x1*x2**2', 'x2*x3**2', 'x1**2*x2']
++found_expected = any(any(pattern in str(m) for pattern in expected_patterns) for m in monomials)
++print("Contains expected patterns:", found_expected)
++
++print("\n=== Testing Edge Cases ===")
++
++# Test with min_degree = 0 (should return all monomials)
++monomials_zero = sorted(sp.itermonomials(states, 3, min_degrees=0), 
++                        key=monomial_key('grlex', states))
++print("Min degree 0:", len(monomials_zero))
++
++# Test with min_degree = 1 
++monomials_one = sorted(sp.itermonomials(states, 3, min_degrees=1), 
++                       key=monomial_key('grlex', states))
++print("Min degree 1:", len(monomials_one))
++print("First few:", monomials_one[:5])
++
++# Test with different values
++monomials_two = sorted(sp.itermonomials(states, 4, min_degrees=2), 
++                       key=monomial_key('grlex', states))
++print("Min degree 2, max degree 4:", len(monomials_two))
++
++print("\n=== All tests completed successfully ===")
+\ No newline at end of file
+diff --git a/sympy/polys/monomials.py b/sympy/polys/monomials.py
+index 0e84403307..d2cd3451e5 100644
+--- a/sympy/polys/monomials.py
++++ b/sympy/polys/monomials.py
+@@ -127,7 +127,7 @@ def itermonomials(variables, max_degrees, min_degrees=None):
+                 for variable in item:
+                     if variable != 1:
+                         powers[variable] += 1
+-                if max(powers.values()) >= min_degree:
++                if sum(powers.values()) >= min_degree:
+                     monomials_list_comm.append(Mul(*item))
+             yield from set(monomials_list_comm)
+         else:
+@@ -139,7 +139,7 @@ def itermonomials(variables, max_degrees, min_degrees=None):
+                 for variable in item:
+                     if variable != 1:
+                         powers[variable] += 1
+-                if max(powers.values()) >= min_degree:
++                if sum(powers.values()) >= min_degree:
+                     monomials_list_non_comm.append(Mul(*item))
+             yield from set(monomials_list_non_comm)
+     else:
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..2c26b64cb6
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,14 @@
++import sympy as sp
++from sympy.polys.orderings import monomial_key
++
++x1, x2, x3 = sp.symbols('x1, x2, x3')
++states = [x1, x2, x3]
++max_degrees = 3
++min_degrees = 3
++monomials = sorted(sp.itermonomials(states, max_degrees, min_degrees=min_degrees), 
++                   key=monomial_key('grlex', states))
++print("Result:", monomials)
++print("Length:", len(monomials))
++
++# Expected: should include monomials like x1*x2**2, x2*x3**2, etc. with total degree 3
++# The bug was that it only returned x3**3, x2**3, x1**3 (single variables with degree 3)
+\ No newline at end of file

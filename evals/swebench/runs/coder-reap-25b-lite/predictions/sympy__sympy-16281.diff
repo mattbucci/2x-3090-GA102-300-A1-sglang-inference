@@ -1,0 +1,88 @@
+diff --git a/sympy/printing/pretty/pretty.py b/sympy/printing/pretty/pretty.py
+index 6d3cc05bd3..5cf3c8303e 100644
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -474,14 +474,14 @@ def _print_Product(self, expr):
+         func = expr.term
+         pretty_func = self._print(func)
+ 
+-        horizontal_chr = xobj('_', 1)
+-        corner_chr = xobj('_', 1)
++        horizontal_chr = xobj('-', 1)
++        corner_chr = u'\N{BOX DRAWINGS LIGHT DOWN AND HORIZONTAL}'
+         vertical_chr = xobj('|', 1)
+ 
+-        if self._use_unicode:
+-            # use unicode corners
+-            horizontal_chr = xobj('-', 1)
+-            corner_chr = u'\N{BOX DRAWINGS LIGHT DOWN AND HORIZONTAL}'
++        if not self._use_unicode:
++            # For ASCII mode, use simpler characters
++            horizontal_chr = xobj('_', 1)
++            corner_chr = xobj('_', 1)
+ 
+         func_height = pretty_func.height()
+ 
+@@ -490,9 +490,15 @@ def _print_Product(self, expr):
+         sign_height = 0
+ 
+         for lim in expr.limits:
+-            width = (func_height + 2) * 5 // 3 - 2
++            # Use minimal width to make it skinnier
++            width = max(1, func_height - 1)  # Even smaller
++            
++            # Create the structure exactly as suggested in issue
+             sign_lines = []
++            # Top line with extended horizontal bar (as per issue suggestion)
+             sign_lines.append(corner_chr + (horizontal_chr*width) + corner_chr)
++            
++            # Middle rows with vertical bars  
+             for i in range(func_height + 1):
+                 sign_lines.append(vertical_chr + (' '*width) + vertical_chr)
+ 
+@@ -515,13 +521,15 @@ def _print_Product(self, expr):
+                 first = False
+ 
+             height = pretty_sign.height()
++            # Eliminate extra blank lines by reducing padding
+             padding = stringPict('')
+-            padding = prettyForm(*padding.stack(*[' ']*(height - 1)))
++            padding = prettyForm(*padding.stack(*[' ']*(max(0, height - 2))))
+             pretty_sign = prettyForm(*pretty_sign.right(padding))
+ 
+             pretty_func = prettyForm(*pretty_sign.right(pretty_func))
+ 
+-        pretty_func.baseline = max_upper + sign_height//2
++        # Adjust baseline to prevent extra empty line at bottom
++        pretty_func.baseline = max_upper + sign_height//2 - 1
+         pretty_func.binding = prettyForm.MUL
+         return pretty_func
+ 
+diff --git a/test_product_pretty.py b/test_product_pretty.py
+new file mode 100644
+index 0000000000..2c0b94fbf6
+--- /dev/null
++++ b/test_product_pretty.py
+@@ -0,0 +1,21 @@
++from sympy import *
++from sympy.printing import pprint
++
++# Test cases from the issue description
++n = Symbol('n')
++oo = S.Infinity
++
++print("=== Unicode version ===")
++pprint(Product(1, (n, 1, oo)))
++print()
++pprint(Product(1/n, (n, 1, oo)))
++print()
++pprint(Product(1/n**2, (n, 1, oo)))
++print()
++
++print("=== ASCII version ===")
++pprint(Product(1, (n, 1, oo)), use_unicode=False)
++print()
++pprint(Product(1/n, (n, 1, oo)), use_unicode=False)
++print()
++pprint(Product(1/n**2, (n, 1, oo)), use_unicode=False)
+\ No newline at end of file

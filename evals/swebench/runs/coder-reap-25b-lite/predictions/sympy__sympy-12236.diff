@@ -1,0 +1,66 @@
+diff --git a/sympy/polys/partfrac.py b/sympy/polys/partfrac.py
+index 612b8f4607..618ea9547e 100644
+--- a/sympy/polys/partfrac.py
++++ b/sympy/polys/partfrac.py
+@@ -127,7 +127,20 @@ def apart(f, x=None, full=False, **options):
+ 
+     common, P, Q = P.cancel(Q)
+ 
+-    poly, P = P.div(Q, auto=True)
++    # Ensure proper domain handling for rational results
++    try:
++        poly, P = P.div(Q, auto=True)
++    except:
++        # If division fails due to domain issues, try with QQ domain
++        from sympy.polys import ZZ, QQ
++        if hasattr(P, 'get_domain') and hasattr(Q, 'get_domain'):
++            P_dom = P.get_domain()
++            Q_dom = Q.get_domain()
++            if isinstance(P_dom, ZZ) or isinstance(Q_dom, ZZ):
++                # Try conversion to QQ domain for proper rational handling
++                P = P.set_domain(QQ)
++                Q = Q.set_domain(QQ)
++                poly, P = P.div(Q, auto=True)
+     P, Q = P.rat_clear_denoms(Q)
+ 
+     if Q.degree() <= 1:
+diff --git a/test_bug.py b/test_bug.py
+new file mode 100644
+index 0000000000..e70fef1edc
+--- /dev/null
++++ b/test_bug.py
+@@ -0,0 +1,33 @@
++from sympy import symbols
++
++# Reproduce the bug as described in the issue
++a = symbols('a', real=True)
++t = symbols('t', real=True, negative=False)
++bug = a * (-t + (-t + 1) * (2 * t - 1)) / (2 * t - 1)
++
++print("Original expression:")
++print(bug)
++
++print("\nSubstituting a=1:")
++expr_substituted = bug.subs(a, 1)
++print(expr_substituted)
++
++print("\nPartial fraction decomposition without specifying variable:")
++result1 = expr_substituted.apart()
++print(result1)
++
++print("\nPartial fraction decomposition with explicit variable t:")
++result2 = expr_substituted.apart(t)
++print(result2)
++
++print("\nPartial fraction decomposition on original expression:")
++try:
++    result3 = bug.apart(t)
++    print(result3)
++except Exception as e:
++    print(f"Error: {e}")
++
++print("\nTesting with different expression that works:")
++from sympy import apart
++result4 = apart((x+y)/(2*x-y), x)
++print(result4)
+\ No newline at end of file

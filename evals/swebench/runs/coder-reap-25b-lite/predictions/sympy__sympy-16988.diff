@@ -1,0 +1,38 @@
+diff --git a/sympy/sets/sets.py b/sympy/sets/sets.py
+index 03cf57a30b..6a93d261c5 100644
+--- a/sympy/sets/sets.py
++++ b/sympy/sets/sets.py
+@@ -1262,15 +1262,28 @@ def __new__(cls, *args, **kwargs):
+         # flatten inputs to merge intersections and iterables
+         args = _sympify(args)
+ 
++        # Remove duplicate arguments at the outset
++        # This ensures consistent behavior regardless of duplicates
++        unique_args = []
++        seen = set()
++        for arg in args:
++            # Use hash to check for duplicates (this handles the case where 
++            # duplicate sets like {1} appear multiple times)
++            arg_hash = hash(arg)
++            if arg_hash not in seen:
++                unique_args.append(arg)
++                seen.add(arg_hash)
++        
+         # Reduce sets using known rules
+         if evaluate:
+-            args = list(cls._new_args_filter(args))
+-            return simplify_intersection(args)
++            # Pass the unique args to filter and simplify
++            unique_args = list(cls._new_args_filter(unique_args))
++            return simplify_intersection(unique_args)
+ 
+-        args = list(ordered(args, Set._infimum_key))
++        unique_args = list(ordered(unique_args, Set._infimum_key))
+ 
+-        obj = Basic.__new__(cls, *args)
+-        obj._argset = frozenset(args)
++        obj = Basic.__new__(cls, *unique_args)
++        obj._argset = frozenset(unique_args)
+         return obj
+ 
+     @property

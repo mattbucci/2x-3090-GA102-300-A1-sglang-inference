@@ -1,0 +1,106 @@
+diff --git a/sklearn/utils/_set_output.py b/sklearn/utils/_set_output.py
+index 335773c6af..cc42e93bf2 100644
+--- a/sklearn/utils/_set_output.py
++++ b/sklearn/utils/_set_output.py
+@@ -55,7 +55,8 @@ def _wrap_in_pandas_container(
+     if isinstance(data_to_wrap, pd.DataFrame):
+         if columns is not None:
+             data_to_wrap.columns = columns
+-        if index is not None:
++        # Only set index if it's compatible with the data shape
++        if index is not None and len(data_to_wrap) == len(index):
+             data_to_wrap.index = index
+         return data_to_wrap
+ 
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..785ec8d351
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,48 @@
++#!/usr/bin/env python3
++
++# Test script to demonstrate the problem and solution
++
++import pandas as pd
++from sklearn.base import BaseEstimator, TransformerMixin
++
++class MyTransformer(BaseEstimator, TransformerMixin):
++    def fit(self, X: pd.DataFrame, y: pd.Series | None = None, **kwargs):
++        return self
++
++    def transform(self, X: pd.DataFrame, y: pd.Series | None = None) -> pd.DataFrame:
++        # This transformer aggregates data - reduces number of rows
++        return X["value"].groupby(X["date"]).sum()
++
++# Create test data
++index = pd.date_range(start="2020-01-01", end="2020-01-05", inclusive="left", freq="H")
++data = pd.DataFrame(index=index, data=[10] * len(index), columns=["value"])
++data["date"] = index.date
++
++print("Original data shape:", data.shape)
++print("Original data index length:", len(data.index))
++
++# Test our transformer
++transformer = MyTransformer()
++result = transformer.fit_transform(data)
++
++print("\nTransformed data shape:", result.shape)
++print("Transformed data index length:", len(result.index))
++print("Transformed data:")
++print(result)
++
++# Test with a simple DataFrame creation (the problematic part)
++print("\nTesting DataFrame creation with mismatched indices:")
++
++try:
++    # This mimics what happens in the current code
++    df = pd.DataFrame(result.values, index=data.index, columns=['value'])
++    print("Success creating DataFrame with original index")
++except Exception as e:
++    print(f"Error creating DataFrame with original index: {e}")
++
++# Our fix should check if lengths match before setting index
++print("\nTesting our fix logic:")
++if len(result) == len(data.index):
++    print("Lengths match, can set index")
++else:
++    print("Lengths don't match, should not set index")
+\ No newline at end of file
+diff --git a/test_issue.py b/test_issue.py
+new file mode 100644
+index 0000000000..cd70296a72
+--- /dev/null
++++ b/test_issue.py
+@@ -0,0 +1,30 @@
++import pandas as pd
++from sklearn.base import BaseEstimator, TransformerMixin
++from sklearn import set_config
++from sklearn.pipeline import make_union
++
++index = pd.date_range(start="2020-01-01", end="2020-01-05", inclusive="left", freq="H")
++data = pd.DataFrame(index=index, data=[10] * len(index), columns=["value"])
++data["date"] = index.date
++
++
++class MyTransformer(BaseEstimator, TransformerMixin):
++    def fit(self, X: pd.DataFrame, y: pd.Series | None = None, **kwargs):
++        return self
++
++    def transform(self, X: pd.DataFrame, y: pd.Series | None = None) -> pd.DataFrame:
++        return X["value"].groupby(X["date"]).sum()
++
++
++# This works.
++set_config(transform_output="default")
++print("Default output:")
++print(make_union(MyTransformer()).fit_transform(data))
++
++# This does not work.
++set_config(transform_output="pandas")
++print("\nPandas output:")
++try:
++    print(make_union(MyTransformer()).fit_transform(data))
++except Exception as e:
++    print(f"Error: {e}")
+\ No newline at end of file

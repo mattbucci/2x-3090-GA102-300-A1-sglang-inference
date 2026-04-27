@@ -1,0 +1,40 @@
+diff --git a/django/db/migrations/serializer.py b/django/db/migrations/serializer.py
+index 38da1e6ecc..9a99241dc4 100644
+--- a/django/db/migrations/serializer.py
++++ b/django/db/migrations/serializer.py
+@@ -125,6 +125,35 @@ class EnumSerializer(BaseSerializer):
+     def serialize(self):
+         enum_class = self.value.__class__
+         module = enum_class.__module__
++        
++        # Check if this is a Flag enum by checking if it has __and__ method
++        # and if its name contains '|', which indicates combined flags
++        try:
++            # For Flag enums like re.RegexFlag, we need special handling for combined values
++            if hasattr(self.value, '__and__') and '|' in self.value.name:
++                # This is a combined flag value - decompose it into individual flags
++                # Find all individual flags that are set in the combined value
++                flags_to_check = list(enum_class)  # Get all members of the enum
++                found_flags = []
++                for flag in flags_to_check:
++                    if self.value & flag:
++                        found_flags.append(flag)
++                
++                if len(found_flags) > 1:
++                    # Multiple flags - create expression with OR
++                    expr_parts = [f"{module}.{enum_class.__qualname__}[\"{flag.name}\"]" for flag in found_flags]
++                    return " | ".join(expr_parts), {"import %s" % module}
++                elif len(found_flags) == 1:
++                    # Single flag - use normal serialization
++                    return (
++                        "%s.%s[%r]" % (module, enum_class.__qualname__, found_flags[0].name),
++                        {"import %s" % module},
++                    )
++        except Exception:
++            # Fall back to normal behavior if anything fails
++            pass
++            
++        # Default behavior for regular enums
+         return (
+             "%s.%s[%r]" % (module, enum_class.__qualname__, self.value.name),
+             {"import %s" % module},

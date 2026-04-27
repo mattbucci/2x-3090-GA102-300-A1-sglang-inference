@@ -1,0 +1,30 @@
+diff --git a/pylint/lint/expand_modules.py b/pylint/lint/expand_modules.py
+index 5cacc0371..ba4ebf91c 100644
+--- a/pylint/lint/expand_modules.py
++++ b/pylint/lint/expand_modules.py
+@@ -53,10 +53,12 @@ def _is_ignored_file(
+     ignore_list_paths_re: list[Pattern[str]],
+ ) -> bool:
+     basename = os.path.basename(element)
++    # Normalize the path to handle cases like "./src/gen" vs "src/gen"
++    normalized_element = os.path.normpath(element)
+     return (
+         basename in ignore_list
+         or _is_in_ignore_list_re(basename, ignore_list_re)
+-        or _is_in_ignore_list_re(element, ignore_list_paths_re)
++        or _is_in_ignore_list_re(normalized_element, ignore_list_paths_re)
+     )
+ 
+ 
+@@ -140,9 +142,10 @@ def expand_modules(
+             ):
+                 if filepath == subfilepath:
+                     continue
++                normalized_subfilepath = os.path.normpath(subfilepath)
+                 if _is_in_ignore_list_re(
+                     os.path.basename(subfilepath), ignore_list_re
+-                ) or _is_in_ignore_list_re(subfilepath, ignore_list_paths_re):
++                ) or _is_in_ignore_list_re(normalized_subfilepath, ignore_list_paths_re):
+                     continue
+ 
+                 modpath = _modpath_from_file(

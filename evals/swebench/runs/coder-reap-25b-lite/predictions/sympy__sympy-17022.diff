@@ -1,0 +1,36 @@
+diff --git a/sympy/printing/pycode.py b/sympy/printing/pycode.py
+index 6ec7bd891c..aa2f488866 100644
+--- a/sympy/printing/pycode.py
++++ b/sympy/printing/pycode.py
+@@ -7,7 +7,7 @@
+ 
+ from collections import defaultdict
+ from itertools import chain
+-from sympy.core import S
++from sympy.core import S, Symbol
+ from .precedence import precedence
+ from .codeprinter import CodePrinter
+ 
+@@ -453,6 +453,22 @@ def _print_log1p(self, e):
+         return '{0}({1}+1)'.format(
+             self._module_format('mpmath.log'), self._print(e.args[0]))
+ 
++    def _print_Identity(self, expr):
++        # When Identity matrix is printed in Python code context,
++        # avoid printing as 'I' which conflicts with complex number 1j
++        # Return eye(n) for explicit size or raise error for symbolic size
++        shape = expr.shape
++        if len(shape) == 2 and shape[0] == shape[1]:
++            n = shape[0]
++            # For explicit numbers, use eye function
++            if hasattr(n, 'is_number') and n.is_number:
++                return 'eye(%s)' % self._print(n)
++            else:
++                # For symbolic dimensions, raise error to prevent misinterpretation
++                raise ValueError("Cannot generate code for Identity matrix with symbolic dimension")
++        else:
++            raise ValueError("Identity matrix must be square")
++
+ for k in MpmathPrinter._kf:
+     setattr(MpmathPrinter, '_print_%s' % k, _print_known_func)
+ 

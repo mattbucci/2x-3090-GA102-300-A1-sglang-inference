@@ -1,0 +1,177 @@
+diff --git a/sympy/core/mod.py b/sympy/core/mod.py
+index b4f3de2523..b02e938a2a 100644
+--- a/sympy/core/mod.py
++++ b/sympy/core/mod.py
+@@ -41,6 +41,7 @@ def eval(cls, p, q):
+         from sympy.core.singleton import S
+         from sympy.core.exprtools import gcd_terms
+         from sympy.polys.polytools import gcd
++        from sympy.polys.polyerrors import PolynomialError
+ 
+         def doit(p, q):
+             """Try to return p % q if both are numbers or +/-p is known
+@@ -166,10 +167,13 @@ def doit(p, q):
+         # XXX other possibilities?
+ 
+         # extract gcd; any further simplification should be done by the user
+-        G = gcd(p, q)
+-        if G != 1:
+-            p, q = [
+-                gcd_terms(i/G, clear=False, fraction=False) for i in (p, q)]
++        try:
++            G = gcd(p, q)
++            if G != 1:
++                p, q = [
++                    gcd_terms(i/G, clear=False, fraction=False) for i in (p, q)]
++        except PolynomialError:
++            G = S.One
+         pwas, qwas = p, q
+ 
+         # simplify terms
+diff --git a/test_comprehensive.py b/test_comprehensive.py
+new file mode 100644
+index 0000000000..a4f42be5f1
+--- /dev/null
++++ b/test_comprehensive.py
+@@ -0,0 +1,43 @@
++from sympy import *
++from sympy.core.cache import clear_cache
++
++# Test the original issue case
++print("=== Testing Original Issue ===")
++x, y, z = symbols('x y z', real=True)
++expr = exp(sinh(Piecewise((x, y > x), (y, True)) / z))
++try:
++    result = expr.subs({1: 1.0})
++    print("Success:", result)
++except Exception as e:
++    print("Error:", type(e).__name__, str(e))
++
++# Test that normal operations still work
++print("\n=== Testing Normal Operations ===")
++try:
++    # Test normal gcd operations
++    a, b = symbols('a b')
++    result = (a + b) % 2
++    print("Normal mod operation works:", result)
++    
++    # Test with regular expressions
++    expr2 = (x**2 + y) % 3
++    result2 = expr2.subs({x: 2, y: 3})
++    print("Normal substitution works:", result2)
++    
++except Exception as e:
++    print("Error in normal operations:", type(e).__name__, str(e))
++
++# Test edge cases
++print("\n=== Testing Edge Cases ===")
++try:
++    # Test with different hyperbolic functions
++    expr3 = cosh(Piecewise((x, y > x), (y, True)) / z)
++    result3 = expr3.subs({1: 1.0})
++    print("cosh with Piecewise works:", result3)
++    
++    expr4 = tanh(Piecewise((x, y > x), (y, True)) / z)
++    result4 = expr4.subs({1: 1.0})
++    print("tanh with Piecewise works:", result4)
++    
++except Exception as e:
++    print("Error in edge cases:", type(e).__name__, str(e))
+\ No newline at end of file
+diff --git a/test_exact_issue.py b/test_exact_issue.py
+new file mode 100644
+index 0000000000..0afa5407a5
+--- /dev/null
++++ b/test_exact_issue.py
+@@ -0,0 +1,23 @@
++from sympy import *
++from sympy.core.cache import clear_cache
++
++# Exact reproduction of the issue as described in the GitHub issue
++print("Testing exact case from GitHub issue...")
++
++# First case - should work (no real assumptions)
++clear_cache()
++x, y, z = symbols('x y z')
++expr = exp(sinh(Piecewise((x, y > x), (y, True)) / z))
++result1 = expr.subs({1: 1.0})
++print("First case (non-real symbols) works:", result1)
++
++# Second case - this was failing before the fix
++clear_cache()
++x, y, z = symbols('x y z', real=True)
++expr = exp(sinh(Piecewise((x, y > x), (y, True)) / z))
++try:
++    result2 = expr.subs({1: 1.0})
++    print("Second case (real symbols) now works:", result2)
++    print("SUCCESS: Issue has been fixed!")
++except Exception as e:
++    print("FAILED: Still getting error:", type(e).__name__, str(e))
+\ No newline at end of file
+diff --git a/test_issue.py b/test_issue.py
+new file mode 100644
+index 0000000000..12fac1b23d
+--- /dev/null
++++ b/test_issue.py
+@@ -0,0 +1,13 @@
++from sympy import *
++from sympy.core.cache import clear_cache
++
++# Test case from the issue
++x, y, z = symbols('x y z', real=True)
++expr = exp(sinh(Piecewise((x, y > x), (y, True)) / z))
++print("Created expression")
++
++try:
++    result = expr.subs({1: 1.0})
++    print("Success:", result)
++except Exception as e:
++    print("Error:", type(e).__name__, str(e))
+\ No newline at end of file
+diff --git a/test_mod_fix.py b/test_mod_fix.py
+new file mode 100644
+index 0000000000..ecd83d4918
+--- /dev/null
++++ b/test_mod_fix.py
+@@ -0,0 +1,40 @@
++"""
++Test for the fix of PolynomialError with Piecewise in Mod operations.
++This test ensures that when Mod is used with expressions containing 
++Piecewise, it doesn't raise PolynomialError.
++"""
++
++import unittest
++from sympy import *
++from sympy.core.cache import clear_cache
++
++
++class TestModPiecewiseFix(unittest.TestCase):
++    def test_mod_with_piecewise_no_error(self):
++        """Test that mod operations with Piecewise don't raise PolynomialError."""
++        x, y, z = symbols('x y z', real=True)
++        
++        # This should not raise PolynomialError
++        expr = exp(sinh(Piecewise((x, y > x), (y, True)) / z))
++        result = expr.subs({1: 1.0})
++        
++        # Should evaluate successfully
++        self.assertIsNotNone(result)
++        
++    def test_mod_with_different_hyperbolic_functions(self):
++        """Test that different hyperbolic functions work with Piecewise."""
++        x, y, z = symbols('x y z', real=True)
++        
++        # Test cosh
++        expr_cosh = cosh(Piecewise((x, y > x), (y, True)) / z)
++        result_cosh = expr_cosh.subs({1: 1.0})
++        self.assertIsNotNone(result_cosh)
++        
++        # Test tanh  
++        expr_tanh = tanh(Piecewise((x, y > x), (y, True)) / z)
++        result_tanh = expr_tanh.subs({1: 1.0})
++        self.assertIsNotNone(result_tanh)
++
++
++if __name__ == "__main__":
++    unittest.main()
+\ No newline at end of file

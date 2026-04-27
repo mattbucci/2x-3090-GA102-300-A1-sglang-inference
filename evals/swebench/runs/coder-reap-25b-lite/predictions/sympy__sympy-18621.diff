@@ -1,0 +1,130 @@
+diff --git a/direct_test.py b/direct_test.py
+new file mode 100644
+index 0000000000..550e6c00e1
+--- /dev/null
++++ b/direct_test.py
+@@ -0,0 +1,33 @@
++#!/usr/bin/env python3
++
++# Direct test without importing entire sympy
++import sys
++sys.path.insert(0, '/tmp/swebench-work2/sympy__sympy-18621')
++
++# Test the specific functionality directly
++from sympy.matrices.expressions.blockmatrix import BlockDiagMatrix
++from sympy import Matrix
++
++print("Testing the fix directly...")
++
++try:
++    # Create a simple matrix
++    M = Matrix([[1, 2], [3, 4]])
++    print("Original matrix M:")
++    print(M)
++    
++    # Create BlockDiagMatrix with one element
++    D = BlockDiagMatrix(M)
++    print("\nBlockDiagMatrix D created successfully")
++    print("D =", D)
++    
++    # This should now work (the bug we're fixing)
++    B = Matrix(D)
++    print("\nSuccessfully converted to regular Matrix:")
++    print(B)
++    print("SUCCESS: Bug is fixed!")
++    
++except Exception as e:
++    print(f"Error occurred: {type(e).__name__}: {e}")
++    import traceback
++    traceback.print_exc()
+\ No newline at end of file
+diff --git a/sympy/matrices/expressions/blockmatrix.py b/sympy/matrices/expressions/blockmatrix.py
+index 11aebbc59f..b821c42845 100644
+--- a/sympy/matrices/expressions/blockmatrix.py
++++ b/sympy/matrices/expressions/blockmatrix.py
+@@ -301,7 +301,7 @@ def blocks(self):
+         data = [[mats[i] if i == j else ZeroMatrix(mats[i].rows, mats[j].cols)
+                         for j in range(len(mats))]
+                         for i in range(len(mats))]
+-        return ImmutableDenseMatrix(data)
++        return ImmutableDenseMatrix(data, evaluate=False)
+ 
+     @property
+     def shape(self):
+diff --git a/test_blockdiag_bug.py b/test_blockdiag_bug.py
+new file mode 100644
+index 0000000000..eab38454f9
+--- /dev/null
++++ b/test_blockdiag_bug.py
+@@ -0,0 +1,37 @@
++#!/usr/bin/env python
++
++import sympy
++
++# Test case for the bug
++print("Testing BlockDiagMatrix with one element...")
++
++try:
++    M = sympy.Matrix([[1, 2], [3, 4]])
++    D = sympy.BlockDiagMatrix(M)
++    print("Created BlockDiagMatrix with one element")
++    print("D =", D)
++    
++    # This should fail with the current code
++    B = sympy.Matrix(D)
++    print("Successfully converted to regular Matrix:")
++    print(B)
++except Exception as e:
++    print(f"Error occurred: {type(e).__name__}: {e}")
++    import traceback
++    traceback.print_exc()
++
++print("\nTesting BlockDiagMatrix with two elements (should work)...")
++
++try:
++    M = sympy.Matrix([[1, 2], [3, 4]])
++    D = sympy.BlockDiagMatrix(M, M)
++    print("Created BlockDiagMatrix with two elements")
++    print("D =", D)
++    
++    B = sympy.Matrix(D)
++    print("Successfully converted to regular Matrix:")
++    print(B)
++except Exception as e:
++    print(f"Error occurred: {type(e).__name__}: {e}")
++    import traceback
++    traceback.print_exc()
+\ No newline at end of file
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000000..51da2d6d98
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,26 @@
++#!/usr/bin/env python3
++
++# Fresh test script to verify fix works
++import sys
++import os
++sys.path.insert(0, '/tmp/swebench-work2/sympy__sympy-18621')
++
++import sympy
++
++print("Testing BlockDiagMatrix with one element after fix...")
++
++try:
++    M = sympy.Matrix([[1, 2], [3, 4]])
++    D = sympy.BlockDiagMatrix(M)
++    print("Created BlockDiagMatrix with one element")
++    print("D =", D)
++    
++    # This should work now
++    B = sympy.Matrix(D)
++    print("Successfully converted to regular Matrix:")
++    print(B)
++    print("SUCCESS: Bug is fixed!")
++except Exception as e:
++    print(f"Error occurred: {type(e).__name__}: {e}")
++    import traceback
++    traceback.print_exc()
+\ No newline at end of file

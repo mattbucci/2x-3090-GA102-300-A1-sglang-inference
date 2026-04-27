@@ -1,0 +1,76 @@
+diff --git a/django/db/migrations/autodetector.py b/django/db/migrations/autodetector.py
+index 89e2dceeaf..05a13cc6d1 100644
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -190,9 +190,71 @@ class MigrationAutodetector:
+         self.generate_altered_order_with_respect_to()
+ 
+         self._sort_migrations()
++        # Ensure AlterOrderWithRespectTo comes before AddIndex operations referencing _order
++        self._ensure_order_with_respect_to_before_index()
+         self._build_migration_list(graph)
+         self._optimize_migrations()
+ 
++    def _ensure_order_with_respect_to_before_index(self):
++        """
++        Ensure AlterOrderWithRespectTo operations come before AddIndex operations 
++        that reference the _order field in the same migration.
++        """
++        for app_label, migrations in self.migrations.items():
++            for migration in migrations:
++                operations = migration.operations
++                
++                # Find positions of problematic operations
++                alter_order_positions = []
++                add_index_positions = []
++                
++                for i, op in enumerate(operations):
++                    if isinstance(op, operations.AlterOrderWithRespectTo):
++                        alter_order_positions.append(i)
++                    elif isinstance(op, operations.AddIndex) and hasattr(op.index, 'fields'):
++                        if '_order' in op.index.fields:
++                            add_index_positions.append(i)
++                
++                # If we have conflicting operations, reorder them
++                if alter_order_positions and add_index_positions:
++                    # Get earliest positions
++                    earliest_alter_order = min(alter_order_positions) if alter_order_positions else len(operations)
++                    earliest_add_index = min(add_index_positions) if add_index_positions else len(operations)
++                    
++                    # If AddIndex comes first, we need to move it after AlterOrderWithRespectTo
++                    if earliest_add_index < earliest_alter_order:
++                        # Reconstruct operations list with correct order
++                        new_operations = []
++                        
++                        # First, collect all operations that come before the earliest AlterOrderWithRespectTo
++                        for i, op in enumerate(operations):
++                            if i < earliest_alter_order:
++                                new_operations.append(op)
++                        
++                        # Then add all AlterOrderWithRespectTo operations
++                        for i, op in enumerate(operations):
++                            if isinstance(op, operations.AlterOrderWithRespectTo):
++                                new_operations.append(op)
++                        
++                        # Then add all AddIndex operations that reference _order
++                        for i, op in enumerate(operations):
++                            if (isinstance(op, operations.AddIndex) and 
++                                hasattr(op.index, 'fields') and 
++                                '_order' in op.index.fields):
++                                new_operations.append(op)
++                        
++                        # Finally add remaining operations
++                        for i, op in enumerate(operations):
++                            if i >= earliest_alter_order and not (
++                                isinstance(op, operations.AlterOrderWithRespectTo) or
++                                (isinstance(op, operations.AddIndex) and 
++                                 hasattr(op.index, 'fields') and 
++                                 '_order' in op.index.fields)):
++                                new_operations.append(op)
++                        
++                        # Update the operations list
++                        migration.operations = new_operations
++
+         return self.migrations
+ 
+     def _prepare_field_lists(self):

@@ -1,0 +1,24 @@
+diff --git a/sympy/core/function.py b/sympy/core/function.py
+index 69df976b8b..e750a431b5 100644
+--- a/sympy/core/function.py
++++ b/sympy/core/function.py
+@@ -1265,6 +1265,19 @@ def _diff_wrt(self):
+         """
+         return self.expr._diff_wrt and isinstance(self.doit(), Derivative)
+ 
++    @property
++    def kind(self):
++        # Derivative has the same kind as its expression
++        # This follows the pattern where the derivative's kind should match 
++        # the kind of the expression being differentiated
++        from sympy.core.kind import UndefinedKind
++        try:
++            # If the expression has a kind, return that
++            return self.expr.kind
++        except AttributeError:
++            # Fallback for expressions without kind attribute
++            return UndefinedKind
++
+     def __new__(cls, expr, *variables, **kwargs):
+ 
+         from sympy.matrices.common import MatrixCommon

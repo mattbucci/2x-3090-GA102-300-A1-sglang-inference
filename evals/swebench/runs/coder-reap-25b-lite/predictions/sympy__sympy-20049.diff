@@ -1,0 +1,46 @@
+diff --git a/sympy/physics/vector/point.py b/sympy/physics/vector/point.py
+index d4e3cfcc90..b066ba0797 100644
+--- a/sympy/physics/vector/point.py
++++ b/sympy/physics/vector/point.py
+@@ -501,13 +501,11 @@ def vel(self, frame):
+ 
+         Parameters
+         ==========
+-
+         frame : ReferenceFrame
+             The frame in which the returned velocity vector will be defined in
+ 
+         Examples
+         ========
+-
+         >>> from sympy.physics.vector import Point, ReferenceFrame
+         >>> N = ReferenceFrame('N')
+         >>> p1 = Point('p1')
+@@ -519,8 +517,26 @@ def vel(self, frame):
+ 
+         _check_frame(frame)
+         if not (frame in self._vel_dict):
++            # Try to compute velocity from position information
++            # This implements the behavior described in the GitHub issue:
++            # If we have position relationships, try to calculate velocity
++            
++            # Check if we have a position relationship that can help us compute velocity
++            for other_point, pos_vec in self._pos_dict.items():
++                try:
++                    # If we have a position vector from another point,
++                    # we can potentially compute velocity from its time derivative
++                    if pos_vec != 0:
++                        # Try to compute the time derivative of the position vector
++                        # in the requested frame - this is what the issue wants
++                        return pos_vec.dt(frame)
++                except:
++                    # If derivative computation fails, continue with normal behavior
++                    pass
++                    
++            # If we still can't compute it, raise the original error
+             raise ValueError('Velocity of point ' + self.name + ' has not been'
+-                             ' defined in ReferenceFrame ' + frame.name)
++                              ' defined in ReferenceFrame ' + frame.name)
+         return self._vel_dict[frame]
+ 
+     def partial_velocity(self, frame, *gen_speeds):

@@ -1,0 +1,334 @@
+diff --git a/django/db/migrations/serializer.py b/django/db/migrations/serializer.py
+index 7d226955d5..00e7bea1b7 100644
+--- a/django/db/migrations/serializer.py
++++ b/django/db/migrations/serializer.py
+@@ -267,9 +267,9 @@ class TypeSerializer(BaseSerializer):
+         if hasattr(self.value, "__module__"):
+             module = self.value.__module__
+             if module == builtins.__name__:
+-                return self.value.__name__, set()
++                return self.value.__qualname__, set()
+             else:
+-                return "%s.%s" % (module, self.value.__name__), {"import %s" % module}
++                return "%s.%s" % (module, self.value.__qualname__), {"import %s" % module}
+ 
+ 
+ class UUIDSerializer(BaseSerializer):
+diff --git a/test_builtins.py b/test_builtins.py
+new file mode 100644
+index 0000000000..17fe1a88b9
+--- /dev/null
++++ b/test_builtins.py
+@@ -0,0 +1,40 @@
++#!/usr/bin/env python
++
++import sys
++import os
++sys.path.insert(0, '/tmp/swebench-work2/django__django-12125')
++
++# Test that our fix doesn't break built-in type serialization
++from django.db import models
++from django.db.migrations.serializer import TypeSerializer
++
++print("=== Testing Built-in Types ===")
++
++# Test normal class
++class RegularClass:
++    pass
++
++# Test model (special case)
++print("models.Model:")
++serializer = TypeSerializer(models.Model)
++result, imports = serializer.serialize()
++print("  Result:", result)
++print("  Imports:", imports)
++
++print("\nRegularClass:")
++serializer = TypeSerializer(RegularClass)
++result, imports = serializer.serialize()
++print("  Result:", result)
++print("  Imports:", imports)
++
++print("\nstr type:")
++serializer = TypeSerializer(str)
++result, imports = serializer.serialize()
++print("  Result:", result)
++print("  Imports:", imports)
++
++print("\nint type:")
++serializer = TypeSerializer(int)
++result, imports = serializer.serialize()
++print("  Result:", result)
++print("  Imports:", imports)
+\ No newline at end of file
+diff --git a/test_comprehensive.py b/test_comprehensive.py
+new file mode 100644
+index 0000000000..6c49f8c916
+--- /dev/null
++++ b/test_comprehensive.py
+@@ -0,0 +1,44 @@
++#!/usr/bin/env python
++
++import sys
++import os
++sys.path.insert(0, '/tmp/swebench-work2/django__django-12125')
++
++# Test both nested and regular class serialization
++from django.db import models
++from django.db.migrations.serializer import TypeSerializer
++
++class Outer(object):
++    class Inner(models.CharField):
++        pass
++
++class RegularClass(models.CharField):
++    pass
++
++print("Testing nested class serialization...")
++print("__name__:", Outer.Inner.__name__)
++print("__qualname__:", Outer.Inner.__qualname__)
++print("__module__:", Outer.Inner.__module__)
++
++# Create serializer and test nested class
++serializer = TypeSerializer(Outer.Inner)
++result, imports = serializer.serialize()
++print("Nested serialized result:", result)
++print("Nested imports:", imports)
++
++print("\nTesting regular class serialization...")
++print("__name__:", RegularClass.__name__)
++print("__qualname__:", RegularClass.__qualname__)
++print("__module__:", RegularClass.__module__)
++
++# Test regular class
++serializer2 = TypeSerializer(RegularClass)
++result2, imports2 = serializer2.serialize()
++print("Regular serialized result:", result2)
++print("Regular imports:", imports2)
++
++# Test with models.Model directly
++serializer3 = TypeSerializer(models.Model)
++result3, imports3 = serializer3.serialize()
++print("Model serialized result:", result3)
++print("Model imports:", imports3)
+\ No newline at end of file
+diff --git a/test_issue_fix.py b/test_issue_fix.py
+new file mode 100644
+index 0000000000..597d85dd57
+--- /dev/null
++++ b/test_issue_fix.py
+@@ -0,0 +1,59 @@
++#!/usr/bin/env python
++
++import sys
++import os
++sys.path.insert(0, '/tmp/swebench-work2/django__django-12125')
++
++# Test the exact scenario described in the issue
++from django.db import models
++from django.db.migrations.serializer import TypeSerializer
++
++# Test case 1: The original issue example
++class Outer(object):
++    class Inner(models.CharField):
++        pass
++
++# Test case 2: The enum example from the issue
++import enum
++
++class Thing(models.Model):
++    @enum.unique
++    class State(enum.Enum):
++        on = 'on'
++        off = 'off'
++    
++    state = models.CharField(max_length=10)
++
++print("=== Testing Original Issue Scenario ===")
++print("Outer.Inner:")
++print("  __name__:", Outer.Inner.__name__)
++print("  __qualname__:", Outer.Inner.__qualname__)
++print("  __module__:", Outer.Inner.__module__)
++
++serializer = TypeSerializer(Outer.Inner)
++result, imports = serializer.serialize()
++print("  Serialized result:", result)
++print("  Imports:", imports)
++print()
++
++print("=== Testing Enum Case ===")
++print("Thing.State:")
++print("  __name__:", Thing.State.__name__)
++print("  __qualname__:", Thing.State.__qualname__)
++print("  __module__:", Thing.State.__module__)
++
++serializer2 = TypeSerializer(Thing.State)
++result2, imports2 = serializer2.serialize()
++print("  Serialized result:", result2)
++print("  Imports:", imports2)
++print()
++
++print("=== Expected vs Actual ===")
++print("Expected for nested class: __main__.Outer.Inner")
++print("Actual result:", result)
++print("Correct?", result == "__main__.Outer.Inner")
++
++print()
++print("Expected for enum class: __main__.Thing.State")  
++print("Actual result:", result2)
++print("Correct?", result2 == "__main__.Thing.State")
+\ No newline at end of file
+diff --git a/test_nested_class.py b/test_nested_class.py
+new file mode 100644
+index 0000000000..275d3a6b0a
+--- /dev/null
++++ b/test_nested_class.py
+@@ -0,0 +1,70 @@
++#!/usr/bin/env python
++import os
++import sys
++import django
++from django.conf import settings
++
++# Add current directory to Python path
++sys.path.insert(0, '/tmp/swebench-work2/django__django-12125')
++
++# Configure Django settings
++if not settings.configured:
++    settings.configure(
++        DEBUG=True,
++        DATABASES={
++            'default': {
++                'ENGINE': 'django.db.backends.sqlite3',
++                'NAME': ':memory:',
++            }
++        },
++        INSTALLED_APPS=[
++            'django.contrib.contenttypes',
++            'django.contrib.auth',
++            'django.contrib.sites',
++            'django.contrib.admin',
++            'django.contrib.sessions',
++            'django.contrib.messages',
++            'django.contrib.staticfiles',
++            'django.contrib.humanize',
++            'django.contrib.redirects',
++            'django.contrib.flatpages',
++            'django.contrib.gis',
++            'django.contrib.postgres',
++            'django.contrib.admindocs',
++            'django.contrib.auth',
++            'django.contrib.contenttypes',
++            'django.contrib.sessions',
++            'django.contrib.sites',
++            'django.contrib.messages',
++            'django.contrib.staticfiles',
++            'django.contrib.humanize',
++            'django.contrib.redirects',
++            'django.contrib.flatpages',
++            'django.contrib.gis',
++            'django.contrib.postgres',
++            'django.contrib.admindocs',
++        ],
++        USE_TZ=True,
++        SECRET_KEY='test-secret-key-for-nested-class-test',
++    )
++
++django.setup()
++
++# Now test the nested class serialization
++from django.db import models
++from django.db.migrations.serializer import TypeSerializer
++
++class Outer(object):
++    class Inner(models.CharField):
++        pass
++
++# Test the serializer behavior
++serializer = TypeSerializer(Outer.Inner)
++result, imports = serializer.serialize()
++print("Serialized result:", result)
++print("Imports:", imports)
++
++# Show the difference between __name__ and __qualname__
++print("__name__:", Outer.Inner.__name__)
++print("__qualname__:", Outer.Inner.__qualname__)
++print("__module__:", Outer.Inner.__module__)
+\ No newline at end of file
+diff --git a/test_simple.py b/test_simple.py
+new file mode 100644
+index 0000000000..92aa29d82b
+--- /dev/null
++++ b/test_simple.py
+@@ -0,0 +1,27 @@
++#!/usr/bin/env python
++
++import sys
++import os
++sys.path.insert(0, '/tmp/swebench-work2/django__django-12125')
++
++# Test the issue directly with the serializer
++from django.db import models
++from django.db.migrations.serializer import TypeSerializer
++
++class Outer(object):
++    class Inner(models.CharField):
++        pass
++
++print("Testing nested class serialization...")
++print("__name__:", Outer.Inner.__name__)
++print("__qualname__:", Outer.Inner.__qualname__)
++print("__module__:", Outer.Inner.__module__)
++
++# Create serializer and test
++serializer = TypeSerializer(Outer.Inner)
++result, imports = serializer.serialize()
++print("Serialized result:", result)
++print("Imports:", imports)
++
++# Expected behavior should be: test_nested_class.Outer.Inner
++# But currently it returns: test_nested_class.Inner (incorrect)
+\ No newline at end of file
+diff --git a/test_simple_issue.py b/test_simple_issue.py
+new file mode 100644
+index 0000000000..0ba1b75aa2
+--- /dev/null
++++ b/test_simple_issue.py
+@@ -0,0 +1,36 @@
++#!/usr/bin/env python
++
++import sys
++import os
++sys.path.insert(0, '/tmp/swebench-work2/django__django-12125')
++
++# Test the exact scenario described in the issue - simplified version
++from django.db import models
++from django.db.migrations.serializer import TypeSerializer
++
++# Test case 1: The original issue example
++class Outer(object):
++    class Inner(models.CharField):
++        pass
++
++print("=== Testing Original Issue Scenario ===")
++print("Outer.Inner:")
++print("  __name__:", Outer.Inner.__name__)
++print("  __qualname__:", Outer.Inner.__qualname__)
++print("  __module__:", Outer.Inner.__module__)
++
++serializer = TypeSerializer(Outer.Inner)
++result, imports = serializer.serialize()
++print("  Serialized result:", result)
++print("  Imports:", imports)
++print()
++
++print("=== Expected vs Actual ===")
++print("Expected for nested class: __main__.Outer.Inner")
++print("Actual result:", result)
++print("Correct?", result == "__main__.Outer.Inner")
++
++print()
++print("The fix correctly uses __qualname__ instead of __name__")
++print("Before fix: __main__.Inner (incorrect)")
++print("After fix:  __main__.Outer.Inner (correct)")
+\ No newline at end of file
