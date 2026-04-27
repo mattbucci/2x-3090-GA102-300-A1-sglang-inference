@@ -55,6 +55,11 @@ def parse_args():
                    help="Served model name on the server (defaults to model id after slash)")
     p.add_argument("--max-empty-streak", type=int, default=10,
                    help="Abort if this many consecutive instances produce empty diffs")
+    p.add_argument("--venvdir", default="/tmp/swebench-venvs",
+                   help="Where to cache per-instance uv venvs (shared with score_local)")
+    p.add_argument("--no-venv", action="store_true",
+                   help="Skip pre-rollout venv setup — agent runs read-edit-pray "
+                        "without a working test loop. Compatible with v1 runs.")
     return p.parse_args()
 
 
@@ -149,7 +154,31 @@ def ensure_repo(repo: str, base_commit: str, work_root: Path, instance_id: str) 
 
 
 PROMPT_TEMPLATE = """\
-You are working on a GitHub issue in this repository. Read the problem
+You are working on a GitHub issue in this repository.
+
+The repo is already installed in editable mode in a virtual environment that
+is active on your PATH. You can run `pytest` and `python -c "..."` to verify
+imports, exercise edge cases, and re-run tests after each edit. Use this:
+write a fix, run the relevant tests, observe failures, refine until green.
+
+Read the problem carefully, locate the relevant code, and write the minimal
+patch that fixes the bug. Do not modify tests. Do not add new files unless
+strictly required. When you're confident the fix is correct AND the tests
+exercise it correctly, stop — your final state will be captured as a `git diff`.
+
+# Problem
+
+{problem_statement}
+
+# Hints (optional, may be empty)
+
+{hints}
+"""
+
+PROMPT_NO_VENV = """\
+You are working on a GitHub issue in this repository. The repo's dependencies
+could NOT be installed locally, so `pytest` and `import` will not work — you
+must reason about correctness from the source alone. Read the problem
 carefully, locate the relevant code, and write the minimal patch that fixes
 the bug. Do not modify tests. Do not add new files unless strictly required.
 When you're confident the fix is correct, stop — your final state will be
@@ -165,7 +194,8 @@ captured as a `git diff`.
 """
 
 
-def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path) -> tuple[int, str, str]:
+def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
+                 extra_env: dict[str, str] | None = None) -> tuple[int, str, str]:
     cmd = [
         "opencode", "run",
         "--dir", str(repo_dir),
@@ -176,6 +206,16 @@ def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path
     ]
     env = os.environ.copy()
     env["PATH"] = f"{Path.home()}/.npm-global/bin:{env.get('PATH','')}"
+    if extra_env:
+        # PATH from extra_env (venv/bin) goes BEFORE npm-global (and host /usr/bin)
+        # so the model's `pytest`/`python` resolves to the venv-installed
+        # versions during its tool calls.
+        venv_path = extra_env.get("PATH")
+        if venv_path:
+            env["PATH"] = venv_path + ":" + env["PATH"]
+        for k, v in extra_env.items():
+            if k != "PATH":
+                env[k] = v
     t0 = time.time()
     # Run in a fresh process group so SIGKILL on timeout reaps the Node spawned
     # children too (default subprocess kill leaves them dangling — observed at
@@ -271,12 +311,39 @@ def main():
                     print(f"  CLONE FAIL: {e}", flush=True)
                     continue
 
-                prompt = PROMPT_TEMPLATE.format(
+                # Pre-rollout venv setup so the model can run pytest mid-iteration.
+                # If install fails we still attempt the rollout (read-edit-pray fallback),
+                # but the prompt warns the model that tests aren't available.
+                venv = None
+                if not args.no_venv:
+                    from eval_env import make_venv, install_deps
+                    from swebench.harness.constants import MAP_REPO_VERSION_TO_SPECS
+                    spec = MAP_REPO_VERSION_TO_SPECS.get(row["repo"], {}).get(row["version"])
+                    if spec:
+                        env_log = out / "logs" / f"{iid}.env.log"
+                        try:
+                            v = make_venv(Path(args.venvdir), iid, spec.get("python", "3.11"))
+                            if install_deps(v, inst_dir, spec, env_log):
+                                venv = v
+                                print(f"  env: venv ready ({spec.get('python', '3.11')}, {len(spec.get('pip_packages', []))} pkgs)", flush=True)
+                            else:
+                                print(f"  env: install FAILED — falling back to no-venv prompt", flush=True)
+                        except subprocess.CalledProcessError as e:
+                            print(f"  env: venv setup crashed: {e} — falling back", flush=True)
+
+                prompt = (PROMPT_TEMPLATE if venv else PROMPT_NO_VENV).format(
                     problem_statement=row["problem_statement"],
                     hints=row.get("hints_text", "") or "(none)",
                 )
                 log_path = out / "logs" / f"{iid}.log"
-                rc, _stdout, _stderr = run_opencode(args.model, inst_dir, prompt, args.timeout, log_path)
+                extra_env = {}
+                if venv:
+                    extra_env = {
+                        "VIRTUAL_ENV": str(venv),
+                        "PATH": f"{venv}/bin",
+                    }
+                rc, _stdout, _stderr = run_opencode(args.model, inst_dir, prompt, args.timeout,
+                                                    log_path, extra_env=extra_env)
                 diff = capture_diff(inst_dir)
                 (out / "predictions" / f"{iid}.diff").write_text(diff)
 

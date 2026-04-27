@@ -88,6 +88,17 @@ apply_preset() {
             QUANT="awq_marlin"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             ;;
+        coder-30b-eval)
+            # SWE-bench eval preset: 256K + single-batch CUDA graph, mirrors
+            # `coder-reap-25b` so the two models can be benched apples-to-apples.
+            # mattbucci/Qwen3-Coder-30B-A3B-AWQ ships compressed-tensors format,
+            # not the native AWQ-Marlin layout the local AWQ-Marlin dir uses.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ}"
+            QUANT="compressed-tensors"
+            CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
+            CUDA_GRAPH="--cuda-graph-max-bs 1"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
+            ;;
         coder-reap-25b)
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ}"
             QUANT="awq_marlin"
