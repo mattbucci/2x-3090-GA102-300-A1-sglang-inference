@@ -1,0 +1,122 @@
+# pytest -rA tests/test_cli.py
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.0.3, pluggy-1.6.0
+rootdir: /tmp/swebench-work2/pallets__flask-5063
+configfile: pyproject.toml
+collected 57 items
+
+tests/test_cli.py ......................................FF.....FFss.s... [ 94%]
+...                                                                      [100%]
+
+=================================== FAILURES ===================================
+______________________ test_no_command_echo_loading_error ______________________
+
+    def test_no_command_echo_loading_error():
+>       from flask.cli import cli
+E       ImportError: cannot import name 'cli' from 'flask.cli' (/tmp/swebench-work2/pallets__flask-5063/src/flask/cli.py)
+
+tests/test_cli.py:401: ImportError
+_________________________ test_help_echo_loading_error _________________________
+
+    def test_help_echo_loading_error():
+>       from flask.cli import cli
+E       ImportError: cannot import name 'cli' from 'flask.cli' (/tmp/swebench-work2/pallets__flask-5063/src/flask/cli.py)
+
+tests/test_cli.py:411: ImportError
+__________________________ TestRoutes.test_subdomain ___________________________
+
+self = <test_cli.TestRoutes object at 0x7fb3fdd97f50>
+runner = <click.testing.CliRunner object at 0x7fb3fde8c7d0>
+
+    def test_subdomain(self, runner):
+        app = Flask(__name__, static_folder=None)
+        app.add_url_rule("/a", subdomain="a", endpoint="a")
+        app.add_url_rule("/b", subdomain="b", endpoint="b")
+        cli = FlaskGroup(create_app=lambda: app)
+        result = runner.invoke(cli, ["routes"])
+        assert result.exit_code == 0
+>       assert "Subdomain" in result.output
+E       AssertionError: assert 'Subdomain' in 'Domain  Endpoint  Methods  Rule\n------  --------  -------  ----\na       a         GET      /a\nb       b         GET      /b\n'
+E        +  where 'Domain  Endpoint  Methods  Rule\n------  --------  -------  ----\na       a         GET      /a\nb       b         GET      /b\n' = <Result okay>.output
+
+tests/test_cli.py:495: AssertionError
+_____________________________ TestRoutes.test_host _____________________________
+
+self = <test_cli.TestRoutes object at 0x7fb3fdd8c550>
+runner = <click.testing.CliRunner object at 0x7fb3fdd96050>
+
+    def test_host(self, runner):
+        app = Flask(__name__, static_folder=None, host_matching=True)
+        app.add_url_rule("/a", host="a", endpoint="a")
+        app.add_url_rule("/b", host="b", endpoint="b")
+        cli = FlaskGroup(create_app=lambda: app)
+        result = runner.invoke(cli, ["routes"])
+        assert result.exit_code == 0
+>       assert "Host" in result.output
+E       AssertionError: assert 'Host' in 'Endpoint  Methods  Rule\n--------  -------  ----\na         GET      /a\nb         GET      /b\n'
+E        +  where 'Endpoint  Methods  Rule\n--------  -------  ----\na         GET      /a\nb         GET      /b\n' = <Result okay>.output
+
+tests/test_cli.py:504: AssertionError
+==================================== PASSES ====================================
+_____________________________ test_dotenv_optional _____________________________
+----------------------------- Captured stderr call -----------------------------
+ * Tip: There are .env or .flaskenv files present. Do "pip install python-dotenv" to use them.
+=========================== short test summary info ============================
+PASSED tests/test_cli.py::test_cli_name
+PASSED tests/test_cli.py::test_find_best_app
+PASSED tests/test_cli.py::test_prepare_import[test-path0-test]
+PASSED tests/test_cli.py::test_prepare_import[test.py-path1-test]
+PASSED tests/test_cli.py::test_prepare_import[a/test-path2-test]
+PASSED tests/test_cli.py::test_prepare_import[test/__init__.py-path3-test]
+PASSED tests/test_cli.py::test_prepare_import[test/__init__-path4-test]
+PASSED tests/test_cli.py::test_prepare_import[value5-path5-cliapp.inner1]
+PASSED tests/test_cli.py::test_prepare_import[value6-path6-cliapp.inner1.inner2]
+PASSED tests/test_cli.py::test_prepare_import[test.a.b-path7-test.a.b]
+PASSED tests/test_cli.py::test_prepare_import[value8-path8-cliapp.app]
+PASSED tests/test_cli.py::test_prepare_import[value9-path9-cliapp.message.txt]
+PASSED tests/test_cli.py::test_locate_app[cliapp.app-None-testapp]
+PASSED tests/test_cli.py::test_locate_app[cliapp.app-testapp-testapp]
+PASSED tests/test_cli.py::test_locate_app[cliapp.factory-None-app]
+PASSED tests/test_cli.py::test_locate_app[cliapp.factory-create_app-app]
+PASSED tests/test_cli.py::test_locate_app[cliapp.factory-create_app()-app]
+PASSED tests/test_cli.py::test_locate_app[cliapp.factory-create_app2("foo", "bar")-app2_foo_bar]
+PASSED tests/test_cli.py::test_locate_app[cliapp.factory-create_app2("foo", "bar", )-app2_foo_bar]
+PASSED tests/test_cli.py::test_locate_app[cliapp.factory- create_app () -app]
+PASSED tests/test_cli.py::test_locate_app_raises[notanapp.py-None]
+PASSED tests/test_cli.py::test_locate_app_raises[cliapp/app-None]
+PASSED tests/test_cli.py::test_locate_app_raises[cliapp.app-notanapp]
+PASSED tests/test_cli.py::test_locate_app_raises[cliapp.factory-create_app2("foo")]
+PASSED tests/test_cli.py::test_locate_app_raises[cliapp.factory-create_app(]
+PASSED tests/test_cli.py::test_locate_app_raises[cliapp.factory-no_app]
+PASSED tests/test_cli.py::test_locate_app_raises[cliapp.importerrorapp-None]
+PASSED tests/test_cli.py::test_locate_app_raises[cliapp.message.txt-None]
+PASSED tests/test_cli.py::test_locate_app_suppress_raise
+PASSED tests/test_cli.py::test_get_version
+PASSED tests/test_cli.py::test_scriptinfo
+PASSED tests/test_cli.py::test_app_cli_has_app_context
+PASSED tests/test_cli.py::test_with_appcontext
+PASSED tests/test_cli.py::test_appgroup_app_context
+PASSED tests/test_cli.py::test_flaskgroup_app_context
+PASSED tests/test_cli.py::test_flaskgroup_debug[True]
+PASSED tests/test_cli.py::test_flaskgroup_debug[False]
+PASSED tests/test_cli.py::test_flaskgroup_nested
+PASSED tests/test_cli.py::test_help_echo_exception
+PASSED tests/test_cli.py::TestRoutes::test_simple
+PASSED tests/test_cli.py::TestRoutes::test_sort
+PASSED tests/test_cli.py::TestRoutes::test_all_methods
+PASSED tests/test_cli.py::TestRoutes::test_no_routes
+PASSED tests/test_cli.py::test_dotenv_optional
+PASSED tests/test_cli.py::test_run_cert_path
+PASSED tests/test_cli.py::test_run_cert_adhoc
+PASSED tests/test_cli.py::test_run_cert_import
+PASSED tests/test_cli.py::test_run_cert_no_ssl
+PASSED tests/test_cli.py::test_cli_blueprints
+PASSED tests/test_cli.py::test_cli_empty
+SKIPPED [1] tests/test_cli.py:521: dotenv is not installed
+SKIPPED [1] tests/test_cli.py:545: dotenv is not installed
+SKIPPED [1] tests/test_cli.py:562: dotenv is not installed
+FAILED tests/test_cli.py::test_no_command_echo_loading_error - ImportError: c...
+FAILED tests/test_cli.py::test_help_echo_loading_error - ImportError: cannot ...
+FAILED tests/test_cli.py::TestRoutes::test_subdomain - AssertionError: assert...
+FAILED tests/test_cli.py::TestRoutes::test_host - AssertionError: assert 'Hos...
+=================== 4 failed, 50 passed, 3 skipped in 0.11s ====================

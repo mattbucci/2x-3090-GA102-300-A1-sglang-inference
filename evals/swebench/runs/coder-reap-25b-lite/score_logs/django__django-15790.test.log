@@ -1,0 +1,25 @@
+# ./tests/runtests.py --verbosity 2 --settings=test_sqlite --parallel 1 check_framework.test_templates
+Testing against Django installed in '/tmp/swebench-work2/django__django-15790/django'
+Importing application check_framework
+Found 13 test(s).
+Skipping setup of unused database(s): default, other.
+System check identified no issues (0 silenced).
+test_app_dirs_and_loaders (check_framework.test_templates.CheckTemplateSettingsAppDirsTest)
+Error if template loaders are specified and APP_DIRS is True. ... ok
+test_app_dirs_removed (check_framework.test_templates.CheckTemplateSettingsAppDirsTest) ... ok
+test_loaders_removed (check_framework.test_templates.CheckTemplateSettingsAppDirsTest) ... ok
+test_string_if_invalid_both_are_strings (check_framework.test_templates.CheckTemplateStringIfInvalidTest) ... ok
+test_string_if_invalid_first_is_string (check_framework.test_templates.CheckTemplateStringIfInvalidTest) ... ok
+test_string_if_invalid_not_specified (check_framework.test_templates.CheckTemplateStringIfInvalidTest) ... ok
+test_string_if_invalid_not_string (check_framework.test_templates.CheckTemplateStringIfInvalidTest) ... ok
+test_template_tags_same_library_in_installed_apps_libraries (check_framework.test_templates.CheckTemplateTagLibrariesWithSameName) ... ok
+test_template_tags_with_different_library_name (check_framework.test_templates.CheckTemplateTagLibrariesWithSameName) ... ok
+test_template_tags_with_different_name (check_framework.test_templates.CheckTemplateTagLibrariesWithSameName) ... ok
+test_template_tags_with_same_library_name (check_framework.test_templates.CheckTemplateTagLibrariesWithSameName) ... ok
+test_template_tags_with_same_library_name_and_module_name (check_framework.test_templates.CheckTemplateTagLibrariesWithSameName) ... ok
+test_template_tags_with_same_name (check_framework.test_templates.CheckTemplateTagLibrariesWithSameName) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.004s
+
+OK

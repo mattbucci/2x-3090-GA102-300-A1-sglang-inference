@@ -1,0 +1,15 @@
+rc=1
+
+Checking patch django/db/backends/postgresql/client.py...
+Checking patch tests/dbshell/test_postgresql.py...
+error: while searching for:
+    def test_parameters(self):
+        self.assertEqual(
+            self.settings_to_cmd_args_env({"NAME": "dbname"}, ["--help"]),
+            (["psql", "dbname", "--help"], None),
+        )
+
+    @skipUnless(connection.vendor == "postgresql", "Requires a PostgreSQL connection")
+
+error: patch failed: tests/dbshell/test_postgresql.py:154
+error: tests/dbshell/test_postgresql.py: patch does not apply

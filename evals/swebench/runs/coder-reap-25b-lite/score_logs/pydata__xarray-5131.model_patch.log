@@ -1,0 +1,15 @@
+rc=1
+
+Checking patch xarray/core/groupby.py...
+Checking patch xarray/tests/test_groupby.py...
+error: while searching for:
+def test_groupby_repr(obj, dim):
+    actual = repr(obj.groupby(dim))
+    expected = "%sGroupBy" % obj.__class__.__name__
+    expected += ", grouped over %r " % dim
+    expected += "\n%r groups with labels " % (len(np.unique(obj[dim])))
+    if dim == "x":
+        expected += "1, 2, 3, 4, 5."
+
+error: patch failed: xarray/tests/test_groupby.py:388
+error: xarray/tests/test_groupby.py: patch does not apply

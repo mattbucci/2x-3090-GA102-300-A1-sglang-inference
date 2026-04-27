@@ -1,0 +1,11 @@
+rc=1
+
+Checking patch django/db/models/sql/compiler.py...
+Checking patch tests/known_related_objects/tests.py...
+error: while searching for:
+            )
+            self.assertIs(ps[0], ps[0].pool_1.poolstyle)
+            self.assertIs(ps[0], ps[0].pool_2.another_style)
+
+error: patch failed: tests/known_related_objects/tests.py:164
+error: tests/known_related_objects/tests.py: patch does not apply

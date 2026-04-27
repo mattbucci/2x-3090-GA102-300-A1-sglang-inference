@@ -1,0 +1,15 @@
+rc=1
+
+Checking patch django/db/models/fields/related.py...
+Checking patch tests/invalid_models_tests/test_relative_fields.py...
+error: while searching for:
+                "keyword argument.",
+                hint=(
+                    'If you want to create a recursive relationship, use '
+                    'ForeignKey("self", symmetrical=False, through="AmbiguousRelationship").'
+                ),
+                obj=field,
+                id='fields.E335',
+
+error: patch failed: tests/invalid_models_tests/test_relative_fields.py:152
+error: tests/invalid_models_tests/test_relative_fields.py: patch does not apply

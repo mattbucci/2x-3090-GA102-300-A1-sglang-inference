@@ -1,0 +1,51 @@
+
+# /tmp/swebench-venvs/django__django-14017/bin/python -m pip install --quiet -U pip wheel
+
+# /tmp/swebench-venvs/django__django-14017/bin/python -m pip install --quiet -e .
+
+# /tmp/swebench-venvs/django__django-14017/bin/python -m pip install --quiet -e .[test]
+WARNING: django 4.0 does not provide the extra 'test'
+
+# /tmp/swebench-venvs/django__django-14017/bin/python -m pip install --quiet -e .[testing]
+WARNING: django 4.0 does not provide the extra 'testing'
+
+# /tmp/swebench-venvs/django__django-14017/bin/python -m pip install --quiet -e .[dev]
+WARNING: django 4.0 does not provide the extra 'dev'
+
+# /tmp/swebench-venvs/django__django-14017/bin/python -m pip install --quiet pytest
+# bootstrap rc=0
+
+
+# install: python -m pip install -e .
+rc=0
+Obtaining file:///tmp/swebench-work2/django__django-14017
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Getting requirements to build editable: started
+  Getting requirements to build editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Collecting asgiref>=3.2.10 (from Django==4.0)
+  Using cached asgiref-3.8.1-py3-none-any.whl.metadata (9.3 kB)
+Collecting pytz (from Django==4.0)
+  Using cached pytz-2026.1.post1-py2.py3-none-any.whl.metadata (22 kB)
+Collecting sqlparse>=0.2.2 (from Django==4.0)
+  Using cached sqlparse-0.5.5-py3-none-any.whl.metadata (4.7 kB)
+Collecting typing-extensions>=4 (from asgiref>=3.2.10->Django==4.0)
+  Using cached typing_extensions-4.13.2-py3-none-any.whl.metadata (3.0 kB)
+Using cached asgiref-3.8.1-py3-none-any.whl (23 kB)
+Using cached sqlparse-0.5.5-py3-none-any.whl (46 kB)
+Using cached pytz-2026.1.post1-py2.py3-none-any.whl (510 kB)
+Using cached typing_extensions-4.13.2-py3-none-any.whl (45 kB)
+Building wheels for collected packages: Django
+  Building editable for Django (pyproject.toml): started
+  Building editable for Django (pyproject.toml): finished with status 'done'
+  Created wheel for Django: filename=django-4.0-0.editable-py3-none-any.whl size=25610 sha256=4c7add34365a8d6999e09510632aea935e2bf46c2ee9f3d89a2b80b2bcd29365
+  Stored in directory: /tmp/pip-ephem-wheel-cache-32s23w8k/wheels/38/34/64/ec1bc7c5d46f94153b1897daffd8aa3291d84e6e925bd9e591
+Successfully built Django
+Installing collected packages: pytz, typing-extensions, sqlparse, asgiref, Django
+Successfully installed Django-4.0 asgiref-3.8.1 pytz-2026.1.post1 sqlparse-0.5.5 typing-extensions-4.13.2
+
+

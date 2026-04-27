@@ -1,0 +1,88 @@
+
+# /tmp/swebench-venvs/matplotlib__matplotlib-23314/bin/python -m pip install --quiet -U pip wheel
+
+# /tmp/swebench-venvs/matplotlib__matplotlib-23314/bin/python -m pip install --quiet -e .
+
+# /tmp/swebench-venvs/matplotlib__matplotlib-23314/bin/python -m pip install --quiet -e .[test]
+WARNING: matplotlib 3.6.0.dev2513+g97fc11549.d20260427 does not provide the extra 'test'
+
+# /tmp/swebench-venvs/matplotlib__matplotlib-23314/bin/python -m pip install --quiet -e .[testing]
+WARNING: matplotlib 3.6.0.dev2513+g97fc11549.d20260427 does not provide the extra 'testing'
+
+# /tmp/swebench-venvs/matplotlib__matplotlib-23314/bin/python -m pip install --quiet -e .[dev]
+WARNING: matplotlib 3.6.0.dev2513+g97fc11549.d20260427 does not provide the extra 'dev'
+
+# /tmp/swebench-venvs/matplotlib__matplotlib-23314/bin/python -m pip install --quiet pytest
+# SKIP system: apt-get -y update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get install -y imagemagick ffmpeg texlive texlive-latex-extra texlive-fonts-recommended texlive-xetex texlive-luatex cm-super dvipng
+# pre_install: QHULL_URL="http://www.qhull.org/download/qhull-2020-src-8.0.2.tgz"
+rc=0
+
+
+# pre_install: QHULL_TAR="/tmp/qhull-2020-src-8.0.2.tgz"
+rc=0
+
+
+# pre_install: QHULL_BUILD_DIR="/testbed/build"
+rc=0
+
+
+# pre_install: wget -O "$QHULL_TAR" "$QHULL_URL"
+rc=1
+
+No such file or directory
+
+# pre_install: mkdir -p "$QHULL_BUILD_DIR"
+rc=1
+
+mkdir: cannot create directory ‘’: No such file or directory
+
+# pre_install: tar -xvzf "$QHULL_TAR" -C "$QHULL_BUILD_DIR"
+rc=2
+
+tar (child): : Cannot open: No such file or directory
+tar (child): Error is not recoverable: exiting now
+tar: Child returned status 2
+tar: Error is not recoverable: exiting now
+
+# bootstrap rc=0
+
+
+# pip_packages rc=0
+
+
+# install: python -m pip install -e .
+rc=0
+Obtaining file:///tmp/swebench-work2/matplotlib__matplotlib-23314
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Getting requirements to build editable: started
+  Getting requirements to build editable: finished with status 'done'
+  Installing backend dependencies: started
+  Installing backend dependencies: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Requirement already satisfied: contourpy>=1.0.1 in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (1.1.0)
+Requirement already satisfied: cycler>=0.10 in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (0.11.0)
+Requirement already satisfied: fonttools>=4.22.0 in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (4.42.1)
+Requirement already satisfied: kiwisolver>=1.0.1 in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (1.4.5)
+Requirement already satisfied: numpy>=1.19 in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (1.25.2)
+Requirement already satisfied: packaging>=20.0 in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (23.1)
+Requirement already satisfied: pillow>=6.2.0 in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (10.0.0)
+Requirement already satisfied: pyparsing>=2.2.1 in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (3.0.9)
+Requirement already satisfied: python-dateutil>=2.7 in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (2.8.2)
+Requirement already satisfied: setuptools_scm>=4 in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (7.1.0)
+Requirement already satisfied: six>=1.5 in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from python-dateutil>=2.7->matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (1.16.0)
+Requirement already satisfied: setuptools in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from setuptools_scm>=4->matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (68.1.2)
+Requirement already satisfied: typing-extensions in /tmp/swebench-venvs/matplotlib__matplotlib-23314/lib/python3.11/site-packages (from setuptools_scm>=4->matplotlib==3.6.0.dev2513+g97fc11549.d20260427) (4.7.1)
+Building wheels for collected packages: matplotlib
+  Building editable for matplotlib (pyproject.toml): started
+  Building editable for matplotlib (pyproject.toml): finished with status 'done'
+  Created wheel for matplotlib: filename=matplotlib-3.6.0.dev2513+g97fc11549.d20260427-0.editable-cp311-cp311-linux_x86_64.whl size=23230 sha256=990d8659adacee542ca5f9f3cfe1ed29887ab76e05f05546b486f66bb970a6c0
+  Stored in directory: /tmp/pip-ephem-wheel-cache-bc475g3x/wheels/cc/28/f3/1f8158e5e39c7bb36708f753e15060762d1e83b733084d853b
+Successfully built matplotlib
+Installing collected packages: matplotlib
+Successfully installed matplotlib-3.6.0.dev2513+g97fc11549.d20260427
+
+

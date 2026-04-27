@@ -1,0 +1,92 @@
+# PYTHONWARNINGS='ignore::UserWarning,ignore::SyntaxWarning' bin/test -C --verbose sympy/matrices/expressions/tests/test_blockmatrix.py sympy/matrices/expressions/tests/test_indexing.py
+============================= test process starts ==============================
+executable:         /tmp/swebench-venvs/sympy__sympy-19007/bin/python  (3.9.25-final-0) [CPython]
+architecture:       64-bit
+cache:              no
+ground types:       python 
+numpy:              None
+random seed:        38056278
+hash randomization: on (PYTHONHASHSEED=3973259371)
+
+sympy/matrices/expressions/tests/test_blockmatrix.py[17] 
+test_bc_matmul ok
+test_bc_matadd ok
+test_bc_transpose ok
+test_bc_dist_diag ok
+test_block_plus_ident ok
+test_BlockMatrix ok
+test_block_collapse_explicit_matrices ok
+test_issue_17624 ok
+test_issue_18618 F
+test_BlockMatrix_trace ok
+test_BlockMatrix_Determinant ok
+test_squareBlockMatrix ok
+test_BlockDiagMatrix ok
+test_blockcut F
+test_reblock_2x2 F
+test_deblock ok
+test_block_collapse_type ok                                               [FAIL]
+
+sympy/matrices/expressions/tests/test_indexing.py[15] 
+test_symbolic_indexing ok
+test_add_index ok
+test_mul_index ok
+test_pow_index ok
+test_transpose_index ok
+test_Identity_index ok
+test_block_index F
+test_block_index_symbolic F
+test_block_index_symbolic_nonzero F
+test_block_index_large F
+test_block_index_symbolic_fail f
+test_slicing ok
+test_errors ok
+test_matrix_expression_to_indices ok
+test_matrix_expression_from_index_summation ok                            [FAIL]
+
+
+________________________________________________________________________________
+____ sympy/matrices/expressions/tests/test_blockmatrix.py:test_issue_18618 _____
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-19007/sympy/matrices/expressions/tests/test_blockmatrix.py", line 115, in test_issue_18618
+    assert A == Matrix(BlockDiagMatrix(A))
+AssertionError
+________________________________________________________________________________
+______ sympy/matrices/expressions/tests/test_blockmatrix.py:test_blockcut ______
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-19007/sympy/matrices/expressions/tests/test_blockmatrix.py", line 200, in test_blockcut
+    assert M == ImmutableMatrix(B)
+AssertionError
+________________________________________________________________________________
+____ sympy/matrices/expressions/tests/test_blockmatrix.py:test_reblock_2x2 _____
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-19007/sympy/matrices/expressions/tests/test_blockmatrix.py", line 215, in test_reblock_2x2
+    assert B.as_explicit() == BB.as_explicit()
+AssertionError
+________________________________________________________________________________
+______ sympy/matrices/expressions/tests/test_indexing.py:test_block_index ______
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-19007/sympy/matrices/expressions/tests/test_indexing.py", line 75, in test_block_index
+    assert B[0, 0] == B[3, 0] == B[0, 3] == B[3, 3] == 1
+AssertionError
+________________________________________________________________________________
+_ sympy/matrices/expressions/tests/test_indexing.py:test_block_index_symbolic __
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-19007/sympy/matrices/expressions/tests/test_indexing.py", line 94, in test_block_index_symbolic
+    assert A[0, 0] == MatrixElement(A, 0, 0)  # Cannot be A1[0, 0]
+AssertionError
+________________________________________________________________________________
+ sympy/matrices/expressions/tests/test_indexing.py:test_block_index_symbolic_nonzero 
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-19007/sympy/matrices/expressions/tests/test_indexing.py", line 115, in test_block_index_symbolic_nonzero
+    assert A[0, 0] == A1[0, 0]
+AssertionError
+________________________________________________________________________________
+___ sympy/matrices/expressions/tests/test_indexing.py:test_block_index_large ___
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-19007/sympy/matrices/expressions/tests/test_indexing.py", line 138, in test_block_index_large
+    assert A[n + i, n + i] == MatrixElement(A, n + i, n + i)
+AssertionError
+
+=== tests finished: 24 passed, 7 failed, 1 expected to fail, in 0.37 seconds ===
+DO *NOT* COMMIT!

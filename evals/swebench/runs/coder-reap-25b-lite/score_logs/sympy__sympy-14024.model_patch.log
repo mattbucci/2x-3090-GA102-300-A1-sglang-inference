@@ -1,0 +1,22 @@
+rc=0
+
+/tmp/swebench-work2/sympy__sympy-14024/.model.patch:11: trailing whitespace.
+1. When `a` is Symbol('a', integer=True, positive=True), the expression (-a)**x * a**(-x) 
+/tmp/swebench-work2/sympy__sympy-14024/.model.patch:25: trailing whitespace.
+# 1. (-a)**x * a**(-x) -> a**(-x) * (-a)**x  
+/tmp/swebench-work2/sympy__sympy-14024/.model.patch:30: trailing whitespace.
+# When we have (-a)**x * a**(-x), the correct mathematical simplification 
+/tmp/swebench-work2/sympy__sympy-14024/.model.patch:39: trailing whitespace.
+    
+/tmp/swebench-work2/sympy__sympy-14024/.model.patch:41: trailing whitespace.
+    1. For Symbol('a', integer=True, positive=True): 
+Checking patch fix_powsimp.py...
+Checking patch sympy/simplify/powsimp.py...
+Checking patch test_fix.py...
+Checking patch test_issue.py...
+Applied patch fix_powsimp.py cleanly.
+Applied patch sympy/simplify/powsimp.py cleanly.
+Applied patch test_fix.py cleanly.
+Applied patch test_issue.py cleanly.
+warning: squelched 8 whitespace errors
+warning: 13 lines add whitespace errors.

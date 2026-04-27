@@ -1,0 +1,208 @@
+# pytest -rA tests/test_self.py
+============================= test session starts ==============================
+platform linux -- Python 3.9.25, pytest-8.4.2, pluggy-1.6.0
+rootdir: /tmp/swebench-work2/pylint-dev__pylint-7080
+configfile: setup.cfg
+collected 0 items / 1 error
+
+==================================== ERRORS ====================================
+_____________________ ERROR collecting tests/test_self.py ______________________
+ImportError while importing test module '/tmp/swebench-work2/pylint-dev__pylint-7080/tests/test_self.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_self.py:30: in <module>
+    from py._path.local import LocalPath  # type: ignore[import]
+E   ModuleNotFoundError: No module named 'py._path'; 'py' is not a package
+------------------------------- Captured stderr --------------------------------
+Problem importing module variables.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/variables.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module utils.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/utils.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module unsupported_version.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/unsupported_version.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module unicode.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/unicode.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module typecheck.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/typecheck.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module threading_checker.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/threading_checker.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module strings.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/strings.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module stdlib.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/stdlib.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module spelling.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/spelling.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module similar.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/similar.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module raw_metrics.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/raw_metrics.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module non_ascii_names.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/non_ascii_names.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module newstyle.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/newstyle.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module modified_iterating_checker.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/modified_iterating_checker.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module misc.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/misc.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module method_args.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/method_args.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module mapreduce_checker.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/mapreduce_checker.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module logging.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/logging.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module lambda_expressions.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/lambda_expressions.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module imports.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/imports.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module format.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/format.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module exceptions.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/exceptions.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module ellipsis_checker.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/ellipsis_checker.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module dunder_methods.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/dunder_methods.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module design_analysis.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/design_analysis.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module deprecated.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/deprecated.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module base_checker.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/base_checker.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module async.py: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/async.py in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module refactoring: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/refactoring in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module classes: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/classes in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+Problem importing module base: Unable to find module for /tmp/swebench-work2/pylint-dev__pylint-7080/pylint/checkers/base in /tmp/swebench-work2/pylint-dev__pylint-7080/tests, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/bin, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python39.zip, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9, 
+/home/letsrtfm/.local/share/uv/python/cpython-3.9.25-linux-x86_64-gnu/lib/python3.9/lib-dynload, 
+/tmp/swebench-venvs/pylint-dev__pylint-7080/lib/python3.9/site-packages
+=========================== short test summary info ============================
+ERROR tests/test_self.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 0.10s ===============================

@@ -1,0 +1,28 @@
+# PYTHONWARNINGS='ignore::UserWarning,ignore::SyntaxWarning' bin/test -C --verbose sympy/vector/tests/test_printing.py
+============================= test process starts ==============================
+executable:         /tmp/swebench-venvs/sympy__sympy-23191/bin/python  (3.9.25-final-0) [CPython]
+architecture:       64-bit
+cache:              no
+ground types:       python 
+numpy:              None
+random seed:        23556073
+hash randomization: on (PYTHONHASHSEED=413253959)
+
+sympy/vector/tests/test_printing.py[6] 
+test_str_printing ok
+test_pretty_printing_ascii f
+test_pretty_print_unicode_v ok
+test_latex_printing ok
+test_issue_23058 F
+test_custom_names ok                                                      [FAIL]
+
+
+________________________________________________________________________________
+_____________ sympy/vector/tests/test_printing.py:test_issue_23058 _____________
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-23191/sympy/vector/tests/test_printing.py", line 198, in test_issue_23058
+    assert upretty(vecB) == vecB_str
+AssertionError
+
+=== tests finished: 4 passed, 1 failed, 1 expected to fail, in 0.40 seconds ====
+DO *NOT* COMMIT!

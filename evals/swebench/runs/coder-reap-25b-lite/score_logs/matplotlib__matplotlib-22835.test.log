@@ -1,0 +1,81 @@
+# pytest -rA lib/matplotlib/tests/test_artist.py
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.0.3, pluggy-1.6.0
+rootdir: /tmp/swebench-work2/matplotlib__matplotlib-22835
+configfile: pytest.ini
+collected 29 items
+
+lib/matplotlib/tests/test_artist.py ...ss...ss..................F        [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_format_cursor_data_BoundaryNorm _____________________
+
+    def test_format_cursor_data_BoundaryNorm():
+        """Test if cursor data is correct when using BoundaryNorm."""
+        X = np.empty((3, 3))
+        X[0, 0] = 0.9
+        X[0, 1] = 0.99
+        X[0, 2] = 0.999
+        X[1, 0] = -1
+        X[1, 1] = 0
+        X[1, 2] = 1
+        X[2, 0] = 0.09
+        X[2, 1] = 0.009
+        X[2, 2] = 0.0009
+    
+        # map range -1..1 to 0..256 in 0.1 steps
+        fig, ax = plt.subplots()
+        fig.suptitle("-1..1 to 0..256 in 0.1")
+        norm = mcolors.BoundaryNorm(np.linspace(-1, 1, 20), 256)
+        img = ax.imshow(X, cmap='RdBu_r', norm=norm)
+    
+        labels_list = [
+            "[0.9]",
+            "[1.]",
+            "[1.]",
+            "[-1.0]",
+            "[0.0]",
+            "[1.0]",
+            "[0.09]",
+            "[0.009]",
+            "[0.0009]",
+        ]
+        for v, label in zip(X.flat, labels_list):
+            # label = "[{:-#.{}g}]".format(v, cbook._g_sig_digits(v, 0.1))
+>           assert img.format_cursor_data(v) == label
+E           AssertionError: assert '[0.9000000000000000]' == '[0.9]'
+E             
+E             - [0.9]
+E             + [0.9000000000000000]
+
+lib/matplotlib/tests/test_artist.py:411: AssertionError
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED lib/matplotlib/tests/test_artist.py::test_patch_transform_of_none
+PASSED lib/matplotlib/tests/test_artist.py::test_collection_transform_of_none
+PASSED lib/matplotlib/tests/test_artist.py::test_clipping[png]
+PASSED lib/matplotlib/tests/test_artist.py::test_clipping_zoom[png]
+PASSED lib/matplotlib/tests/test_artist.py::test_cull_markers
+PASSED lib/matplotlib/tests/test_artist.py::test_hatching[png]
+PASSED lib/matplotlib/tests/test_artist.py::test_remove
+PASSED lib/matplotlib/tests/test_artist.py::test_default_edges[png]
+PASSED lib/matplotlib/tests/test_artist.py::test_properties
+PASSED lib/matplotlib/tests/test_artist.py::test_setp
+PASSED lib/matplotlib/tests/test_artist.py::test_None_zorder
+PASSED lib/matplotlib/tests/test_artist.py::test_artist_inspector_get_valid_values[-unknown]
+PASSED lib/matplotlib/tests/test_artist.py::test_artist_inspector_get_valid_values[ACCEPTS: [ '-' | '--' | '-.' ]-[ '-' | '--' | '-.' ]]
+PASSED lib/matplotlib/tests/test_artist.py::test_artist_inspector_get_valid_values[ACCEPTS: Some description.-Some description.]
+PASSED lib/matplotlib/tests/test_artist.py::test_artist_inspector_get_valid_values[.. ACCEPTS: Some description.-Some description.]
+PASSED lib/matplotlib/tests/test_artist.py::test_artist_inspector_get_valid_values[arg : int-int]
+PASSED lib/matplotlib/tests/test_artist.py::test_artist_inspector_get_valid_values[*arg : int-int]
+PASSED lib/matplotlib/tests/test_artist.py::test_artist_inspector_get_valid_values[arg : int\nACCEPTS: Something else.-Something else. ]
+PASSED lib/matplotlib/tests/test_artist.py::test_artist_inspector_get_aliases
+PASSED lib/matplotlib/tests/test_artist.py::test_set_alpha
+PASSED lib/matplotlib/tests/test_artist.py::test_set_alpha_for_array
+PASSED lib/matplotlib/tests/test_artist.py::test_callbacks
+PASSED lib/matplotlib/tests/test_artist.py::test_set_signature
+PASSED lib/matplotlib/tests/test_artist.py::test_set_is_overwritten
+SKIPPED [2] ../../../home/letsrtfm/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/contextlib.py:81: Cannot compare pdf files on this system
+SKIPPED [2] ../../../home/letsrtfm/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/contextlib.py:81: Cannot compare svg files on this system
+FAILED lib/matplotlib/tests/test_artist.py::test_format_cursor_data_BoundaryNorm
+=================== 1 failed, 24 passed, 4 skipped in 0.94s ====================

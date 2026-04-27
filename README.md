@@ -2,6 +2,10 @@
 
 High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with CUDA 13.2 / PyTorch cu128.
 
+> **Recommended for coding tasks: `Qwen3-Coder-REAP-25B-A3B-AWQ` — 88/300 = 29.3% on SWE-bench Lite** (`./scripts/launch.sh coder-reap-25b`)
+>
+> *Disclaimer: agent harness was [opencode](https://github.com/anomalyco/opencode) v1.14.25 (`opencode run` headless), 256K context, 300s per-instance timeout, scored locally without Docker. Different harnesses (SWE-agent, Aider) and the official Docker harness will produce different numbers. 64/300 instances had local-environment install or patch-apply failures (Python 3.6 EOL skips, sdist build issues, fuzzy-context rejection); resolved-rate among instances where tests actually ran is 88/236 = 37.3%. See `evals/swebench/runs/coder-reap-25b-lite/` for raw artifacts. This is the first model in a four-way bake-off (Coder-30B / Qwen3.6-35B-A3B / Devstral-24B / Qwen3-30B-REAM still queued).*
+
 Shipped-model history, patch-by-patch narratives, and cross-team learnings live in [`patches/README.md`](patches/README.md). The top-level doc below keeps only current state + open issues + next steps.
 
 ## Current Focus
@@ -14,8 +18,8 @@ Reference model: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5 ms TPOT, fresh
 
 ## In Flight
 
-1. **SWE-bench Lite eval — Coder-REAP-25B (2026-04-26).** First run of the new `evals/swebench/` harness (opencode → local SGLang → score in fresh venvs, no Docker). Driver does a preflight chat-completion canary (catches chat-template breakage before burning hours) and aborts on 10-empty-streak. After Coder-REAP-25B: queue is **Coder-30B → Qwen3.6-35B-A3B → Devstral-24B → Qwen3-30B REAM**, then SWE-bench Verified on top finalists for the headline number.
-2. **Qwen3.5-28B REAP thinking recalibration (paused).** Re-cal with `thinking_vision_video` recipe was kicked off but paused after a system crash from running CPU calibration concurrently with a GPU eval. Will resume after the SWE-bench Lite sweep finishes.
+1. **SWE-bench Lite bake-off — Coder-REAP-25B done, three coders queued.** Coder-REAP-25B baseline shipped (29.3% / 37.3% on tests-ran, see banner). Next up: **Coder-30B → Qwen3.6-35B-A3B → Devstral-24B → Qwen3-30B-REAM**. Each rollout ~22h at 300s/instance × 256K ctx; scoring is ~30 min on the existing per-instance venv cache. Final pick → SWE-bench Verified (500 task) for the headline number on the top 1-2 finalists.
+2. **Qwen3.5-28B REAP thinking recalibration (paused).** Re-cal with `thinking_vision_video` recipe paused after the calibration+eval-concurrent system crash. Will resume between coder rollouts.
 
 ## Cross-team updates
 

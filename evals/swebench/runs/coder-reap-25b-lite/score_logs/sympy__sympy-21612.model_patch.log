@@ -1,0 +1,14 @@
+rc=1
+
+Checking patch sympy/printing/str.py...
+Checking patch sympy/printing/tests/test_str.py...
+error: while searching for:
+    # For issue 14160
+    assert str(Mul(-2, x, Pow(Mul(y,y,evaluate=False), -1, evaluate=False),
+                                                evaluate=False)) == '-2*x/(y*y)'
+
+
+    class CustomClass1(Expr):
+
+error: patch failed: sympy/printing/tests/test_str.py:252
+error: sympy/printing/tests/test_str.py: patch does not apply

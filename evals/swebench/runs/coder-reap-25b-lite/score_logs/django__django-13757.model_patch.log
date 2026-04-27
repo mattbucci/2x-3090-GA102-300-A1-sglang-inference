@@ -1,0 +1,16 @@
+rc=1
+
+Checking patch django/db/models/fields/json.py...
+Checking patch tests/model_fields/test_jsonfield.py...
+error: while searching for:
+    def test_isnull_key(self):
+        # key__isnull=False works the same as has_key='key'.
+        self.assertSequenceEqual(
+            NullableJSONModel.objects.filter(value__a__isnull=True),
+            self.objs[:3] + self.objs[5:],
+        )
+        self.assertSequenceEqual(
+            NullableJSONModel.objects.filter(value__a__isnull=False),
+
+error: patch failed: tests/model_fields/test_jsonfield.py:583
+error: tests/model_fields/test_jsonfield.py: patch does not apply

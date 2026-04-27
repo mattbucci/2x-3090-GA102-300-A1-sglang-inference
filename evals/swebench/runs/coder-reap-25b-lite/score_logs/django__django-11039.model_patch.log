@@ -1,0 +1,14 @@
+rc=1
+
+Checking patch django/core/management/commands/sqlmigrate.py...
+Checking patch tests/migrations/test_commands.py...
+error: while searching for:
+            self.assertNotIn(connection.ops.start_transaction_sql().lower(), queries)
+        self.assertNotIn(connection.ops.end_transaction_sql().lower(), queries)
+
+    @override_settings(
+        INSTALLED_APPS=[
+            "migrations.migrations_test_apps.migrated_app",
+
+error: patch failed: tests/migrations/test_commands.py:616
+error: tests/migrations/test_commands.py: patch does not apply

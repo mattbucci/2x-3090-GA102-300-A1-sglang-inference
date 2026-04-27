@@ -1,0 +1,43 @@
+# PYTHONWARNINGS='ignore::UserWarning,ignore::SyntaxWarning' bin/test -C --verbose sympy/printing/tests/test_mathematica.py
+============================= test process starts ==============================
+executable:         /tmp/swebench-venvs/sympy__sympy-12171/bin/python  (3.9.25-final-0) [CPython]
+architecture:       64-bit
+cache:              no
+ground types:       python 
+random seed:        12186492
+hash randomization: on (PYTHONHASHSEED=1672581551)
+
+sympy/printing/tests/test_mathematica.py[10] 
+test_Integer ok
+test_Rational ok
+test_Function ok
+test_Pow F
+test_Mul ok
+test_constants ok
+test_containers ok
+test_Integral ok
+test_Derivative F
+test_Sum ok                                                               [FAIL]
+
+
+________________________________________________________________________________
+______________ sympy/printing/tests/test_mathematica.py:test_Pow _______________
+  File "/tmp/swebench-work2/sympy__sympy-12171/sympy/printing/tests/test_mathematica.py", line 35, in test_Pow
+    assert mcode(1/(f(x)*3.5)**(x - y**x)/(x**2 + y)) == \
+AssertionError
+________________________________________________________________________________
+___________ sympy/printing/tests/test_mathematica.py:test_Derivative ___________
+  File "/tmp/swebench-work2/sympy__sympy-12171/sympy/printing/tests/test_mathematica.py", line 78, in test_Derivative
+    assert mcode(Derivative(sin(x), x)) == "Hold[D[Sin[x], x]]"
+AssertionError
+
+============= tests finished: 8 passed, 2 failed, in 0.02 seconds ==============
+DO *NOT* COMMIT!
+/tmp/swebench-work2/sympy__sympy-12171/sympy/core/basic.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+  from collections import Mapping
+/tmp/swebench-work2/sympy__sympy-12171/sympy/plotting/plot.py:28: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+  from collections import Callable
+/tmp/swebench-work2/sympy__sympy-12171/sympy/core/basic.py:3: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+  from collections import Mapping
+/tmp/swebench-work2/sympy__sympy-12171/sympy/plotting/plot.py:28: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+  from collections import Callable

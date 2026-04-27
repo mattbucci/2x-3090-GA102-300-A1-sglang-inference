@@ -1,0 +1,55 @@
+# pytest -rA lib/matplotlib/tests/test_backend_ps.py
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.0.3, pluggy-1.6.0
+rootdir: /tmp/swebench-work2/matplotlib__matplotlib-23964
+configfile: pytest.ini
+collected 36 items
+
+lib/matplotlib/tests/test_backend_ps.py ......ss....ss.sss.sssssssss.... [ 88%]
+.sss                                                                     [100%]
+
+==================================== PASSES ====================================
+_______ test_savefig_to_stringio[ps with distiller=ghostscript-portrait] _______
+------------------------------ Captured log call -------------------------------
+WARNING  matplotlib.backends.backend_ps:backend_ps.py:1166 Failed to find a Ghostscript installation.  Distillation step skipped.
+WARNING  matplotlib.backends.backend_ps:backend_ps.py:1166 Failed to find a Ghostscript installation.  Distillation step skipped.
+______ test_savefig_to_stringio[ps with distiller=ghostscript-landscape] _______
+------------------------------ Captured log call -------------------------------
+WARNING  matplotlib.backends.backend_ps:backend_ps.py:1166 Failed to find a Ghostscript installation.  Distillation step skipped.
+WARNING  matplotlib.backends.backend_ps:backend_ps.py:1166 Failed to find a Ghostscript installation.  Distillation step skipped.
+__________ test_savefig_to_stringio[ps with distiller=xpdf-portrait] ___________
+------------------------------ Captured log call -------------------------------
+WARNING  matplotlib.backends.backend_ps:backend_ps.py:1166 Failed to find a Ghostscript installation.  Distillation step skipped.
+WARNING  matplotlib.backends.backend_ps:backend_ps.py:1166 Failed to find a Ghostscript installation.  Distillation step skipped.
+__________ test_savefig_to_stringio[ps with distiller=xpdf-landscape] __________
+------------------------------ Captured log call -------------------------------
+WARNING  matplotlib.backends.backend_ps:backend_ps.py:1166 Failed to find a Ghostscript installation.  Distillation step skipped.
+WARNING  matplotlib.backends.backend_ps:backend_ps.py:1166 Failed to find a Ghostscript installation.  Distillation step skipped.
+=========================== short test summary info ============================
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_savefig_to_stringio[ps-portrait]
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_savefig_to_stringio[ps-landscape]
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_savefig_to_stringio[ps with distiller=ghostscript-portrait]
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_savefig_to_stringio[ps with distiller=ghostscript-landscape]
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_savefig_to_stringio[ps with distiller=xpdf-portrait]
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_savefig_to_stringio[ps with distiller=xpdf-landscape]
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_savefig_to_stringio[eps-portrait]
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_savefig_to_stringio[eps-landscape]
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_savefig_to_stringio[eps afm-portrait]
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_savefig_to_stringio[eps afm-landscape]
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_patheffects
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_bbox
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_fonttype[3]
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_fonttype[42]
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_linedash
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_empty_line
+PASSED lib/matplotlib/tests/test_backend_ps.py::test_no_duplicate_definition
+SKIPPED [4] lib/matplotlib/tests/test_backend_ps.py:67: Failed to process string with tex because latex could not be found
+SKIPPED [1] lib/matplotlib/tests/test_backend_ps.py:92: This test needs a ghostscript installation
+SKIPPED [8] ../../../home/letsrtfm/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/contextlib.py:81: Cannot compare eps files because Ghostscript is not installed
+SKIPPED [1] lib/matplotlib/tests/test_backend_ps.py:119: This test needs a TeX installation
+SKIPPED [1] lib/matplotlib/tests/test_backend_ps.py:147: This test needs a TeX installation
+SKIPPED [1] lib/matplotlib/tests/test_backend_ps.py:157: This test needs a TeX installation
+SKIPPED [1] lib/matplotlib/tests/test_backend_ps.py:167: This test needs a TeX installation
+SKIPPED [1] lib/matplotlib/testing/compare.py:285: Don't know how to convert .eps files to png
+SKIPPED [1] lib/matplotlib/tests/test_backend_ps.py:212: This test needs a ghostscript installation
+======================== 17 passed, 19 skipped in 1.19s ========================

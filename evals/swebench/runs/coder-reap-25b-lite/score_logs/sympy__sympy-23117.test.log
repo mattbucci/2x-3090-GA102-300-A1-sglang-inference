@@ -1,0 +1,31 @@
+# PYTHONWARNINGS='ignore::UserWarning,ignore::SyntaxWarning' bin/test -C --verbose sympy/tensor/array/tests/test_ndim_array.py
+============================= test process starts ==============================
+executable:         /tmp/swebench-venvs/sympy__sympy-23117/bin/python  (3.9.25-final-0) [CPython]
+architecture:       64-bit
+cache:              no
+ground types:       python 
+numpy:              None
+random seed:        65058688
+hash randomization: on (PYTHONHASHSEED=1208930415)
+
+sympy/tensor/array/tests/test_ndim_array.py[5] 
+test_array_negative_indices ok
+test_issue_18361 ok
+test_issue_20222 ok
+test_issue_17851 ok
+test_issue_and_18715 E                                                    [FAIL]
+
+
+________________________________________________________________________________
+_______ sympy/tensor/array/tests/test_ndim_array.py:test_issue_and_18715 _______
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-23117/sympy/tensor/array/tests/test_ndim_array.py", line 72, in test_issue_and_18715
+    A[0] += 5
+  File "/tmp/swebench-work2/sympy__sympy-23117/sympy/tensor/array/dense_ndim_array.py", line 199, in __setitem__
+    index = self._parse_index(index)
+  File "/tmp/swebench-work2/sympy__sympy-23117/sympy/tensor/array/ndim_array.py", line 148, in _parse_index
+    raise ValueError("Only a tuple index is accepted")
+ValueError: Only a tuple index is accepted
+
+=========== tests finished: 4 passed, 1 exceptions, in 0.67 seconds ============
+DO *NOT* COMMIT!

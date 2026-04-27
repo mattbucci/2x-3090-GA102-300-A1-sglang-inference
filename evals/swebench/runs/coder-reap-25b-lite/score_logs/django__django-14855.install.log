@@ -1,0 +1,51 @@
+
+# /tmp/swebench-venvs/django__django-14855/bin/python -m pip install --quiet -U pip wheel
+
+# /tmp/swebench-venvs/django__django-14855/bin/python -m pip install --quiet -e .
+
+# /tmp/swebench-venvs/django__django-14855/bin/python -m pip install --quiet -e .[test]
+WARNING: django 4.0.dev20210917181926 does not provide the extra 'test'
+
+# /tmp/swebench-venvs/django__django-14855/bin/python -m pip install --quiet -e .[testing]
+WARNING: django 4.0.dev20210917181926 does not provide the extra 'testing'
+
+# /tmp/swebench-venvs/django__django-14855/bin/python -m pip install --quiet -e .[dev]
+WARNING: django 4.0.dev20210917181926 does not provide the extra 'dev'
+
+# /tmp/swebench-venvs/django__django-14855/bin/python -m pip install --quiet pytest
+# bootstrap rc=0
+
+
+# install: python -m pip install -e .
+rc=0
+Obtaining file:///tmp/swebench-work2/django__django-14855
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Getting requirements to build editable: started
+  Getting requirements to build editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Collecting asgiref>=3.3.2 (from Django==4.0.dev20210917181926)
+  Using cached asgiref-3.8.1-py3-none-any.whl.metadata (9.3 kB)
+Collecting sqlparse>=0.2.2 (from Django==4.0.dev20210917181926)
+  Using cached sqlparse-0.5.5-py3-none-any.whl.metadata (4.7 kB)
+Collecting backports.zoneinfo (from Django==4.0.dev20210917181926)
+  Downloading backports.zoneinfo-0.2.1-cp38-cp38-manylinux1_x86_64.whl.metadata (4.7 kB)
+Collecting typing-extensions>=4 (from asgiref>=3.3.2->Django==4.0.dev20210917181926)
+  Using cached typing_extensions-4.13.2-py3-none-any.whl.metadata (3.0 kB)
+Using cached asgiref-3.8.1-py3-none-any.whl (23 kB)
+Using cached sqlparse-0.5.5-py3-none-any.whl (46 kB)
+Downloading backports.zoneinfo-0.2.1-cp38-cp38-manylinux1_x86_64.whl (74 kB)
+Using cached typing_extensions-4.13.2-py3-none-any.whl (45 kB)
+Building wheels for collected packages: Django
+  Building editable for Django (pyproject.toml): started
+  Building editable for Django (pyproject.toml): finished with status 'done'
+  Created wheel for Django: filename=django-4.0.dev20210917181926-0.editable-py3-none-any.whl size=26721 sha256=6dd88e1498476212942f7608c2a426751e82cfb254ab15c7617460d1eda3dc2f
+  Stored in directory: /tmp/pip-ephem-wheel-cache-bfbr371k/wheels/6c/1b/20/c455f9d588950790ae8c9857fb5d60e91baa408a45a783c53c
+Successfully built Django
+Installing collected packages: typing-extensions, sqlparse, backports.zoneinfo, asgiref, Django
+Successfully installed Django-4.0.dev20210917181926 asgiref-3.8.1 backports.zoneinfo-0.2.1 sqlparse-0.5.5 typing-extensions-4.13.2
+
+

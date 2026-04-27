@@ -1,0 +1,76 @@
+
+# /tmp/swebench-venvs/astropy__astropy-7746/bin/python -m pip install --quiet -U pip wheel
+
+# /tmp/swebench-venvs/astropy__astropy-7746/bin/python -m pip install --quiet -e .
+  error: subprocess-exited-with-error
+  
+  × Getting requirements to build editable did not run successfully.
+  │ exit code: 1
+  ╰─> [27 lines of output]
+      /tmp/swebench-work2/astropy__astropy-7746/ah_bootstrap.py:637: SyntaxWarning: invalid escape sequence '\S'
+        '(?P<submodule>\S+)( .*)?$')
+      Traceback (most recent call last):
+        File "/tmp/swebench-venvs/astropy__astropy-7746/lib/python3.12/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py", line 389, in <module>
+          main()
+        File "/tmp/swebench-venvs/astropy__astropy-7746/lib/python3.12/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py", line 373, in main
+          json_out["return_val"] = hook(**hook_input["kwargs"])
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        File "/tmp/swebench-venvs/astropy__astropy-7746/lib/python3.12/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py", line 157, in get_requires_for_build_editable
+          return hook(config_settings)
+                 ^^^^^^^^^^^^^^^^^^^^^
+        File "/tmp/pip-build-env-4o4ir73w/overlay/lib/python3.12/site-packages/setuptools/build_meta.py", line 481, in get_requires_for_build_editable
+          return self.get_requires_for_build_wheel(config_settings)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        File "/tmp/pip-build-env-4o4ir73w/overlay/lib/python3.12/site-packages/setuptools/build_meta.py", line 333, in get_requires_for_build_wheel
+          return self._get_build_requires(config_settings, requirements=[])
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        File "/tmp/pip-build-env-4o4ir73w/overlay/lib/python3.12/site-packages/setuptools/build_meta.py", line 301, in _get_build_requires
+          self.run_setup()
+        File "/tmp/pip-build-env-4o4ir73w/overlay/lib/python3.12/site-packages/setuptools/build_meta.py", line 520, in run_setup
+          super().run_setup(setup_script=setup_script)
+        File "/tmp/pip-build-env-4o4ir73w/overlay/lib/python3.12/site-packages/setuptools/build_meta.py", line 317, in run_setup
+          exec(code, locals())
+        File "<string>", line 17, in <module>
+        File "/tmp/swebench-work2/astropy__astropy-7746/ah_bootstrap.py", line 120, in <module>
+          import pkg_resources
+      ModuleNotFoundError: No module named 'pkg_resources'
+      [end of output]
+  
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+ERROR: Failed to build 'file:///tmp/swebench-work2/astropy__astropy-7746' when getting requirements to build editable
+# bootstrap rc=0
+
+
+# pip_packages rc=1
+
+  × Failed to build `markupsafe==1.0`
+  ├─▶ The build backend returned an error
+  ╰─▶ Call to `setuptools.build_meta:__legacy__.build_wheel` failed (exit
+      status: 1)
+
+      [stderr]
+      Traceback (most recent call last):
+        File "<string>", line 14, in <module>
+        File
+      "/home/letsrtfm/.cache/uv/builds-v0/.tmpmBfvPQ/lib/python3.8/site-packages/setuptools/build_meta.py",
+      line 333, in get_requires_for_build_wheel
+          return self._get_build_requires(config_settings, requirements=[])
+        File
+      "/home/letsrtfm/.cache/uv/builds-v0/.tmpmBfvPQ/lib/python3.8/site-packages/setuptools/build_meta.py",
+      line 303, in _get_build_requires
+          self.run_setup()
+        File
+      "/home/letsrtfm/.cache/uv/builds-v0/.tmpmBfvPQ/lib/python3.8/site-packages/setuptools/build_meta.py",
+      line 521, in run_setup
+          super().run_setup(setup_script=setup_script)
+        File
+      "/home/letsrtfm/.cache/uv/builds-v0/.tmpmBfvPQ/lib/python3.8/site-packages/setuptools/build_meta.py",
+      line 319, in run_setup
+          exec(code, locals())
+        File "<string>", line 6, in <module>
+      ImportError: cannot import name 'Feature' from 'setuptools'
+      (/home/letsrtfm/.cache/uv/builds-v0/.tmpmBfvPQ/lib/python3.8/site-packages/setuptools/__init__.py)
+
+      hint: This usually indicates a problem with the package or the build
+      environment.
+

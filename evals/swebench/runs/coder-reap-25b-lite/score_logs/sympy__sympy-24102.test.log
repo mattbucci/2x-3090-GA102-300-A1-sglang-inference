@@ -1,0 +1,63 @@
+# PYTHONWARNINGS='ignore::UserWarning,ignore::SyntaxWarning' bin/test -C --verbose sympy/parsing/tests/test_mathematica.py sympy/testing/quality_unicode.py
+============================= test process starts ==============================
+executable:         /tmp/swebench-venvs/sympy__sympy-24102/bin/python  (3.9.25-final-0) [CPython]
+architecture:       64-bit
+cache:              no
+ground types:       python 
+numpy:              None
+random seed:        87333719
+hash randomization: on (PYTHONHASHSEED=3960815320)
+
+sympy/parsing/tests/test_mathematica.py[3] 
+test_mathematica E
+test_parser_mathematica_tokenizer F
+test_parser_mathematica_exp_alt ok                                        [FAIL]
+
+
+________________________________________________________________________________
+___________ sympy/parsing/tests/test_mathematica.py:test_mathematica ___________
+ValueError: Error from parse_expr with transformed code: "-Integer (6 )Symbol ('x' )"
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-24102/sympy/core/sympify.py", line 496, in sympify
+    expr = parse_expr(a, local_dict=locals, transformations=transformations, evaluate=evaluate)
+  File "/tmp/swebench-work2/sympy__sympy-24102/sympy/parsing/sympy_parser.py", line 1087, in parse_expr
+    raise e from ValueError(f"Error from parse_expr with transformed code: {code!r}")
+  File "/tmp/swebench-work2/sympy__sympy-24102/sympy/parsing/sympy_parser.py", line 1078, in parse_expr
+    rv = eval_expr(code, local_dict, global_dict)
+  File "/tmp/swebench-work2/sympy__sympy-24102/sympy/parsing/sympy_parser.py", line 906, in eval_expr
+    expr = eval(
+  File "<string>", line 1
+    -Integer (6 )Symbol ('x' )
+                 ^
+SyntaxError: invalid syntax
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-24102/sympy/parsing/tests/test_mathematica.py", line 74, in test_mathematica
+    assert parse_mathematica(e) == sympify(d[e])
+  File "/tmp/swebench-work2/sympy__sympy-24102/sympy/parsing/mathematica.py", line 82, in parse_mathematica
+    return parser.parse(s)
+  File "/tmp/swebench-work2/sympy__sympy-24102/sympy/parsing/mathematica.py", line 536, in parse
+    s4 = self._from_fullformlist_to_sympy(s3)
+  File "/tmp/swebench-work2/sympy__sympy-24102/sympy/parsing/mathematica.py", line 1072, in _from_fullformlist_to_sympy
+    return recurse(full_form_list)
+  File "/tmp/swebench-work2/sympy__sympy-24102/sympy/parsing/mathematica.py", line 1070, in recurse
+    return self._atom_conversions.get(expr, sympify(expr))
+  File "/tmp/swebench-work2/sympy__sympy-24102/sympy/core/sympify.py", line 498, in sympify
+    raise SympifyError('could not parse %r' % a, exc)
+sympy.core.sympify.SympifyError: Sympify of expression 'could not parse '-6x'' failed, because of exception being raised:
+SyntaxError: invalid syntax (<string>, line 1)
+
+________________________________________________________________________________
+__ sympy/parsing/tests/test_mathematica.py:test_parser_mathematica_tokenizer ___
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-24102/sympy/parsing/tests/test_mathematica.py", line 122, in test_parser_mathematica_tokenizer
+    assert chain("4.2") == "4.2"
+AssertionError
+
+====== tests finished: 1 passed, 1 failed, 1 exceptions, in 0.19 seconds =======
+DO *NOT* COMMIT!

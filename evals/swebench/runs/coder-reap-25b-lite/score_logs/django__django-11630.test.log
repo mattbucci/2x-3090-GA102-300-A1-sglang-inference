@@ -1,0 +1,86 @@
+# ./tests/runtests.py --verbosity 2 --settings=test_sqlite --parallel 1 check_framework.test_model_checks
+Testing against Django installed in '/tmp/swebench-work2/django__django-11630/django'
+Importing application check_framework
+Skipping setup of unused database(s): other.
+Operations to perform:
+  Synchronize unmigrated apps: auth, check_framework, contenttypes, messages, sessions, staticfiles
+  Apply all migrations: admin, sites
+Synchronizing apps without migrations:
+  Creating tables...
+    Creating table django_content_type
+    Creating table auth_permission
+    Creating table auth_group
+    Creating table auth_user
+    Creating table django_session
+    Creating table check_framework_simplemodel
+    Running deferred SQL...
+Running migrations:
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying sites.0001_initial... OK
+  Applying sites.0002_alter_domain_unique... OK
+System check identified no issues (0 silenced).
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+test_collision_abstract_model (check_framework.test_model_checks.ConstraintNameTests) ... ok
+test_collision_across_apps (check_framework.test_model_checks.ConstraintNameTests) ... ok
+test_collision_in_different_models (check_framework.test_model_checks.ConstraintNameTests) ... ok
+test_collision_in_same_model (check_framework.test_model_checks.ConstraintNameTests) ... ok
+test_no_collision_abstract_model_interpolation (check_framework.test_model_checks.ConstraintNameTests) ... ok
+test_no_collision_across_apps_interpolation (check_framework.test_model_checks.ConstraintNameTests) ... ok
+test_collision_across_apps (check_framework.test_model_checks.DuplicateDBTableTests) ... ok
+test_collision_across_apps_database_routers_installed (check_framework.test_model_checks.DuplicateDBTableTests) ... FAIL
+test_collision_in_same_app (check_framework.test_model_checks.DuplicateDBTableTests) ... ok
+test_collision_in_same_app_database_routers_installed (check_framework.test_model_checks.DuplicateDBTableTests) ... FAIL
+test_no_collision_for_proxy_models (check_framework.test_model_checks.DuplicateDBTableTests) ... ok
+test_no_collision_for_unmanaged_models (check_framework.test_model_checks.DuplicateDBTableTests) ... ok
+test_collision_abstract_model (check_framework.test_model_checks.IndexNameTests) ... ok
+test_collision_across_apps (check_framework.test_model_checks.IndexNameTests) ... ok
+test_collision_in_different_models (check_framework.test_model_checks.IndexNameTests) ... ok
+test_collision_in_same_model (check_framework.test_model_checks.IndexNameTests) ... ok
+test_no_collision_abstract_model_interpolation (check_framework.test_model_checks.IndexNameTests) ... ok
+test_no_collision_across_apps_interpolation (check_framework.test_model_checks.IndexNameTests) ... ok
+
+======================================================================
+FAIL: test_collision_across_apps_database_routers_installed (check_framework.test_model_checks.DuplicateDBTableTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/django__django-11630/django/test/utils.py", line 370, in inner
+    return func(*args, **kwargs)
+  File "/tmp/swebench-work2/django__django-11630/django/test/utils.py", line 370, in inner
+    return func(*args, **kwargs)
+  File "/tmp/swebench-work2/django__django-11630/django/test/utils.py", line 370, in inner
+    return func(*args, **kwargs)
+  File "/tmp/swebench-work2/django__django-11630/tests/check_framework/test_model_checks.py", line 95, in test_collision_across_apps_database_routers_installed
+    self.assertEqual(checks.run_checks(app_configs=apps.get_app_configs()), [
+AssertionError: Lists differ: [<War[111 chars]hint=None, obj='test_table', id='models.W028'>] != [<War[111 chars]hint='You have configured settings.DATABASE_RO[133 chars]35'>]
+
+First differing element 0:
+<Warn[110 chars]hint=None, obj='test_table', id='models.W028'>
+<Warn[110 chars]hint='You have configured settings.DATABASE_RO[132 chars]035'>
+
+- [<Warning: level=30, msg="db_table 'test_table' is used by multiple models: basic.Model1, check_framework.Model2.", hint=None, obj='test_table', id='models.W028'>]
++ [<Warning: level=30, msg="db_table 'test_table' is used by multiple models: basic.Model1, check_framework.Model2.", hint='You have configured settings.DATABASE_ROUTERS. Verify that basic.Model1, check_framework.Model2 are correctly routed to separate databases.', obj='test_table', id='models.W035'>]
+
+======================================================================
+FAIL: test_collision_in_same_app_database_routers_installed (check_framework.test_model_checks.DuplicateDBTableTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/django__django-11630/django/test/utils.py", line 370, in inner
+    return func(*args, **kwargs)
+  File "/tmp/swebench-work2/django__django-11630/tests/check_framework/test_model_checks.py", line 45, in test_collision_in_same_app_database_routers_installed
+    self.assertEqual(checks.run_checks(app_configs=self.apps.get_app_configs()), [
+AssertionError: Lists differ: [<War[121 chars]hint=None, obj='test_table', id='models.W028'>] != [<War[121 chars]hint='You have configured settings.DATABASE_RO[143 chars]35'>]
+
+First differing element 0:
+<Warn[120 chars]hint=None, obj='test_table', id='models.W028'>
+<Warn[120 chars]hint='You have configured settings.DATABASE_RO[142 chars]035'>
+
+- [<Warning: level=30, msg="db_table 'test_table' is used by multiple models: check_framework.Model1, check_framework.Model2.", hint=None, obj='test_table', id='models.W028'>]
++ [<Warning: level=30, msg="db_table 'test_table' is used by multiple models: check_framework.Model1, check_framework.Model2.", hint='You have configured settings.DATABASE_ROUTERS. Verify that check_framework.Model1, check_framework.Model2 are correctly routed to separate databases.', obj='test_table', id='models.W035'>]
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.021s
+
+FAILED (failures=2)
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...

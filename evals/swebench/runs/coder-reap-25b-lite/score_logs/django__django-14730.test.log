@@ -1,0 +1,32 @@
+# ./tests/runtests.py --verbosity 2 --settings=test_sqlite --parallel 1 field_deconstruction.tests invalid_models_tests.test_relative_fields model_meta.models
+Testing against Django installed in '/tmp/swebench-work2/django__django-14730/django'
+Importing application model_meta
+Importing application invalid_models_tests
+Importing application field_deconstruction
+Found 121 test(s).
+Skipping setup of unused database(s): default, other.
+Traceback (most recent call last):
+  File "./tests/runtests.py", line 668, in <module>
+    failures = django_tests(
+  File "./tests/runtests.py", line 386, in django_tests
+    failures = test_runner.run_tests(test_labels)
+  File "/tmp/swebench-work2/django__django-14730/django/test/runner.py", line 914, in run_tests
+    self.run_checks(databases)
+  File "/tmp/swebench-work2/django__django-14730/django/test/runner.py", line 833, in run_checks
+    call_command('check', verbosity=self.verbosity, databases=databases)
+  File "/tmp/swebench-work2/django__django-14730/django/core/management/__init__.py", line 181, in call_command
+    return command.execute(*args, **defaults)
+  File "/tmp/swebench-work2/django__django-14730/django/core/management/base.py", line 398, in execute
+    output = self.handle(*args, **options)
+  File "/tmp/swebench-work2/django__django-14730/django/core/management/commands/check.py", line 63, in handle
+    self.check(
+  File "/tmp/swebench-work2/django__django-14730/django/core/management/base.py", line 469, in check
+    raise SystemCheckError(msg)
+django.core.management.base.SystemCheckError: SystemCheckError: System check identified some issues:
+
+ERRORS:
+model_meta.BasePerson.friends_abstract: (fields.E345) ManyToManyField with symmetrical=True cannot specify a related_name.
+model_meta.BasePerson.friends_base: (fields.E345) ManyToManyField with symmetrical=True cannot specify a related_name.
+model_meta.Person.friends_inherited: (fields.E345) ManyToManyField with symmetrical=True cannot specify a related_name.
+
+System check identified 3 issues (0 silenced).

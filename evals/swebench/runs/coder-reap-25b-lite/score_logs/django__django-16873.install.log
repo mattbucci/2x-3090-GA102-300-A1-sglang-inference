@@ -1,0 +1,46 @@
+
+# /tmp/swebench-venvs/django__django-16873/bin/python -m pip install --quiet -U pip wheel
+
+# /tmp/swebench-venvs/django__django-16873/bin/python -m pip install --quiet -e .
+
+# /tmp/swebench-venvs/django__django-16873/bin/python -m pip install --quiet -e .[test]
+WARNING: django 5.0.dev20230518171721 does not provide the extra 'test'
+
+# /tmp/swebench-venvs/django__django-16873/bin/python -m pip install --quiet -e .[testing]
+WARNING: django 5.0.dev20230518171721 does not provide the extra 'testing'
+
+# /tmp/swebench-venvs/django__django-16873/bin/python -m pip install --quiet -e .[dev]
+WARNING: django 5.0.dev20230518171721 does not provide the extra 'dev'
+
+# /tmp/swebench-venvs/django__django-16873/bin/python -m pip install --quiet pytest
+# bootstrap rc=0
+
+
+# install: python -m pip install -e .
+rc=0
+Obtaining file:///tmp/swebench-work2/django__django-16873
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Getting requirements to build editable: started
+  Getting requirements to build editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Collecting asgiref>=3.6.0 (from Django==5.0.dev20230518171721)
+  Using cached asgiref-3.11.1-py3-none-any.whl.metadata (9.3 kB)
+Collecting sqlparse>=0.3.1 (from Django==5.0.dev20230518171721)
+  Using cached sqlparse-0.5.5-py3-none-any.whl.metadata (4.7 kB)
+Using cached asgiref-3.11.1-py3-none-any.whl (24 kB)
+Using cached sqlparse-0.5.5-py3-none-any.whl (46 kB)
+Building wheels for collected packages: Django
+  Building editable for Django (pyproject.toml): started
+  Building editable for Django (pyproject.toml): finished with status 'done'
+  Created wheel for Django: filename=django-5.0.dev20230518171721-0.editable-py3-none-any.whl size=27493 sha256=57847d65af5fb3509dfdf10e2cbab1c1852c09acadb9091e0db3983acb921986
+  Stored in directory: /tmp/pip-ephem-wheel-cache-5_kc29bz/wheels/41/f0/2f/76589cf44741382a70fa6ed9c1b98450c0bf10e9b372f0bcee
+Successfully built Django
+Installing collected packages: sqlparse, asgiref, Django
+
+Successfully installed Django-5.0.dev20230518171721 asgiref-3.11.1 sqlparse-0.5.5
+
+

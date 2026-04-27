@@ -1,0 +1,44 @@
+# pytest -rA tests/test_config.py
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.0.3, pluggy-1.6.0
+rootdir: /tmp/swebench-work2/pallets__flask-4992
+configfile: pyproject.toml
+collected 19 items
+
+tests/test_config.py ...F...............                                 [100%]
+
+=================================== FAILURES ===================================
+__________________________ test_config_from_file_toml __________________________
+
+    def test_config_from_file_toml():
+        tomllib = pytest.importorskip("tomllib", reason="tomllib added in 3.11")
+        app = flask.Flask(__name__)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+>       app.config.from_file(
+            os.path.join(current_dir, "static", "config.toml"), tomllib.load, text=False
+        )
+E       TypeError: Config.from_file() got an unexpected keyword argument 'text'
+
+tests/test_config.py:43: TypeError
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED tests/test_config.py::test_config_from_pyfile
+PASSED tests/test_config.py::test_config_from_object
+PASSED tests/test_config.py::test_config_from_file_json
+PASSED tests/test_config.py::test_from_prefixed_env
+PASSED tests/test_config.py::test_from_prefixed_env_custom_prefix
+PASSED tests/test_config.py::test_from_prefixed_env_nested
+PASSED tests/test_config.py::test_config_from_mapping
+PASSED tests/test_config.py::test_config_from_class
+PASSED tests/test_config.py::test_config_from_envvar
+PASSED tests/test_config.py::test_config_from_envvar_missing
+PASSED tests/test_config.py::test_config_missing
+PASSED tests/test_config.py::test_config_missing_file
+PASSED tests/test_config.py::test_custom_config_class
+PASSED tests/test_config.py::test_session_lifetime
+PASSED tests/test_config.py::test_get_namespace
+PASSED tests/test_config.py::test_from_pyfile_weird_encoding[utf-8]
+PASSED tests/test_config.py::test_from_pyfile_weird_encoding[iso-8859-15]
+PASSED tests/test_config.py::test_from_pyfile_weird_encoding[latin-1]
+FAILED tests/test_config.py::test_config_from_file_toml - TypeError: Config.f...
+========================= 1 failed, 18 passed in 0.04s =========================

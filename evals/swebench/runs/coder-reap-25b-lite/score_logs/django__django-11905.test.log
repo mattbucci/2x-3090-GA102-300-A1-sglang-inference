@@ -1,0 +1,127 @@
+# ./tests/runtests.py --verbosity 2 --settings=test_sqlite --parallel 1 lookup.models lookup.tests
+Testing against Django installed in '/tmp/swebench-work2/django__django-11905/django'
+Importing application lookup
+Skipping setup of unused database(s): other.
+Operations to perform:
+  Synchronize unmigrated apps: auth, contenttypes, lookup, messages, sessions, staticfiles
+  Apply all migrations: admin, sites
+Synchronizing apps without migrations:
+  Creating tables...
+    Creating table django_content_type
+    Creating table auth_permission
+    Creating table auth_group
+    Creating table auth_user
+    Creating table django_session
+    Creating table lookup_alarm
+    Creating table lookup_author
+    Creating table lookup_article
+    Creating table lookup_tag
+    Creating table lookup_season
+    Creating table lookup_game
+    Creating table lookup_player
+    Creating table lookup_product
+    Creating table lookup_stock
+    Creating table lookup_freebie
+    Running deferred SQL...
+Running migrations:
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying sites.0001_initial... OK
+  Applying sites.0002_alter_domain_unique... OK
+System check identified no issues (0 silenced).
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+test_chain_date_time_lookups (lookup.tests.LookupTests) ... ok
+test_count (lookup.tests.LookupTests) ... ok
+test_custom_field_none_rhs (lookup.tests.LookupTests)
+__exact=value is transformed to __isnull=True if Field.get_prep_value() ... ok
+test_custom_lookup_none_rhs (lookup.tests.LookupTests)
+Lookup.can_use_none_as_rhs=True allows None as a lookup value. ... ok
+test_error_messages (lookup.tests.LookupTests) ... ok
+test_escaping (lookup.tests.LookupTests) ... ok
+test_exact_exists (lookup.tests.LookupTests) ... ok
+test_exact_none_transform (lookup.tests.LookupTests)
+Transforms are used for __exact=None. ... ok
+test_exact_query_rhs_with_selected_columns (lookup.tests.LookupTests) ... ok
+test_exact_sliced_queryset_limit_one (lookup.tests.LookupTests) ... ok
+test_exact_sliced_queryset_limit_one_offset (lookup.tests.LookupTests) ... ok
+test_exact_sliced_queryset_not_limited_to_one (lookup.tests.LookupTests) ... ok
+test_exclude (lookup.tests.LookupTests) ... ok
+test_exists (lookup.tests.LookupTests) ... ok
+test_get_next_previous_by (lookup.tests.LookupTests) ... ok
+test_in (lookup.tests.LookupTests) ... ok
+test_in_bulk (lookup.tests.LookupTests) ... ok
+test_in_bulk_lots_of_ids (lookup.tests.LookupTests) ... ok
+test_in_bulk_non_unique_field (lookup.tests.LookupTests) ... ok
+test_in_bulk_with_field (lookup.tests.LookupTests) ... ok
+test_in_different_database (lookup.tests.LookupTests) ... ok
+test_in_keeps_value_ordering (lookup.tests.LookupTests) ... ok
+test_isnull_non_boolean_value (lookup.tests.LookupTests) ... test_iterator (lookup.tests.LookupTests) ... ok
+test_lookup_collision (lookup.tests.LookupTests)
+Genuine field names don't collide with built-in lookup types ... ok
+test_lookup_date_as_str (lookup.tests.LookupTests) ... ok
+test_lookup_int_as_str (lookup.tests.LookupTests) ... ok
+test_nested_outerref_lhs (lookup.tests.LookupTests) ... ok
+test_none (lookup.tests.LookupTests) ... ok
+test_nonfield_lookups (lookup.tests.LookupTests)
+A lookup query containing non-fields raises the proper exception. ... ok
+test_pattern_lookups_with_substr (lookup.tests.LookupTests) ... ok
+test_regex (lookup.tests.LookupTests) ... ok
+test_regex_backreferencing (lookup.tests.LookupTests) ... ok
+test_regex_non_ascii (lookup.tests.LookupTests)
+A regex lookup does not trip on non-ASCII characters. ... ok
+test_regex_non_string (lookup.tests.LookupTests)
+A regex lookup does not fail on non-string fields ... ok
+test_regex_null (lookup.tests.LookupTests)
+A regex lookup does not fail on null/None values ... ok
+test_relation_nested_lookup_error (lookup.tests.LookupTests) ... ok
+test_unsupported_lookups (lookup.tests.LookupTests) ... ok
+test_values (lookup.tests.LookupTests) ... ok
+test_values_list (lookup.tests.LookupTests) ... ok
+
+======================================================================
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Traceback (most recent call last):
+  File "./tests/runtests.py", line 560, in <module>
+    failures = django_tests(
+  File "./tests/runtests.py", line 306, in django_tests
+    failures = test_runner.run_tests(
+  File "/tmp/swebench-work2/django__django-11905/django/test/runner.py", line 688, in run_tests
+    result = self.run_suite(suite)
+  File "/tmp/swebench-work2/django__django-11905/django/test/runner.py", line 630, in run_suite
+    return runner.run(suite)
+  File "/home/letsrtfm/.local/share/uv/python/cpython-3.8.20-linux-x86_64-gnu/lib/python3.8/unittest/runner.py", line 183, in run
+    result.printErrors()
+  File "/home/letsrtfm/.local/share/uv/python/cpython-3.8.20-linux-x86_64-gnu/lib/python3.8/unittest/runner.py", line 109, in printErrors
+    self.printErrorList('ERROR', self.errors)
+  File "/home/letsrtfm/.local/share/uv/python/cpython-3.8.20-linux-x86_64-gnu/lib/python3.8/unittest/runner.py", line 115, in printErrorList
+    self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
+  File "/home/letsrtfm/.local/share/uv/python/cpython-3.8.20-linux-x86_64-gnu/lib/python3.8/unittest/runner.py", line 49, in getDescription
+    return str(test)
+  File "/home/letsrtfm/.local/share/uv/python/cpython-3.8.20-linux-x86_64-gnu/lib/python3.8/unittest/case.py", line 1518, in __str__
+    return "{} {}".format(self.test_case, self._subDescription())
+  File "/home/letsrtfm/.local/share/uv/python/cpython-3.8.20-linux-x86_64-gnu/lib/python3.8/unittest/case.py", line 1502, in _subDescription
+    params_desc = ', '.join(
+  File "/home/letsrtfm/.local/share/uv/python/cpython-3.8.20-linux-x86_64-gnu/lib/python3.8/unittest/case.py", line 1503, in <genexpr>
+    "{}={!r}".format(k, v)
+  File "/tmp/swebench-work2/django__django-11905/django/db/models/query.py", line 249, in __repr__
+    data = list(self[:REPR_OUTPUT_SIZE + 1])
+  File "/tmp/swebench-work2/django__django-11905/django/db/models/query.py", line 255, in __len__
+    self._fetch_all()
+  File "/tmp/swebench-work2/django__django-11905/django/db/models/query.py", line 1258, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+  File "/tmp/swebench-work2/django__django-11905/django/db/models/query.py", line 54, in __iter__
+    results = compiler.execute_sql(chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size)
+  File "/tmp/swebench-work2/django__django-11905/django/db/models/sql/compiler.py", line 1079, in execute_sql
+    sql, params = self.as_sql()
+  File "/tmp/swebench-work2/django__django-11905/django/db/models/sql/compiler.py", line 496, in as_sql
+    where, w_params = self.compile(self.where) if self.where is not None else ("", [])
+  File "/tmp/swebench-work2/django__django-11905/django/db/models/sql/compiler.py", line 413, in compile
+    sql, params = node.as_sql(self, self.connection)
+  File "/tmp/swebench-work2/django__django-11905/django/db/models/sql/where.py", line 81, in as_sql
+    sql, params = compiler.compile(child)
+  File "/tmp/swebench-work2/django__django-11905/django/db/models/sql/compiler.py", line 413, in compile
+    sql, params = node.as_sql(self, self.connection)
+  File "/tmp/swebench-work2/django__django-11905/django/db/models/lookups.py", line 467, in as_sql
+    raise ValueError(
+ValueError: The QuerySet value for an isnull lookup must be True or False.

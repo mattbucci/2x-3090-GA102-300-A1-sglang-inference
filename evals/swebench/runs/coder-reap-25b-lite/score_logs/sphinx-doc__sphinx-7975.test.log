@@ -1,0 +1,98 @@
+# tox --current-env -epy39 -v -- tests/test_environment_indexentries.py
+py39: commands[0]> pytest -rA --durations 25 tests/test_environment_indexentries.py
+py39: exit 1 (0.23 seconds) /tmp/swebench-work2/sphinx-doc__sphinx-7975> pytest -rA --durations 25 tests/test_environment_indexentries.py pid=770439
+  py39: FAIL code 1 (0.24=setup[0.01]+cmd[0.23] seconds)
+  evaluation failed :( (0.31 seconds)
+Traceback (most recent call last):
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 860, in import_plugin
+    __import__(importspec)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/assertion/rewrite.py", line 186, in exec_module
+    exec(co, module.__dict__)
+  File "/tmp/swebench-work2/sphinx-doc__sphinx-7975/sphinx/testing/fixtures.py", line 21, in <module>
+    from sphinx.testing import util
+  File "/tmp/swebench-work2/sphinx-doc__sphinx-7975/sphinx/testing/util.py", line 23, in <module>
+    from sphinx import application, locale
+  File "/tmp/swebench-work2/sphinx-doc__sphinx-7975/sphinx/application.py", line 42, in <module>
+    from sphinx.registry import SphinxComponentRegistry
+  File "/tmp/swebench-work2/sphinx-doc__sphinx-7975/sphinx/registry.py", line 22, in <module>
+    from pkg_resources import iter_entry_points
+ModuleNotFoundError: No module named 'pkg_resources'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/bin/pytest", line 6, in <module>
+    sys.exit(console_main())
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 201, in console_main
+    code = main()
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 156, in main
+    config = _prepareconfig(args, plugins)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 342, in _prepareconfig
+    config = pluginmanager.hook.pytest_cmdline_parse(
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/helpconfig.py", line 112, in pytest_cmdline_parse
+    config = yield
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 1146, in pytest_cmdline_parse
+    self.parse(args)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 1527, in parse
+    self._preparse(args, addopts=addopts)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 1431, in _preparse
+    self.hook.pytest_load_initial_conftests(
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/warnings.py", line 129, in pytest_load_initial_conftests
+    return (yield)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/capture.py", line 173, in pytest_load_initial_conftests
+    yield
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 1228, in pytest_load_initial_conftests
+    self.pluginmanager._set_initial_conftests(
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 583, in _set_initial_conftests
+    self._try_load_conftest(
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 621, in _try_load_conftest
+    self._loadconftestmodules(
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 661, in _loadconftestmodules
+    mod = self._importconftest(
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 737, in _importconftest
+    self.consider_conftest(mod, registration_name=conftestpath_plugin_name)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 818, in consider_conftest
+    self.register(conftestmodule, name=registration_name)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 514, in register
+    self.consider_module(plugin)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 826, in consider_module
+    self._import_plugin_specs(getattr(mod, "pytest_plugins", []))
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 833, in _import_plugin_specs
+    self.import_plugin(import_spec)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 862, in import_plugin
+    raise ImportError(
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/config/__init__.py", line 860, in import_plugin
+    __import__(importspec)
+  File "/tmp/swebench-venvs/sphinx-doc__sphinx-7975/lib/python3.9/site-packages/_pytest/assertion/rewrite.py", line 186, in exec_module
+    exec(co, module.__dict__)
+  File "/tmp/swebench-work2/sphinx-doc__sphinx-7975/sphinx/testing/fixtures.py", line 21, in <module>
+    from sphinx.testing import util
+  File "/tmp/swebench-work2/sphinx-doc__sphinx-7975/sphinx/testing/util.py", line 23, in <module>
+    from sphinx import application, locale
+  File "/tmp/swebench-work2/sphinx-doc__sphinx-7975/sphinx/application.py", line 42, in <module>
+    from sphinx.registry import SphinxComponentRegistry
+  File "/tmp/swebench-work2/sphinx-doc__sphinx-7975/sphinx/registry.py", line 22, in <module>
+    from pkg_resources import iter_entry_points
+ImportError: Error importing plugin "sphinx.testing.fixtures": No module named 'pkg_resources'

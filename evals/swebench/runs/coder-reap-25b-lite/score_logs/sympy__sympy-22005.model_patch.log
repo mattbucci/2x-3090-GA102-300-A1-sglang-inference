@@ -1,0 +1,14 @@
+rc=1
+
+Checking patch sympy/solvers/polysys.py...
+Checking patch sympy/solvers/tests/test_polysys.py...
+error: while searching for:
+    raises(NotImplementedError, lambda: solve_poly_system(
+        [z, -2*x*y**2 + x + y**2*z, y**2*(-z - 4) + 2]))
+    raises(PolynomialError, lambda: solve_poly_system([1/x], x))
+
+
+def test_solve_biquadratic():
+
+error: patch failed: sympy/solvers/tests/test_polysys.py:48
+error: sympy/solvers/tests/test_polysys.py: patch does not apply

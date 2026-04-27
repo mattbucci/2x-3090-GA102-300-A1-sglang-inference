@@ -1,0 +1,34 @@
+# ./tests/runtests.py --verbosity 2 --settings=test_sqlite --parallel 1 model_fields.tests
+Traceback (most recent call last):
+  File "./tests/runtests.py", line 23, in <module>
+    from django.test import TestCase, TransactionTestCase
+  File "/tmp/swebench-work2/django__django-11999/django/test/__init__.py", line 3, in <module>
+    from django.test.client import Client, RequestFactory
+  File "/tmp/swebench-work2/django__django-11999/django/test/client.py", line 13, in <module>
+    from django.core.handlers.base import BaseHandler
+  File "/tmp/swebench-work2/django__django-11999/django/core/handlers/base.py", line 8, in <module>
+    from django.urls import get_resolver, set_urlconf
+  File "/tmp/swebench-work2/django__django-11999/django/urls/__init__.py", line 1, in <module>
+    from .base import (
+  File "/tmp/swebench-work2/django__django-11999/django/urls/base.py", line 9, in <module>
+    from .exceptions import NoReverseMatch, Resolver404
+  File "/tmp/swebench-work2/django__django-11999/django/urls/exceptions.py", line 1, in <module>
+    from django.http import Http404
+  File "/tmp/swebench-work2/django__django-11999/django/http/__init__.py", line 5, in <module>
+    from django.http.response import (
+  File "/tmp/swebench-work2/django__django-11999/django/http/response.py", line 15, in <module>
+    from django.core.serializers.json import DjangoJSONEncoder
+  File "/tmp/swebench-work2/django__django-11999/django/core/serializers/__init__.py", line 23, in <module>
+    from django.core.serializers.base import SerializerDoesNotExist
+  File "/tmp/swebench-work2/django__django-11999/django/core/serializers/base.py", line 7, in <module>
+    from django.db import models
+  File "/tmp/swebench-work2/django__django-11999/django/db/models/__init__.py", line 3, in <module>
+    from django.db.models.aggregates import *  # NOQA
+  File "/tmp/swebench-work2/django__django-11999/django/db/models/aggregates.py", line 5, in <module>
+    from django.db.models.expressions import Case, Func, Star, When
+  File "/tmp/swebench-work2/django__django-11999/django/db/models/expressions.py", line 8, in <module>
+    from django.db.models import fields
+  File "/tmp/swebench-work2/django__django-11999/django/db/models/fields/__init__.py", line 758
+    cls._meta.add_field(self, private=private=private_only)
+                                             ^
+SyntaxError: invalid syntax

@@ -1,0 +1,6 @@
+# tox --current-env -epy39 -v -- tests/test_build_html.py
+py39: commands[0]> python -X dev -m pytest -rA --durations 25 tests/test_build_html.py
+py39: exit 1 (0.01 seconds) /tmp/swebench-work2/sphinx-doc__sphinx-8474> python -X dev -m pytest -rA --durations 25 tests/test_build_html.py pid=771212
+  py39: FAIL code 1 (0.03=setup[0.01]+cmd[0.01] seconds)
+  evaluation failed :( (0.10 seconds)
+/tmp/swebench-work2/sphinx-doc__sphinx-8474/.tox/py39/bin/python: No module named pytest

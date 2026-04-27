@@ -1,0 +1,55 @@
+# PYTHONWARNINGS='ignore::UserWarning,ignore::SyntaxWarning' bin/test -C --verbose sympy/polys/tests/test_factortools.py
+============================= test process starts ==============================
+executable:         /tmp/swebench-venvs/sympy__sympy-19254/bin/python  (3.9.25-final-0) [CPython]
+architecture:       64-bit
+cache:              no
+ground types:       python 
+numpy:              None
+random seed:        34236850
+hash randomization: on (PYTHONHASHSEED=705105424)
+
+sympy/polys/tests/test_factortools.py[21] 
+test_dup_trial_division ok
+test_dmp_trial_division ok
+test_dup_zz_mignotte_bound F
+test_dmp_zz_mignotte_bound F
+test_dup_zz_hensel_step ok
+test_dup_zz_hensel_lift ok
+test_dup_zz_irreducible_p ok
+test_dup_cyclotomic_p ok
+test_dup_zz_cyclotomic_poly ok
+test_dup_zz_cyclotomic_factor ok
+test_dup_zz_factor ok
+test_dmp_zz_wang F
+test_dmp_zz_wang_fail f
+test_issue_6355 ok
+test_dmp_zz_factor ok
+test_dup_ext_factor ok
+test_dmp_ext_factor ok
+test_dup_factor_list ok
+test_dmp_factor_list ok
+test_dup_irreducible_p ok
+test_dmp_irreducible_p ok                                                 [FAIL]
+
+
+________________________________________________________________________________
+_______ sympy/polys/tests/test_factortools.py:test_dup_zz_mignotte_bound _______
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-19254/sympy/polys/tests/test_factortools.py", line 30, in test_dup_zz_mignotte_bound
+    assert R.dup_zz_mignotte_bound(2*x**2 + 3*x + 4) == 6
+AssertionError
+________________________________________________________________________________
+_______ sympy/polys/tests/test_factortools.py:test_dmp_zz_mignotte_bound _______
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-19254/sympy/polys/tests/test_factortools.py", line 36, in test_dmp_zz_mignotte_bound
+    assert R.dmp_zz_mignotte_bound(2*x**2 + 3*x + 4) == 32
+AssertionError
+________________________________________________________________________________
+____________ sympy/polys/tests/test_factortools.py:test_dmp_zz_wang ____________
+Traceback (most recent call last):
+  File "/tmp/swebench-work2/sympy__sympy-19254/sympy/polys/tests/test_factortools.py", line 258, in test_dmp_zz_wang
+    assert p == 6291469
+AssertionError
+
+=== tests finished: 17 passed, 3 failed, 1 expected to fail, in 0.49 seconds ===
+DO *NOT* COMMIT!

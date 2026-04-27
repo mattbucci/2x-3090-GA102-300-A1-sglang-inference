@@ -1,0 +1,41 @@
+
+# /tmp/swebench-venvs/django__django-12700/bin/python -m pip install --quiet -U pip wheel
+
+# /tmp/swebench-venvs/django__django-12700/bin/python -m pip install --quiet -e .
+
+# /tmp/swebench-venvs/django__django-12700/bin/python -m pip install --quiet -e .[test]
+WARNING: django 3.1 does not provide the extra 'test'
+
+# /tmp/swebench-venvs/django__django-12700/bin/python -m pip install --quiet -e .[testing]
+WARNING: django 3.1 does not provide the extra 'testing'
+
+# /tmp/swebench-venvs/django__django-12700/bin/python -m pip install --quiet -e .[dev]
+WARNING: django 3.1 does not provide the extra 'dev'
+
+# /tmp/swebench-venvs/django__django-12700/bin/python -m pip install --quiet pytest
+# bootstrap rc=0
+
+
+# install: python -m pip install -e .
+rc=0
+Obtaining file:///tmp/swebench-work2/django__django-12700
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting asgiref>=3.2 (from Django==3.1)
+  Using cached asgiref-3.8.1-py3-none-any.whl.metadata (9.3 kB)
+Collecting pytz (from Django==3.1)
+  Using cached pytz-2026.1.post1-py2.py3-none-any.whl.metadata (22 kB)
+Collecting sqlparse>=0.2.2 (from Django==3.1)
+  Using cached sqlparse-0.5.5-py3-none-any.whl.metadata (4.7 kB)
+Collecting typing-extensions>=4 (from asgiref>=3.2->Django==3.1)
+  Using cached typing_extensions-4.13.2-py3-none-any.whl.metadata (3.0 kB)
+Using cached asgiref-3.8.1-py3-none-any.whl (23 kB)
+Using cached sqlparse-0.5.5-py3-none-any.whl (46 kB)
+Using cached pytz-2026.1.post1-py2.py3-none-any.whl (510 kB)
+Using cached typing_extensions-4.13.2-py3-none-any.whl (45 kB)
+Installing collected packages: pytz, typing-extensions, sqlparse, asgiref, Django
+  Running setup.py develop for Django
+Successfully installed Django asgiref-3.8.1 pytz-2026.1.post1 sqlparse-0.5.5 typing-extensions-4.13.2
+
+  DEPRECATION: Legacy editable install of Django==3.1 from file:///tmp/swebench-work2/django__django-12700 (setup.py develop) is deprecated. pip 25.1 will enforce this behaviour change. A possible replacement is to add a pyproject.toml or enable --use-pep517, and use setuptools >= 64. If the resulting installation is not behaving as expected, try using --config-settings editable_mode=compat. Please consult the setuptools documentation for more information. Discussion can be found at https://github.com/pypa/pip/issues/11457
+
