@@ -19,7 +19,9 @@ Reference model: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5 ms TPOT, fresh
 ## In Flight
 
 1. **SWE-bench Lite bake-off — Coder-REAP-25B done, three coders queued.** Coder-REAP-25B baseline shipped (29.3% / 37.3% on tests-ran, see banner). Next up: **Coder-30B → Qwen3.6-35B-A3B → Devstral-24B → Qwen3-30B-REAM**. Each rollout ~22h at 300s/instance × 256K ctx; scoring is ~30 min on the existing per-instance venv cache. Final pick → SWE-bench Verified (500 task) for the headline number on the top 1-2 finalists.
-2. **Qwen3.5-28B REAP thinking recalibration (paused).** Re-cal with `thinking_vision_video` recipe paused after the calibration+eval-concurrent system crash. Will resume between coder rollouts.
+2. **Rollout v2: Docker-backed test-edit-test harness.** v1 was read-edit-pray (model couldn't `pytest` mid-iteration). v2 runs opencode INSIDE the official swebench eval container (FROM `swebench/sweb.eval.x86_64.<inst>` + Node + opencode + ripgrep, host SGLang reachable via `--network=host`), so the model can run `pytest` against the exact env its fix is graded in. Smoke-testing on REAP-25B's 0/5 cluster (django-13925/11905, flask-4045, matplotlib-24334/23913) before re-running the full suite — code in `evals/swebench/docker_rollout.py`.
+3. **Scaffold A/B: little-coder vs opencode.** [little-coder](https://github.com/itayinbarr/little-coder) is a small-model-tuned harness (skill-injection, thinking-budget cap, write-vs-edit invariant; built on `pi`) claiming **Qwen3.6-35B-A3B 78.67% Aider Polyglot / 40% Terminal-Bench Core v0.1.1 / 23.82% Terminal-Bench 2.0**. After the four-model bake-off, re-run our currently-failing cluster through it; if it lifts ≥2/5 on REAP-25B's 0/5, promote to a second harness column in the bake-off. Install: `npm install -g little-coder` → run via OpenAI-compatible endpoint (works with our SGLang on `:23334`).
+4. **Qwen3.5-28B REAP thinking recalibration (paused).** Re-cal with `thinking_vision_video` recipe paused after the calibration+eval-concurrent system crash. Will resume between coder rollouts.
 
 ## Cross-team updates
 
