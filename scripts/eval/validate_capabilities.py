@@ -350,6 +350,10 @@ def main() -> int:
     p.add_argument("--thinking-kwarg", default=None,
                    help='JSON string, e.g. \'{"enable_thinking": true}\' for Gemma4')
     p.add_argument("--timeout", type=int, default=180)
+    p.add_argument("--save", default=None,
+                   help="Append results to a JSON file keyed by --tag (creates if missing)")
+    p.add_argument("--tag", default=None,
+                   help="Model tag for --save (default: server-reported model name)")
     args = p.parse_args()
 
     base = f"http://{args.host}:{args.port}"
@@ -399,6 +403,25 @@ def main() -> int:
 
     elapsed = time.time() - t0
     print(f"--- {sum(ok for _, ok, _ in results)}/{len(results)} passed in {elapsed:.1f}s ---")
+
+    if args.save:
+        out_path = Path(args.save)
+        existing = json.load(open(out_path)) if out_path.exists() else {}
+        tag = args.tag or model.split("/")[-1]
+        existing[tag] = {
+            "tag": tag,
+            "model": model,
+            "timestamp": time.strftime("%Y-%m-%d %H:%M"),
+            "elapsed_sec": round(elapsed, 1),
+            "checks": {name: {"passed": ok, "message": msg} for name, ok, msg in results},
+            "summary": {
+                "passed": sum(ok for _, ok, _ in results),
+                "total": len(results),
+            },
+        }
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        json.dump(existing, open(out_path, "w"), indent=2)
+        print(f"Saved to {out_path}")
 
     failed = [name for name, ok, _ in results if not ok]
     if failed:

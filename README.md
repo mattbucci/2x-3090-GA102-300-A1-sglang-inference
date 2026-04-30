@@ -41,6 +41,7 @@ R9700 dialogue threads (Qwen3.6-35B v2 config-class fix, ClippableLinear confirm
 - **Qwen3.5-28B REAP `<think>` tags broken** — recal in flight (paused, see In Flight #2).
 - **60B+ models don't fit** — Coder-Next-REAM (35 GB), GLM-4.5-Air-REAP (43 GB).
 - **Piecewise CUDA graph `quant_type=None`** — would unblock decode speedups on REAP/REAM/Qwen3.6 (all currently run with graphs disabled for safety).
+- **One 3090 offline (PCIe adapter swap pending)** — repo currently runs TP=1, single-GPU. AWQ models still fit on 24 GB at reduced context (8K–32K typical). Long-context evals and TP=2 benches paused until the second card returns. Quick capability sweeps via `./scripts/eval/test_capabilities_all.sh` work today.
 
 ## Quick Start
 
