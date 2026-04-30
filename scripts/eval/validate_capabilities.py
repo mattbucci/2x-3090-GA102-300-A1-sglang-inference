@@ -84,6 +84,16 @@ def _make_test_image() -> bytes:
     return buf.getvalue()
 
 
+def _model_max_len(base_url: str) -> int | None:
+    """Look up max_model_len from /v1/models so we don't request more tokens
+    than the server allows (small-context test runs OOM otherwise)."""
+    try:
+        data = _http_get(f"{base_url}/v1/models", timeout=5)
+        return data["data"][0].get("max_model_len")
+    except Exception:
+        return None
+
+
 def check_thinking(
     base_url: str,
     model: str,
@@ -102,6 +112,12 @@ def check_thinking(
     # correctly — SGLang reads sampling defaults from generation_config.json when
     # we omit temperature; falling back to 0.7/top_p=0.95 if the server hasn't
     # picked up a model preset.
+    # Cap max_tokens against the model's actual context window — small-context
+    # test runs (e.g. 4K for OOM-headroom) would otherwise 400 on the request.
+    server_max = _model_max_len(base_url)
+    if server_max:
+        max_tokens = min(max_tokens, max(256, server_max - 256))
+
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],

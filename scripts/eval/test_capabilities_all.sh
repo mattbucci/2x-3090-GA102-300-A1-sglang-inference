@@ -40,11 +40,17 @@ is_text_only() {
 }
 
 wait_ready() {
+    # SGLang surfaces /v1/models early (during warmup) but /health stays 503
+    # until the model is fully ready to serve. validate_capabilities checks
+    # /health, so we need to as well — otherwise the validator races us and
+    # bails on a 503.
     local pid="$1"
-    local timeout="${2:-600}"
+    local timeout="${2:-900}"
     local start; start=$(date +%s)
     while true; do
-        if curl -sf "http://localhost:$PORT/v1/models" >/dev/null 2>&1; then
+        local code
+        code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/health" 2>/dev/null || echo "000")
+        if [ "$code" = "200" ]; then
             return 0
         fi
         if ! kill -0 "$pid" 2>/dev/null; then
@@ -54,19 +60,25 @@ wait_ready() {
         if [ "$elapsed" -gt "$timeout" ]; then
             return 1
         fi
-        sleep 2
+        sleep 3
     done
 }
 
 stop_server() {
-    local pid="$1"
-    [ -z "$pid" ] && return
-    # Stop the SGLang process group (server spawns workers)
-    kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
-    sleep 5
-    kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
-    # Catch orphaned workers
+    # SGLang spawns several worker processes; the orchestrator's PID points at
+    # the launch.sh wrapper, not the python server. Easier to nuke everything
+    # bound to our port and let CUDA reclaim memory before the next model.
+    pkill -TERM -f "sglang.launch_server" 2>/dev/null || true
+    sleep 3
     pkill -KILL -f "sglang.launch_server" 2>/dev/null || true
+    pkill -KILL -f "scripts/launch.sh" 2>/dev/null || true
+    # Wait for the port to free up
+    for _ in $(seq 1 20); do
+        if ! curl -sf -o /dev/null "http://localhost:$PORT/health" 2>/dev/null; then
+            break
+        fi
+        sleep 1
+    done
     sleep 5
 }
 
@@ -80,8 +92,8 @@ run_one() {
     echo "Capability test: $model"
     echo "=================================================="
 
-    # Launch server in its own session (setsid). 8K context fits any of our
-    # AWQ MoE/Dense models on a single 24 GB 3090 with TP=1.
+    # Launch in its own session so the full process tree gets cleaned up.
+    # 8K context fits any of our AWQ MoE/Dense models on a single 24 GB 3090.
     setsid bash -c "
         cd '$REPO_DIR'
         source '$REPO_DIR/scripts/common.sh'
@@ -89,29 +101,17 @@ run_one() {
         export CUDA_VISIBLE_DEVICES=0
         setup_nvidia_env
         export CUDA_VISIBLE_DEVICES=0
-        '$REPO_DIR/scripts/launch.sh' '$model' --tp 1 --context-length 8192 --mem-fraction 0.85 \
-            > '$logfile' 2>&1 &
-        echo \$! > '$pidfile'
-        wait
-    " </dev/null >/dev/null 2>&1 &
+        exec '$REPO_DIR/scripts/launch.sh' '$model' --tp 1 --context-length 8192 --mem-fraction 0.85
+    " > "$logfile" 2>&1 </dev/null &
     local launcher_pid=$!
     disown
+    echo "$launcher_pid" > "$pidfile"
 
-    # The setsid-spawned process is the actual server; pidfile gets it
-    sleep 5
-    local pid
-    pid="$(cat "$pidfile" 2>/dev/null || echo "")"
-    if [ -z "$pid" ]; then
-        echo "FAIL: could not capture server PID for $model"
-        kill -9 "$launcher_pid" 2>/dev/null || true
-        return 1
-    fi
-
-    echo "Server PID $pid — waiting for ready (up to 10 min)..."
-    if ! wait_ready "$pid" 600; then
+    echo "Launcher PID $launcher_pid — waiting for /health=200 (up to 15 min)..."
+    if ! wait_ready "$launcher_pid" 900; then
         echo "FAIL: server didn't become ready. Last 40 log lines:"
         tail -40 "$logfile"
-        stop_server "$pid"
+        stop_server
         return 1
     fi
 
@@ -125,7 +125,7 @@ run_one() {
         --port "$PORT" --tag "$model" --save "$RESULTS" \
         "${extra_flags[@]}" || true
 
-    stop_server "$pid"
+    stop_server
     return 0
 }
 
