@@ -145,8 +145,15 @@ apply_preset() {
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             ;;
         qwen3-vl-32b)
+            # Qwen3-VL-32B-Instruct AWQ — 21 GB weights (5 shards). The prior
+            # MEM=0.85 / MAX_RUNNING=16 / CTX=16384 defaults OOM cold at TP=1
+            # on the KV-pool sizing step (post-weight-load: ~3 GB free, KV
+            # pool wants 16 × 16384 × ~24 KB ≈ 6 GB). TP=1-viable defaults
+            # below. For TP=2 once the second 3090 returns, override via CLI:
+            # `./scripts/launch.sh qwen3-vl-32b --max-running-requests 16
+            # --mem-fraction 0.85 --context-length 150000`.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-VL-32B-Instruct-AWQ-4bit}"
-            CTX=16384; MEM=0.85; MAX_RUNNING=16; CHUNKED=4096
+            CTX=4096; MEM=0.93; MAX_RUNNING=1; CHUNKED=4096
             ;;
         qwen35)
             # Repointed 2026-05-01 (second time): now defaults to
