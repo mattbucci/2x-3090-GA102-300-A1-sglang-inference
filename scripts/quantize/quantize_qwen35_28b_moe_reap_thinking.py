@@ -57,11 +57,12 @@ OUTPUT_DIR = os.environ.get(
 )
 NUM_SAMPLES = int(os.environ.get("NUM_SAMPLES", "256"))
 MAX_SEQ_LEN = int(os.environ.get("MAX_SEQ_LEN", "2048"))  # thinking traces are long
+RECIPE = os.environ.get("RECIPE", "thinking_vision_video")
 
 
 print(f"Model:       {MODEL_PATH}")
 print(f"Output:      {OUTPUT_DIR}")
-print(f"Calibration: recipe=thinking_vision_video  {NUM_SAMPLES} samples x {MAX_SEQ_LEN} tokens")
+print(f"Calibration: recipe={RECIPE}  {NUM_SAMPLES} samples x {MAX_SEQ_LEN} tokens")
 
 
 # ---- 1. Load BF16 model on CPU ----
@@ -139,9 +140,9 @@ del ckpt  # free RAM
 
 # ---- 3. Build thinking-aware calibration set ----
 
-print("\n[3/5] Building calibration dataset (recipe=thinking_vision_video)...")
+print(f"\n[3/5] Building calibration dataset (recipe={RECIPE})...")
 rows = build_calibration_dataset(
-    recipe="thinking_vision_video",
+    recipe=RECIPE,
     num_samples=NUM_SAMPLES,
     seed=42,
 )
