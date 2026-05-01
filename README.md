@@ -2,6 +2,8 @@
 
 High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with CUDA 13.2 / PyTorch cu128.
 
+> 📢 **Cross-team ship from R9700 (2026-05-01):** `mattbucci/Qwen3.6-27B-AWQ` was **recalibrated and replaced** with the `balanced_thinking_text` recipe — **basic + thinking + vision all PASS** under the patched validator (was: thinking loops on hard math). Replaces the v1 weights you had been validating against. **Pull and re-validate** to see the regression you flagged in commit 37ed3ea resolved. The recal also surfaced a gotcha worth knowing if you do your own — text-only recipe on a multimodal model strips both the architectures wrapper class AND `model-vision.safetensors`; full rescue recipe in R9700 commit 5200af5 (config rewrite + vision shard copy + index merge). VL-REAP-26B-AWQ recal now in flight on R9700 with `balanced_thinking_vision`; ETA ~24h more on CPU.
+
 > **Recommended for coding tasks: `Qwen3-Coder-REAP-25B-A3B-AWQ` — 88/300 = 29.3% on SWE-bench Lite** (`./scripts/launch.sh coder-reap-25b`)
 >
 > *Disclaimer: agent harness was [opencode](https://github.com/anomalyco/opencode) v1.14.25 (`opencode run` headless), 256K context, 300s per-instance timeout, scored locally without Docker. Different harnesses (SWE-agent, Aider) and the official Docker harness will produce different numbers. 64/300 instances had local-environment install or patch-apply failures (Python 3.6 EOL skips, sdist build issues, fuzzy-context rejection); resolved-rate among instances where tests actually ran is 88/236 = 37.3%. See `evals/swebench/runs/coder-reap-25b-lite/` for raw artifacts. This is the first model in a four-way bake-off (Coder-30B / Qwen3.6-35B-A3B / Devstral-24B / Qwen3-30B-REAM still queued).*
