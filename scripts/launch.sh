@@ -78,10 +78,21 @@ apply_preset() {
             CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
             ;;
         coder-reap)
+            # Coder-REAP-25B-A3B-W4A16. On TP=1 / 24 GB the piecewise CUDA
+            # graph capture (58 num-token shapes at CTX=131072 + CHUNKED=8192)
+            # finishes cleanly but the detokenizer worker then hangs on the
+            # very first prefill — /health stays 503 with "couldn't get a
+            # response from detokenizer for last 20 seconds" forever. Adding
+            # --skip-server-warmup alone doesn't fix it (the next real request
+            # hits the same hang). --disable-piecewise-cuda-graph is the
+            # working workaround (~5-10% TPOT cost at long context vs the
+            # graph-on path). For TP=2 once the second 3090 returns this can
+            # be removed and the headline 46 tok/s @ 131K should restore.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-REAP-25B-A3B-W4A16}"
             QUANT="auto-round"
             CTX=131072; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
-            CUDA_GRAPH="--cuda-graph-max-bs 1"
+            CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
+            WARMUP="--skip-server-warmup"; WATCHDOG=1800
             ;;
         coder-30b)
             # Repointed 2026-05-01 from local Apr-17 self-built AWQ-Marlin to the

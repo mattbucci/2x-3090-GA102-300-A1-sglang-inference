@@ -361,7 +361,8 @@ def check_vision(base_url: str, model: str) -> tuple[bool, str]:
 # scripts/eval/test_capabilities_all.sh::NON_THINKING — keep them in sync.
 NON_THINKING_MODELS = frozenset({
     "coder-30b",        # Qwen3-Coder-30B-A3B-Instruct
-    "coder-reap-25b",   # Qwen3-Coder-REAP-25B-A3B
+    "coder-reap",       # Qwen3-Coder-REAP-25B-A3B (preset shorthand)
+    "coder-reap-25b",   # legacy preset name (alternate served-model-name)
     "qwen3-ream",       # Qwen3-30B-A3B-Instruct-2507 base
     "devstral",         # Devstral 24B Instruct
     "devstral-long",    # same model, long-context preset
@@ -374,7 +375,8 @@ NON_THINKING_MODELS = frozenset({
 # Same list as scripts/eval/test_capabilities_all.sh::TEXT_ONLY — keep in sync.
 TEXT_ONLY_MODELS = frozenset({
     "coder-30b",        # Qwen3-Coder-30B-A3B-Instruct (text)
-    "coder-reap-25b",   # Qwen3-Coder-REAP-25B-A3B (text)
+    "coder-reap",       # Qwen3-Coder-REAP-25B-A3B (preset shorthand, text)
+    "coder-reap-25b",   # legacy preset name (alternate served-model-name, text)
     "qwen3-ream",       # Qwen3-30B-A3B-Instruct-2507 base (text after REAM)
     "qwen35-moe",       # Qwen3.5-28B MoE REAP (calibration broken; treat as text-only until recal lands)
 })
