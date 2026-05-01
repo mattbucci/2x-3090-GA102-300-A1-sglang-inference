@@ -162,5 +162,29 @@
       "passed": 2,
       "total": 3
     }
+  },
+  "qwen36-27b-recal-Apr29": {
+    "tag": "qwen36-27b-recal-Apr29",
+    "model": "qwen35",
+    "timestamp": "2026-05-01 08:05",
+    "elapsed_sec": 28.5,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer=' paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1254 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)the user wants a short description of the image.\\nthe image shows a red circle with a black outline on a white background'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
   }
 }
