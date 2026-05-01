@@ -354,6 +354,22 @@ def check_vision(base_url: str, model: str) -> tuple[bool, str]:
     return passed, f"saw={hits}  response={sample!r}"
 
 
+# Models that upstream documents as non-thinking-only — running the thinking
+# probe against these gives a meaningless FAIL because they were never trained
+# to emit <think>...</think> blocks. Matched against the SGLang served-model-name
+# (set by launch.sh `--served-model-name`). Same list as
+# scripts/eval/test_capabilities_all.sh::NON_THINKING — keep them in sync.
+NON_THINKING_MODELS = frozenset({
+    "coder-30b",        # Qwen3-Coder-30B-A3B-Instruct
+    "coder-reap-25b",   # Qwen3-Coder-REAP-25B-A3B
+    "qwen3-ream",       # Qwen3-30B-A3B-Instruct-2507 base
+    "devstral",         # Devstral 24B Instruct
+    "devstral-long",    # same model, long-context preset
+    "qwen3-vl-32b",     # Qwen3-VL-32B-Instruct (the -Thinking edition is separate)
+    "qwen3-vl-moe",     # Qwen3-VL-30B-A3B-Instruct
+})
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--port", type=int, default=23334)
@@ -363,6 +379,9 @@ def main() -> int:
     p.add_argument("--skip-vision", action="store_true")
     p.add_argument("--skip-video", action="store_true",
                    help="skip the video roundtrip (Devstral has no video; Qwen/Gemma do)")
+    p.add_argument("--force-thinking", action="store_true",
+                   help="Run the thinking probe even on presets in NON_THINKING_MODELS "
+                        "(default: auto-skip thinking for known non-thinking models).")
     p.add_argument("--thinking-kwarg", default=None,
                    help='JSON string, e.g. \'{"enable_thinking": true}\' for Gemma4')
     p.add_argument("--timeout", type=int, default=180)
@@ -393,7 +412,20 @@ def main() -> int:
     if args.thinking_kwarg:
         thinking_kwargs = json.loads(args.thinking_kwarg)
 
+    # Auto-skip thinking for models that upstream documents as non-thinking-only
+    # (see NON_THINKING_MODELS). Caller can override with --force-thinking.
+    auto_skip_thinking = (
+        not args.skip_thinking
+        and not args.force_thinking
+        and model in NON_THINKING_MODELS
+    )
+    if auto_skip_thinking:
+        args.skip_thinking = True
+
     print(f"=== Capability validator — {base}  model={model} ===")
+    if auto_skip_thinking:
+        print(f"  (auto-skipping thinking — '{model}' is in NON_THINKING_MODELS; "
+              f"override with --force-thinking)")
 
     results: list[tuple[str, bool, str]] = []
 
