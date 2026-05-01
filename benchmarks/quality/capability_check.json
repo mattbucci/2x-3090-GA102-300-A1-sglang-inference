@@ -138,5 +138,29 @@
       "passed": 1,
       "total": 2
     }
+  },
+  "qwen3-vl-32b-tp1-2k": {
+    "tag": "qwen3-vl-32b-tp1-2k",
+    "model": "qwen3-vl-32b",
+    "timestamp": "2026-05-01 03:40",
+    "elapsed_sec": 3.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (105 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a solid red circle with a black outline centered on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
   }
 }
