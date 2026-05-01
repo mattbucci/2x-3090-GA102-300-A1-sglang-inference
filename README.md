@@ -32,7 +32,7 @@ Autonomous loop has shipped 14+ substantive iterations on the single-3090 constr
 **What landed (committed + pushed):**
 - patches **020 v2** (upstream `clippable_linear.py` port — fixes shim signature mismatch), **021** (Marlin MoE GeLU activation dispatch — drops 4 hard `silu`-only asserts), **022** (`gemma4_causal.py` EntryClass dedup — unblocks any model launch once `gemma4_mm.py` imports cleanly).
 - `validate_capabilities.py` extended with `--save`/`--tag` JSON output; `test_capabilities_all.sh` orchestrator with `NON_THINKING` auto-skip.
-- 8× capability sweeps logged in `benchmarks/quality/capability_check.json`: `coder-30b`, `coder-reap-25b`, `qwen3-ream`, `coder-30b-mattbucci-HF-Apr29` all 1/1 basic PASS; `qwen36-27b-ct-v3-revalidate` 3/4 (vision regression vs prior pre-validator-patch "4/4"); `qwen3-vl-32b-tp1-2k` basic+vision PASS thinking N/A by upstream design; `qwen35-repoint-Apr29` basic PASS thinking TRUNCATES (R9700-flagged termination drift, recal candidate); `gemma4-clippable-fix` 1/4 — server boots clean, decode emits `<pad>` garbage; **`qwen36-27b-recal-Apr29` 3/3 PASS** (R9700's `balanced_thinking_text` recal on `mattbucci/Qwen3.6-27B-AWQ` reproduces clean on Ampere — basic + thinking + vision all PASS, video skipped).
+- 9× capability sweeps logged in `benchmarks/quality/capability_check.json`: `coder-30b`, `coder-reap-25b`, `qwen3-ream`, `coder-30b-mattbucci-HF-Apr29` all 1/1 basic PASS; `qwen36-27b-ct-v3-revalidate` 3/4 (vision regression vs prior pre-validator-patch "4/4"); `qwen3-vl-32b-tp1-2k` basic+vision PASS thinking N/A by upstream design; `qwen35-repoint-Apr29` basic PASS thinking TRUNCATES (R9700-flagged termination drift, recal candidate); `gemma4-clippable-fix` 1/4 — server boots clean, decode emits `<pad>` garbage; `qwen36-27b-recal-Apr29` 3/3 PASS (R9700's `balanced_thinking_text` recal); **`qwen36-35b-awq-native-revalidate` 3/3 PASS** (R9700-CT-converted Qwen3.6-35B-A3B AWQ-native still serves clean post-validator-patch, fits TP=1 / 2K with mem-fraction 0.94, video skipped).
 - Two preset repoints to mattbucci HF mirrors: `coder-30b` → CT→AWQ-Marlin conversion of `mattbucci/Qwen3-Coder-30B-A3B-AWQ` (smoke-tested clean Python lambda); `qwen35` → byte-matching `mattbucci/Qwen3.5-27B-AWQ` (Apr-29 self-cal vs the prior Apr-12 community 4-shard).
 - Cross-team notes posted to R9700 (`f6da90b`) and M4 (`d039667`) READMEs.
 - `balanced_thinking_vision` + `balanced_thinking_text` calibration recipes ported from R9700.
@@ -73,7 +73,7 @@ R9700 dialogue threads (Qwen3.6-35B v2 config-class fix, ClippableLinear confirm
 ./scripts/setup.sh                          # clone SGLang v0.5.10, apply patches, create conda env
 
 ./scripts/launch.sh qwen3-ream              # fastest 256K — reference model
-./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B AWQ-native thinking+vision (262K, 4/4)
+./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B AWQ-native thinking+vision (262K, 3/3 patched validator)
 ./scripts/launch.sh devstral-long           # Devstral-24B at 217K single-user ceiling
 ./scripts/launch.sh devstral                # Devstral-24B default (131K, better short-ctx + multi-user)
 ./scripts/launch.sh coder-30b               # Coder-30B MoE — peak throughput
@@ -98,7 +98,7 @@ Single-user tok/s measured at the max-context value in the table. All numbers ar
 | Model | Type | Max ctx | tok/s @max | TPOT | Launch | Status |
 |-------|------|:-------:|:----------:|:----:|:------:|:-------|
 | **Qwen3-30B REAM AWQ** | MoE (96 exp) | **262K** | **74** | 13.5 ms | `qwen3-ream` | **Hits 256K target** |
-| **Qwen3.6-35B-A3B AWQ-native** | DeltaNet+MoE (256 exp, VL) | **262K** | 2.6 | 385 ms | `qwen36` | thinking+vision 4/4; 33 @ short / 5.8 @160K / 2.6 @250K |
+| **Qwen3.6-35B-A3B AWQ-native** | DeltaNet+MoE (256 exp, VL) | **262K** | 2.6 | 385 ms | `qwen36` | basic+thinking+vision 3/3 PASS (revalidated 2026-05-01 TP=1 / 2K); 33 @ short / 5.8 @160K / 2.6 @250K |
 | **Qwen3.6-27B AWQ (R9700 recal Apr-29)** | DeltaNet+attn (VL) | **131K** | **21** | 47 ms | `qwen35` (preset → `mattbucci/Qwen3.6-27B-AWQ`) | **Basic + thinking + vision 3/3 PASS** on Ampere (2026-05-01 TP=1 / 4K). R9700's `balanced_thinking_text` recal resolved the vision regression seen on the prior CT v3 self-cal. Video skipped (text-only recipe, expected). |
 | **Qwen3-VL-32B Instruct (community AWQ)** | Dense (VL) | **150K** | **40** | 25 ms | `qwen3-vl-32b` | Re-validated 2026-05-01 (TP=1, 2K context, 21 GB weights barely fits 24 GB at mem-fraction 0.93): basic PASS (`paris`), vision PASS (correctly named "red", "circle", "round"), thinking N/A — upstream Qwen3-VL-32B-Instruct is non-thinking by design (the `-Thinking` edition is a separate model). Prior "4/4" was a thinking-misclassification on the same pattern as the Coder family. |
 | **Devstral-24B AWQ (long)** | Dense | **217K** | **56** | 17.9 ms | `devstral-long` | 66% past default ceiling |

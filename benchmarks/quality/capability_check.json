@@ -186,5 +186,29 @@
       "passed": 3,
       "total": 3
     }
+  },
+  "qwen36-35b-awq-native-revalidate": {
+    "tag": "qwen36-35b-awq-native-revalidate",
+    "model": "qwen36",
+    "timestamp": "2026-05-01 08:31",
+    "elapsed_sec": 35.5,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1382 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=\"(reasoning)the user wants a one-sentence description of the image.\\n\\n1.  **identify the main subject:** it's a circle.\\n2.  **identif\""
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
   }
 }
