@@ -73,13 +73,20 @@ R9700 dialogue threads (Qwen3.6-35B v2 config-class fix, ClippableLinear confirm
 ```bash
 ./scripts/setup.sh                          # clone SGLang v0.5.10, apply patches, create conda env
 
-./scripts/launch.sh qwen3-ream              # fastest 256K — reference model
-./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B AWQ-native thinking+vision (262K, 3/3 patched validator)
-./scripts/launch.sh devstral-long           # Devstral-24B at 217K single-user ceiling
-./scripts/launch.sh devstral                # Devstral-24B default (131K, better short-ctx + multi-user)
+# TP=1 / 24 GB friendly (current rig — second 3090 offline):
+./scripts/launch.sh qwen3-ream              # fastest 256K — reference model (MoE active params fit cold)
+./scripts/launch.sh qwen35                  # Qwen3.6-27B-AWQ R9700 recal — 3/3 basic+thinking+vision PASS
 ./scripts/launch.sh coder-30b               # Coder-30B MoE — peak throughput
+./scripts/launch.sh coder-reap              # Coder-REAP-25B — SWE-bench Lite leader (29.3%)
+./scripts/launch.sh qwen3-vl-32b            # Qwen3-VL-32B Dense — TP=1 defaults boot cold (4K/MAX_RUNNING=1)
+./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B AWQ-native — boots TP=1 / 2K, 3/3 PASS at short-ctx
 
-python scripts/eval/validate_capabilities.py --port 23334                 # thinking + vision + basic probe
+# TP=2 only (second 3090 needed):
+./scripts/launch.sh devstral-long           # Devstral-24B at 217K — OOMs on TP=1 (eager weight prealloc, see Known Issues)
+./scripts/launch.sh devstral                # Devstral-24B 131K default — same TP=2-only constraint
+
+python scripts/eval/validate_capabilities.py --port 23334                 # auto-skips thinking/vision/video per preset
+python scripts/eval/test_capabilities_all.sh                              # sweep across all AWQ presets
 python scripts/bench/bench_long_context.py --port 23334 --name "Model" --contexts 1024 16384 131072 250000
 ```
 
