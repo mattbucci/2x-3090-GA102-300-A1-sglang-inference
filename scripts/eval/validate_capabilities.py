@@ -369,6 +369,25 @@ NON_THINKING_MODELS = frozenset({
     "qwen3-vl-moe",     # Qwen3-VL-30B-A3B-Instruct
 })
 
+# Models without any vision/video capability — running those probes against
+# them gives meaningless FAILs (no vision tower, no video frames pipeline).
+# Same list as scripts/eval/test_capabilities_all.sh::TEXT_ONLY — keep in sync.
+TEXT_ONLY_MODELS = frozenset({
+    "coder-30b",        # Qwen3-Coder-30B-A3B-Instruct (text)
+    "coder-reap-25b",   # Qwen3-Coder-REAP-25B-A3B (text)
+    "devstral",         # Devstral 24B (image-capable but image-only — see below)
+    "qwen3-ream",       # Qwen3-30B-A3B-Instruct-2507 base (text after REAM)
+    "qwen35-moe",       # Qwen3.5-28B MoE REAP (text-only after REAP)
+    "qwen35",           # Qwen3.5-27B-AWQ / Qwen3.6-27B-AWQ presets (text usage)
+})
+
+# Models with image but not video. Skip --skip-video here even when the model
+# has a vision tower. Devstral upstream is documented image-only.
+IMAGE_ONLY_MODELS = frozenset({
+    "devstral",
+    "devstral-long",
+})
+
 
 def main() -> int:
     p = argparse.ArgumentParser()
@@ -382,6 +401,9 @@ def main() -> int:
     p.add_argument("--force-thinking", action="store_true",
                    help="Run the thinking probe even on presets in NON_THINKING_MODELS "
                         "(default: auto-skip thinking for known non-thinking models).")
+    p.add_argument("--force-vision", action="store_true",
+                   help="Run the vision probe even on presets in TEXT_ONLY_MODELS "
+                        "(default: auto-skip vision/video for known text-only models).")
     p.add_argument("--thinking-kwarg", default=None,
                    help='JSON string, e.g. \'{"enable_thinking": true}\' for Gemma4')
     p.add_argument("--timeout", type=int, default=180)
@@ -422,10 +444,35 @@ def main() -> int:
     if auto_skip_thinking:
         args.skip_thinking = True
 
+    # Auto-skip vision/video for text-only models (no vision tower) and video
+    # for image-only models. Caller can override with --force-vision.
+    auto_skip_vision = (
+        not args.skip_vision
+        and not args.force_vision
+        and model in TEXT_ONLY_MODELS
+    )
+    if auto_skip_vision:
+        args.skip_vision = True
+        args.skip_video = True
+
+    auto_skip_video_only = (
+        not args.skip_video
+        and not args.force_vision
+        and model in IMAGE_ONLY_MODELS
+    )
+    if auto_skip_video_only:
+        args.skip_video = True
+
     print(f"=== Capability validator — {base}  model={model} ===")
     if auto_skip_thinking:
         print(f"  (auto-skipping thinking — '{model}' is in NON_THINKING_MODELS; "
               f"override with --force-thinking)")
+    if auto_skip_vision:
+        print(f"  (auto-skipping vision+video — '{model}' is in TEXT_ONLY_MODELS; "
+              f"override with --force-vision)")
+    elif auto_skip_video_only:
+        print(f"  (auto-skipping video — '{model}' is in IMAGE_ONLY_MODELS; "
+              f"override with --force-vision)")
 
     results: list[tuple[str, bool, str]] = []
 
