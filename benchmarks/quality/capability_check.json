@@ -234,5 +234,29 @@
       "passed": 2,
       "total": 3
     }
+  },
+  "qwen35-preset-cold-Apr29": {
+    "tag": "qwen35-preset-cold-Apr29",
+    "model": "qwen35",
+    "timestamp": "2026-05-01 11:54",
+    "elapsed_sec": 29.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1202 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)the user wants a short description of the image.\\n1.  **identify the main subject:** it is a red circle.\\n2.  **identify t'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
   }
 }

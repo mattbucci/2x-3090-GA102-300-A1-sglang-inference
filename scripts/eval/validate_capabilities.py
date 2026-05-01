@@ -375,11 +375,15 @@ NON_THINKING_MODELS = frozenset({
 TEXT_ONLY_MODELS = frozenset({
     "coder-30b",        # Qwen3-Coder-30B-A3B-Instruct (text)
     "coder-reap-25b",   # Qwen3-Coder-REAP-25B-A3B (text)
-    "devstral",         # Devstral 24B (image-capable but image-only — see below)
     "qwen3-ream",       # Qwen3-30B-A3B-Instruct-2507 base (text after REAM)
-    "qwen35-moe",       # Qwen3.5-28B MoE REAP (text-only after REAP)
-    "qwen35",           # Qwen3.5-27B-AWQ / Qwen3.6-27B-AWQ presets (text usage)
+    "qwen35-moe",       # Qwen3.5-28B MoE REAP (calibration broken; treat as text-only until recal lands)
 })
+# Note: `qwen35` was previously here but the preset now defaults to
+# Qwen3.6-27B-AWQ (multimodal, vision tower preserved by R9700's recal).
+# Keep it OFF this list so vision regressions surface on the validator.
+
+# Note: `devstral` has a vision tower but is image-only; see IMAGE_ONLY_MODELS
+# below — auto-skip-video without auto-skipping vision.
 
 # Models with image but not video. Skip --skip-video here even when the model
 # has a vision tower. Devstral upstream is documented image-only.
