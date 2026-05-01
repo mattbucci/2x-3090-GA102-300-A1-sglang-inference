@@ -84,7 +84,12 @@ apply_preset() {
             CUDA_GRAPH="--cuda-graph-max-bs 1"
             ;;
         coder-30b)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ-Marlin}"
+            # Repointed 2026-05-01 from local Apr-17 self-built AWQ-Marlin to the
+            # CT→AWQ-Marlin conversion of `mattbucci/Qwen3-Coder-30B-A3B-AWQ`
+            # (R9700-team's Apr-29 calibration). Same Marlin format, newer recipe.
+            # Source: hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ (CT format).
+            # Conversion: scripts/quantize/convert_moe_ct_to_awq.py --group-size 128.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ-Marlin-from-CT}"
             QUANT="awq_marlin"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             ;;
