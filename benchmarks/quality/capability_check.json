@@ -90,5 +90,33 @@
       "passed": 1,
       "total": 4
     }
+  },
+  "qwen36-27b-ct-v3-revalidate": {
+    "tag": "qwen36-27b-ct-v3-revalidate",
+    "model": "qwen35",
+    "timestamp": "2026-04-30 22:21",
+    "elapsed_sec": 34.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1535 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=[]  response='(reasoning)'"
+      },
+      "video": {
+        "passed": true,
+        "message": "skipped (ModuleNotFoundError(\"No module named 'imageio'\"))"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 4
+    }
   }
 }

@@ -77,7 +77,7 @@ Single-user tok/s measured at the max-context value in the table. All numbers ar
 |-------|------|:-------:|:----------:|:----:|:------:|:-------|
 | **Qwen3-30B REAM AWQ** | MoE (96 exp) | **262K** | **74** | 13.5 ms | `qwen3-ream` | **Hits 256K target** |
 | **Qwen3.6-35B-A3B AWQ-native** | DeltaNet+MoE (256 exp, VL) | **262K** | 2.6 | 385 ms | `qwen36` | thinking+vision 4/4; 33 @ short / 5.8 @160K / 2.6 @250K |
-| **Qwen3.6-27B CT thinking+vision** | DeltaNet+attn (VL) | **131K** | **21** | 47 ms | `qwen35` + MODEL env | Self-calibrated v3, 4/4 |
+| **Qwen3.6-27B CT thinking+vision** | DeltaNet+attn (VL) | **131K** | **21** | 47 ms | `qwen35` + MODEL env | Self-cal v3 — basic+thinking PASS post-patched-validator (2026-04-30, TP=1 / 4K), **vision FAIL** (response lands in reasoning_content, no objects identified). Prior "4/4" was pre-validator-patch. Recal candidate w/ `balanced_thinking_vision`. |
 | **Qwen3-VL-32B CT thinking+vision** | Dense (VL) | **150K** | **40** | 25 ms | `qwen3-vl-32b` + MODEL env | Self-calibrated, 4/4 |
 | **Devstral-24B AWQ (long)** | Dense | **217K** | **56** | 17.9 ms | `devstral-long` | 66% past default ceiling |
 | Devstral-24B AWQ | Dense | 131K | 56 | 17.9 ms | `devstral` | Short-ctx + multi-user friendly |
