@@ -1,0 +1,118 @@
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
+index 4410f07f3..dcfe5cc46 100644
+--- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
+@@ -8,7 +8,7 @@ from sglang.srt.utils.custom_op import register_custom_op
+ _is_cuda = is_cuda()
+ 
+ if _is_cuda:
+-    from sgl_kernel import moe_sum_reduce, silu_and_mul
++    from sgl_kernel import gelu_and_mul, moe_sum_reduce, silu_and_mul
+ 
+     from sglang.jit_kernel.moe_wna16_marlin import moe_wna16_marlin_gemm
+ 
+@@ -46,6 +46,7 @@ def fused_marlin_moe(
+     is_k_full: bool = True,
+     inplace: bool = False,
+     routed_scaling_factor: Optional[float] = None,
++    activation: str = "silu",
+ ) -> torch.Tensor:
+     """
+     This function computes a Mixture of Experts (MoE) layer using two sets of
+@@ -173,7 +174,11 @@ def fused_marlin_moe(
+         is_zp_float=False,
+     )
+ 
+-    silu_and_mul(intermediate_cache1.view(-1, 2 * N), intermediate_cache2)
++    # Gemma 4 MoE uses GeLU (gelu_pytorch_tanh); Qwen/Mixtral/etc. use SiLU.
++    if activation == "gelu":
++        gelu_and_mul(intermediate_cache1.view(-1, 2 * N), intermediate_cache2)
++    else:
++        silu_and_mul(intermediate_cache1.view(-1, 2 * N), intermediate_cache2)
+ 
+     if expert_map is not None:
+         intermediate_cache3.zero_()
+diff --git a/python/sglang/srt/layers/moe/moe_runner/marlin.py b/python/sglang/srt/layers/moe/moe_runner/marlin.py
+index 45104dd27..ccfa05c17 100644
+--- a/python/sglang/srt/layers/moe/moe_runner/marlin.py
++++ b/python/sglang/srt/layers/moe/moe_runner/marlin.py
+@@ -87,7 +87,11 @@ def fused_experts_none_to_marlin(
+     hidden_states = dispatch_output.hidden_states
+     topk_output = dispatch_output.topk_output
+ 
+-    assert runner_config.activation == "silu", "Only SiLU activation is supported."
++    # Gemma 4 MoE uses gelu (gelu_pytorch_tanh); Qwen/Mixtral/etc. use silu.
++    # fused_marlin_moe dispatches to gelu_and_mul / silu_and_mul on this arg.
++    assert runner_config.activation in ("silu", "gelu"), (
++        f"Marlin MoE: unsupported activation {runner_config.activation!r}"
++    )
+ 
+     if (
+         MARLIN_MOE_WORKSPACE is None
+@@ -118,6 +122,7 @@ def fused_experts_none_to_marlin(
+         is_k_full=quant_info.is_k_full,
+         inplace=runner_config.inplace,
+         routed_scaling_factor=runner_config.routed_scaling_factor,
++        activation=runner_config.activation,
+     ).to(hidden_states.dtype)
+ 
+     return StandardCombineInput(
+diff --git a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
+index 7a8fb6542..c2814e558 100644
+--- a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
++++ b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
+@@ -365,9 +365,11 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
+         )
+         from sglang.srt.layers.moe.token_dispatcher import StandardCombineInput
+ 
+-        assert (
+-            self.moe_runner_config.activation == "silu"
+-        ), "Only SiLU activation is supported."
++        # Gemma 4 MoE uses gelu_pytorch_tanh; Qwen/Mixtral/etc. use silu.
++        # fused_marlin_moe dispatches gelu_and_mul / silu_and_mul on this arg.
++        assert self.moe_runner_config.activation in ("silu", "gelu"), (
++            f"CT WNA16 MoE: unsupported activation {self.moe_runner_config.activation!r}"
++        )
+ 
+         x = dispatch_output.hidden_states
+         topk_output = dispatch_output.topk_output
+@@ -402,6 +404,7 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
+             num_bits=self.num_bits,
+             is_k_full=self.is_k_full,
+             routed_scaling_factor=self.moe_runner_config.routed_scaling_factor,
++            activation=self.moe_runner_config.activation,
+         )
+         return StandardCombineInput(hidden_states=output)
+ 
+@@ -455,9 +458,13 @@ class CompressedTensorsWNA16TritonMoE(CompressedTensorsWNA16MoE):
+     ) -> "CombineInput":
+         from sglang.srt.layers.moe.moe_runner.triton import TritonMoeQuantInfo
+ 
+-        assert (
+-            self.moe_runner_config.activation == "silu"
+-        ), "Only SiLU activation is supported."
++        # Triton fused MoE runner supports both silu and gelu (see
++        # moe_runner/triton.py). The original SiLU-only assertion blocked
++        # Gemma 4 (gelu). Runner still raises for unknown activations.
++        assert self.moe_runner_config.activation in (
++            "silu",
++            "gelu",
++        ), f"Only SiLU/GELU activation supported, got {self.moe_runner_config.activation!r}."
+ 
+         quant_info = TritonMoeQuantInfo(
+             w13_weight=layer.w13_weight_packed,
+diff --git a/python/sglang/srt/layers/quantization/marlin_utils.py b/python/sglang/srt/layers/quantization/marlin_utils.py
+index 3e06b4861..1979c5a43 100644
+--- a/python/sglang/srt/layers/quantization/marlin_utils.py
++++ b/python/sglang/srt/layers/quantization/marlin_utils.py
+@@ -242,8 +242,8 @@ def check_moe_marlin_supports_layer(layer: FusedMoE, group_size: int) -> bool:
+     intermediate_size_per_partition = layer.intermediate_size_per_partition
+     # apply_router_weight_on_input is not supported for moe marlin
+     supports_router_weight = not layer.moe_runner_config.apply_router_weight_on_input
+-    # moe marlin requires the activation to be silu
+-    supports_activation = layer.moe_runner_config.activation == "silu"
++    # moe marlin supports silu and gelu (gelu added 2026-04-30 for Gemma 4 MoE).
++    supports_activation = layer.moe_runner_config.activation in ("silu", "gelu")
+ 
+     # gate-up: (n, k) = (intermediate_size_per_partition * 2, hidden_size)
+     # down: (n, k) = (hidden_size, intermediate_size_per_partition)
