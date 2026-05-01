@@ -136,7 +136,11 @@ apply_preset() {
             CTX=16384; MEM=0.85; MAX_RUNNING=16; CHUNKED=4096
             ;;
         qwen35)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-27B-AWQ-4bit}"
+            # Repointed 2026-05-01 from local Apr-12 4-shard community AWQ (~20 GB,
+            # no thinking-mode calibration) to mattbucci/Qwen3.5-27B-AWQ Apr-29
+            # mirror (single 17.8 GB safetensor, R9700-team self-calibrated with
+            # thinking + vision preserved). Local mirror byte-matches the HF release.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.5-27B-AWQ-4bit-calibrated}"
             CTX=32768; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
