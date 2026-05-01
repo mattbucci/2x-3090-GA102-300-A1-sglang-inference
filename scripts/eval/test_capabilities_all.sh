@@ -10,7 +10,10 @@
 #   ./scripts/eval/test_capabilities_all.sh                      # default model list
 #   ./scripts/eval/test_capabilities_all.sh devstral coder-30b   # specific models
 #
-# Default skips video on text-only models. Override per-model in run_one().
+# Auto-skip decisions for thinking / vision / video are made by
+# validate_capabilities.py based on its NON_THINKING_MODELS / TEXT_ONLY_MODELS
+# / IMAGE_ONLY_MODELS frozensets. Edit those if a preset's capability profile
+# changes — both this orchestrator and single-invocation runs honor them.
 
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,26 +31,12 @@ if [ ${#MODELS[@]} -eq 0 ]; then
     MODELS=(qwen3-ream coder-30b devstral)
 fi
 
-# Models without vision/video (skip those checks)
-TEXT_ONLY=(coder-30b coder-reap-25b devstral qwen3-ream qwen35-moe qwen35)
-
-# Models that are explicitly non-thinking by upstream design.
-# Running the thinking probe against these gives a meaningless FAIL because
-# they were never trained to emit <think>...</think> blocks. See upstream:
-# Qwen3-Coder-30B-A3B-Instruct, Qwen3-Coder-REAP-25B-A3B,
-# Qwen3-30B-A3B-Instruct-2507 — all tagged "non-thinking only."
-NON_THINKING=(coder-30b coder-reap-25b qwen3-ream devstral)
-
-contains() {
-    local needle="$1"; shift
-    for x in "$@"; do
-        [ "$x" = "$needle" ] && return 0
-    done
-    return 1
-}
-
-is_text_only() { contains "$1" "${TEXT_ONLY[@]}"; }
-is_non_thinking() { contains "$1" "${NON_THINKING[@]}"; }
+# Auto-skip decisions (text-only / non-thinking / image-only) now live in
+# scripts/eval/validate_capabilities.py via NON_THINKING_MODELS,
+# TEXT_ONLY_MODELS, and IMAGE_ONLY_MODELS frozensets, so the validator is the
+# single source of truth and there's no risk of these lists drifting between
+# orchestrator and single-invocation runs (which is what happened on
+# 2026-05-01 when qwen35 was repointed to a multimodal default).
 
 wait_ready() {
     # SGLang surfaces /v1/models early (during warmup) but /health stays 503
@@ -125,14 +114,9 @@ run_one() {
         return 1
     fi
 
-    # Skip vision/video for text-only models, thinking for non-thinking models
+    # Auto-skip rules now live in validate_capabilities.py — passing no extra
+    # flags lets the validator decide based on the served model name.
     local extra_flags=()
-    if is_text_only "$model"; then
-        extra_flags+=(--skip-vision --skip-video)
-    fi
-    if is_non_thinking "$model"; then
-        extra_flags+=(--skip-thinking)
-    fi
 
     python "$REPO_DIR/scripts/eval/validate_capabilities.py" \
         --port "$PORT" --tag "$model" --save "$RESULTS" \
