@@ -73,6 +73,15 @@ Three-part fix required to load the Qwen3_5MoeForConditionalGeneration path on P
 
 Without patch 019, Qwen3_5MoeForConditionalGeneration fails to instantiate (`'dict' object has no attribute 'hidden_size'`) or later raises `'Qwen3_5MoeTextConfig' object has no attribute 'norm_topk_prob'`.
 
+### 020 — gemma4-clippable-linear-shim (2026-04-30, 289 LOC, v2 = upstream port)
+Gemma 4 26B / 21B-REAP launches need a `ClippableLinear` symbol in `sglang.srt.layers.linear` because the architecture's `gemma4.py` imports it. Initial v1 was a one-line alias-shim (`ClippableLinear = ReplicatedLinear`); that surfaced a subtle 2-tuple/plain-tensor signature mismatch — `ReplicatedLinear.forward` returns `(out, bias)`, while Gemma 4 calls `q, k, v = self.qkv(...)` on the result and silently fed wrong shapes downstream. v2 ports the real upstream `clippable_linear.py` (per-tensor clip buffers via `nn.parameter.Buffer(torch.tensor(±_INF), persistent=False)`, plain-tensor forward returns), restoring correct call shapes. Server boots clean post-patch but Gemma 4 MoE decode still emits `<pad>` garbage — root-cause investigation continues in the top-level Known Issues section.
+
+### 021 — marlin-moe-gelu-activation (2026-04-30, 118 LOC)
+Drops `assert runner_config.activation == "silu"` from four Marlin MoE chokepoints (`fused_marlin_moe`, the MoE Marlin runner, `compressed_tensors_wNa16_moe`, `marlin_utils`) and adds activation-dispatch on `runner_config.activation` to call `gelu_and_mul` vs `silu_and_mul`. Required for Gemma 4 MoE (uses `gelu_pytorch_tanh`). Kernel-form check: `sgl_kernel.gelu_and_mul` matches `gelu_pytorch_tanh` to 0.00012 in FP16, so the gelu kernel itself is correct; routing the model through it is what 021 does. Loads cleanly across Qwen3 MoE / Coder / Coder-REAP (silu) and Gemma 4 (gelu) without false-asserting.
+
+### 022 — gemma4-causal-dedup-entry-class (2026-04-30, 24 LOC)
+Removes `Gemma4ForConditionalGeneration` from `gemma4_causal.py`'s `EntryClass` list (now `EntryClass = [Gemma4ForCausalLM]`). Pre-patch, that wrapper class was registered by both `gemma4_causal.py` and `gemma4_mm.py`; once 020 v2 made `gemma4_mm.py` actually import-clean, the dual registration started asserting (`AssertionError: Duplicated model implementation for Gemma4ForConditionalGeneration`) and blocked any subsequent model launch. Net behavioral change: `gemma4_mm.py` is now the sole owner of the multimodal class — text-only path stays in `gemma4_causal.py`.
+
 ---
 
 ## Shipped model history

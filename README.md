@@ -178,7 +178,7 @@ cd python && pip install -e ".[srt]"
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.10 + 14 local patches |
+| SGLang | v0.5.10 + 20 local patches |
 | PyTorch | 2.9.1 + cu128 |
 | CUDA | 13.2 (driver 595.58) |
 | NCCL | 2.27.5 (P2P over NVLink) |
@@ -187,7 +187,7 @@ cd python && pip install -e ".[srt]"
 
 ## Patches
 
-14 patches on top of SGLang v0.5.10 — full details in [`patches/README.md`](patches/README.md).
+20 patches on top of SGLang v0.5.10 — full details in [`patches/README.md`](patches/README.md).
 
 ## Quantization
 
