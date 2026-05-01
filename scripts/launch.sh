@@ -121,11 +121,24 @@ apply_preset() {
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
             ;;
         gemma4-31b)
+            # Gemma 4 31B Dense AWQ AutoRound (head_dim=256). On 3090 sm_86 the
+            # default FlashInfer + FP8 E4M3 KV combo fails twice:
+            #   1. FlashInfer rejects head_dim=256 (NUM_MMA_D_QK=32 invalid in
+            #      both BatchPrefillWithPaged- and BatchPrefillWithRagged-
+            #      KVCacheDispatched), so even --disable-cuda-graph crashes on
+            #      first prefill with "Unsupported max_mma_kv: 0".
+            #   2. Triton attention works around head_dim but rejects FP8 E4M3
+            #      KV on sm_86 (only fp8e4b15 / fp8e5 supported).
+            # Combo --attention-backend triton + KV_DTYPE=auto (FP16) is the
+            # working pair, validated 2026-05-01 via gemma4-31b-revalidate-Apr29
+            # (basic+thinking PASS; vision hallucinates because checkpoint
+            # registers as Gemma4ForCausalLM — separate metadata bug, not flags).
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AWQ-4bit}"
             REASONING="--reasoning-parser gemma4"
+            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             CTX=16384; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph"
             ;;
         qwen3-vl-moe)
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-VL-30B-A3B-Instruct-AWQ-4bit}"
