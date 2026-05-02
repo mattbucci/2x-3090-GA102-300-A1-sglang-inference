@@ -51,6 +51,8 @@ Autonomous loop has shipped 26+ substantive iterations on the single-3090 constr
 | `coder-reap` | ✅ | Now needs `--disable-piecewise-cuda-graph` baked in (detokenizer hang at first prefill cold; ~5-10% TPOT cost) |
 | `qwen3-vl-32b` | ✅ | Preset retuned: `MAX_RUNNING=1 / CTX=4096 / MEM=0.93` (was OOM cold) |
 | `gemma4-31b` | ✅ | Preset bakes triton-attn + KV_DTYPE=auto + disable-cuda-graph (head_dim=256 + Ampere FP8 incompat) |
+| `qwen36` MODEL=`Qwen3.6-REAM-A3B-AWQ` | ✅ | **R9700 ship 2026-04-30**, pulled + validated 2026-05-02: **2/2 PASS** basic+thinking (vision auto-skipped — REAM stripped tower). Launch via env override `MODEL=...REAM-A3B-AWQ` + CLI `--context-length 2048 --mem-fraction 0.92 --max-running 1` |
+| `qwen36` MODEL=`Qwen3.6-VL-REAP-26B-A3B-AWQ` | ⚠️ | **R9700 ship 2026-05-02 (recal)**, pulled + validated same day: **2/3 PASS** basic+thinking; vision PARTIAL — saw 'circle','round' but missed 'red' (model said "white circles" when shown red circle). Confirmed 0 vision tensors in safetensors via `safe_open`; the partial keyword match is hallucination, not real vision processing. R9700 reported HSAIL on this; on Ampere it doesn't crash, just hallucinates — same outcome (vision broken by REAP-stripped tower), different failure surface. |
 | `gemma4` (26B MoE) | ⚠️ | Boots clean but decode emits `<pad>` garbage — Gemma 4 MoE bug below |
 | `qwen3-vl-moe` | ❌ | Closed: SGLang loader broken |
 | `devstral` / `devstral-long` | ❌ | OOM at AWQ create_weights eager prealloc — TP=2 only |

@@ -326,5 +326,49 @@
       "passed": 1,
       "total": 1
     }
+  },
+  "qwen36-ream-a3b-cold-May02": {
+    "tag": "qwen36-ream-a3b-cold-May02",
+    "model": "qwen36",
+    "timestamp": "2026-05-02 14:12",
+    "elapsed_sec": 45.4,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1095 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "qwen36-vl-reap-26b-cold-May02": {
+    "tag": "qwen36-vl-reap-26b-cold-May02",
+    "model": "qwen36",
+    "timestamp": "2026-05-02 14:17",
+    "elapsed_sec": 61.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1266 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=['circle', 'round', 'dot']  response='(reasoning)the user wants a short sentence describing the image.\\n\\n1.  **identify the main subject:** the image shows a series of wh'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
   }
 }
