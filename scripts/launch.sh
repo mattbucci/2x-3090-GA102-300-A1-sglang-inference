@@ -33,10 +33,18 @@ TOKENIZER=""
 # ignore env by design (most do — their weight format is fixed).
 QUANT="${QUANT:-}"
 DTYPE="float16"
-CTX=32768
-# Capture env-provided KV_DTYPE so presets can fall back to a per-model
-# default without being shadowed by the top-level fp8_e4m3 default.
+# Capture env-provided values BEFORE applying global defaults, so presets
+# can do `CTX="${_ENV_CTX:-4096}"` and have the env override take precedence.
+# Without this, the global default below (e.g. CTX=32768) would shadow the
+# `:-` fallback inside the preset case-block. KV_DTYPE was already on this
+# pattern; CTX/MEM/MAX_RUNNING/CHUNKED added 2026-05-01 after the
+# qwen3-vl-32b preset edit revealed the gotcha.
 _ENV_KV_DTYPE="${KV_DTYPE:-}"
+_ENV_CTX="${CTX:-}"
+_ENV_MEM="${MEM:-}"
+_ENV_MAX_RUNNING="${MAX_RUNNING:-}"
+_ENV_CHUNKED="${CHUNKED:-}"
+CTX=32768
 KV_DTYPE="${KV_DTYPE:-fp8_e4m3}"
 MEM=0.85
 MAX_RUNNING=32
@@ -160,11 +168,13 @@ apply_preset() {
             # MEM=0.85 / MAX_RUNNING=16 / CTX=16384 defaults OOM cold at TP=1
             # on the KV-pool sizing step (post-weight-load: ~3 GB free, KV
             # pool wants 16 × 16384 × ~24 KB ≈ 6 GB). TP=1-viable defaults
-            # below. For TP=2 once the second 3090 returns, override via CLI:
-            # `./scripts/launch.sh qwen3-vl-32b --max-running-requests 16
-            # --mem-fraction 0.85 --context-length 150000`.
+            # below. For TP=2 once the second 3090 returns, override via env:
+            # `CTX=150000 MEM=0.85 MAX_RUNNING=16 ./scripts/launch.sh qwen3-vl-32b`.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-VL-32B-Instruct-AWQ-4bit}"
-            CTX=4096; MEM=0.93; MAX_RUNNING=1; CHUNKED=4096
+            CTX="${_ENV_CTX:-4096}"
+            MEM="${_ENV_MEM:-0.93}"
+            MAX_RUNNING="${_ENV_MAX_RUNNING:-1}"
+            CHUNKED="${_ENV_CHUNKED:-4096}"
             ;;
         qwen35)
             # Repointed 2026-05-01 (second time): now defaults to
