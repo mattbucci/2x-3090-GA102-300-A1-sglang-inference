@@ -378,7 +378,9 @@ TEXT_ONLY_MODELS = frozenset({
     "coder-reap",       # Qwen3-Coder-REAP-25B-A3B (preset shorthand, text)
     "coder-reap-25b",   # legacy preset name (alternate served-model-name, text)
     "qwen3-ream",       # Qwen3-30B-A3B-Instruct-2507 base (text after REAM)
-    "qwen35-moe",       # Qwen3.5-28B MoE REAP (calibration broken; treat as text-only until recal lands)
+    # Note: qwen35-moe was on this list during the broken-thinking era; removed
+    # 2026-05-02 after the recal landed and 3/3 PASS verified (basic+thinking+vision
+    # all work — Cerebras's REAP variant retained 333 visual tensors).
 })
 # Note: `qwen35` was previously here but the preset now defaults to
 # Qwen3.6-27B-AWQ (multimodal, vision tower preserved by R9700's recal).

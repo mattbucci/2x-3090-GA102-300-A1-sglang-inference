@@ -191,7 +191,16 @@ apply_preset() {
             REASONING="--reasoning-parser qwen3"
             ;;
         qwen35-moe)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-28B-A3B-REAP-AWQ}"
+            # Repointed 2026-05-02 from local Apr-14 REAP-AWQ (broken thinking
+            # — Open-Platypus calibration stripped <think> tags) to the recal
+            # `Qwen3.5-28B-A3B-REAP-AWQ-balanced-thinking-vision` (R9700-port
+            # `balanced_thinking_vision` recipe + llava_instruct loader fix,
+            # 18.22h CPU GPTQ then CT→AWQ). 3/3 PASS Ampere TP=1 / 8K:
+            # basic finish=stop, thinking 3145 tok finish=stop, vision saw
+            # red+circle+round. Cerebras's REAP variant (unlike the atbender
+            # Qwen3.6-VL-REAP-26B that strips its tower) retained 333 visual
+            # tensors so vision is functional after this recal.
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-28B-A3B-REAP-AWQ-balanced-thinking-vision}"
             QUANT="awq_marlin"
             CTX=262144; MEM=0.80; MAX_RUNNING=4; CHUNKED=8192; DECODE_STEPS=4
             MAMBA_CACHE="--max-mamba-cache-size 4"

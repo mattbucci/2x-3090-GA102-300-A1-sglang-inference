@@ -370,5 +370,49 @@
       "passed": 2,
       "total": 3
     }
+  },
+  "qwen35-28b-reap-recal-balanced-thinking-vision-May02": {
+    "tag": "qwen35-28b-reap-recal-balanced-thinking-vision-May02",
+    "model": "qwen35-moe",
+    "timestamp": "2026-05-02 15:49",
+    "elapsed_sec": 78.8,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (3353 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "qwen35-28b-reap-recal-vision-probe-May02": {
+    "tag": "qwen35-28b-reap-recal-vision-probe-May02",
+    "model": "qwen35-moe",
+    "timestamp": "2026-05-02 15:51",
+    "elapsed_sec": 77.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (3145 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
   }
 }
