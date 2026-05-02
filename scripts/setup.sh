@@ -1,7 +1,10 @@
 #!/bin/bash
 # SGLang setup for 2x RTX 3090
 #
-# Stock SGLang — no patches needed on NVIDIA.
+# Clones SGLang v0.5.10 and applies 20 local patches in patches/*.patch
+# (idempotent — git apply --check skips already-applied). See
+# patches/README.md for per-patch narratives. Header was stale claiming
+# "no patches needed on NVIDIA"; corrected 2026-05-01.
 #
 # Prerequisites:
 #   - NVIDIA drivers + CUDA toolkit installed
