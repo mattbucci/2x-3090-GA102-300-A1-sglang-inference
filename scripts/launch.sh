@@ -131,13 +131,20 @@ apply_preset() {
             EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
             ;;
         gemma4)
+            # Gemma 4 26B MoE AWQ. Same head_dim=256 / Ampere FP8 incompat as
+            # gemma4-31b (FlashInfer rejects head_dim=256, triton rejects FP8
+            # E4M3 KV on sm_86) — same fix combo: triton attn + KV_DTYPE=auto
+            # + disable-cuda-graph. Validator currently 1/4 (boots clean,
+            # decode emits <pad> garbage); separate Gemma 4 MoE forward-path
+            # bug investigation in patches/README.md "Open investigations".
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-4bit}"
             REASONING="--reasoning-parser gemma4"
+            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             # Bumped CTX 4096 → 16384: validate_capabilities.check_thinking sends
             # max_tokens=4096 which overflows 4096 CTX with any prompt.
             CTX=16384; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph"
             ;;
         gemma4-31b)
             # Gemma 4 31B Dense AWQ AutoRound (head_dim=256). On 3090 sm_86 the
