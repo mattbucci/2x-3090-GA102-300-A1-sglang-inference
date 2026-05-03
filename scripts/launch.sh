@@ -170,6 +170,14 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AWQ-4bit}"
             REASONING="--reasoning-parser gemma4"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            # Default BF16 — Gemma 4 SigLIP vision tower NaNs in FP16 (same
+            # vision base as 26B; FP16 attention softmax overflows past 65504).
+            # If this checkpoint's config has architectures=Gemma4ForCausalLM
+            # (text-only) and the user doesn't run image_url through it, FP16
+            # is technically fine — but BF16 is safe for the multimodal path
+            # that opens up after R9700's task #63 (metadata flip on the HF
+            # mirror) lands. Override DTYPE=float16 if memory-constrained.
+            DTYPE="${_ENV_DTYPE:-bfloat16}"
             CTX=16384; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph"
