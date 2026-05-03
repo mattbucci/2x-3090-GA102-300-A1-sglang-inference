@@ -86,7 +86,7 @@ R9700 dialogue threads (Qwen3.6-35B v2 config-class fix, ClippableLinear confirm
 ./scripts/launch.sh coder-30b               # Coder-30B MoE — peak throughput
 ./scripts/launch.sh coder-reap              # Coder-REAP-25B — SWE-bench Lite leader (29.3%)
 ./scripts/launch.sh qwen3-vl-32b            # Qwen3-VL-32B Dense — TP=1 defaults boot cold (4K/MAX_RUNNING=1)
-./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B AWQ-native — boots TP=1 / 2K, 3/3 PASS at short-ctx
+./scripts/launch.sh qwen36 --context-length 2048   # Qwen3.6-35B-A3B AWQ-native (preset default 262K → OOM on TP=1; CTX=2K fits, 3/3 PASS short-ctx)
 
 # TP=2 only (second 3090 needed):
 ./scripts/launch.sh devstral-long           # Devstral-24B at 217K — OOMs on TP=1 (eager weight prealloc, see Known Issues)
