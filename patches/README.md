@@ -84,9 +84,45 @@ Removes `Gemma4ForConditionalGeneration` from `gemma4_causal.py`'s `EntryClass` 
 
 ---
 
+## Open investigations
+
+### Gemma 4 MoE `<pad>` collapse on 3090 (open)
+Gemma 4 26B MoE / 21B-REAP MoE boot clean post-patches 020 v2 / 021 / 022 but decode emits `<pad><pad>...` for all 64 tokens of a "What is 2+2?" probe with `skip_special_tokens=false` — argmax always picks token 0, suggesting final-projection collapse.
+
+**Hypothesis tree, top-down (all explored 2026-05-01):**
+- *Triton-precision hypothesis* DISPROVED: 21B-REAP `--attention-backend torch_native` produces same `<pad>` output as triton — bug is in code SHARED by both attention paths.
+- *Logit-shaping / sampler* DISPROVED: top-N candidates via the OpenAI-compat logprobs probe are all vocab-low special tokens (`<pad>` id 0, `<unused1>` id 1, `<unused0>` id 2, `<mask>`). That's the canonical signature of lm_head producing near-uniform logits with a slight bias toward low vocab IDs — happens when either lm_head weights are zero or the hidden state going INTO lm_head is zero/uniform.
+- *Stack-specific?* CONFIRMED Gemma-4-specific on 3090: same logprobs probe against `qwen3-ream` returns sensible math tokens (`'2'`, `'In'`, `'The'`, `'$'`); R9700 RDNA4 path produces clean output on the same Gemma 4 weights → not calibration, not the SGLang OpenAI path.
+- *Tied-embed wiring* DISPROVED: Gemma 4 21B-REAP-v2 safetensors has zero `lm_head.*` keys (tied-embeddings config). Both the 21B-REAP path (`gemma4_mm.py` → manual `self.logits_processor(input_ids, hidden_states, self.language_model.embed_tokens, ...)`) and the 26B path (`gemma4_causal.py` → `if config.tie_word_embeddings: self.lm_head = self.model.embed_tokens`) produce the same `<pad>` failure. `embed_tokens` tensor itself is healthy: FP16, `[262144, 2816]`, mean 0.0002, max-abs 0.855.
+- *Embed-class hypothesis* DISPROVED via Gemma 4 31B Dense control: same `Gemma4TextScaledWordEmbedding` lm_head wiring, same triton attention, same hardware — but **31B Dense PASSES** the logprobs probe (`'2'`, `'4'`, `' '`, `'{'`, `'3'`). So `Gemma4TextScaledWordEmbedding`-as-lm_head works.
+- **Real differentiator: MoE.** 31B Dense (no MoE) → PASS. 26B (103 experts) and 21B-REAP (post-prune MoE) → FAIL. Bug is in Gemma 4's MoE forward path.
+
+**Two remaining candidate causes for the MoE collapse:**
+1. Patch 021 (GeLU activation dispatch) introduced a Gemma-4-MoE-specific regression. Kernel-form check showed `sgl_kernel.gelu_and_mul` matches `gelu_pytorch_tanh` to 0.00012 in FP16, so the gelu kernel itself is fine — but routing or weight layout post-021 may be off.
+2. The pre-021 silu-only asserts were masking a pre-existing Gemma 4 MoE bug at boot (since the asserts blocked load); now boot-clean post-021, the bug surfaces as silent decode garbage.
+
+**Next debug step (multi-step, deferred):** forward-hook the Gemma 4 MoE block at decode step 0 to log `topk_ids` + `topk_weights`. Hypothesis: router degenerates (always picks expert 0 / gating weights all zero) → MoE outputs zero → residual → uniform logits → vocab-low `<pad>` spam. R9700 ships Gemma 4 26B at 4/4 PASS on RDNA4 (their `audit_calib_quality.py` confirms 353 vision keys + router preserved as BF16) — bug is therefore Ampere-specific within the Gemma 4 MoE forward path.
+
+---
+
 ## Shipped model history
 
 Narratives for models that are now working. Current-state entries live in the top-level `README.md`.
+
+### Qwen3.5-28B-A3B-REAP AWQ thinking+vision — shipped 2026-05-02
+Recal of `cerebras/Qwen3.5-28B-A3B-REAP` (from local BF16 base). Replaces the broken-thinking Apr-14 version at canonical [`mattbucci/Qwen3.5-28B-A3B-REAP-AWQ`](https://huggingface.co/mattbucci/Qwen3.5-28B-A3B-REAP-AWQ) (commit `2cf434c8`). Pipeline:
+1. R9700's `balanced_thinking_vision` recipe (40/60 thinking/non-thinking) ported into `scripts/quantize/calibration_datasets.py`. 256 samples × 2048 tokens. Final mix: 30% am_thinking + 25% llava_instruct (vision) + 35% ultrachat (padded for thestack_code which is HF-gated) + 10% numina_math, 256/256 thinking-tagged.
+2. **First recal attempt killed at +6 min** after monitor caught a `liuhaotian/LLaVA-Instruct-150K` `DatasetGenerationError` mid-load — the dataset ships multiple JSON files with diverging schemas, default `load_dataset()` concat fails. The script's pad-from-ultrachat fallback was masking it: vision-source = 0 samples, ultrachat ballooned to 60% — would have produced a vision-broken model after 18+h. Fix: `data_files` field on the `Mix` dataclass + pin `llava_instruct` to `data_files="llava_instruct_150k.json"` (canonical 158K-row file). Commit `489db4f`, ported to R9700 commit `054a10d`.
+3. Restarted recal: 18.22h CPU GPTQ at ~32 min/layer steady-state; 92 GiB system swapped 49 GiB once BF16 base + Hessian buffers + intermediate activations exceeded RAM, slowing each step but not stopping progress. ETA was originally 10-13h per CLAUDE.md, revised to ~22h after watching the actual pace; finished at the upper bound.
+4. CT save → CT→AWQ conversion via `convert_moe_ct_to_awq.py --group-size 128` (~2 min): 24850 quantized + 696 passthrough tensors, 17.1 GB output.
+5. **Two manual fixups required post-conversion** (worth knowing for future recals of `Qwen3_5MoeForConditionalGeneration` BF16 bases):
+   - `config.json` had `architectures: ["Qwen3_5MoeForCausalLM"]` from the recal script's text-only override, but the saved weight keys still had `model.language_model.*` prefix because `AutoModelForImageTextToText` loaded the BF16 base as multimodal. Reverted `architectures` to `Qwen3_5MoeForConditionalGeneration` + `model_type` to `qwen3_5_moe` to match the weight layout.
+   - `convert_moe_ct_to_awq.py` doesn't carry `preprocessor_config.json` or `video_preprocessor_config.json` forward; copied both from the BF16 base directory.
+6. Validator: 3/3 PASS at TP=1 / 8K via `qwen35-moe` preset — basic finish=stop, thinking 3145 tok finish=stop (was BROKEN — emitted "The user is asking..." instead of `<think>...</think>` on the prior REAP-AWQ), vision saw red+circle+round.
+7. **Surprise vision-tensor finding:** Cerebras's REAP variant retained 333 visual tensors in the BF16 base (vs `atbender/Qwen3.6-VL-REAP-26B-A3B` BF16 which fully strips its vision tower). All 333 made it through GPTQ→CT→AWQ as passthrough — vision is functional end-to-end. Vision-tower preservation is decided at the BF16-REAP-base layer, before any AWQ calibration. R9700 captured the same finding cross-team in their commit `2484aab`.
+8. HF upload via plain `hf upload` stalled at 99% / 16.9 GB for 5h with 0 bytes/s before kill+restart resumed via xet content-store dedup in ~3 min. Confirms R9700's xet-stall pattern (their Coder-Next-REAM saw 12h stalls).
+
+`qwen35-moe` preset's MODEL default repointed to the recal output. Validator's `TEXT_ONLY_MODELS` no longer lists `qwen35-moe` (now multimodal-capable).
 
 ### Qwen3.6-35B-A3B AWQ-native thinking+vision — shipped 2026-04-24
 First successful Qwen3_5MoeForConditionalGeneration load on 3090. Path:
