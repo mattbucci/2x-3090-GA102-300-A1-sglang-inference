@@ -698,5 +698,53 @@
       "passed": 1,
       "total": 1
     }
+  },
+  "qwen36-tp1-bare-cold-May03": {
+    "tag": "qwen36-tp1-bare-cold-May03",
+    "model": "qwen36-tp1",
+    "timestamp": "2026-05-03 15:31",
+    "elapsed_sec": 27.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1021 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=\"(reasoning)the user wants a short description of the image.\\n1.  **identify the main subject:** it's a circle.\\n2.  **identify the co\""
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  },
+  "qwen35-tp1-bare-cold-May03": {
+    "tag": "qwen35-tp1-bare-cold-May03",
+    "model": "qwen35-tp1",
+    "timestamp": "2026-05-03 15:32",
+    "elapsed_sec": 43.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer=' paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1844 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round', 'dot']  response='a solid red circle is centered on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
   }
 }

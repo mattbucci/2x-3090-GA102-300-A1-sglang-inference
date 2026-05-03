@@ -79,7 +79,7 @@ R9700 dialogue threads (Qwen3.6-35B v2 config-class fix, ClippableLinear confirm
 
 - **21B-REAP rebuild** — the local `gemma-4-21b-REAP-AWQ-thinking-vision-v2` is the only 21B variant with the right multimodal arch, but its experts ship per-expert (`experts.{gate,up,down}_proj.<i>.qweight`) instead of fused (`experts.gate_up_proj.<i>.qweight`). SGLang's `gemma4_mm.py` MoE loader expects fused. Either re-quantize from `gemma-4-21b-REAP-BF16` with merged-expert output via `convert_moe_ct_to_awq.py`, or write a per-expert→fused remap helper. The other three 21B-REAP variants on disk (`-AWQ`, `-AWQ-CT`, `-AWQ-thinking-vision`) all register as `Gemma4ForCausalLM` (text-only path) so they don't engage the mm route even with patch 024.
 - **Disk reclaim ~37 GB** — local descriptive directories `Qwen3.5-28B-A3B-REAP-AWQ-balanced-thinking-vision/` (17 GB) and `Qwen3.6-35B-A3B-AWQ-native-r9700-conv/` (20 GB) are byte-identical (MD5 verified) to canonical-named symlinks/mirrors. Safe to delete after confirming no external script references them.
-- **Add `qwen36-tp1` / `qwen35-tp1` preset variants** — current TP=1 users have to pass `--context-length 2048`/`4096` overrides on the bare command. A dedicated TP=1 preset (mirroring the `devstral`/`devstral-32k`/`devstral-long` split) would simplify Quick Start.
+- ~~**Add `qwen36-tp1` / `qwen35-tp1` preset variants**~~ — DONE 2026-05-03 (`qwen36-tp1-bare-cold-May03` / `qwen35-tp1-bare-cold-May03` 3/3 PASS each). Quick Start now uses these instead of explicit `--context-length` overrides.
 - **R9700 task #63 follow-up** — when their HF mirror at `mattbucci/gemma-4-31B-it-AutoRound-AWQ` ships the `Gemma4ForCausalLM → Gemma4ForConditionalGeneration` metadata flip, `git pull` will overwrite our local 31B `config.json` edit. Re-validate at that point to confirm the round-trip works (3/3 PASS already validated locally).
 - **R9700 patch 024 application post-VL-32B-cal** — they ported patches 023+024 in commit `accb036` but haven't applied yet. Their existing `mattbucci/gemma-4-26B-AWQ` may show vision-quality lift after they re-validate with content-based prompts (instead of loose keyword grep). Cross-team A/B opportunity.
 - **Qwen3-VL-32B self-cal (R9700 task #58)** — when `mattbucci/Qwen3-VL-32B-AWQ` ships, pull and run `validate_capabilities.py` to confirm parity with the QuantTrio AWQ already on disk (currently 2/2 PASS at 4K).
@@ -91,11 +91,11 @@ R9700 dialogue threads (Qwen3.6-35B v2 config-class fix, ClippableLinear confirm
 
 # TP=1 / 24 GB friendly (current rig — second 3090 offline):
 ./scripts/launch.sh qwen3-ream              # fastest 256K — reference model (MoE active params fit cold)
-./scripts/launch.sh qwen35 --context-length 4096   # Qwen3.6-27B-AWQ R9700 recal — 3/3 basic+thinking+vision PASS (preset CTX=32K → OOM on TP=1; CTX=4K fits)
+./scripts/launch.sh qwen35-tp1              # Qwen3.6-27B-AWQ R9700 recal — TP=1 cold-fit variant (CTX=4K), 3/3 PASS
 ./scripts/launch.sh coder-30b               # Coder-30B MoE — peak throughput
 ./scripts/launch.sh coder-reap              # Coder-REAP-25B — SWE-bench Lite leader (29.3%)
 ./scripts/launch.sh qwen3-vl-32b            # Qwen3-VL-32B Dense — TP=1 defaults boot cold (4K/MAX_RUNNING=1)
-./scripts/launch.sh qwen36 --context-length 2048   # Qwen3.6-35B-A3B AWQ-native (preset default 262K → OOM on TP=1; CTX=2K fits, 3/3 PASS short-ctx)
+./scripts/launch.sh qwen36-tp1              # Qwen3.6-35B-A3B AWQ-native — TP=1 cold-fit variant (CTX=2K), 3/3 PASS
 
 # TP=2 only (second 3090 needed):
 ./scripts/launch.sh devstral-long           # Devstral-24B at 217K — OOMs on TP=1 (eager weight prealloc, see Known Issues)

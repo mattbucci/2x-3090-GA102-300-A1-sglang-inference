@@ -251,6 +251,10 @@ apply_preset() {
             # launch.sh matches the canonical HF naming convention. Loads as
             # Qwen3_5MoeForConditionalGeneration with patch 019 applied.
             # Validator 3/3 short-ctx on 3090 TP=2.
+            #
+            # On TP=1 / 24 GB the default CTX=262K OOMs ("Not enough memory")
+            # — use the qwen36-tp1 preset variant below for cold-launch on a
+            # single card.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ}"
             QUANT="${QUANT:-awq_marlin}"
             # Force bf16 KV: fp8_e4m3 KV produces garbage on this model via
@@ -261,6 +265,38 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            ;;
+        qwen36-tp1)
+            # TP=1 / 24 GB cold-fit variant of qwen36. Same model, same KV/quant
+            # combo, but trimmed to CTX=2048 / MAX_RUNNING=1 so the bare command
+            # boots cold on a single 3090. Validator 3/3 PASS at this config
+            # (qwen36-35b-awq-native-revalidate 2026-05-01). Once the second
+            # 3090 returns, switch back to the default `qwen36` preset for
+            # 256K TP=2 work.
+            #
+            # max-mamba-cache-size must be >= 4 even with MAX_RUNNING=1 because
+            # SGLang's `_resolve_max_num_reqs` divides cache size by a ratio
+            # (2x for overlap-schedule + ping-pong) — `1 // 2 = 0` zeros out
+            # max_running and trips the assertion. Each mamba cache entry is
+            # ~0.12 GB so cache=4 costs ~0.48 GB.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ}"
+            QUANT="${QUANT:-awq_marlin}"
+            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            CTX="${_ENV_CTX:-2048}"; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
+            MAMBA_CACHE="--max-mamba-cache-size 4"
+            REASONING="--reasoning-parser qwen3"
+            CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            ;;
+        qwen35-tp1)
+            # TP=1 / 24 GB cold-fit variant of qwen35 (Qwen3.6-27B Dense AWQ).
+            # The default qwen35 preset uses CTX=32K / MAX_RUNNING=8 which
+            # overshoots the 24 GB budget after 17.5 GB weights at MEM=0.80
+            # leave only 5.74 GB for the KV pool. Validator 3/3 PASS at the
+            # CTX=4K / MAX_RUNNING=1 trim below.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-27B-AWQ}"
+            CTX="${_ENV_CTX:-4096}"; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
+            CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
+            REASONING="--reasoning-parser qwen3"
             ;;
         *)
             echo "Unknown model: $1"
