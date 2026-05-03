@@ -606,5 +606,29 @@
       "passed": 3,
       "total": 3
     }
+  },
+  "gemma4-31b-ctx16k-May03": {
+    "tag": "gemma4-31b-ctx16k-May03",
+    "model": "gemma4-31b",
+    "timestamp": "2026-05-03 09:18",
+    "elapsed_sec": 13.8,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='(reasoning)paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (459 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'round']  response='(reasoning)the image consists of scattered black and red pixels on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
   }
 }
