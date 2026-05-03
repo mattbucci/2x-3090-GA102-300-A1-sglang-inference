@@ -82,38 +82,41 @@ Drops `assert runner_config.activation == "silu"` from four Marlin MoE chokepoin
 ### 022 — gemma4-causal-dedup-entry-class (2026-04-30, 24 LOC)
 Removes `Gemma4ForConditionalGeneration` from `gemma4_causal.py`'s `EntryClass` list (now `EntryClass = [Gemma4ForCausalLM]`). Pre-patch, that wrapper class was registered by both `gemma4_causal.py` and `gemma4_mm.py`; once 020 v2 made `gemma4_mm.py` actually import-clean, the dual registration started asserting (`AssertionError: Duplicated model implementation for Gemma4ForConditionalGeneration`) and blocked any subsequent model launch. Net behavioral change: `gemma4_mm.py` is now the sole owner of the multimodal class — text-only path stays in `gemma4_causal.py`.
 
+### 023 — gemma4-moe-mlp-no-quant-config (2026-05-03, 13 LOC)
+**Fixes the months-long Gemma 4 26B MoE `<pad>` collapse on Ampere.** On MoE-block layers (parallel dense+MoE architecture in Gemma 4 26B), the dense-MLP branch ships as plain BF16 weights (`mlp.{gate,up,down}_proj.weight` — no `weight_packed/scale/zero`) because the calibration recipe deliberately leaves the dense MLP full-precision. Without this patch, `Gemma4DecoderLayer.__init__` constructs `Gemma4MLP` with `quant_config=quant_config` (AWQ) — the loader then feeds the plain BF16 weights into the qweight parameter slot and every matmul produces NaN+inf garbage. Discovery:
+
+- `SGLANG_GEMMA4_TRACE=1` forward-hook localized layer 0's `gate_up_proj` producing **15078 NaN + 3267 inf out of 84480 outputs** from a clean BF16 input (abs_max=43.5).
+- Trace artifacts in `benchmarks/quality/gemma4-trace-{00,15}.json` (clean / NaN respectively); `gemma4-mlp-trace.json` not committed (debug-only).
+- Safetensors comparison confirmed: `model.language_model.layers.0.mlp.gate_proj.weight` ships as plain BF16 [2112, 2816] abs_max=0.34, while `self_attn.k_proj.weight_packed` ships as int32 (AWQ-packed). The 26B's calibration left dense MLP full-precision; only attention QKV/O and MoE experts are quantized.
+- Gemma 4 31B Dense (`mattbucci/gemma-4-31B-it-AutoRound-AWQ`) has `mlp.*.weight_packed` (full AWQ), so `quant_config` must still be passed there.
+
+**Fix:** condition on `getattr(config, "enable_moe_block", False)`. When the parallel dense+MoE pattern is enabled, pass `quant_config=None` for the dense MLP so the loader uses the plain `weight` slot. Otherwise (Dense Gemma 4) keep the original AWQ path.
+
+Validator post-fix on Ampere TP=1 / 2K: **basic + thinking PASS** (was 1/4 with `<pad>` garbage; now 2/3 — vision still fails because the 26B checkpoint registers as `Gemma4ForCausalLM` so the vision tower never engages, separate metadata issue R9700 also flagged for 31B AutoRound).
+
 ---
 
 ## Open investigations
 
-### Gemma 4 MoE `<pad>` collapse on 3090 (open)
-Gemma 4 26B MoE / 21B-REAP MoE boot clean post-patches 020 v2 / 021 / 022 but decode emits `<pad><pad>...` for all 64 tokens of a "What is 2+2?" probe with `skip_special_tokens=false` — argmax always picks token 0, suggesting final-projection collapse.
+### Gemma 4 MoE `<pad>` collapse on 3090 — RESOLVED 2026-05-03 via patch 023
+Months-long investigation into the `<pad>` garbage from Gemma 4 26B MoE (post-patches 020/021/022 boot was clean but decode emitted `<pad><pad>...`). Resolved by [patch 023](#023-gemma4-moe-mlp-no-quant-config-2026-05-03-13-loc): the dense MLP weights ship as plain BF16 in MoE-block layers but were being fed into AWQ qweight slots, producing NaN+inf at the very first matmul of layer 0.
 
-**Hypothesis tree, top-down (all explored 2026-05-01):**
-- *Triton-precision hypothesis* DISPROVED: 21B-REAP `--attention-backend torch_native` produces same `<pad>` output as triton — bug is in code SHARED by both attention paths.
-- *Logit-shaping / sampler* DISPROVED: top-N candidates via the OpenAI-compat logprobs probe are all vocab-low special tokens (`<pad>` id 0, `<unused1>` id 1, `<unused0>` id 2, `<mask>`). That's the canonical signature of lm_head producing near-uniform logits with a slight bias toward low vocab IDs — happens when either lm_head weights are zero or the hidden state going INTO lm_head is zero/uniform.
-- *Stack-specific?* CONFIRMED Gemma-4-specific on 3090: same logprobs probe against `qwen3-ream` returns sensible math tokens (`'2'`, `'In'`, `'The'`, `'$'`); R9700 RDNA4 path produces clean output on the same Gemma 4 weights → not calibration, not the SGLang OpenAI path.
-- *Tied-embed wiring* DISPROVED: Gemma 4 21B-REAP-v2 safetensors has zero `lm_head.*` keys (tied-embeddings config). Both the 21B-REAP path (`gemma4_mm.py` → manual `self.logits_processor(input_ids, hidden_states, self.language_model.embed_tokens, ...)`) and the 26B path (`gemma4_causal.py` → `if config.tie_word_embeddings: self.lm_head = self.model.embed_tokens`) produce the same `<pad>` failure. `embed_tokens` tensor itself is healthy: FP16, `[262144, 2816]`, mean 0.0002, max-abs 0.855.
-- *Embed-class hypothesis* DISPROVED via Gemma 4 31B Dense control: same `Gemma4TextScaledWordEmbedding` lm_head wiring, same triton attention, same hardware — but **31B Dense PASSES** the logprobs probe (`'2'`, `'4'`, `' '`, `'{'`, `'3'`). So `Gemma4TextScaledWordEmbedding`-as-lm_head works.
-- **Real differentiator: MoE.** 31B Dense (no MoE) → PASS. 26B (103 experts) and 21B-REAP (post-prune MoE) → FAIL. Bug is in Gemma 4's MoE forward path.
+**Investigation arc summary (full per-step in commit history):**
+1. Triton-precision DISPROVED — `--attention-backend torch_native` produced the same `<pad>` output (commit cf182c5 era).
+2. Logit-shaping / sampler DISPROVED — top-N candidates were all vocab-low special tokens (`<pad>`, `<unused1>`, `<unused0>`, `<mask>`), the canonical signature of lm_head seeing zero/uniform hidden states.
+3. Tied-embed wiring DISPROVED — both 21B-REAP (gemma4_mm.py) and 26B (gemma4_causal.py) paths produce the same failure; embed_tokens tensor is healthy.
+4. Embed-class hypothesis DISPROVED — Gemma 4 31B Dense uses the same `Gemma4TextScaledWordEmbedding` lm_head wiring and PASSES.
+5. Real differentiator: MoE. 31B Dense (no MoE) PASS; 26B / 21B-REAP MoE FAIL.
+6. **Forward-hook trace via `SGLANG_GEMMA4_TRACE=1`** (commit 38cd3ae): layer 0 routes correctly, MoE output is healthy abs_max=104; **NaN appears at layer 1's entry**.
+7. Per-checkpoint probe in `Gemma4DecoderLayer.forward` (`SGLANG_GEMMA4_TRACE=1` extended): NaN first appears at `05_mlp_out` — the **dense MLP path**, not the MoE branch.
+8. Inside `Gemma3MLP.forward` probe: `01_gate_up_proj` produces 15078 NaN + 3267 inf out of 84480 outputs from a clean BF16 input (abs_max=43.5).
+9. Safetensors comparison: `mlp.gate_proj.weight` ships as **plain BF16** (no `weight_packed/scale/zero`), but the constructor was passing `quant_config` to `MergedColumnParallelLinear` — AWQ loader fed plain BF16 into qweight slot.
 
-**Two remaining candidate causes for the MoE collapse:**
-1. Patch 021 (GeLU activation dispatch) introduced a Gemma-4-MoE-specific regression. Kernel-form check showed `sgl_kernel.gelu_and_mul` matches `gelu_pytorch_tanh` to 0.00012 in FP16, so the gelu kernel itself is fine — but routing or weight layout post-021 may be off.
-2. The pre-021 silu-only asserts were masking a pre-existing Gemma 4 MoE bug at boot (since the asserts blocked load); now boot-clean post-021, the bug surfaces as silent decode garbage.
+**Resolution:** patch 023 — `Gemma4DecoderLayer` now passes `quant_config=None` to `Gemma4MLP` when `enable_moe_block=True` (parallel dense+MoE Gemma 4). Dense-only Gemma 4 (e.g. 31B) still gets `quant_config` since its MLP is fully AWQ-packed.
 
-**Forward-hook trace executed 2026-05-03 (env-gated `SGLANG_GEMMA4_TRACE=1` instrumentation in `Gemma4MoE.forward`, 30 layers × 1 prompt). Result rules out router degeneration as the cause:**
+Validation post-fix: gemma4 26B 2/3 PASS at TP=1 / 2K (`gemma4-26b-moe-mlp-quant-fix-May03` JSON entry — basic+thinking PASS, vision still fails because the checkpoint registers as `Gemma4ForCausalLM` so vision tower never engages — that's a separate metadata issue).
 
-- **Layer 0 (clean):** input abs_max=4.35, router_logits abs_max=8.37, 60+ unique experts selected across 20 tokens, topk_weights healthy distribution. **MoE output abs_max=104.19** (24× input amplification — first warning sign).
-- **Layer 1+ (NaN):** `hidden_in.mean=NaN`, `router_logits.mean=NaN`, `topk_ids` collapses to `[7,6,4,5,1,0,2,3]` for every token (this is `softmax(NaN) → NaN → topk picks tied indices in reverse-vocab-order` — the `<pad>`-collapse signature lives downstream of NaN, not in the MoE itself).
-- **Conclusion:** the MoE is a **victim of upstream NaN propagation**, not the source. Layer 0's MoE produces a 24× amplification (~104 abs_max in FP16), and subsequent ops (RMSNorm + residual + dense MLP add + layer_scalar mul) overflow FP16 max ~65504 → inf → NaN. Once NaN appears, every later layer routes to `[7,6,4,5,1,0,2,3]` and lm_head sees uniform garbage → vocab-low spam.
-
-Trace artifacts: `benchmarks/quality/gemma4-trace-00.json` (clean) + `benchmarks/quality/gemma4-trace-15.json` (NaN).
-
-**Refined hypothesis:** the bug is not in the router or expert selection — it's **FP16 overflow downstream of the MoE output**. Two follow-ups:
-1. Try `--dtype bfloat16` (much larger range, won't overflow on the 100-magnitude MoE outputs) — Gemma 4 31B Dense uses fp16 and works because Dense MLPs don't amplify the same way; the 26B MoE's expert sum produces ~100-magnitude outputs that need BF16 headroom. Patch 006 (`awq-bf16-activation-support`) may not be activating for this code path.
-2. Look at whether the MoE expert outputs themselves are too large (Marlin gelu_and_mul producing wrong magnitudes for Gemma 4's weight distribution) vs whether the post-MoE add/norm chain is overflowing on otherwise-OK MoE output. Add a probe right after `self.experts(...)` and right before the next layer's input to localize which op causes the NaN.
-
-R9700 ships Gemma 4 26B at 4/4 PASS on RDNA4 — RDNA4's BF16 path probably auto-promotes via patch 006 or a different default. The Ampere fp16 path is what overflows.
+Trace artifacts (committed in `benchmarks/quality/gemma4-trace-{00,15}.json`) document the pre-fix NaN-onset pattern.
 
 ---
 

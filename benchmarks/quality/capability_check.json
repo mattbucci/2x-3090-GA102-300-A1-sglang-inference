@@ -414,5 +414,29 @@
       "passed": 3,
       "total": 3
     }
+  },
+  "gemma4-26b-moe-mlp-quant-fix-May03": {
+    "tag": "gemma4-26b-moe-mlp-quant-fix-May03",
+    "model": "gemma4",
+    "timestamp": "2026-05-03 05:57",
+    "elapsed_sec": 11.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='(reasoning)paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (551 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=[]  response='(reasoning)the image displays the unicode character \"combining asterisk overline\" (u+20b4).'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
   }
 }

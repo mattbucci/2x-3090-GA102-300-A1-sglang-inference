@@ -50,7 +50,7 @@ Reference model: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5 ms TPOT, fresh
 | `gemma4-31b` | ✅ | Preset bakes triton-attn + KV_DTYPE=auto + disable-cuda-graph (head_dim=256 + Ampere FP8 incompat) |
 | `qwen36` MODEL=`Qwen3.6-REAM-A3B-AWQ` | ✅ | **R9700 ship 2026-04-30**, pulled + validated 2026-05-02: **2/2 PASS** basic+thinking (vision auto-skipped — REAM stripped tower). Launch via env override `MODEL=...REAM-A3B-AWQ` + CLI `--context-length 2048 --mem-fraction 0.92 --max-running 1` |
 | `qwen36` MODEL=`Qwen3.6-VL-REAP-26B-A3B-AWQ` | ⚠️ | **R9700 ship 2026-05-02 (recal)**, pulled + validated same day: **2/3 PASS** basic+thinking; vision PARTIAL — saw 'circle','round' but missed 'red' (model said "white circles" when shown red circle). Confirmed 0 vision tensors in safetensors via `safe_open`; the partial keyword match is hallucination, not real vision processing. R9700 reported HSAIL on this; on Ampere it doesn't crash, just hallucinates — same outcome (vision broken by REAP-stripped tower), different failure surface. |
-| `gemma4` (26B MoE) | ⚠️ | Boots clean but decode emits `<pad>` garbage — Gemma 4 MoE bug below |
+| `gemma4` (26B MoE) | ✅ basic+thinking | **Patch 023 ships fix 2026-05-03**: dense MLP weights are plain BF16, AWQ loader was treating as INT4 → NaN. Now 2/3 PASS basic+thinking; vision still hallucinates due to separate `Gemma4ForCausalLM` arch (vision tower not engaged). |
 | `qwen3-vl-moe` | ❌ | Closed: SGLang loader broken |
 | `devstral` / `devstral-long` | ❌ | OOM at AWQ create_weights eager prealloc — TP=2 only |
 
@@ -174,7 +174,7 @@ cd python && pip install -e ".[srt]"
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.10 + 20 local patches |
+| SGLang | v0.5.10 + 21 local patches |
 | PyTorch | 2.9.1 + cu128 |
 | CUDA | 13.2 (driver 595.58) |
 | NCCL | 2.27.5 (P2P over NVLink) |
@@ -183,7 +183,7 @@ cd python && pip install -e ".[srt]"
 
 ## Patches
 
-20 patches on top of SGLang v0.5.10 — full details in [`patches/README.md`](patches/README.md).
+21 patches on top of SGLang v0.5.10 — full details in [`patches/README.md`](patches/README.md).
 
 ## Quantization
 

@@ -32,7 +32,7 @@ TOKENIZER=""
 # `${QUANT:-X}` can honor an env override. Presets that hardcode `QUANT="X"`
 # ignore env by design (most do — their weight format is fixed).
 QUANT="${QUANT:-}"
-DTYPE="float16"
+DTYPE="${DTYPE:-float16}"
 # Capture env-provided values BEFORE applying global defaults, so presets
 # can do `CTX="${_ENV_CTX:-4096}"` and have the env override take precedence.
 # Without this, the global default below (e.g. CTX=32768) would shadow the

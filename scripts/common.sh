@@ -1,7 +1,7 @@
 #!/bin/bash
 # Common configuration for 2x RTX 3090 SGLang inference
 #
-# SGLang v0.5.10 + 20 local patches (see patches/README.md). NCCL for
+# SGLang v0.5.10 + 21 local patches (see patches/README.md). NCCL for
 # multi-GPU communication.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

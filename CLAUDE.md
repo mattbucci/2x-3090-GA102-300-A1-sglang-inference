@@ -13,7 +13,7 @@ SGLang for 2x NVIDIA RTX 3090 (GA102-300-A1, 48GB total VRAM).
 
 ## Key Commands
 ```bash
-scripts/setup.sh                       # Full setup (clones SGLang v0.5.10, applies 20 patches)
+scripts/setup.sh                       # Full setup (clones SGLang v0.5.10, applies 21 patches)
 scripts/launch.sh devstral             # Devstral 24B AWQ
 scripts/launch.sh coder-30b            # Coder-30B MoE AWQ
 scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ
