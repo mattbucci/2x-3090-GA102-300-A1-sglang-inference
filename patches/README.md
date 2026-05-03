@@ -123,9 +123,16 @@ Months-long investigation into the `<pad>` garbage from Gemma 4 26B MoE (post-pa
 8. Inside `Gemma3MLP.forward` probe: `01_gate_up_proj` produces 15078 NaN + 3267 inf out of 84480 outputs from a clean BF16 input (abs_max=43.5).
 9. Safetensors comparison: `mlp.gate_proj.weight` ships as **plain BF16** (no `weight_packed/scale/zero`), but the constructor was passing `quant_config` to `MergedColumnParallelLinear` — AWQ loader fed plain BF16 into qweight slot.
 
-**Resolution:** patch 023 — `Gemma4DecoderLayer` now passes `quant_config=None` to `Gemma4MLP` when `enable_moe_block=True` (parallel dense+MoE Gemma 4). Dense-only Gemma 4 (e.g. 31B) still gets `quant_config` since its MLP is fully AWQ-packed.
+**Resolution:** patch 023 — `Gemma4DecoderLayer` now passes `quant_config=None` to `Gemma4MLP` when `enable_moe_block=True` (parallel dense+MoE Gemma 4). Dense-only Gemma 4 (e.g. 31B) still gets `quant_config` since its MLP is fully AWQ-packed. **Patch 024 (same day) closed the remaining vision gap** with the analogous fix on the multimodal towers (vision_tower / embed_vision / audio_tower / embed_audio), and the launch.sh `gemma4` / `gemma4-31b` presets now default to BF16 (FP16 NaN's the SigLIP vision tower in attention softmax). Combined with a config-arch flip to `Gemma4ForConditionalGeneration` for checkpoints stuck on `Gemma4ForCausalLM`, the full triple-fix gives 3/3 PASS on both 26B MoE and 31B Dense.
 
-Validation post-fix: gemma4 26B 2/3 PASS at TP=1 / 2K (`gemma4-26b-moe-mlp-quant-fix-May03` JSON entry — basic+thinking PASS, vision still fails because the checkpoint registers as `Gemma4ForCausalLM` so vision tower never engages — that's a separate metadata issue).
+Validation timeline at TP=1:
+- `gemma4-26b-moe-mlp-quant-fix-May03` 2/3 — patch 023 only, vision still arch-blocked.
+- `gemma4-26b-vision-bf16-fix-May03` 3/3 — patches 023+024 + BF16 + arch flip, 2K ctx.
+- `gemma4-26b-preset-default-May03` 3/3 — preset default after baking BF16 in, 2K ctx.
+- `gemma4-26b-ctx16k-May03` 3/3 — same combo at 16K ctx (preset default).
+- `gemma4-31b-arch-flip-bf16-May03` 3/3 — same triple-fix on Dense, 2K ctx.
+- `gemma4-31b-ctx16k-May03` 3/3 — Dense at 16K ctx; KV pool is tight (1947 tokens
+  remaining at TP=1 / mem-fraction 0.92), so per-request input cap is ~1.9K.
 
 Trace artifacts (committed in `benchmarks/quality/gemma4-trace-{00,15}.json`) document the pre-fix NaN-onset pattern.
 
