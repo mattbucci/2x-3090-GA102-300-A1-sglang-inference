@@ -238,13 +238,16 @@ apply_preset() {
             ;;
         qwen36)
             # Qwen3.6-35B-A3B AWQ-native (thinking + vision): 256-expert hybrid
-            # DeltaNet + gated attn, 3B active, 262K native context. Default path
-            # is the R9700-CT-upload converted to native AWQ via
-            # scripts/quantize/convert_moe_ct_to_awq.py (BF16 fallback for the
-            # [1, H] shared_expert_gate that's not AWQ-packable). Loads as
+            # DeltaNet + gated attn, 3B active, 262K native context. Default
+            # path is the canonical HF mirror at mattbucci/Qwen3.6-35B-A3B-AWQ
+            # (R9700-shipped 2026-04-29). The local Qwen3.6-35B-A3B-AWQ-native-
+            # r9700-conv directory is byte-identical (MD5 verified 2026-05-03)
+            # but kept the descriptive suffix from the local CT→AWQ conversion
+            # via scripts/quantize/convert_moe_ct_to_awq.py — repointed here so
+            # launch.sh matches the canonical HF naming convention. Loads as
             # Qwen3_5MoeForConditionalGeneration with patch 019 applied.
-            # Validator 4/4, ~33 tok/s short-ctx on 3090 TP=2.
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-AWQ-native-r9700-conv}"
+            # Validator 3/3 short-ctx on 3090 TP=2.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ}"
             QUANT="${QUANT:-awq_marlin}"
             # Force bf16 KV: fp8_e4m3 KV produces garbage on this model via
             # Qwen3_5MoeForConditionalGeneration on Ampere. Env override
