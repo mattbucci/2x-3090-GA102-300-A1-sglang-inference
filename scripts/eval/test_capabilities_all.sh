@@ -28,7 +28,17 @@ mkdir -p "$(dirname "$RESULTS")"
 
 MODELS=("$@")
 if [ ${#MODELS[@]} -eq 0 ]; then
-    MODELS=(qwen3-ream coder-30b devstral)
+    # Default: TP=1 / 24 GB compatible AWQ presets that boot cold under the
+    # global --context-length 8192 --mem-fraction 0.85 the sweep forces below.
+    # Excludes:
+    #   devstral / devstral-* — OOM at AWQ create_weights step regardless of
+    #     context (see Known Issues in README); fix needs upstream loader change.
+    #   qwen36 / qwen35 — preset defaults exceed TP=1 / 24 GB cold; use the
+    #     `qwen36-tp1` / `qwen35-tp1` variants below instead.
+    #   qwen3-vl-32b — 21 GB weights need MEM=0.93 (sweep uses 0.85).
+    #   coder-reap-25b — 256K-tuned preset; sweep override forces 8K which
+    #     is fine but coder-reap (W4A16 build) gives same eval result faster.
+    MODELS=(qwen3-ream coder-30b coder-reap qwen35-tp1 qwen36-tp1 gemma4 gemma4-31b)
 fi
 
 # Auto-skip decisions (text-only / non-thinking / image-only) now live in
