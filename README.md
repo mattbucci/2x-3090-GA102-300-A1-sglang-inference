@@ -82,7 +82,7 @@ R9700 dialogue threads (Qwen3.6-35B v2 config-class fix, ClippableLinear confirm
 
 # TP=1 / 24 GB friendly (current rig — second 3090 offline):
 ./scripts/launch.sh qwen3-ream              # fastest 256K — reference model (MoE active params fit cold)
-./scripts/launch.sh qwen35                  # Qwen3.6-27B-AWQ R9700 recal — 3/3 basic+thinking+vision PASS
+./scripts/launch.sh qwen35 --context-length 4096   # Qwen3.6-27B-AWQ R9700 recal — 3/3 basic+thinking+vision PASS (preset CTX=32K → OOM on TP=1; CTX=4K fits)
 ./scripts/launch.sh coder-30b               # Coder-30B MoE — peak throughput
 ./scripts/launch.sh coder-reap              # Coder-REAP-25B — SWE-bench Lite leader (29.3%)
 ./scripts/launch.sh qwen3-vl-32b            # Qwen3-VL-32B Dense — TP=1 defaults boot cold (4K/MAX_RUNNING=1)
