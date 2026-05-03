@@ -438,5 +438,101 @@
       "passed": 2,
       "total": 3
     }
+  },
+  "gemma4-26b-mm-arch-fix-May03": {
+    "tag": "gemma4-26b-mm-arch-fix-May03",
+    "model": "gemma4",
+    "timestamp": "2026-05-03 06:05",
+    "elapsed_sec": 12.8,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='(reasoning)paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (538 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=['round']  response='(reasoning)this image consists entirely of the repeating word \"lorem\" in a stylized, bright green font against a solid black backgr'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
+  },
+  "gemma4-26b-vision-tower-fix-May03": {
+    "tag": "gemma4-26b-vision-tower-fix-May03",
+    "model": "gemma4",
+    "timestamp": "2026-05-03 06:09",
+    "elapsed_sec": 12.5,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='(reasoning)paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (510 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=[]  response='(reasoning)'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
+  },
+  "gemma4-26b-vision-bf16-fix-May03": {
+    "tag": "gemma4-26b-vision-bf16-fix-May03",
+    "model": "gemma4",
+    "timestamp": "2026-05-03 06:14",
+    "elapsed_sec": 10.9,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='(reasoning)paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (548 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'round']  response='(reasoning)a white background with a red and black pixelated pattern in the upper right corner.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  },
+  "gemma4-26b-preset-default-May03": {
+    "tag": "gemma4-26b-preset-default-May03",
+    "model": "gemma4",
+    "timestamp": "2026-05-03 06:16",
+    "elapsed_sec": 11.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='(reasoning)paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (540 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'round']  response='(reasoning)this image features a collection of small, scattered red and black pixels against a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
   }
 }

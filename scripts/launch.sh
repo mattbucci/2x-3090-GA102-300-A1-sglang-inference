@@ -32,18 +32,20 @@ TOKENIZER=""
 # `${QUANT:-X}` can honor an env override. Presets that hardcode `QUANT="X"`
 # ignore env by design (most do — their weight format is fixed).
 QUANT="${QUANT:-}"
-DTYPE="${DTYPE:-float16}"
 # Capture env-provided values BEFORE applying global defaults, so presets
 # can do `CTX="${_ENV_CTX:-4096}"` and have the env override take precedence.
 # Without this, the global default below (e.g. CTX=32768) would shadow the
 # `:-` fallback inside the preset case-block. KV_DTYPE was already on this
 # pattern; CTX/MEM/MAX_RUNNING/CHUNKED added 2026-05-01 after the
-# qwen3-vl-32b preset edit revealed the gotcha.
+# qwen3-vl-32b preset edit revealed the gotcha. DTYPE added 2026-05-03 for
+# gemma4 (BF16 required to avoid SigLIP vision tower NaN on FP16).
 _ENV_KV_DTYPE="${KV_DTYPE:-}"
 _ENV_CTX="${CTX:-}"
 _ENV_MEM="${MEM:-}"
 _ENV_MAX_RUNNING="${MAX_RUNNING:-}"
 _ENV_CHUNKED="${CHUNKED:-}"
+_ENV_DTYPE="${DTYPE:-}"
+DTYPE="float16"
 CTX=32768
 KV_DTYPE="${KV_DTYPE:-fp8_e4m3}"
 MEM=0.85
@@ -134,12 +136,18 @@ apply_preset() {
             # Gemma 4 26B MoE AWQ. Same head_dim=256 / Ampere FP8 incompat as
             # gemma4-31b (FlashInfer rejects head_dim=256, triton rejects FP8
             # E4M3 KV on sm_86) — same fix combo: triton attn + KV_DTYPE=auto
-            # + disable-cuda-graph. Validator currently 1/4 (boots clean,
-            # decode emits <pad> garbage); separate Gemma 4 MoE forward-path
-            # bug investigation in patches/README.md "Open investigations".
+            # + disable-cuda-graph. Validator 3/3 PASS (basic+thinking+vision)
+            # 2026-05-03 after patches 023 (dense MLP no quant_config on MoE
+            # layers) + 024 (vision/audio towers no quant_config) + BF16 dtype
+            # (FP16 NaN's in SigLIP vision tower → all-<pad> decode).
+            #
+            # IMPORTANT: requires checkpoint config arch=Gemma4ForConditionalGeneration
+            # (multimodal route). With Gemma4ForCausalLM the language model loads
+            # text-only and image_url payloads silently degrade.
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-4bit}"
             REASONING="--reasoning-parser gemma4"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            DTYPE="${_ENV_DTYPE:-bfloat16}"
             # Bumped CTX 4096 → 16384: validate_capabilities.check_thinking sends
             # max_tokens=4096 which overflows 4096 CTX with any prompt.
             CTX=16384; MAX_RUNNING=1; CHUNKED=4096

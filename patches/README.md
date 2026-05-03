@@ -94,6 +94,17 @@ Removes `Gemma4ForConditionalGeneration` from `gemma4_causal.py`'s `EntryClass` 
 
 Validator post-fix on Ampere TP=1 / 2K: **basic + thinking PASS** (was 1/4 with `<pad>` garbage; now 2/3 — vision still fails because the 26B checkpoint registers as `Gemma4ForCausalLM` so the vision tower never engages, separate metadata issue R9700 also flagged for 31B AutoRound).
 
+### 024 — gemma4-mm-towers-no-quant-config (2026-05-03, 28 LOC)
+**Closes the Gemma 4 26B MoE → 3/3 PASS (basic + thinking + vision).** Same shape as patch 023 but for the multimodal towers. The Gemma 4 calibration recipe explicitly leaves the vision tower, audio tower, and embed_vision/embed_audio projections in BF16 (recipe.yaml: `ignore: re:.*vision_tower.*, re:.*embed_vision.*, ...`). The checkpoint stores them as plain `.linear.weight` tensors with no qweight/scales/shapes. Without this patch, `Gemma4ForConditionalGeneration.__init__` constructed `Gemma4VisionEncoder`, `Gemma4MultimodalEmbedder`, and `Gemma4AudioEncoder` with `quant_config=quant_config` (AWQ), causing the loader to silently miss every `vision_tower.encoder.layers.*.mlp.gate_up.gate_up_proj.weight_packed/scale/shape` key. The vision tower stayed at random init → vision check produced unicode/lorem-ipsum hallucinations.
+
+**Fix:** pass `quant_config=None` to all four mm tower components (vision_tower, embed_vision, audio_tower, embed_audio).
+
+**Plus a runtime requirement:** the Gemma 4 26B SigLIP vision tower NaNs in FP16 (overflow in attention softmax — abs_max activations exceed 65504), producing `<pad>` token spam. The launch.sh `gemma4` preset now defaults `DTYPE=bfloat16`. `_ENV_DTYPE` env-override pattern added (mirrors `_ENV_KV_DTYPE`).
+
+**Plus a config-side requirement:** the 26B checkpoint config.json must declare `architectures: ["Gemma4ForConditionalGeneration"]` (multimodal route). With `Gemma4ForCausalLM` it loads as text-only and image_url payloads silently degrade. Some upstream community checkpoints ship with the wrong arch — fix in the model directory.
+
+Validator post-fix on Ampere TP=1 / 2K: **3/3 PASS basic + thinking + vision** (`gemma4-26b-vision-bf16-fix-May03` and `gemma4-26b-preset-default-May03` JSON entries). Vision response: `'(reasoning)this image features a collection of small, scattered red and black pixels against a white background.'` — saw=['red','round'].
+
 ---
 
 ## Open investigations
