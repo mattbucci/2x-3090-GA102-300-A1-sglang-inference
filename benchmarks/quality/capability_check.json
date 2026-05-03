@@ -582,5 +582,29 @@
       "passed": 3,
       "total": 3
     }
+  },
+  "gemma4-26b-ctx16k-May03": {
+    "tag": "gemma4-26b-ctx16k-May03",
+    "model": "gemma4",
+    "timestamp": "2026-05-03 08:50",
+    "elapsed_sec": 10.5,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='(reasoning)paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (505 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'round']  response='(reasoning)a gradient of black and red pixels fades into a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
   }
 }
