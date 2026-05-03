@@ -101,7 +101,19 @@ Gemma 4 26B MoE / 21B-REAP MoE boot clean post-patches 020 v2 / 021 / 022 but de
 1. Patch 021 (GeLU activation dispatch) introduced a Gemma-4-MoE-specific regression. Kernel-form check showed `sgl_kernel.gelu_and_mul` matches `gelu_pytorch_tanh` to 0.00012 in FP16, so the gelu kernel itself is fine — but routing or weight layout post-021 may be off.
 2. The pre-021 silu-only asserts were masking a pre-existing Gemma 4 MoE bug at boot (since the asserts blocked load); now boot-clean post-021, the bug surfaces as silent decode garbage.
 
-**Next debug step (multi-step, deferred):** forward-hook the Gemma 4 MoE block at decode step 0 to log `topk_ids` + `topk_weights`. Hypothesis: router degenerates (always picks expert 0 / gating weights all zero) → MoE outputs zero → residual → uniform logits → vocab-low `<pad>` spam. R9700 ships Gemma 4 26B at 4/4 PASS on RDNA4 (their `audit_calib_quality.py` confirms 353 vision keys + router preserved as BF16) — bug is therefore Ampere-specific within the Gemma 4 MoE forward path.
+**Forward-hook trace executed 2026-05-03 (env-gated `SGLANG_GEMMA4_TRACE=1` instrumentation in `Gemma4MoE.forward`, 30 layers × 1 prompt). Result rules out router degeneration as the cause:**
+
+- **Layer 0 (clean):** input abs_max=4.35, router_logits abs_max=8.37, 60+ unique experts selected across 20 tokens, topk_weights healthy distribution. **MoE output abs_max=104.19** (24× input amplification — first warning sign).
+- **Layer 1+ (NaN):** `hidden_in.mean=NaN`, `router_logits.mean=NaN`, `topk_ids` collapses to `[7,6,4,5,1,0,2,3]` for every token (this is `softmax(NaN) → NaN → topk picks tied indices in reverse-vocab-order` — the `<pad>`-collapse signature lives downstream of NaN, not in the MoE itself).
+- **Conclusion:** the MoE is a **victim of upstream NaN propagation**, not the source. Layer 0's MoE produces a 24× amplification (~104 abs_max in FP16), and subsequent ops (RMSNorm + residual + dense MLP add + layer_scalar mul) overflow FP16 max ~65504 → inf → NaN. Once NaN appears, every later layer routes to `[7,6,4,5,1,0,2,3]` and lm_head sees uniform garbage → vocab-low spam.
+
+Trace artifacts: `benchmarks/quality/gemma4-trace-00.json` (clean) + `benchmarks/quality/gemma4-trace-15.json` (NaN).
+
+**Refined hypothesis:** the bug is not in the router or expert selection — it's **FP16 overflow downstream of the MoE output**. Two follow-ups:
+1. Try `--dtype bfloat16` (much larger range, won't overflow on the 100-magnitude MoE outputs) — Gemma 4 31B Dense uses fp16 and works because Dense MLPs don't amplify the same way; the 26B MoE's expert sum produces ~100-magnitude outputs that need BF16 headroom. Patch 006 (`awq-bf16-activation-support`) may not be activating for this code path.
+2. Look at whether the MoE expert outputs themselves are too large (Marlin gelu_and_mul producing wrong magnitudes for Gemma 4's weight distribution) vs whether the post-MoE add/norm chain is overflowing on otherwise-OK MoE output. Add a probe right after `self.experts(...)` and right before the next layer's input to localize which op causes the NaN.
+
+R9700 ships Gemma 4 26B at 4/4 PASS on RDNA4 — RDNA4's BF16 path probably auto-promotes via patch 006 or a different default. The Ampere fp16 path is what overflows.
 
 ---
 
