@@ -15,11 +15,23 @@ For single-file safetensors repos (no index), Range-fetches the header
 (<10 MB) to get the same tensor list without downloading weights.
 
 History:
-  2026-05-02 first run — all 11 shipped repos audited clean.
+  2026-05-02 (R9700) first run — all 11 shipped repos audited clean.
   Vision/audio towers preserved as BF16 across the board.
   MoE routers preserved as BF16 (Coder-30B explicit ignore list only had
   lm_head but llmcompressor targets=Linear correctly skipped the router).
   Gemma 4 audio not yet present in google/* BF16 base either.
+
+  2026-05-03 (3090) re-run after porting — 12 shipped repos including
+  the freshly-shipped mattbucci/Qwen3.5-28B-A3B-REAP-AWQ (333 vision
+  tensors retained from Cerebras's REAP base). 2 expected issues
+  surfaced and matched README documentation:
+    - mattbucci/Qwen3.6-REAM-A3B-AWQ — multimodal arch, no vision_tower
+      keys (REAM merger discards tower; recipe-side decision).
+    - mattbucci/Qwen3.6-VL-REAP-26B-A3B-AWQ — same shape (atbender
+      REAP base shipped with vision tower stripped).
+  Other 10 repos clean. Audit confirmed our DO-NOT-USE flag on
+  mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ is runtime-only — its
+  metadata audit is fine.
 
 Usage:
   python scripts/eval/audit_calib_quality.py
