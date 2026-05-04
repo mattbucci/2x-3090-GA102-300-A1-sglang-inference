@@ -111,6 +111,35 @@ Validator post-fix on Ampere TP=1 / 2K: **basic + thinking VERIFIED, vision vali
 
 **Cross-team portability — 3090-Ampere-specific (R9700 task #65, 2026-05-03 commit `5c3d071`).** R9700 ported, applied, and tested 023+024 against their `mattbucci/gemma-4-26B-AWQ` baseline (already 4/4 PASS pre-patch with content-aware vision response `'red and black pixels...'`). Post-patch on RDNA4: basic 1/4 PASS, then HSAIL 0x1016 in `top_k_top_p_min_p_sampling_from_probs_torch` on the first thinking request — third RDNA4 instance of the same exception class (matches Coder-Next + Gemma4-31B long decode under their open task #18). They reverted via `git apply --reverse` and re-validated 4/4. **Conclusion:** R9700's AWQ loader auto-falls-back to BF16 for empty qweight slots, so the bug 023+024 fixes never manifests on RDNA4. Applying the fix changes the dense-MLP / mm-tower kernel path to plain `nn.Linear` BF16, which trips an unguarded HSAIL in a downstream sampler kernel. Patch files retained on R9700's `patches/` for reference + 3090 traceability but **NOT applied** via their setup.sh. Net: 023+024 are 3090-Ampere-specific. M4 stack untested.
 
+### 026 — gemma4-mm-video-per-frame-batching (2026-05-04, ~17 LOC, real bug fix)
+**Closes Gemma 4 video OOM on Ampere AND R9700's bsz==1 assertion in one shot.** `gemma4_mm.py:get_video_feature` previously did:
+
+```python
+pv = pv.reshape(-1, pv.shape[-2], pv.shape[-1])  # 4D → 3D, batch=num_frames
+pooled, pooler_mask = vt(pv, pp)                 # batched call
+for hs, mask in zip(pooled, pooler_mask): ...    # iterate over frames
+```
+
+That batched `vt(pv, pp)` call materializes a `[num_frames × num_patches × 2 × position_embedding_size]` one_hot tensor inside `Gemma4VisionPatchEmbedder._position_embeddings` at line 419. For our 12-frame test video at `pooling_kernel_size=3` (so `num_patches=2520` per frame) and `position_embedding_size=10240`, that's `12 × 2520 × 2 × 10240 = 619M` elements — **~1.24 GB peak in bf16**. After LM weights + KV pool consume 22 GB at MEM=0.92, only ~220 MB GPU memory is free. Server OOMs.
+
+R9700 hit a different symptom on the same model: their `attention/vision.py:254` asserts `flatten_batch is True, bsz must be 1` and bails before the OOM line.
+
+Both failures share the same root: the vision tower's `forward(batch=num_frames, ...)` shape isn't supported end-to-end. **Fix processes frames one-at-a-time:**
+
+```python
+num_frames = pv.shape[0]
+for f in range(num_frames):
+    pooled_f, mask_f = vt(pv[f:f+1], pp[f:f+1])  # bsz=1
+    real_tokens = pooled_f[0][mask_f[0]]
+    all_embeds.append(self.embed_vision(...).squeeze(0))
+```
+
+Net behavior: same `all_embeds` output (since downstream code already iterates per-frame), `1/num_frames` peak memory, single-batch calls satisfy both the OOM constraint AND the bsz==1 assertion.
+
+**Validated 2026-05-04** at TP=1 / 4K port 23355 via `validate_capabilities.py`: 4/4 PASS — `[PASS] video saw=['red'] response='(reasoning)the video is a static image of a red dot on a white background.'`. Note: the response shows the same Gemma 4 validator-passes-but-degraded pattern as vision — model says "static image" instead of "moving" — but the modality is now structurally unblocked. Calibration-side quality fix is the task #66 next step.
+
+**Cross-team portability:** Should close R9700's bsz==1 assertion too. Pending their port. Unlike patches 023+024 which trip HSAIL on RDNA4, this patch only changes the call shape into existing kernels, so no new code path on either stack.
+
 ### 025 — gemma4-vision-pooler-padding-fp32 (2026-05-03, ~13 LOC, code-correctness)
 **Aligns `Gemma4VisionPooler` with HF reference; does NOT fix the user-visible vision degradation.** Two diffs vs `transformers/models/gemma4/modeling_gemma4.py:573-629`:
 
