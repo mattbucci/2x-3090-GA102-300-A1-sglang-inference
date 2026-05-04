@@ -105,6 +105,8 @@ Validator post-fix on Ampere TP=1 / 2K: **basic + thinking PASS** (was 1/4 with 
 
 Validator post-fix on Ampere TP=1 / 2K: **3/3 PASS basic + thinking + vision** (`gemma4-26b-vision-bf16-fix-May03` and `gemma4-26b-preset-default-May03` JSON entries). Vision response: `'(reasoning)this image features a collection of small, scattered red and black pixels against a white background.'` — saw=['red','round'].
 
+**Cross-team portability — 3090-Ampere-specific (R9700 task #65, 2026-05-03 commit `5c3d071`).** R9700 ported, applied, and tested 023+024 against their `mattbucci/gemma-4-26B-AWQ` baseline (already 4/4 PASS pre-patch with content-aware vision response `'red and black pixels...'`). Post-patch on RDNA4: basic 1/4 PASS, then HSAIL 0x1016 in `top_k_top_p_min_p_sampling_from_probs_torch` on the first thinking request — third RDNA4 instance of the same exception class (matches Coder-Next + Gemma4-31B long decode under their open task #18). They reverted via `git apply --reverse` and re-validated 4/4. **Conclusion:** R9700's AWQ loader auto-falls-back to BF16 for empty qweight slots, so the bug 023+024 fixes never manifests on RDNA4. Applying the fix changes the dense-MLP / mm-tower kernel path to plain `nn.Linear` BF16, which trips an unguarded HSAIL in a downstream sampler kernel. Patch files retained on R9700's `patches/` for reference + 3090 traceability but **NOT applied** via their setup.sh. Net: 023+024 are 3090-Ampere-specific. M4 stack untested.
+
 ---
 
 ## Open investigations
