@@ -167,7 +167,27 @@ apply_preset() {
             # working pair, validated 2026-05-01 via gemma4-31b-revalidate-Apr29
             # (basic+thinking PASS; vision hallucinates because checkpoint
             # registers as Gemma4ForCausalLM — separate metadata bug, not flags).
-            MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AWQ-4bit}"
+            #
+            # 2026-05-03: repointed to R9700's HF mirror at
+            # mattbucci/gemma-4-31B-it-AutoRound-AWQ. Their HF config carries
+            # architectures=Gemma4ForConditionalGeneration (task #63 metadata
+            # flip shipped 2026-04-29) AND it's native AWQ format (bits=4,
+            # group_size=128) instead of compressed-tensors — SGLang loads it
+            # via awq_marlin on Ampere sm_80+ for ~5x faster cold-load (5.2s
+            # vs 30s for the local CT) and likely faster decode too. Validated
+            # 2026-05-03 at port 23350 / TP=1 / 4K via validate_capabilities.py:
+            # 4/4 PASS (basic + thinking + vision-validator-passes-but-degraded
+            # + video skipped). Same Gemma 4 vision degradation as the local
+            # checkpoint — the format swap doesn't fix the calibration-side
+            # vision quality issue tracked in Known Issues. Override with
+            # MODEL=$MODELS_DIR/gemma-4-31B-it-AWQ-4bit if the older local CT
+            # build is needed for A/B.
+            #
+            # CACHE GOTCHA: if you previously pulled this HF mirror before the
+            # 2026-04-29 metadata flip, your local config.json may still say
+            # Gemma4ForCausalLM. Refresh with `huggingface-cli download
+            # mattbucci/gemma-4-31B-it-AutoRound-AWQ config.json` or curl -L.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/gemma-4-31B-it-AutoRound-AWQ}"
             REASONING="--reasoning-parser gemma4"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             # Default BF16 — Gemma 4 SigLIP vision tower NaNs in FP16 (same
