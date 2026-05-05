@@ -18,7 +18,7 @@
   "qwen3-ream": {
     "tag": "qwen3-ream",
     "model": "qwen3-ream",
-    "timestamp": "2026-05-01 16:53",
+    "timestamp": "2026-05-04 18:34",
     "elapsed_sec": 0.0,
     "checks": {
       "basic": {
@@ -34,8 +34,8 @@
   "coder-30b": {
     "tag": "coder-30b",
     "model": "coder-30b",
-    "timestamp": "2026-04-30 08:49",
-    "elapsed_sec": 0.1,
+    "timestamp": "2026-05-04 18:35",
+    "elapsed_sec": 0.2,
     "checks": {
       "basic": {
         "passed": true,
@@ -745,6 +745,134 @@
     "summary": {
       "passed": 3,
       "total": 3
+    }
+  },
+  "coder-reap": {
+    "tag": "coder-reap",
+    "model": "coder-reap",
+    "timestamp": "2026-05-04 18:35",
+    "elapsed_sec": 0.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      }
+    },
+    "summary": {
+      "passed": 1,
+      "total": 1
+    }
+  },
+  "qwen35-tp1": {
+    "tag": "qwen35-tp1",
+    "model": "qwen35-tp1",
+    "timestamp": "2026-05-04 18:36",
+    "elapsed_sec": 31.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer=' paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1152 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)the user wants a short description of the provided image.\\n\\n1.  **analyze the image:** the image shows a solid red circle'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='(reasoning)the user wants a description of the video based on the provided frames.\\n\\n1.  **analyze the first frame (00:00):** there '"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "qwen36-tp1": {
+    "tag": "qwen36-tp1",
+    "model": "qwen36-tp1",
+    "timestamp": "2026-05-04 18:38",
+    "elapsed_sec": 33.9,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1032 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=\"(reasoning)the user wants a short description of the image.\\n1.  **identify the main object:** it's a circle.\\n2.  **identify the col\""
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'travel', 'across', 'ball', 'circle', 'red']  response='a red circle moves from left to right.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "gemma4": {
+    "tag": "gemma4",
+    "model": "gemma4",
+    "timestamp": "2026-05-04 18:39",
+    "elapsed_sec": 12.4,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='(reasoning)paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (540 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=['red']  response='(reasoning)the image shows a red gradient that fades from a solid color on the right to white on the left.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['right', 'red']  response='(reasoning)the video is a static image of a white background with a small red shape in the upper right corner.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 4
+    }
+  },
+  "gemma4-31b": {
+    "tag": "gemma4-31b",
+    "model": "gemma4-31b",
+    "timestamp": "2026-05-04 18:39",
+    "elapsed_sec": 15.4,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='(reasoning)paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (477 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'round']  response='(reasoning)an image containing red and black pixels on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['across', 'red']  response='(reasoning)the video shows a red dot moving across a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
     }
   }
 }
