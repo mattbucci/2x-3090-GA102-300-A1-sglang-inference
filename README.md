@@ -52,9 +52,9 @@ Reference model: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5 ms TPOT, fresh
 | Preset | TP=1 cold | Note |
 |--------|:---------:|------|
 | `qwen35` | ❌ | Bare command OOMs on TP=1 (`RuntimeError: Not enough memory` at preset CTX=32K + MEM=0.80 + 17.5 GB weights). Use `qwen35-tp1` variant instead — same Qwen3.6-27B-AWQ recal, CTX=4K, 3/3 PASS. |
-| `qwen35-tp1` | ✅ | TP=1-tuned: CTX=4K, MEM=0.85, MAX_RUNNING=1. **3/3 PASS basic+thinking+vision** (`qwen35-tp1-bare-cold-May03`). Vision: "a solid red circle is centered on a white background." |
+| `qwen35-tp1` | ✅ | TP=1-tuned: CTX=4K, MEM=0.85, MAX_RUNNING=1. **2026-05-04 strict-validator sweep: 4/4 PASS** basic+thinking+vision+video (post-`activate_conda` fix `36967b7` enables the video step). Vision: "the image shows a solid red circle". Video: "a red circle moves from the left side of the screen to the right side." Genuine content-aware on both modalities. |
 | `qwen36` | ❌ | Bare command OOMs on TP=1 at preset default CTX=262K. Use `qwen36-tp1` variant for single-card; `qwen36` is for TP=2 / 256K. |
-| `qwen36-tp1` | ✅ | TP=1-tuned: CTX=2K, MAX_RUNNING=1, MAX_MAMBA_CACHE=4 (must be ≥4 to satisfy SGLang's mamba ratio division). **3/3 PASS basic+thinking+vision** (`qwen36-tp1-bare-cold-May03`). |
+| `qwen36-tp1` | ✅ | TP=1-tuned: CTX=2K, MAX_RUNNING=1, MAX_MAMBA_CACHE=4 (must be ≥4 to satisfy SGLang's mamba ratio division). **2026-05-04 strict-validator sweep: 4/4 PASS** basic+thinking+vision+video. Vision: "a circle... red... centered". Video: "a red circle moves from left to right." Genuine content-aware on both modalities. |
 | `qwen3-ream` | ✅ | 256K-tuned defaults still fit on TP=1 (MoE active params small) |
 | `coder-30b` | ✅ | Same MoE-active-params headroom |
 | `coder-reap` | ✅ | Now needs `--disable-piecewise-cuda-graph` baked in (detokenizer hang at first prefill cold; ~5-10% TPOT cost) |
