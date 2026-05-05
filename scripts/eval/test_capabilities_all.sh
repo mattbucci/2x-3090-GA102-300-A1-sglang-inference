@@ -20,6 +20,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_DIR/scripts/common.sh"
 
+# Activate sglang conda env in the OUTER shell too, not just inside the
+# setsid'd server subshell at run_one(). The validator (validate_capabilities.py)
+# runs in this outer shell via bare `python` at the bottom of run_one(), so it
+# needs sglang's python on PATH or it falls back to system python and import
+# failures are silently swallowed by `_make_test_video`'s try/except → "skipped
+# (ModuleNotFoundError: No module named 'imageio')". Bug landed via 2026-05-04
+# sweep when imageio[ffmpeg] was correctly installed in sglang env but the
+# sweep's python resolution didn't see it. Fix: activate before the loop.
+activate_conda
+
 PORT="${PORT:-23334}"
 LOG_DIR="${LOG_DIR:-/tmp/capability-test-logs}"
 mkdir -p "$LOG_DIR"
