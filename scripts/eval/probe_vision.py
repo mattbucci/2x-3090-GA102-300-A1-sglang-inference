@@ -30,11 +30,22 @@ import argparse
 import base64
 import io
 import json
+import re
 from urllib.request import Request, urlopen
 
+# Substrings are fine for these — they don't appear inside common false-
+# positive words. (`pixel` doesn't get hidden in `pixelated` because the
+# stem is meaningful; same for the others.)
 DEGRADATION_KEYWORDS = ("pixel", "scatter", "gradient", "fragment", "specks")
-STRONG_SHAPE_KEYWORDS = ("circle", "round", "dot", "ball", "disk", "sphere")
 COLOR_KEYWORDS = ("red", "crimson", "scarlet")
+
+# These need word-boundary matching: "round" matches inside "background",
+# "ball" matches inside "ballistic" or "balloon", etc. Substring matching
+# was producing false STRONG verdicts on Gemma 4 outputs like "fading into
+# a white background" (no shape recognized but "background" contains
+# "round"). Use \b word-boundaries to require the whole word.
+STRONG_SHAPE_KEYWORDS = ("circle", "round", "dot", "ball", "disk", "sphere")
+_SHAPE_RE = re.compile(r"\b(" + "|".join(STRONG_SHAPE_KEYWORDS) + r")\b")
 
 
 def _make_image(outline: bool) -> bytes:
@@ -99,7 +110,9 @@ def main() -> int:
 
     haystack = (content + " " + reasoning).lower().strip()
     color_hit = any(c in haystack for c in COLOR_KEYWORDS)
-    shape_hit = any(s in haystack for s in STRONG_SHAPE_KEYWORDS)
+    # word-boundary match for shape — see STRONG_SHAPE_KEYWORDS comment
+    shape_hits = _SHAPE_RE.findall(haystack)
+    shape_hit = bool(shape_hits)
     deg_hits = [k for k in DEGRADATION_KEYWORDS if k in haystack]
 
     print("=== content checks ===")
