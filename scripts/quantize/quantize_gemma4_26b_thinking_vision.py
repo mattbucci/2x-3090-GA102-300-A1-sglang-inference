@@ -231,7 +231,7 @@ if tmp_dir is None:
 print("\n[3/5] Building thinking + vision calibration dataset...")
 
 rows = build_calibration_dataset(
-    recipe="thinking_vision",
+    recipe=os.environ.get("RECIPE", "balanced_thinking_vision"),
     num_samples=NUM_CALIBRATION_SAMPLES,
     seed=42,
 )
@@ -258,7 +258,17 @@ text_dataset = rows_to_text(
     rows,
     tokenizer,
     enable_thinking=True,
-    drop_images=True,  # vision encoder is NOT quantized; images not needed for text-backbone calib
+    # FIXED 2026-05-06 (was drop_images=True). Earlier reasoning ("vision
+    # encoder is NOT quantized; images not needed for text-backbone calib")
+    # was wrong — the LM's AWQ-quantized attention QKV+O and MoE expert
+    # weights still need to see image-conditioned hidden states during
+    # calibration so quant scales reflect the post-projector activation
+    # distribution. With drop_images=True, LM saw 100% text and the recipe's
+    # nominal 25% llava_instruct collapsed to 0% effective image data.
+    # Tracked as R9700 task #66; their drop_images=False recal HSAILed on
+    # RDNA4 sampler kernel so they asked us to validate the fix on Ampere
+    # AWQ_Marlin (no HSAIL surface). Same recipe, same flag flip.
+    drop_images=False,
     max_samples=NUM_CALIBRATION_SAMPLES,
 )
 print(f"Rendered {len(text_dataset)} calibration rows")
