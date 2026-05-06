@@ -302,8 +302,18 @@ recipe = GPTQModifier(
     },
     ignore=[
         "lm_head",
-        "model.vision_tower",
-        "model.embed_vision",
+        # FIXED 2026-05-06 (was bare module-name strings). R9700 found via
+        # forensic safetensors diff that bare names like "model.vision_tower"
+        # don't match descendant Linears — so when drop_images=False lets
+        # image tokens activate embed_vision.embedding_projection during
+        # calibration, GPTQ quantizes it, produces all-zero scales, NaN
+        # logits at inference, sampler crash. Their commit 176b917 fix
+        # ports here unchanged. The lucky escape with drop_images=True was:
+        # no Hessian samples for embed_vision.* meant llmcompressor silently
+        # skipped quantizing it. With drop_images=False we MUST match
+        # descendants explicitly via re:.* patterns.
+        r"re:.*vision_tower.*",
+        r"re:.*embed_vision.*",
         r"re:.*multi_modal_projector.*",
     ],
     bypass_divisibility_checks=True,
