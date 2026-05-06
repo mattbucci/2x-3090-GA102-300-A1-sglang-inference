@@ -207,13 +207,27 @@ apply_preset() {
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             ;;
         qwen3-vl-32b)
-            # Qwen3-VL-32B-Instruct AWQ — 21 GB weights (5 shards). The prior
+            # Qwen3-VL-32B-Instruct AWQ — 20 GB weights (11 shards). The prior
             # MEM=0.85 / MAX_RUNNING=16 / CTX=16384 defaults OOM cold at TP=1
             # on the KV-pool sizing step (post-weight-load: ~3 GB free, KV
             # pool wants 16 × 16384 × ~24 KB ≈ 6 GB). TP=1-viable defaults
             # below. For TP=2 once the second 3090 returns, override via env:
             # `CTX=150000 MEM=0.85 MAX_RUNNING=16 ./scripts/launch.sh qwen3-vl-32b`.
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3-VL-32B-Instruct-AWQ-4bit}"
+            #
+            # 2026-05-06: repointed from community QuantTrio/Qwen3-VL-32B-
+            # Instruct-AWQ-4bit to R9700's self-cal `mattbucci/Qwen3-VL-32B-
+            # AWQ` (their task #58 ship, commit 62fa459). Self-calibrated
+            # from Qwen/Qwen3-VL-32B-Instruct BF16 base via balanced_thinking_
+            # vision recipe (27h GPTQ on CPU). Validated cleanly on Ampere
+            # at TP=1 / 4K port 23370: 3/3 PASS validator (basic + vision
+            # 'a solid red circle with a black outline centered on a white
+            # background' + video 'a red circle moves from the left side of
+            # the screen to the right side'); probe_vision STRONG; probe_
+            # codegen STRONG 8/8. Per the build-from-scratch rule, R9700's
+            # self-cal supersedes the community QuantTrio reference. Override
+            # back to QuantTrio with MODEL=$MODELS_DIR/Qwen3-VL-32B-Instruct-
+            # AWQ-4bit if you want to A/B against the community reference.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-VL-32B-AWQ}"
             CTX="${_ENV_CTX:-4096}"
             MEM="${_ENV_MEM:-0.93}"
             MAX_RUNNING="${_ENV_MAX_RUNNING:-1}"
