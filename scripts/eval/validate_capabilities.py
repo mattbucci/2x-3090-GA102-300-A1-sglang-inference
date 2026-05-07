@@ -56,13 +56,28 @@ def _http_get(url: str, timeout: int = 10) -> dict:
         return json.loads(body) if body else {}
 
 
-def _server_alive(base_url: str, timeout: int = 5) -> bool:
-    """/health returns 200 with empty body on SGLang; don't try to parse JSON."""
-    try:
-        with urllib.request.urlopen(f"{base_url}/health", timeout=timeout) as resp:
-            return resp.status == 200
-    except Exception:
-        return False
+def _server_alive(base_url: str, timeout: int = 5, retries: int = 12) -> bool:
+    """Probe /v1/models with retry — returns True once the GPU worker is ready.
+
+    Why /v1/models and not /health: SGLang's /health endpoint returns 503
+    Service Unavailable during early startup (Uvicorn is bound but the GPU
+    worker is still completing CUDA graph capture / KV pool init), and we
+    saw it stay 503 for 30+s on cold launches. /v1/models returns 200 only
+    once the model is fully loaded and routable. Retrying with backoff
+    accommodates slow cold-launch presets (Coder-30B piecewise CUDA graph
+    is ~30-40s post-Uvicorn).
+    """
+    import time
+    for i in range(retries):
+        try:
+            with urllib.request.urlopen(f"{base_url}/v1/models", timeout=timeout) as resp:
+                if 200 <= resp.status < 300:
+                    return True
+        except Exception:
+            pass
+        if i < retries - 1:
+            time.sleep(2)
+    return False
 
 
 def _make_test_image() -> bytes:
