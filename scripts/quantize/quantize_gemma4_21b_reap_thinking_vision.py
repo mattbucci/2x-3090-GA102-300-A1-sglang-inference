@@ -231,7 +231,7 @@ if tmp_dir is None:
 print("\n[3/5] Building thinking + vision calibration dataset...")
 
 rows = build_calibration_dataset(
-    recipe="thinking_vision",
+    recipe=os.environ.get("RECIPE", "balanced_thinking_vision"),
     num_samples=NUM_CALIBRATION_SAMPLES,
     seed=42,
 )

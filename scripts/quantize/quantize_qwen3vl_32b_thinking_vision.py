@@ -48,9 +48,14 @@ print(f"RAM:    {ram_gb:.1f} GB")
 print(f"Calibration: {NUM_CALIBRATION_SAMPLES} samples x {MAX_SEQUENCE_LENGTH} tokens")
 
 # --- 1. Build thinking + vision calibration dataset ---
+# Default recipe: balanced_thinking_vision (~40% thinking / 60% non-thinking
+# + 25% llava_instruct images). Old `thinking_vision` (70% thinking) is the
+# repetition-loop source M4 audited on Qwen3.5/3.6 AWQs. Matches R9700's
+# task #58 ship recipe for `mattbucci/Qwen3-VL-32B-AWQ`. Override with
+# RECIPE=thinking_vision for A/B comparison if needed.
 print("\n[1/4] Building thinking + vision calibration dataset...")
 rows = build_calibration_dataset(
-    recipe="thinking_vision",
+    recipe=os.environ.get("RECIPE", "balanced_thinking_vision"),
     num_samples=NUM_CALIBRATION_SAMPLES,
     seed=42,
 )
