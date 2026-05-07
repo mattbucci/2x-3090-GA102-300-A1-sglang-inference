@@ -104,7 +104,15 @@ if num_experts > 0:
     print(f"  MoE model with {num_experts} experts")
     # Router gates should be excluded — they're critical for routing
     ignore_list.append("re:.*mlp\\.gate$")
-    print("  Added MoE router gate exclusions")
+    # shared_expert_gate (Qwen3.5/3.6MoE) is plain nn.Linear in qwen2_moe.py
+    # GPU path; CT-format quantized triplet has nowhere to land at serve
+    # time → 120 missing-param warnings + multilingual gibberish on NVIDIA.
+    # Excluding here ships BF16 weight that both stacks load cleanly.
+    # Cross-team port from R9700 commit 202e674; see 3090 patch 029 for
+    # the loader-side bridge that also fixes already-shipped CT builds.
+    ignore_list.append("re:.*shared_expert_gate$")
+    ignore_list.append("re:.*shared_expert\\.[a-z_]+_proj$")
+    print("  Added MoE router + shared_expert gate exclusions")
 
 print(f"  Ignore list: {ignore_list}")
 

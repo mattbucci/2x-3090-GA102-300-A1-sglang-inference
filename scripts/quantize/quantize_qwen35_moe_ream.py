@@ -102,7 +102,20 @@ ignore_list = [
 if num_experts > 0:
     # MoE router gates must stay full precision for routing accuracy
     ignore_list.append("re:.*mlp\\.gate$")
-    print(f"  Added MoE router gate exclusions")
+    # shared_expert_gate is the (1, H) scalar gate that decides whether to
+    # route through the shared expert. qwen2_moe.py constructs it as plain
+    # torch.nn.Linear with no quant_config (GPU path); SGLang's NVIDIA CT
+    # loader can't accept the resulting weight_packed/scale/shape triplet
+    # — pre-3090-patch-029 the model served multilingual gibberish (see
+    # patches/README.md narrative for patch 029 + audit doc 2026-05-07).
+    # Excluding from calibration → BF16 weight in checkpoint → both NVIDIA
+    # CT and ROCm AWQ loaders consume cleanly without serving-side patches.
+    # Cross-team port from R9700 commit 202e674. Also covers the broader
+    # shared_expert.{up,gate,down}_proj MLP linears (separate dim, but
+    # also too small/scalar to benefit from group-AWQ quant).
+    ignore_list.append("re:.*shared_expert_gate$")
+    ignore_list.append("re:.*shared_expert\\.[a-z_]+_proj$")
+    print(f"  Added MoE router + shared_expert gate exclusions")
 
 print(f"  Ignore list: {ignore_list}")
 
