@@ -115,12 +115,50 @@ GEMMA4_21B_REAP_KEYS = [
 ]
 
 
+def assert_no_match(num_experts: int, fused_keys: list[str]) -> None:
+    """Negative test: per-expert mapping must NOT match fused-format keys
+    (e.g., `experts.gate_up_proj` from HF transformers checkpoints).
+    Patch 028 is layered: fused keys MUST fall through the per-expert
+    matcher unmatched so the original fused path handles them.
+    """
+    mapping = make_expert_params_mapping(
+        ckpt_gate_proj_name="gate_proj",
+        ckpt_down_proj_name="down_proj",
+        ckpt_up_proj_name="up_proj",
+        num_experts=num_experts,
+    )
+    for raw_key in fused_keys:
+        key = insert_moe_prefix(raw_key)
+        for param_name, weight_name, expert_id, shard_id in mapping:
+            if weight_name in key:
+                raise AssertionError(
+                    f"FUSED KEY MATCHED PER-EXPERT MAPPING (regression): "
+                    f"key={raw_key} weight_name={weight_name}"
+                )
+        print(f"  {raw_key:75s} OK (no per-expert match — falls through to fused path)")
+    print(f"[PASS] {len(fused_keys)}/{len(fused_keys)} fused keys correctly bypass per-expert path")
+
+
+# HF transformers fused-experts checkpoints carry these keys (one tensor
+# per layer × all experts on output dim).  Patch 028 must NOT match these
+# in the per-expert matcher; the fused-mapping path handles them.
+GEMMA4_FUSED_KEYS = [
+    "model.language_model.layers.0.experts.gate_up_proj",
+    "model.language_model.layers.0.experts.down_proj",
+    "model.language_model.layers.5.experts.gate_up_proj",
+    "model.language_model.layers.29.experts.down_proj",
+]
+
+
 def main() -> int:
-    print("=== Gemma 4 26B (128 experts) ===")
+    print("=== Gemma 4 26B (128 experts) — per-expert source ===")
     assert_matches(128, GEMMA4_26B_KEYS)
     print()
-    print("=== Gemma 4 21B-REAP (103 experts) ===")
+    print("=== Gemma 4 21B-REAP (103 experts) — per-expert source ===")
     assert_matches(103, GEMMA4_21B_REAP_KEYS)
+    print()
+    print("=== Negative test: HF fused source must bypass per-expert matcher ===")
+    assert_no_match(128, GEMMA4_FUSED_KEYS)
     print()
     print("All checks passed — patch 028 mapping is correct.")
     return 0
