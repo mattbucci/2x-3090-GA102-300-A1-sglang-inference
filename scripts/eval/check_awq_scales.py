@@ -233,8 +233,11 @@ def main():
         sys.exit(2)
 
     if scale_count == 0:
-        print("[error] no *.scales tensors found", file=sys.stderr)
-        sys.exit(1)
+        # Not an AWQ build (BF16 base, FP8, full-precision checkpoint, etc.)
+        # — exiting 0 lets pipelines treat this as "no AWQ to audit" rather
+        # than a failure.  See evals/awq-audit-2026-05-07.md action items.
+        print("[info] no *.scales tensors found — not an AWQ build (skipping audit)")
+        sys.exit(0)
 
     print(f"Scanned {scale_count} *.scales tensors, {fail_count} flagged.")
     if failures:
