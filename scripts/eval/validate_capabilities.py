@@ -457,6 +457,13 @@ def main() -> int:
                         "(default: auto-skip vision/video for known text-only models).")
     p.add_argument("--thinking-kwarg", default=None,
                    help='JSON string, e.g. \'{"enable_thinking": true}\' for Gemma4')
+    p.add_argument("--max-tokens-thinking", type=int, default=8192,
+                   help='max_tokens for the thinking probe (default 8192). '
+                        'Lower (e.g. 1024-2048) for slow models where the 8192-tok '
+                        'thinking chain exceeds the per-request 300s timeout — '
+                        'shorter reasoning still triggers reasoning_seen + '
+                        'answer_correct gate the same way, just truncates verbose '
+                        'chains. Cross-team port from R9700 commit 6b4fb54.')
     p.add_argument("--timeout", type=int, default=180)
     p.add_argument("--save", default=None,
                    help="Append results to a JSON file keyed by --tag (creates if missing)")
@@ -533,7 +540,7 @@ def main() -> int:
     print(f"  [{'PASS' if ok else 'FAIL'}] basic     {msg}")
 
     if not args.skip_thinking:
-        ok, msg = check_thinking(base, model, thinking_kwargs)
+        ok, msg = check_thinking(base, model, thinking_kwargs, max_tokens=args.max_tokens_thinking)
         results.append(("thinking", ok, msg))
         print(f"  [{'PASS' if ok else 'FAIL'}] thinking  {msg}")
 
