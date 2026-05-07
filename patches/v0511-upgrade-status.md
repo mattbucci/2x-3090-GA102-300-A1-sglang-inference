@@ -11,7 +11,7 @@ worktree. Per-patch verdict:
 | Patch | Status | Notes |
 |-------|--------|-------|
 | 001-upstream-sync | 🗑️ DROPPED | Upstreamed wholesale into v0.5.11 |
-| 002-nvidia-model-fixes | 🗑️ DROPPED | `mamba2_cache_params` now in `qwen3_next.py:283` (Qwen3_5TextConfig inherits); other hunks superseded by upstream Qwen3_5 wrappers |
+| 002-nvidia-model-fixes | 🔄 REPLACED | Old wide-scope 002 superseded by upstream Qwen3_5 wrappers, but a focused fix was still needed → new `002-qwen3-deltanet-awq-weight-loader.patch` ports R9700's `Qwen3GatedDeltaNet._override_weight_loader` extension to cover AWQ attrs (`qweight`, `scales`, `qzeros`) + early-return guard in `_make_packed_weight_loader` for AWQ modules. Without this, AWQ-quantized Qwen3.5/3.6 (qwen35, qwen35-moe, qwen36-tp1) silently miss the packed weight_loader override on their `in_proj_qkvz` / `in_proj_ba` linears at v0.5.11 — produces incorrect TP slicing on fused checkpoint loading. Cross-team port of R9700's regenerated 007 (their commits `eec67c0` + `d1dbc77`). |
 | 003-deltanet-triton-dtype-fix | ✅ CLEAN | Applies unchanged |
 | 004-gemma4-causal-lm-fix | ✅ REBASED | 3-way auto-rebase (line 185→225) |
 | 005-ampere-fp8-triton-fallback | ✅ REBASED | 3-way clean for 2 files; manual resolve for `entrypoints/engine.py` flashinfer pin (`0.6.7.post2` → `0.6.8` allow custom builds) |
