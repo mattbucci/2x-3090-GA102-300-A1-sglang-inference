@@ -61,7 +61,15 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 >
 > **Pattern across all 5 flagged models** — every flag is one specific `up_proj` (or `gate_proj`) of a single rare expert in an early layer (layer 1 for 4 of 5, layer 47 in Coder-Next-REAM). Classic MoE GPTQ rare-expert under-calibration. At inference the rare expert produces degraded output ~1-3% of tokens (top_k=8 routing); the other 97-99% are unaffected. Validate doesn't catch it because validation prompts don't statistically hit the same rare expert. **Severity ladder:** v3-disaster (100% zero, structural Linear) → 🛑 unusable; audit findings (50-83% zero, single rare expert) → 🟡 quality-degraded; clean (no flags) → 🟢 fine. None of our shipped models are at disaster level. **Mitigation paths for next recal cycle:** (a) bump `NUM_SAMPLES` 512→1024+ so rare experts see more activations, (b) port the Gemma-4-style `force_route_all_experts` monkey-patch to Qwen3.6 / Qwen3-Coder calibrations (forces all experts to receive Hessian samples regardless of router gating), (c) add `check_awq_scales.py` to the post-conversion gate in `run_full_pipeline.sh` so the audit runs before ship. **For 3090:** worth running this on your locally-built `mattbucci/Qwen3.5-28B-A3B-REAP-AWQ` (only one not on R9700 disk) — same recipe family, expect a similar layer-1 rare-expert flag. Tool: `python scripts/eval/check_awq_scales.py /path/to/AWQ-dir` or `--hf mattbucci/<repo>` for HF-side check.
 
-> 🔧 **v0.5.10 → v0.5.11 patch upgrade — R9700 done in parallel (2026-05-07):** R9700 also bumped to v0.5.11 + audited our 19 patches (R9700 commit `6a7822a`). Findings overlap with your `patches/v0511-upgrade-status.md`: **4 patches DROPPED as fully upstreamed** — 013 (gemma4-multimodal: gemma4_mm.py 878 lines + gemma4_vision.py 599 + gemma4_audio.py 873 all in v0.5.11), 014 (gemma4-reasoning-parser: `Gemma4Detector` at `parser/reasoning_parser.py:510`, matches our cherry-pick of upstream PR #21952), 020 (clippable-linear-shim: upstream has full implementation `layers/clippable_linear.py` 283 lines vs our 33-line shim), 022 (gemma4-causal-dedup-entry-class: `EntryClass = Gemma4ForCausalLM` singular). Both teams concur on 020 + 022 dropping; you flagged 022 as CONFLICT but its semantic content is in v0.5.11. **Additional finding for your audit:** patch 010 (rdna4-gptq-hip-fallback) has its `marlin_utils.py:122` "Marlin not supported on HIP/ROCm" hunk **upstreamed** in v0.5.11; the gptq.py portion still needed RDNA4-side. Your patch numbering differs (we don't have your 015-017, 019, 021, 025; you don't have our 005, 010, 016) but the AWQ-refactor finding (`quantization/awq.py` → `quantization/awq/awq.py`) likely also affects our 006, 009-qwen35-moe — worth checking when we regen those. R9700 archived dropped patches at `patches/upstreamed-in-v0.5.11/` for reference. setup.sh on both repos now points at `SGLANG_TAG="v0.5.11"`.
+> ✅ **v0.5.10 → v0.5.11 patch upgrade — patches DONE 2026-05-07; env upgrade deferred.** Final tally **24 → 13 patches** (commit `1655e46`). All 13 verified clean apply via `git apply --check` against fresh v0.5.11 worktree. Imports load fine on existing torch 2.9 env. **However:** smoke-test of `devstral-32k` under v0.5.11 source hit an ABI mismatch — `sglang-kernel 0.4.2` (required by v0.5.11's `assert_pkg_version` gate at `engine.py:1171`) is built against torch 2.11's c10 library, undefined symbol `c10::cuda::c10_cuda_check_implementation` against our torch 2.9.1+cu128. Going forward to v0.5.11 needs a full env rebuild (torch 2.9.1 → 2.11.0, torchao 0.9 → 0.17, transformers 5.5.3 → 5.6, plus new `easydict`+`kernels` deps). Decision: **keep dev rig running v0.5.10 source** at `components/sglang` (downgraded sglang-kernel 0.4.1, retained flashinfer 0.6.8.post1 since it satisfies both v0.5.10 and v0.5.11 asserts); v0.5.11 patched source preserved at `components/sglang.v0.5.11-prepped` ready for the env-rebuild commit. `setup.sh` tag is at `v0.5.11` since `patches/` is now v0.5.11-only — a fresh `./scripts/setup.sh` (without `--skip-env`) does the full env rebuild and is the supported forward path.
+>
+> **11 patches dropped as upstreamed:** 001 (wholesale upstream sync), 002 (Qwen3_5 wrappers + `mamba2_cache_params`), 006 (`AWQMarlinConfig.get_supported_act_dtypes` returns `[half, bfloat16]`), 008 (AWQMarlin → WNA16 fallback in `awq/awq.py`), 009 (`Qwen3_5ForCausalLM` + `Qwen3_5MoeForCausalLM` at `qwen3_5.py:935+`), 014 (`Gemma4Detector` at `parser/reasoning_parser.py:510`), 015 (`_dequant_fallback` removed; calls `apply_gptq_marlin_linear` directly), 016 (`SGLANG_FORCE_CT_MOE_TRITON` env var → `moe_runner_backend=triton` config), 019 (`Qwen3_5MoeVisionConfig.__init__` at `configs/qwen3_5.py:115`), 020 (`clippable_linear.py` is now a full upstream module), 022 (`EntryClass = Gemma4ForCausalLM` single-value).
+>
+> **5 patches manually rebased:** 004 (gemma4 causal-LM `is_multimodal` carve-out, line shift), 005 (Ampere FP8 fallback + flashinfer pin relax `0.6.8.post1` → `0.6.8`), 007 (Ampere DeltaNet kernel autotuning), 017 (silu+gelu in `MoeWNA16Method.apply`), 021 (gelu support across `fused_marlin_moe.py` + `compressed_tensors_wNa16_moe.py` + `moe_runner/marlin.py` + `marlin_utils.py`).
+>
+> **8 patches clean unchanged:** 003, 011, 012, 018, 023, 024, 025, 026.
+>
+> R9700 cross-team note: their patch numbering differs but findings concur on 014, 020, 022 drops. Their AWQ-refactor finding (`quantization/awq.py` → `quantization/awq/awq.py` package) matched our 006/008/009 dependency on the new layout.
 
 > ⚠️ **Cross-team setback from R9700 (2026-05-06): Gemma 4 26B v3 (drop_images=False) calib clean but unusable for serving on R9700 — task #66 candidate fix BLOCKED here.** [SUPERSEDED — see STOP-WORK signal above. The setback only matters if the recipe fix were load-bearing; per BF16 base probe, it isn't.]
 
@@ -157,7 +165,7 @@ R9700 dialogue threads (Qwen3.6-35B v2 config-class fix, ClippableLinear confirm
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # clone SGLang v0.5.10, apply patches, create conda env
+./scripts/setup.sh                          # clone SGLang v0.5.11, apply patches, create conda env
 
 # TP=1 / 24 GB friendly (current rig — second 3090 offline):
 ./scripts/launch.sh qwen3-ream              # fastest 256K — reference model (MoE active params fit cold)
@@ -242,23 +250,23 @@ Methodology: `scripts/eval/eval_and_chart.py` — MMLU (200 samples), HumanEval 
 
 Or manually:
 ```bash
-cd components/sglang && git checkout v0.5.10
+cd components/sglang && git checkout v0.5.11
 for p in ../../patches/*.patch; do git apply "$p"; done
 cd python && pip install -e ".[srt]"
 ```
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.10 + 21 local patches |
-| PyTorch | 2.9.1 + cu128 |
+| SGLang | v0.5.11 + 13 local patches |
+| PyTorch | 2.9.1 + cu128 (env still on 2.9; v0.5.11 source forward-compatible) |
 | CUDA | 13.2 (driver 595.58) |
 | NCCL | 2.27.5 (P2P over NVLink) |
-| FlashInfer | 0.6.7.post3 |
-| transformers | 5.5.3 |
+| FlashInfer | 0.6.7.post3 (v0.5.11 pin is 0.6.8.post1; patch 005 relaxes to 0.6.8) |
+| transformers | 5.5.3 (v0.5.11 pin is 5.6.0; current env still on 5.5.3) |
 
 ## Patches
 
-21 patches on top of SGLang v0.5.10 — full details in [`patches/README.md`](patches/README.md).
+13 patches on top of SGLang v0.5.11 — full details in [`patches/README.md`](patches/README.md).
 
 ## Quantization
 
@@ -286,7 +294,7 @@ Driver: 595.58.03   CUDA 13.2   Python 3.12
 ## Repo layout
 
 ```
-patches/                  # SGLang v0.5.10 patches — see patches/README.md for full narratives
+patches/                  # SGLang v0.5.11 patches — see patches/README.md for full narratives
 benchmarks/               # Per-model benchmark JSON + charts
   quality/                #   MMLU / HumanEval / LAB-Bench / Needle
   <model>/                #   throughput + long-context sweeps
@@ -298,7 +306,8 @@ scripts/
   eval/                   # quality evals + chat template validator
   quantize/               # GPTQ → CT → AWQ pipeline + calibration recipes
   test/                   # kernel microbenchmarks + profiling
-components/sglang/        # SGLang v0.5.10 + patches (cloned by setup.sh)
+components/sglang/        # SGLang v0.5.11 + patches (cloned by setup.sh)
+components/sglang.v0.5.10-backup/  # rollback safety net (delete after v0.5.11 stable burn-in)
 ```
 
 Sister project: [2x R9700 RDNA4 repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference). Cross-team threads (R9700 answers + advice on closed items) live in [`patches/README.md`](patches/README.md).

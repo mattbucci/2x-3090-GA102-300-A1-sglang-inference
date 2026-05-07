@@ -2,6 +2,13 @@
 # SGLang setup for 2x RTX 3090
 #
 # Clones SGLang v0.5.11 and applies 13 local patches in patches/*.patch
+# NOTE: v0.5.11 requires torch 2.11 + sglang-kernel 0.4.2 ABI. Patches were
+# rebased + verified clean on v0.5.11 (commit 1655e46) but the dev rig env
+# is still on torch 2.9.1 + sglang-kernel 0.4.1 — keeping v0.5.10 source
+# active at components/sglang/ until full env upgrade is committed. The
+# v0.5.11-patched source is preserved at components/sglang.v0.5.11-prepped/.
+# A fresh ./scripts/setup.sh (without --skip-env) does the full env rebuild
+# and is the supported path forward.
 # (idempotent — git apply --check skips already-applied). See
 # patches/README.md for per-patch narratives. Header was stale claiming
 # "no patches needed on NVIDIA"; corrected 2026-05-01.
@@ -126,7 +133,7 @@ print(f'torch {torch.__version__}')
 print(f'CUDA available: {torch.cuda.is_available()}')
 print(f'Devices: {torch.cuda.device_count()}')
 for i in range(torch.cuda.device_count()):
-    print(f'  Device {i}: {torch.cuda.get_device_name(i)} ({torch.cuda.get_device_properties(i).total_mem / 1e9:.1f} GB)')
+    print(f'  Device {i}: {torch.cuda.get_device_name(i)} ({torch.cuda.get_device_properties(i).total_memory / 1e9:.1f} GB)')
 print(f'NCCL available: {torch.distributed.is_nccl_available()}')
 import sglang
 print(f'sglang {sglang.__version__}')
