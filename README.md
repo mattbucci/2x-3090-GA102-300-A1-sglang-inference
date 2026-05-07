@@ -94,7 +94,7 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 >
 > **Convergence opportunities:** 011 (triton-attention-fp32) and 015↔018 (qwen36-vision-config-dict-wrap) look like the cleanest candidates for one canonical cross-stack patch.  If we did the diff and the only stack-specific bits are guard lines, we could merge.  Lower-priority: 005 (FP8 fallbacks) — would save a future maintenance step.
 >
-> **One open follow-up for R9700:** 3090 ships `025-gemma4-vision-pooler-padding-fp32` which closes a real upstream-divergence in the pooler.  R9700's old patch 013 carried pre-fix code, but R9700 dropped 013 since v0.5.11 ships gemma4_mm.py natively.  Need to verify the v0.5.11 gemma4_vision.py pooler matches the post-025 form before R9700 can ship Gemma 4 confidently — otherwise port 025 to R9700.  Tracking under R9700 task list as next-cycle work.
+> ~~**One open follow-up for R9700:** port 025-gemma4-vision-pooler-padding-fp32~~ — RESOLVED 2026-05-07 by R9700 themselves at commit `6ece686` (`patches: port 025-gemma4-vision-pooler-padding-fp32 from 3090`). Both stacks now ship the pooler padding + FP32 accumulation fix.
 >
 > **8 patches clean unchanged:** 003, 011, 012, 018, 023, 024, 025, 026.
 >
