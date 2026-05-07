@@ -140,6 +140,40 @@ Net behavior: same `all_embeds` output (since downstream code already iterates p
 
 **Cross-team portability:** Should close R9700's bsz==1 assertion too. Pending their port. Unlike patches 023+024 which trip HSAIL on RDNA4, this patch only changes the call shape into existing kernels, so no new code path on either stack.
 
+### 028 — gemma4-mm-per-expert-awq-loader (2026-05-08, ~28 LOC, dual-format support)
+
+**Closes 21B-REAP rebuild + gemma-4-26B-AWQ HF mirror format-mismatch (both Suggested-next 2026-05-04).** Upstream `gemma4_mm.py` at v0.5.11 only supports HF transformers' fused-experts source format (`experts.gate_up_proj` [E, 2*I, H], one tensor per layer). llmcompressor-saved AWQ checkpoints — `mattbucci/gemma-4-26B-AWQ`, our local `gemma-4-21b-REAP-AWQ-thinking-vision-v2`, etc. — ship the per-expert format with one tensor per expert per projection per attribute (`experts.<i>.gate_proj.qweight` / `qzeros` / `scales` × N experts × 30 layers ≈ 35923 keys total).
+
+R9700's `gemma4_causal.py` at line 920+ already handles BOTH formats via a two-tier mapping (per-expert via `FusedMoE.make_expert_params_mapping` + fused via the original hand-built mapping). Patch 028 is the symmetric port for the multimodal loader.
+
+**Mechanism:**
+
+```python
+# Per-expert mapping for AWQ/GPTQ checkpoints saved by llmcompressor
+per_expert_params_mapping = (
+    FusedMoE.make_expert_params_mapping(
+        ckpt_gate_proj_name="gate_proj",
+        ckpt_down_proj_name="down_proj",
+        ckpt_up_proj_name="up_proj",
+        num_experts=num_experts,
+    )
+    if num_experts > 0 else []
+)
+
+# Then in load_weights loop, check per-expert FIRST (before fused),
+# routing each (expert_id, shard_id) tuple through FusedMoE's weight_loader
+# which handles awq_marlin runtime conversion automatically.
+```
+
+After patch:
+- llmcompressor per-expert AWQ source (`experts.0.gate_proj.qweight`) → loaded into `experts.w13_qweight` shard `"w1"` expert 0.
+- HF transformers fused source (`experts.gate_up_proj` [E, 2I, H]) → unchanged path, still chunks gate/up internally.
+- Stacked dense MLP path (`gate_proj` / `up_proj` for non-MoE layers) → unchanged.
+
+**Verification:** `git apply --check` clean against fresh v0.5.11 worktree, `ast.parse()` clean on the post-apply file, structural checks on per_expert + fused + FusedMoE references all pass. Runtime verification deferred to TP=2 second-card return (Gemma 4 26B + KV cache doesn't fit on TP=1 / 24 GB).
+
+**Cross-team portability:** R9700 already has this support natively in their gemma4_causal.py (their dual-format loader was the reference). No port needed for them. Patch is purely Ampere-side.
+
 ### 025 — gemma4-vision-pooler-padding-fp32 (2026-05-03, ~13 LOC, code-correctness)
 **Aligns `Gemma4VisionPooler` with HF reference; does NOT fix the user-visible vision degradation.** Two diffs vs `transformers/models/gemma4/modeling_gemma4.py:573-629`:
 
