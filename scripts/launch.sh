@@ -203,7 +203,14 @@ apply_preset() {
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph"
             ;;
         qwen3-vl-moe)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3-VL-30B-A3B-Instruct-AWQ-4bit}"
+            # Repointed 2026-05-07 from missing $MODELS_DIR/Qwen3-VL-30B-A3B-
+            # Instruct-AWQ-4bit (path didn't exist locally — silent broken
+            # preset) to the self-cal $MODELS_DIR/Qwen3-VL-30B-A3B-AWQ-native-
+            # thinking-vision (single-file native AWQ, full metadata + chat
+            # template, build-from-scratch per CLAUDE.md). Override via env
+            # `MODEL=$MODELS_DIR/Qwen3-VL-30B-A3B-Instruct-AWQ ./scripts/launch.sh
+            # qwen3-vl-moe` for the community 6-shard variant if needed.
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3-VL-30B-A3B-AWQ-native-thinking-vision}"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             ;;
         qwen3-vl-32b)
