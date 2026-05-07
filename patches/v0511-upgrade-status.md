@@ -6,7 +6,7 @@ diff: 2347 files changed, ~309k insertions, ~38k deletions (major release).
 Tested all 24 local patches via `git apply --check` against the v0.5.11
 worktree. Per-patch verdict:
 
-## Phase 1+2a complete — 9 patches ready for v0.5.11, 7 remaining manual rebases.
+## ✅ COMPLETE 2026-05-07. 24 → 13 patches, all apply cleanly to v0.5.11.
 
 | Patch | Status | Notes |
 |-------|--------|-------|
@@ -14,21 +14,21 @@ worktree. Per-patch verdict:
 | 002-nvidia-model-fixes | 🗑️ DROPPED | `mamba2_cache_params` now in `qwen3_next.py:283` (Qwen3_5TextConfig inherits); other hunks superseded by upstream Qwen3_5 wrappers |
 | 003-deltanet-triton-dtype-fix | ✅ CLEAN | Applies unchanged |
 | 004-gemma4-causal-lm-fix | ✅ REBASED | 3-way auto-rebase (line 185→225) |
-| 005-ampere-fp8-triton-fallback | 🔧 TODO | 2 of 3 files clean; `entrypoints/engine.py:1128` needs manual resolve |
+| 005-ampere-fp8-triton-fallback | ✅ REBASED | 3-way clean for 2 files; manual resolve for `entrypoints/engine.py` flashinfer pin (`0.6.7.post2` → `0.6.8` allow custom builds) |
 | 006-awq-bf16-activation-support | 🗑️ DROPPED | `AWQMarlinConfig.get_supported_act_dtypes` already returns `[half, bfloat16]` upstream (only path 3090 sm_80+ uses) |
 | 007-ampere-deltanet-kernel-tuning | ✅ REBASED | 3-way auto-rebase |
 | 008-awq-moe-wna16-fallback | 🗑️ DROPPED | `AWQMarlinConfig` MoE→WNA16 fallback now in `awq/awq.py` upstream |
 | 009-qwen35-moe-causalLM | 🗑️ DROPPED | `Qwen3_5ForCausalLM` + `Qwen3_5MoeForCausalLM` now in `qwen3_5.py:935` + `:1230` upstream; `_bind_packed_weight_loaders` at `:276` |
 | 011-triton-attention-fp32 | ✅ CLEAN | Applies unchanged |
 | 012-sliding-window-decode-fix | ✅ CLEAN | Applies unchanged |
-| 014-gemma4-reasoning-parser | 🔧 TODO | `parser/reasoning_parser.py:477` shifted; structure may have changed |
-| 015-ct-wna16-dequant-layout-fix | 🔧 TODO | `compressed_tensors_wNa16.py:311` shifted |
-| 016-ct-moe-gelu-triton-route | 🔧 TODO | `compressed_tensors.py:678` shifted |
-| 017-moe-wna16-gelu-activation | 🔧 TODO | `moe_wna16.py:369` shifted |
+| 014-gemma4-reasoning-parser | 🗑️ DROPPED | `Gemma4Detector` class now in `parser/reasoning_parser.py:510` upstream + `"gemma4": Gemma4Detector` in detector dict |
+| 015-ct-wna16-dequant-layout-fix | 🗑️ DROPPED | `_dequant_fallback` method removed entirely in v0.5.11 — `apply_weights` now calls `apply_gptq_marlin_linear` directly. If Gemma 4 down_proj Marlin shape incompat resurfaces, will need new path. |
+| 016-ct-moe-gelu-triton-route | 🗑️ DROPPED | `SGLANG_FORCE_CT_MOE_TRITON=1` env-var convenience superseded by upstream `moe_runner_backend=triton` config option |
+| 017-moe-wna16-gelu-activation | ✅ REBASED | Hand-rebased `silu`-only assert in `MoeWNA16Method.apply` to allow `silu`+`gelu` |
 | 018-qwen36-vision-config-dict-wrap | ✅ CLEAN | Applies unchanged |
-| 019-qwen3_5-moe-vl-config-dataclass-and-model-init | 🔧 TODO | `configs/qwen3_5.py:145` shifted; underlying transformers-5.x dataclass-decoration issue may still exist |
+| 019-qwen3_5-moe-vl-config-dataclass-and-model-init | 🗑️ DROPPED | `Qwen3_5MoeVisionConfig.__init__` (and Text/Config equivalents) now upstream at `configs/qwen3_5.py:115`+ |
 | 020-gemma4-clippable-linear-shim | 🗑️ DROPPED | `clippable_linear.py` is now an upstream module |
-| 021-marlin-moe-gelu-activation | 🔧 TODO | `fused_marlin_moe.py:8` shifted |
+| 021-marlin-moe-gelu-activation | ✅ REBASED | Hand-rebased gelu support across `fused_marlin_moe.py` (import `gelu_and_mul` from `sglang.jit_kernel.activation`, add `activation` kwarg, dispatch), `compressed_tensors_wNa16_moe.py` (2 silu asserts → silu+gelu, pass kwarg), `moe_runner/marlin.py` (silu assert + pass kwarg), `marlin_utils.py` (relax `supports_activation`) |
 | 022-gemma4-causal-dedup-entry-class | 🗑️ DROPPED | v0.5.11 has `EntryClass = Gemma4ForCausalLM` (single value, our patch's intent) |
 | 023-gemma4-moe-mlp-no-quant-config | ✅ CLEAN | Applies unchanged |
 | 024-gemma4-mm-towers-no-quant-config | ✅ CLEAN | Applies unchanged |

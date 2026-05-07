@@ -1,7 +1,7 @@
 #!/bin/bash
 # SGLang setup for 2x RTX 3090
 #
-# Clones SGLang v0.5.10 and applies 20 local patches in patches/*.patch
+# Clones SGLang v0.5.11 and applies 13 local patches in patches/*.patch
 # (idempotent — git apply --check skips already-applied). See
 # patches/README.md for per-patch narratives. Header was stale claiming
 # "no patches needed on NVIDIA"; corrected 2026-05-01.
@@ -20,7 +20,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-SGLANG_TAG="v0.5.10"
+SGLANG_TAG="v0.5.11"
 
 SKIP_ENV=false
 for arg in "$@"; do

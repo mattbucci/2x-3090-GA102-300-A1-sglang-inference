@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/batch_invariant_ops/batch_invariant_ops.py b/python/sglang/srt/batch_invariant_ops/batch_invariant_ops.py
-index 80bb66e7e..d7b7500ff 100644
+index 30a8cdb46..96a620f80 100644
 --- a/python/sglang/srt/batch_invariant_ops/batch_invariant_ops.py
 +++ b/python/sglang/srt/batch_invariant_ops/batch_invariant_ops.py
-@@ -151,7 +151,7 @@ def matmul_kernel_persistent(
+@@ -156,7 +156,7 @@ def matmul_kernel_persistent(
              accumulator += bias
          if c_ptr.dtype.element_ty == tl.float8e4nv:
              c = accumulator.to(tl.float8e4nv)
@@ -11,7 +11,7 @@ index 80bb66e7e..d7b7500ff 100644
              c = accumulator.to(tl.bfloat16)
          elif c_ptr.dtype.element_ty == tl.float32:
              c = accumulator.to(tl.float32)
-@@ -703,7 +703,7 @@ def bmm_kernel_persistent(
+@@ -708,7 +708,7 @@ def bmm_kernel_persistent(
  
          if c_ptr.dtype.element_ty == tl.float8e4nv:
              c = accumulator.to(tl.float8e4nv)
@@ -21,15 +21,15 @@ index 80bb66e7e..d7b7500ff 100644
          elif c_ptr.dtype.element_ty == tl.float32:
              c = accumulator.to(tl.float32)
 diff --git a/python/sglang/srt/entrypoints/engine.py b/python/sglang/srt/entrypoints/engine.py
-index aca1adc26..4ee02b50a 100644
+index 0b7849a6b..2abab1cb5 100644
 --- a/python/sglang/srt/entrypoints/engine.py
 +++ b/python/sglang/srt/entrypoints/engine.py
-@@ -1128,7 +1128,7 @@ def _set_envs_and_config(server_args: ServerArgs):
+@@ -1162,7 +1162,7 @@ def _set_envs_and_config(server_args: ServerArgs):
          if server_args.attention_backend == "flashinfer":
              assert_pkg_version(
                  "flashinfer_python",
--                "0.6.7.post2",
-+                "0.6.7",  # Allow custom FlashInfer builds
+-                "0.6.8.post1",
++                "0.6.8",  # Allow custom FlashInfer builds (was 0.6.8.post1 strict)
                  "Please uninstall the old version and "
                  "reinstall the latest version by following the instructions "
                  "at https://docs.flashinfer.ai/installation.html.",

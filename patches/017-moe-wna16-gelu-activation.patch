@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/quantization/moe_wna16.py b/python/sglang/srt/layers/quantization/moe_wna16.py
-index ce6397dd1..350e436e0 100644
+index 2da526402..41805d886 100644
 --- a/python/sglang/srt/layers/quantization/moe_wna16.py
 +++ b/python/sglang/srt/layers/quantization/moe_wna16.py
-@@ -369,9 +369,13 @@ class MoeWNA16Method(FusedMoEMethodBase):
+@@ -384,9 +384,13 @@ class MoeWNA16Method(FusedMoEMethodBase):
          layer: torch.nn.Module,
          dispatch_output: StandardDispatchOutput,
      ) -> CombineInput:
@@ -10,12 +10,12 @@ index ce6397dd1..350e436e0 100644
 -            self.moe_runner_config.activation == "silu"
 -        ), "Only SiLU activation is supported."
 +        # Triton fused MoE runner supports silu + gelu (moe_runner/triton.py
-+        # lines 215/231). Gemma 4 MoE uses gelu; relaxing the SiLU-only
-+        # assertion here lets awq_marlin + moe_wna16 fallback serve Gemma 4.
-+        assert self.moe_runner_config.activation in (
-+            "silu",
-+            "gelu",
-+        ), f"Only SiLU/GELU supported, got {self.moe_runner_config.activation!r}."
++        # uses both via gate_up_proj + gate_act dispatch). Gemma 4 MoE uses
++        # gelu_pytorch_tanh; relax the silu-only assertion so awq_marlin +
++        # moe_wna16 fallback can serve Gemma 4.
++        assert self.moe_runner_config.activation in ("silu", "gelu"), (
++            "Only SiLU and GeLU activations are supported."
++        )
  
-         weight_bits = self.quant_config.weight_bits
-         has_zp = self.quant_config.has_zp
+         quant_info = self.get_triton_quant_info(layer)
+         return self.runner.run(dispatch_output, quant_info)

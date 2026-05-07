@@ -1,17 +1,17 @@
 diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
-index 4410f07f3..dcfe5cc46 100644
+index 23184e94b..822ba2982 100644
 --- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
 +++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
-@@ -8,7 +8,7 @@ from sglang.srt.utils.custom_op import register_custom_op
- _is_cuda = is_cuda()
- 
+@@ -10,7 +10,7 @@ _is_cuda = is_cuda()
  if _is_cuda:
--    from sgl_kernel import moe_sum_reduce, silu_and_mul
-+    from sgl_kernel import gelu_and_mul, moe_sum_reduce, silu_and_mul
+     from sgl_kernel import moe_sum_reduce
  
+-    from sglang.jit_kernel.activation import silu_and_mul
++    from sglang.jit_kernel.activation import gelu_and_mul, silu_and_mul
      from sglang.jit_kernel.moe_wna16_marlin import moe_wna16_marlin_gemm
  
-@@ -46,6 +46,7 @@ def fused_marlin_moe(
+ 
+@@ -47,6 +47,7 @@ def fused_marlin_moe(
      is_k_full: bool = True,
      inplace: bool = False,
      routed_scaling_factor: Optional[float] = None,
@@ -19,7 +19,7 @@ index 4410f07f3..dcfe5cc46 100644
  ) -> torch.Tensor:
      """
      This function computes a Mixture of Experts (MoE) layer using two sets of
-@@ -173,7 +174,11 @@ def fused_marlin_moe(
+@@ -174,7 +175,11 @@ def fused_marlin_moe(
          is_zp_float=False,
      )
  
@@ -58,10 +58,10 @@ index 45104dd27..ccfa05c17 100644
  
      return StandardCombineInput(
 diff --git a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
-index 7a8fb6542..c2814e558 100644
+index 0ac18784c..5fdb32d58 100644
 --- a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
 +++ b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
-@@ -365,9 +365,11 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
+@@ -382,9 +382,11 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
          )
          from sglang.srt.layers.moe.token_dispatcher import StandardCombineInput
  
@@ -76,7 +76,7 @@ index 7a8fb6542..c2814e558 100644
  
          x = dispatch_output.hidden_states
          topk_output = dispatch_output.topk_output
-@@ -402,6 +404,7 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
+@@ -419,6 +421,7 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
              num_bits=self.num_bits,
              is_k_full=self.is_k_full,
              routed_scaling_factor=self.moe_runner_config.routed_scaling_factor,
@@ -84,28 +84,27 @@ index 7a8fb6542..c2814e558 100644
          )
          return StandardCombineInput(hidden_states=output)
  
-@@ -455,9 +458,13 @@ class CompressedTensorsWNA16TritonMoE(CompressedTensorsWNA16MoE):
+@@ -482,9 +485,12 @@ class CompressedTensorsWNA16TritonMoE(CompressedTensorsWNA16MoE):
+         layer: torch.nn.Module,
+         dispatch_output: "StandardDispatchOutput",
      ) -> "CombineInput":
-         from sglang.srt.layers.moe.moe_runner.triton import TritonMoeQuantInfo
- 
 -        assert (
 -            self.moe_runner_config.activation == "silu"
 -        ), "Only SiLU activation is supported."
 +        # Triton fused MoE runner supports both silu and gelu (see
 +        # moe_runner/triton.py). The original SiLU-only assertion blocked
 +        # Gemma 4 (gelu). Runner still raises for unknown activations.
-+        assert self.moe_runner_config.activation in (
-+            "silu",
-+            "gelu",
-+        ), f"Only SiLU/GELU activation supported, got {self.moe_runner_config.activation!r}."
++        assert self.moe_runner_config.activation in ("silu", "gelu"), (
++            f"Only SiLU/GELU activation supported, got {self.moe_runner_config.activation!r}."
++        )
  
-         quant_info = TritonMoeQuantInfo(
-             w13_weight=layer.w13_weight_packed,
+         quant_info = self.get_triton_quant_info(layer)
+         return self.runner.run(dispatch_output, quant_info)
 diff --git a/python/sglang/srt/layers/quantization/marlin_utils.py b/python/sglang/srt/layers/quantization/marlin_utils.py
-index 3e06b4861..1979c5a43 100644
+index 04b72ca0d..2bdb3c8be 100644
 --- a/python/sglang/srt/layers/quantization/marlin_utils.py
 +++ b/python/sglang/srt/layers/quantization/marlin_utils.py
-@@ -242,8 +242,8 @@ def check_moe_marlin_supports_layer(layer: FusedMoE, group_size: int) -> bool:
+@@ -238,8 +238,8 @@ def check_moe_marlin_supports_layer(layer: FusedMoE, group_size: int) -> bool:
      intermediate_size_per_partition = layer.intermediate_size_per_partition
      # apply_router_weight_on_input is not supported for moe marlin
      supports_router_weight = not layer.moe_runner_config.apply_router_weight_on_input
