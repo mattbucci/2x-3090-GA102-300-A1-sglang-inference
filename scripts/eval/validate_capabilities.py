@@ -410,7 +410,11 @@ IMAGE_ONLY_MODELS = frozenset({
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--port", type=int, default=23334)
-    p.add_argument("--host", default="localhost")
+    # 127.0.0.1 instead of "localhost" — on systems where /etc/hosts maps
+    # localhost to ::1 first (Arch default), urllib hits IPv6 and the
+    # SGLang server bound on 0.0.0.0 (IPv4 only) returns ECONNREFUSED.
+    # Explicit 127.0.0.1 forces IPv4 and matches the server's bind family.
+    p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--model", default=None, help="Override model name (default: server-reported)")
     p.add_argument("--skip-thinking", action="store_true")
     p.add_argument("--skip-vision", action="store_true")
