@@ -209,7 +209,17 @@ recipe = GPTQModifier(
             weights=QuantizationArgs(num_bits=4, type="int", symmetric=True, strategy="group", group_size=32),
         )
     },
-    ignore=["lm_head", "model.vision_tower", "model.embed_vision"],
+    # FIXED 2026-05-07 — bare module-name strings don't match descendant
+    # Linears like `embed_vision.embedding_projection`. Latent landmine
+    # (lucky escape today because callers use drop_images=True; surfaces
+    # when calibration data routes activations through these subtrees).
+    # Match descendants explicitly per R9700 commit 176b917 + 3090 fix
+    # port 3960477.
+    ignore=[
+        "lm_head",
+        r"re:.*vision_tower.*",
+        r"re:.*embed_vision.*",
+    ],
     bypass_divisibility_checks=True,
 )
 

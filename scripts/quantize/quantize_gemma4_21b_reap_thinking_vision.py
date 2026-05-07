@@ -292,8 +292,16 @@ recipe = GPTQModifier(
     },
     ignore=[
         "lm_head",
-        "model.vision_tower",
-        "model.embed_vision",
+        # FIXED 2026-05-07 — bare module-name strings don't match
+        # descendant Linears (e.g. `embed_vision.embedding_projection`).
+        # Latent landmine: with drop_images=True llmcompressor had no
+        # Hessian samples for these subtrees and silently skipped
+        # quantizing them; with drop_images=False (the task #66 fix)
+        # bare strings let GPTQ quantize the descendants → zero scales
+        # → NaN logits → sampler crash. R9700 root-cause commit
+        # 176b917 + 3090 26B-script fix port 3960477.
+        r"re:.*vision_tower.*",
+        r"re:.*embed_vision.*",
         r"re:.*multi_modal_projector.*",
     ],
     bypass_divisibility_checks=True,
