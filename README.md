@@ -301,7 +301,7 @@ cd python && pip install -e ".[srt]"
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.11 + 13 local patches |
+| SGLang | v0.5.11 + 15 local patches |
 | PyTorch | 2.9.1 + cu128 (env still on 2.9; v0.5.11 source forward-compatible) |
 | CUDA | 13.2 (driver 595.58) |
 | NCCL | 2.27.5 (P2P over NVLink) |
@@ -310,7 +310,7 @@ cd python && pip install -e ".[srt]"
 
 ## Patches
 
-13 patches on top of SGLang v0.5.11 — full details in [`patches/README.md`](patches/README.md).
+15 patches on top of SGLang v0.5.11: 13 from the v0.5.10→v0.5.11 upgrade (2026-05-07 commit `1655e46`), + 002 cross-team port from R9700's qwen3_next AWQ weight_loader fix (2026-05-07 commit `953bca2`), + 028 gemma4_mm per-expert AWQ loader (2026-05-08). All 15 verified to apply cleanly in setup-order against fresh v0.5.11. Full details in [`patches/README.md`](patches/README.md).
 
 ## Quantization
 
