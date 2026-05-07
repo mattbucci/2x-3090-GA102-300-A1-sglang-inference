@@ -6,32 +6,36 @@ diff: 2347 files changed, ~309k insertions, ~38k deletions (major release).
 Tested all 24 local patches via `git apply --check` against the v0.5.11
 worktree. Per-patch verdict:
 
-| Patch | v0.5.11 status | Action |
-|-------|---------------|--------|
-| 001-upstream-sync | ⏫ UPSTREAMED | DROP (file/feature now in upstream) |
-| 002-nvidia-model-fixes | 🔀 REFACTORED | `quantization/awq.py` → `quantization/awq/awq.py` |
-| 003-deltanet-triton-dtype-fix | ✅ CLEAN | Keep as-is |
-| 004-gemma4-causal-lm-fix | 🔧 CONFLICT | Rebase (`configs/model_config.py:185` shifted) |
-| 005-ampere-fp8-triton-fallback | 🔧 CONFLICT | Rebase (`entrypoints/engine.py:1128` shifted) |
-| 006-awq-bf16-activation-support | 🔀 REFACTORED | `quantization/awq.py` → `quantization/awq/awq.py` |
-| 007-ampere-deltanet-kernel-tuning | 🔧 CONFLICT | Rebase (`fla/fused_sigmoid_gating_recurrent.py:280` shifted) |
-| 008-awq-moe-wna16-fallback | 🔀 REFACTORED | `quantization/awq.py` → `quantization/awq/awq.py` |
-| 009-qwen35-moe-causalLM | 🔀 REFACTORED | `quantization/awq.py` → `quantization/awq/awq.py` |
-| 011-triton-attention-fp32 | ✅ CLEAN | Keep as-is |
-| 012-sliding-window-decode-fix | ✅ CLEAN | Keep as-is |
-| 014-gemma4-reasoning-parser | 🔧 CONFLICT | Rebase (`parser/reasoning_parser.py:477` shifted) |
-| 015-ct-wna16-dequant-layout-fix | 🔧 CONFLICT | Rebase (`compressed_tensors_wNa16.py:311` shifted) |
-| 016-ct-moe-gelu-triton-route | 🔧 CONFLICT | Rebase (`compressed_tensors.py:678` shifted) |
-| 017-moe-wna16-gelu-activation | 🔧 CONFLICT | Rebase (`moe_wna16.py:369` shifted) |
-| 018-qwen36-vision-config-dict-wrap | ✅ CLEAN | Keep as-is |
-| 019-qwen3_5-moe-vl-config-dataclass-and-model-init | 🔧 CONFLICT | Rebase (`configs/qwen3_5.py:145` shifted) |
-| 020-gemma4-clippable-linear-shim | ⏫ UPSTREAMED | DROP (`clippable_linear.py` is in v0.5.11 upstream) |
-| 021-marlin-moe-gelu-activation | 🔧 CONFLICT | Rebase (`fused_marlin_moe.py:8` shifted) |
-| 022-gemma4-causal-dedup-entry-class | 🔧 CONFLICT | Rebase (`gemma4_causal.py:1060` shifted) |
-| 023-gemma4-moe-mlp-no-quant-config | ✅ CLEAN | Keep as-is |
-| 024-gemma4-mm-towers-no-quant-config | ✅ CLEAN | Keep as-is |
-| 025-gemma4-vision-pooler-padding-fp32 | ✅ CLEAN | Keep as-is |
-| 026-gemma4-mm-video-per-frame-batching | ✅ CLEAN | Keep as-is |
+## Phase 1+2a complete — 9 patches ready for v0.5.11, 7 remaining manual rebases.
+
+| Patch | Status | Notes |
+|-------|--------|-------|
+| 001-upstream-sync | 🗑️ DROPPED | Upstreamed wholesale into v0.5.11 |
+| 002-nvidia-model-fixes | 🗑️ DROPPED | `mamba2_cache_params` now in `qwen3_next.py:283` (Qwen3_5TextConfig inherits); other hunks superseded by upstream Qwen3_5 wrappers |
+| 003-deltanet-triton-dtype-fix | ✅ CLEAN | Applies unchanged |
+| 004-gemma4-causal-lm-fix | ✅ REBASED | 3-way auto-rebase (line 185→225) |
+| 005-ampere-fp8-triton-fallback | 🔧 TODO | 2 of 3 files clean; `entrypoints/engine.py:1128` needs manual resolve |
+| 006-awq-bf16-activation-support | 🗑️ DROPPED | `AWQMarlinConfig.get_supported_act_dtypes` already returns `[half, bfloat16]` upstream (only path 3090 sm_80+ uses) |
+| 007-ampere-deltanet-kernel-tuning | ✅ REBASED | 3-way auto-rebase |
+| 008-awq-moe-wna16-fallback | 🗑️ DROPPED | `AWQMarlinConfig` MoE→WNA16 fallback now in `awq/awq.py` upstream |
+| 009-qwen35-moe-causalLM | 🗑️ DROPPED | `Qwen3_5ForCausalLM` + `Qwen3_5MoeForCausalLM` now in `qwen3_5.py:935` + `:1230` upstream; `_bind_packed_weight_loaders` at `:276` |
+| 011-triton-attention-fp32 | ✅ CLEAN | Applies unchanged |
+| 012-sliding-window-decode-fix | ✅ CLEAN | Applies unchanged |
+| 014-gemma4-reasoning-parser | 🔧 TODO | `parser/reasoning_parser.py:477` shifted; structure may have changed |
+| 015-ct-wna16-dequant-layout-fix | 🔧 TODO | `compressed_tensors_wNa16.py:311` shifted |
+| 016-ct-moe-gelu-triton-route | 🔧 TODO | `compressed_tensors.py:678` shifted |
+| 017-moe-wna16-gelu-activation | 🔧 TODO | `moe_wna16.py:369` shifted |
+| 018-qwen36-vision-config-dict-wrap | ✅ CLEAN | Applies unchanged |
+| 019-qwen3_5-moe-vl-config-dataclass-and-model-init | 🔧 TODO | `configs/qwen3_5.py:145` shifted; underlying transformers-5.x dataclass-decoration issue may still exist |
+| 020-gemma4-clippable-linear-shim | 🗑️ DROPPED | `clippable_linear.py` is now an upstream module |
+| 021-marlin-moe-gelu-activation | 🔧 TODO | `fused_marlin_moe.py:8` shifted |
+| 022-gemma4-causal-dedup-entry-class | 🗑️ DROPPED | v0.5.11 has `EntryClass = Gemma4ForCausalLM` (single value, our patch's intent) |
+| 023-gemma4-moe-mlp-no-quant-config | ✅ CLEAN | Applies unchanged |
+| 024-gemma4-mm-towers-no-quant-config | ✅ CLEAN | Applies unchanged |
+| 025-gemma4-vision-pooler-padding-fp32 | ✅ CLEAN | Applies unchanged |
+| 026-gemma4-mm-video-per-frame-batching | ✅ CLEAN | Applies unchanged |
+
+**Counts:** 24 → 17 (7 dropped, 8 unchanged, 2 auto-rebased, 7 manual TODO).
 
 ## Summary
 

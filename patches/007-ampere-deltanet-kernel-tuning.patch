@@ -57,7 +57,7 @@ index f110770c0..6b8409d71 100644
      stride_mixed_qkv_tok = mixed_qkv.stride(0)
      stride_a_tok = a.stride(0)
 diff --git a/python/sglang/srt/layers/attention/fla/fused_sigmoid_gating_recurrent.py b/python/sglang/srt/layers/attention/fla/fused_sigmoid_gating_recurrent.py
-index f3e94a035..01eecd29b 100644
+index 858785dec..9a7ae8bce 100644
 --- a/python/sglang/srt/layers/attention/fla/fused_sigmoid_gating_recurrent.py
 +++ b/python/sglang/srt/layers/attention/fla/fused_sigmoid_gating_recurrent.py
 @@ -4,6 +4,8 @@ import torch
@@ -69,8 +69,8 @@ index f3e94a035..01eecd29b 100644
  
  @triton.jit(do_not_specialize=["T"])
  def fused_sigmoid_gating_delta_rule_update_kernel(
-@@ -280,11 +282,10 @@ def fused_sigmoid_gating_delta_rule_update(
-     stride_b = b.stride()[-2]
+@@ -282,11 +284,10 @@ def fused_sigmoid_gating_delta_rule_update(
+     stride_a = a.stride()[-2]
      HV = v.shape[2]
      N = B if cu_seqlens is None else len(cu_seqlens) - 1
 -    BK, BV = triton.next_power_of_2(K), min(triton.next_power_of_2(V), 32)
