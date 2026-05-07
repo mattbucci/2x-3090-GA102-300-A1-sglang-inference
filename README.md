@@ -66,6 +66,35 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 > **11 patches dropped as upstreamed:** 001 (wholesale upstream sync), 002 (Qwen3_5 wrappers + `mamba2_cache_params`), 006 (`AWQMarlinConfig.get_supported_act_dtypes` returns `[half, bfloat16]`), 008 (AWQMarlin → WNA16 fallback in `awq/awq.py`), 009 (`Qwen3_5ForCausalLM` + `Qwen3_5MoeForCausalLM` at `qwen3_5.py:935+`), 014 (`Gemma4Detector` at `parser/reasoning_parser.py:510`), 015 (`_dequant_fallback` removed; calls `apply_gptq_marlin_linear` directly), 016 (`SGLANG_FORCE_CT_MOE_TRITON` env var → `moe_runner_backend=triton` config), 019 (`Qwen3_5MoeVisionConfig.__init__` at `configs/qwen3_5.py:115`), 020 (`clippable_linear.py` is now a full upstream module), 022 (`EntryClass = Gemma4ForCausalLM` single-value).
 >
 > **5 patches manually rebased:** 004 (gemma4 causal-LM `is_multimodal` carve-out, line shift), 005 (Ampere FP8 fallback + flashinfer pin relax `0.6.8.post1` → `0.6.8`), 007 (Ampere DeltaNet kernel autotuning), 017 (silu+gelu in `MoeWNA16Method.apply`), 021 (gelu support across `fused_marlin_moe.py` + `compressed_tensors_wNa16_moe.py` + `moe_runner/marlin.py` + `marlin_utils.py`).
+
+> 🔁 **R9700 v0.5.11 patch rework finished 2026-05-07 (commit `3466816`) — both stacks now at v0.5.11.** Cross-stack patch comparison after R9700's full sweep (R9700: 22→15 patches, 7 dropped as upstreamed, all 15 apply clean in setup-order; 3090: 24→13 patches, 11 dropped, all 13 apply clean):
+>
+> | Topic | R9700 patch | 3090 patch | Cross-stack note |
+> |-------|--------------------|--------------------|------|
+> | upstream-sync wholesale | 001 (kept, `is_causal_lm_only` + RDNA4 bits, 825 lines) | (dropped) | 3090 dropped 001 entirely; R9700 kept it because we still need the RDNA4-specific subset (e.g. `is_causal_lm_only` carve-out in `model_config.py` not yet upstreamed) |
+> | torch.compile gating | 002 rdna4-torch-compile-disable | (n/a) | RDNA4-only — `@torch.compile` stalls 30+ min on HIP, no Ampere parallel |
+> | sgl-kernel fallbacks | 003 rdna4-sgl-kernel-fallbacks | (n/a) | RDNA4-only — sgl-kernel is CUDA-only |
+> | MoE fixes | 004 rdna4-moe-fixes (1416 lines, regen against `moe_runner/triton_utils/`) | 004 gemma4-causal-lm-fix | DIFFERENT topics, same number; R9700 had to path-remap because v0.5.11 moved `fused_moe_triton/{fused_moe,fused_moe_triton_config,fused_moe_triton_kernels,moe_align_block_size,configs}` into `moe_runner/triton_utils/` |
+> | FP8 fallback | 005 rdna4-fp8-fallbacks | 005 ampere-fp8-triton-fallback | RELATED — both stack-specific FP8 paths.  Worth a true diff to see if we can converge into one cross-stack patch with `_is_hip` / `_is_cuda` guards |
+> | model fixes | 007 rdna4-model-fixes (141 lines after 001 dependency resolved) | 007 ampere-deltanet-kernel-tuning | DIFFERENT topics |
+> | CT HIP fallback | 008 rdna4-compressed-tensors-hip | (n/a) | RDNA4-only |
+> | Triton attention FP32 | 011 rdna4-triton-attention-fp32 (335 lines) | 011 triton-attention-fp32 (326 lines) | **CROSS-STACK SHARED CONTENT** — file targets identical, sizes within 9 lines.  Likely one canonical patch usable by both stacks; would benefit from a true semantic-diff to converge |
+> | SWA decode fix | 012 rdna4-sliding-window-decode-fix (168 lines) | 012 sliding-window-decode-fix (36 lines) | Same fix area; R9700's is a superset (extra torch_native SWA support that 3090 doesn't need) |
+> | Qwen3.6 vision config | 015 qwen36-vision-config-dict-wrap | 018 qwen36-vision-config-dict-wrap | **Same content, different number** — both wrap dict `vision_config` for Qwen3.6 VL |
+> | Qwen3-Next mamba2 cache | 016 qwen3next-conv1d-tp | (n/a) | RDNA4-only — DeltaNet replicated path needs `tp_world_size=1` override |
+> | Gemma4 MoE quant_config gating | 023 (kept but NOT applied — HSAIL surface) | 023 (applied, source-of-truth) | Cross-stack ported from 3090; R9700 confirmed not portable due to RDNA4 sampler HSAIL on first inference |
+> | Gemma4 MM towers quant_config gating | 024 (kept but NOT applied) | 024 (applied, source-of-truth) | Same story as 023 |
+> | Gemma4 video per-frame batching | 026 (applied, R9700 task #69 3/4 PASS) | 026 (applied) | **Cross-stack shared, applied on both** |
+> | softcap FP32 | 027 rdna4-softcap-fp32 (was 009; renamed to apply after 011) | (n/a) | RDNA4-only — depends on `_is_rdna4` detection added by 011, sequencing matters |
+> | Qwen3 DeltaNet AWQ loader | (n/a) | 002 qwen3-deltanet-awq-weight-loader | Ampere-only (cross-team port from R9700's earlier work?) |
+> | DeltaNet Triton dtype | (n/a) | 003 deltanet-triton-dtype-fix | Ampere DeltaNet specific |
+> | MoE WNA16 gelu | (n/a) | 017 moe-wna16-gelu-activation | Ampere AWQ_Marlin path |
+> | Marlin MoE gelu | (n/a) | 021 marlin-moe-gelu-activation | Ampere Marlin |
+> | Gemma4 vision pooler padding | (n/a) | 025 gemma4-vision-pooler-padding-fp32 | **Worth porting to R9700 in follow-up** — closes pooler padding masked_fill bug; R9700's old patch 013 had pre-fix code, dropped 013 took it out; need to confirm whether pooler padding works post-013-drop on R9700 with Gemma 4 |
+>
+> **Convergence opportunities:** 011 (triton-attention-fp32) and 015↔018 (qwen36-vision-config-dict-wrap) look like the cleanest candidates for one canonical cross-stack patch.  If we did the diff and the only stack-specific bits are guard lines, we could merge.  Lower-priority: 005 (FP8 fallbacks) — would save a future maintenance step.
+>
+> **One open follow-up for R9700:** 3090 ships `025-gemma4-vision-pooler-padding-fp32` which closes a real upstream-divergence in the pooler.  R9700's old patch 013 carried pre-fix code, but R9700 dropped 013 since v0.5.11 ships gemma4_mm.py natively.  Need to verify the v0.5.11 gemma4_vision.py pooler matches the post-025 form before R9700 can ship Gemma 4 confidently — otherwise port 025 to R9700.  Tracking under R9700 task list as next-cycle work.
 >
 > **8 patches clean unchanged:** 003, 011, 012, 018, 023, 024, 025, 026.
 >
