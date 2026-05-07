@@ -260,6 +260,15 @@ apply_preset() {
             # passed basic+thinking — vision regressed on the validator-patch.
             # Override with `MODEL=$MODELS_DIR/hf-mattbucci/Qwen3.5-27B-AWQ-4bit-calibrated`
             # if you want the older Qwen3.5 family for A/B testing.
+            #
+            # Cross-team breadcrumb (R9700 commit 6de2ff9, 2026-05-08): R9700
+            # found DECODE_STEPS=32 + per-Linear AWQ + DeltaNet + thinking-mode
+            # crashes the scheduler on RDNA4. They reduced their qwen36-27b
+            # to =8 (matching qwen36-moe). Ampere may tolerate =32 (different
+            # kernel selection); leaving =32 here for now since all 3090 TP=2
+            # validation has been at MAX_RUNNING=8 multi-user where higher
+            # decode-steps amortize launch overhead. If thinking-mode regresses
+            # on Ampere TP=2 once 2nd 3090 returns, try DECODE_STEPS=8.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-27B-AWQ}"
             CTX=32768; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
@@ -322,6 +331,10 @@ apply_preset() {
             # Qwen3_5MoeForConditionalGeneration on Ampere. Env override
             # (KV_DTYPE=X on the command line) still wins.
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            # Cross-team breadcrumb (R9700 commit 6de2ff9): DECODE_STEPS=32 +
+            # DeltaNet + thinking crashes scheduler on RDNA4; their fix was
+            # =8. Ampere TP=2 thinking-mode untested at this preset since 2nd
+            # 3090 went offline; if thinking regresses post-return, try =8.
             CTX=262144; MEM=0.85; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
