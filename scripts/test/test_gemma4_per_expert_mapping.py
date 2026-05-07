@@ -44,6 +44,17 @@ def make_expert_params_mapping(
     ]
 
 
+def insert_moe_prefix(name: str) -> str:
+    """Mirror gemma4_mm.py:load_weights line 747-748:
+    `if .experts. in name and .moe.experts. not in name: insert .moe.`
+    R9700's HF mirror keys lack `.moe.` so the loader inserts it before
+    matching against expert mappings.
+    """
+    if ".experts." in name and ".moe.experts." not in name:
+        return name.replace(".experts.", ".moe.experts.")
+    return name
+
+
 def assert_matches(num_experts: int, sample_keys: list[str]) -> None:
     mapping = make_expert_params_mapping(
         ckpt_gate_proj_name="gate_proj",
@@ -57,33 +68,42 @@ def assert_matches(num_experts: int, sample_keys: list[str]) -> None:
     print(f"[INFO] {num_experts} experts × 3 projs = {expected} mapping tuples")
 
     matches = 0
-    for key in sample_keys:
+    for raw_key in sample_keys:
+        # Step 1: loader's .moe. insertion (gemma4_mm.py:747-748).
+        key = insert_moe_prefix(raw_key)
+        # Step 2: per-expert matcher (patch 028).
         matched = False
         for param_name, weight_name, expert_id, shard_id in mapping:
             if weight_name in key:
                 remapped = key.replace(weight_name, param_name)
                 print(
-                    f"  {key:80s} -> {remapped}  (shard={shard_id} e={expert_id})"
+                    f"  {raw_key:75s} -> {remapped}  (shard={shard_id} e={expert_id})"
                 )
                 matches += 1
                 matched = True
                 break
         if not matched:
-            raise AssertionError(f"unmatched key: {key}")
+            raise AssertionError(f"unmatched key: {raw_key}")
     assert matches == len(sample_keys), f"only matched {matches}/{len(sample_keys)}"
     print(f"[PASS] {matches}/{len(sample_keys)} keys matched + remapped")
 
 
-# Gemma 4 26B has 128 experts (verified from local
-# gemma-4-26B-A4B-it-AWQ-4bit safetensors: experts shape [128, ...]).
+# Gemma 4 26B has 128 experts.  Real keys sampled from the R9700 HF mirror
+# `mattbucci/gemma-4-26B-AWQ` `model.safetensors.index.json` (Range-fetched
+# 2026-05-08; total 35923 keys, of which ~34560 are per-expert MoE).  These
+# are the pre-`.moe.`-insertion form the loader actually receives — patch 028
+# relies on the existing `.experts.` → `.moe.experts.` rename at line 747-748
+# happening first.
 GEMMA4_26B_KEYS = [
-    "language_model.layers.0.moe.experts.0.gate_proj.qweight",
-    "language_model.layers.0.moe.experts.0.gate_proj.qzeros",
-    "language_model.layers.0.moe.experts.0.gate_proj.scales",
-    "language_model.layers.0.moe.experts.0.up_proj.qweight",
-    "language_model.layers.0.moe.experts.0.down_proj.qweight",
-    "language_model.layers.5.moe.experts.42.gate_proj.qweight",
-    "language_model.layers.29.moe.experts.127.down_proj.scales",
+    "model.language_model.layers.0.experts.0.down_proj.qweight",
+    "model.language_model.layers.0.experts.0.down_proj.qzeros",
+    "model.language_model.layers.0.experts.0.down_proj.scales",
+    "model.language_model.layers.0.experts.0.gate_proj.qweight",
+    "model.language_model.layers.0.experts.0.up_proj.qweight",
+    "model.language_model.layers.0.experts.10.down_proj.qweight",
+    "model.language_model.layers.0.experts.100.down_proj.qweight",
+    "model.language_model.layers.5.experts.42.gate_proj.qweight",
+    "model.language_model.layers.29.experts.127.down_proj.scales",
 ]
 
 # Gemma 4 21B-REAP variant has fewer experts post-pruning (Cerebras REAP at
