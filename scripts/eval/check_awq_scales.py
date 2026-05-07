@@ -38,6 +38,7 @@ import urllib.request
 from pathlib import Path
 
 import numpy as np
+import torch  # for bf16-tolerant scale loading via safetensors framework="pt"
 
 
 def _check_scale_tensor(name: str, arr: np.ndarray) -> list[str]:
@@ -97,12 +98,20 @@ def check_local(path: Path) -> tuple[int, int, list[tuple[str, str, list[str]]]]
     scale_count = 0
     failures: list[tuple[str, str, list[str]]] = []
 
+    # Use framework="pt" for bf16 support — safetensors np backend raises
+    # TypeError("data type 'bfloat16' not understood") on bf16 tensors which
+    # are common in CT-format AWQ scales (e.g. gemma-4-26B-A4B-it-AWQ-4bit
+    # ships scales in bf16). Torch handles bf16 natively; we cast to float
+    # for the all-zero / NaN / Inf checks below.
     for f in files:
-        with safe_open(str(f), framework="np") as h:
+        with safe_open(str(f), framework="pt") as h:
             for k in h.keys():
                 if not (k.endswith(".scales") or k.endswith(".weight_scale")):
                     continue
-                t = h.get_tensor(k)
+                t_pt = h.get_tensor(k)
+                # Promote to float32 for numpy-friendly inspection so the
+                # _check_scale_tensor np ops below don't trip on bf16.
+                t = t_pt.float().cpu().numpy()
                 scale_count += 1
                 issues = _check_scale_tensor(k, t)
                 if issues:
