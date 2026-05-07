@@ -170,7 +170,7 @@ After patch:
 - HF transformers fused source (`experts.gate_up_proj` [E, 2I, H]) → unchanged path, still chunks gate/up internally.
 - Stacked dense MLP path (`gate_proj` / `up_proj` for non-MoE layers) → unchanged.
 
-**Verification:** `git apply --check` clean against fresh v0.5.11 worktree, `ast.parse()` clean on the post-apply file, structural checks on per_expert + fused + FusedMoE references all pass. Runtime verification deferred to TP=2 second-card return (Gemma 4 26B + KV cache doesn't fit on TP=1 / 24 GB).
+**Verification:** `git apply --check` clean against fresh v0.5.11 worktree, `ast.parse()` clean on the post-apply file, structural checks on per_expert + fused + FusedMoE references all pass. **Runtime-verified 2026-05-07 (commit `b3654fc`)** — launched local Gemma 4 21B-REAP at TP=1 / 4K with patch 028 applied; SGLang Server fired up cleanly, no missing-weight warnings on the 30-layer × 128-expert MoE block (where pre-patch the loader silently failed all per-expert keys → uninit MoE → 0/3 PASS). Validator still returned 0/4 PASS but for a separate reason: the 21B-REAP-v2 checkpoint itself is calibration-degenerate (164 all-zero `*.scales`, see Known Issues). Loader path is correct; calibration recal is needed for that specific model. Mapping logic also covered by `scripts/test/test_gemma4_per_expert_mapping.py` (12/12 real R9700 HF mirror keys + 4/4 fused-source negative test).
 
 **Cross-team portability:** R9700 already has this support natively in their gemma4_causal.py (their dual-format loader was the reference). No port needed for them. Patch is purely Ampere-side.
 
