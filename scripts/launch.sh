@@ -110,9 +110,21 @@ apply_preset() {
             # (R9700-team's Apr-29 calibration). Same Marlin format, newer recipe.
             # Source: hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ (CT format).
             # Conversion: scripts/quantize/convert_moe_ct_to_awq.py --group-size 128.
+            #
+            # 2026-05-07: bake --disable-piecewise-cuda-graph. Capability sweep
+            # found the awq_marlin MoE inference path on TP=1 with piecewise
+            # CUDA graph capture takes >>120s for a 20-token completion (GPU
+            # at 100% util but throughput collapses to ~1 tok/s from a normal
+            # ~80 tok/s). Disabling piecewise CUDA graph drops a 20-token
+            # /v1/chat/completions to <1s; full validator basic check at 3.9s
+            # (was 0/1 / 120s timeout). Same kernel path is fine on TP=2 with
+            # piecewise enabled (where the preset was originally tuned), but
+            # TP=1 either needs piecewise off or further investigation of the
+            # awq_marlin MoE replay path. Tracked in README Known Issues.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ-Marlin-from-CT}"
             QUANT="awq_marlin"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
+            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph"
             ;;
         coder-30b-eval)
             # SWE-bench eval preset: 256K + single-batch CUDA graph, mirrors
@@ -276,10 +288,18 @@ apply_preset() {
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
             ;;
         qwen3-ream)
+            # 2026-05-07: bake --disable-piecewise-cuda-graph for TP=1 cold-fit.
+            # Same awq_marlin MoE + piecewise CUDA graph regression as coder-30b
+            # (TP=1 inference collapses to ~1 tok/s with piecewise enabled).
+            # When TP=2 returns this can be revisited — the original preset
+            # (which omits this flag) was tuned for TP=2/256K where piecewise
+            # captures cleanly and gives ~74 tok/s headline throughput.
+            # Tracked in README Known Issues.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-30B-Instruct-2507-REAM-AWQ}"
             QUANT="awq_marlin"
             CTX=262144; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph"
             ;;
         qwen36)
             # Qwen3.6-35B-A3B AWQ-native (thinking + vision): 256-expert hybrid
