@@ -317,7 +317,7 @@ cd python && pip install -e ".[srt]"
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.11 + 15 local patches |
+| SGLang | v0.5.11 + 16 local patches (13 from rebase + 028 gemma4-mm-per-expert-awq-loader + 029 qwen35-shared-expert-gate-ct-dequant + post-rebase additions; verify with `ls patches/*.patch \| wc -l`) |
 | PyTorch | 2.9.1 + cu128 (env still on 2.9; v0.5.11 source forward-compatible) |
 | CUDA | 13.2 (driver 595.58) |
 | NCCL | 2.27.5 (P2P over NVLink) |
