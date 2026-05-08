@@ -120,9 +120,9 @@ wrong outputs (no system prompt handling, wrong special tokens, etc.).
 
 ### AWQ checkpoint format
 - Marlin requires: output dim divisible by 64, input dim divisible by 128
-- Layers that don't meet alignment fall back to torch dequant (our 002 patch)
-- Expert naming: `experts.{id}.{proj}.{suffix}` (SGLang format)
-- quant_method: "awq", version: "gemm", zero_point: true, group_size: 128
+- Layers that don't meet alignment fall back to torch dequant (now upstream in v0.5.11 — was the v0.5.10-era patch 002 `nvidia-model-fixes` + 006 `awq-bf16-activation-support` + 008 `awq-moe-wna16-fallback`, all dropped post-rebase 2026-05-07)
+- Expert naming: SGLang loader expects `experts.{id}.{proj}.{suffix}` (expert-first). llmcompressor's CT save format puts proj first as `experts.{proj}.{id}.{suffix}` — `convert_gemma4_26b_ct_to_awq.py` normalizes to expert-first via `_normalize_expert_key()`. Mismatch silently drops every per-expert key (see 21B-REAP-v3 saga 2026-05-08, 3090 commit `839e44b`).
+- quant_method: "awq", version: "gemm", zero_point: true, group_size: 128 (group_size=32 for Gemma 4 family)
 
 ## Benchmarking
 
