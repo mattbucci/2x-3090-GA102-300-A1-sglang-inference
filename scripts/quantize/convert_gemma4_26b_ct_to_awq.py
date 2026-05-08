@@ -12,12 +12,41 @@ import gc
 import json
 import os
 import glob
+import re
 import shutil
 
 import torch
 from collections import OrderedDict
 from safetensors import safe_open
 from safetensors.torch import save_file
+
+
+_EXPERT_REORDER_RE = re.compile(
+    r"\.experts\.(gate_proj|up_proj|down_proj)\.(\d+)(\.|$)"
+)
+
+
+def _normalize_expert_key(name: str) -> str:
+    """Reorder per-expert MoE keys from llmcompressor's proj-first format
+    (`experts.<proj>.<E>.<attr>`) to the SGLang loader's expected expert-
+    first format (`experts.<E>.<proj>.<attr>`).
+
+    Why: llmcompressor saves keys as `experts.gate_proj.0.weight_packed`,
+    but the SGLang gemma4_mm.py per-expert AWQ loader (patch 028) builds
+    matchers like `experts.0.gate_proj.` via FusedMoE.make_expert_params_
+    mapping. Mismatch silently drops every per-expert key → MoE block
+    stays uninit → server log shows `expert0_first4=[0,0,0,0]` for
+    every layer → validator returns `(reasoning)` placeholder.
+
+    Diagnosed against gemma-4-21b-REAP-AWQ-thinking-vision-v3 (2026-05-08):
+    pre-fix audit was 0/11725 scales + 0/11725 qweight flagged (clean), but
+    27/30 MoE layers showed expert-0 zero in fused tensor at load time.
+    R9700's `mattbucci/gemma-4-26B-AWQ` mirror already ships expert-first
+    naming, so it serves cleanly under the same loader.
+
+    Idempotent: keys already in expert-first order pass through unchanged.
+    """
+    return _EXPERT_REORDER_RE.sub(r".experts.\2.\1\3", name)
 
 MODELS_DIR = os.environ.get("MODELS_DIR", os.path.expanduser("~/AI/models"))
 SRC_DIR = os.environ.get("CT_INPUT", f"{MODELS_DIR}/gemma-4-26B-A4B-it-CT-multimodal")
@@ -175,22 +204,26 @@ for key in sorted(all_keys):
         packed = sf.get_tensor(key)
         scales = sf.get_tensor(scale_key)
 
+        # Normalize per-expert key order before writing (see _normalize_expert_key
+        # docstring for the patch-028 loader mismatch this avoids).
+        out_base = _normalize_expert_key(base)
+
         # Check if this is the router — dequantize back to BF16
-        if "router" in base:
+        if "router" in out_base:
             w_float = dequant_gptq_symmetric(packed, scales, GROUP_SIZE)
             # CT is [N, K], standard weight is [out, in] — keep as-is for router
-            converted[f"{base}.weight"] = w_float.to(torch.bfloat16)
+            converted[f"{out_base}.weight"] = w_float.to(torch.bfloat16)
             n_dequant_router += 1
             if n_dequant_router <= 2:
-                print(f"  Router dequant: {base}")
+                print(f"  Router dequant: {out_base}")
             continue
 
         # Convert GPTQ→AWQ
         qweight, awq_scales, qzeros = convert_layer(packed, scales)
 
-        converted[f"{base}.qweight"] = qweight
-        converted[f"{base}.scales"] = awq_scales
-        converted[f"{base}.qzeros"] = qzeros
+        converted[f"{out_base}.qweight"] = qweight
+        converted[f"{out_base}.scales"] = awq_scales
+        converted[f"{out_base}.qzeros"] = qzeros
         n_converted += 1
 
         if n_converted % 500 == 0:
@@ -204,12 +237,12 @@ for key in sorted(all_keys):
         tensor = sf.get_tensor(key)
         if tensor.dtype == torch.bfloat16:
             tensor = tensor.to(torch.float16)
-        converted[key] = tensor
+        converted[_normalize_expert_key(key)] = tensor
         n_kept += 1
 
     else:
         # Other tensors (biases, norms, etc)
-        converted[key] = sf.get_tensor(key)
+        converted[_normalize_expert_key(key)] = sf.get_tensor(key)
         n_kept += 1
 
 print(f"\nConverted {n_converted} quantized layers")
