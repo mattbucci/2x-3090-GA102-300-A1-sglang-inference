@@ -1,0 +1,179 @@
+From: 3090 team <noreply@anthropic.com>
+Date: 2026-05-08
+Subject: [PATCH] gemma4_mm v0.5.10: per-expert AWQ source format (backport of patch 028)
+
+v0.5.10 sister of patch 028 (which targets v0.5.11 line 714+). Until
+the 3090 dev rig env-rebuilds to v0.5.11 we ship two patch files for
+the same fix: setup.sh's `git apply --check` silently skips whichever
+doesn't match the running source.
+
+Without this patch on v0.5.10: per-expert AWQ keys like
+`experts.<E>.<proj>.qweight` (R9700 26B mirror format, post-converter-
+fix v3b 21B-REAP format) silently fall through unmatched in
+gemma4_mm.py:802+ load_weights — the existing fused-experts mapping
+only handles 3D `[num_experts, ...]` tensors. MoE blocks stay at
+default-init, server log shows `expert0_first4=[0,0,0,0]` for every
+layer, validator returns `(reasoning)` placeholder.
+
+After this patch: per-expert mapping via FusedMoE.make_expert_params_
+mapping is checked BEFORE the fused mapping. Validator pre-repack
+diagnostic flips from 27/30 layers expert0=zero to 30/30 expert0=non-
+zero. (Generation-quality issues beyond MoE loading are tracked
+separately — this patch closes the loader gap only.)
+
+diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
+index 4618129fa..486f172e9 100644
+--- a/python/sglang/srt/models/gemma4_mm.py
++++ b/python/sglang/srt/models/gemma4_mm.py
+@@ -32,6 +32,7 @@ from sglang.srt.layers.attention.triton_backend import TritonAttnBackend
+ from sglang.srt.layers.layernorm import Gemma4RMSNorm
+ from sglang.srt.layers.linear import ReplicatedLinear
+ from sglang.srt.layers.logits_processor import LogitsProcessor
++from sglang.srt.layers.moe.fused_moe_triton.layer import FusedMoE
+ from sglang.srt.layers.quantization.base_config import QuantizationConfig
+ from sglang.srt.managers.mm_utils import (
+     MultiModalityDataPaddingPatternMultimodalTokens,
+@@ -175,16 +176,28 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+ 
+         prefix = add_prefix("model", prefix)
+ 
++        # Gemma 4 calibration recipes preserve the multimodal towers in BF16
++        # (recipe.yaml ignore: re:.*vision_tower.*, re:.*embed_vision.*,
++        # re:.*audio_tower.*, re:.*embed_audio.*).  The checkpoint stores them
++        # as plain `.linear.weight` tensors with no qweight/scales/shapes.
++        # If we pass quant_config here, the AWQ loader allocates weight_packed
++        # parameter slots and the BF16 checkpoint keys silently fail to load
++        # ("Some weights are not initialized: vision_tower.encoder.layers.*
++        # .mlp.gate_up.gate_up_proj.weight_packed/scale/shape ..."), leaving
++        # the vision tower at random init → vision PASSes round/circle but
++        # hallucinates content.  Same shape as patch 023 (dense MLP on MoE
++        # layers).  Bug surfaced 2026-05-03 via "Some weights not initialized"
++        # log in the gemma4-26b-mm-arch-fix-May03 run.
+         self.vision_tower = Gemma4VisionEncoder(
+             config=config.vision_config,
+-            quant_config=quant_config,
++            quant_config=None,
+             prefix=add_prefix("vision_tower", prefix),
+         )
+ 
+         self.embed_vision = Gemma4MultimodalEmbedder(
+             config.vision_config,
+             config.text_config,
+-            quant_config=quant_config,
++            quant_config=None,
+             prefix=add_prefix("embed_vision", prefix),
+         )
+ 
+@@ -192,13 +205,13 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+         if getattr(config, "audio_config", None) is not None:
+             self.audio_tower = Gemma4AudioEncoder(
+                 config=config.audio_config,
+-                quant_config=quant_config,
++                quant_config=None,
+                 prefix=add_prefix("audio_tower", prefix),
+             )
+             self.embed_audio = Gemma4MultimodalEmbedder(
+                 config.audio_config,
+                 config.text_config,
+-                quant_config=quant_config,
++                quant_config=None,
+                 prefix=add_prefix("embed_audio", prefix),
+             )
+         else:
+@@ -435,10 +448,26 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+                 pv = pv.to(device=vt.device, dtype=self.language_model.dtype())
+                 pp = pp.to(device=vt.device)
+ 
+-                pooled, pooler_mask = vt(pv, pp)
+-
+-                for hs, mask in zip(pooled, pooler_mask):
+-                    real_tokens = hs[mask]
++                # Process frames one-at-a-time instead of as a single batch.
++                # The batched call (pv shape [num_frames, num_patches, ...])
++                # materializes a one_hot tensor of size num_frames *
++                # num_patches * 2 * position_embedding_size in
++                # Gemma4VisionPatchEmbedder._position_embeddings (~1.24 GB
++                # for 12 frames at pooling_kernel_size=3 / 10240 classes /
++                # bf16), which OOMs on Ampere TP=1 after the LM weights +
++                # KV pool are loaded. Per-frame keeps that allocation at
++                # 1/num_frames the size with the same total throughput
++                # cost (vt is the bottleneck either way at video time).
++                # Also avoids the bsz==1 assertion at attention/vision.py:
++                # 254 that the RDNA4 stack hit on the same model — single-
++                # batch calls satisfy both constraints. Validated 2026-05-04
++                # via gemma4 preset port 23355 — patch 026.
++                num_frames = pv.shape[0]
++                for f in range(num_frames):
++                    pooled_f, mask_f = vt(pv[f : f + 1], pp[f : f + 1])
++                    # pooled_f: [1, output_len, hidden]
++                    # mask_f:   [1, output_len]
++                    real_tokens = pooled_f[0][mask_f[0]]
+                     all_embeds.append(
+                         self.embed_vision(
+                             inputs_embeds=real_tokens.unsqueeze(0)
+@@ -714,6 +743,28 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+         k_eq_v_layers = self._get_k_eq_v_layers()
+ 
+         num_experts = getattr(self.config.text_config, "num_experts", 0) or 0
++
++        # Per-expert mapping for AWQ/GPTQ checkpoints saved by llmcompressor
++        # in expert-first format (`experts.<E>.<proj>.qweight` etc).  v0.5.10
++        # backport of patch 028 (originally authored against v0.5.11 line
++        # 714+; this version targets v0.5.10 line 745+).  Returns tuples of
++        # (param_name, weight_name, expert_id, shard_id) where weight_name
++        # is e.g. "experts.0.gate_proj.".  Required for multimodal Gemma 4
++        # builds shipped as per-expert AWQ — without it those keys silently
++        # fall through to the catch-all params_dict lookup, never match,
++        # MoE block stays at default-init, server log shows
++        # `expert0_first4=[0,0,0,0]` for every layer.
++        per_expert_params_mapping = (
++            FusedMoE.make_expert_params_mapping(
++                ckpt_gate_proj_name="gate_proj",
++                ckpt_down_proj_name="down_proj",
++                ckpt_up_proj_name="up_proj",
++                num_experts=num_experts,
++            )
++            if num_experts > 0
++            else []
++        )
++
+         expert_params_mapping = [
+             # (param_name, ckpt_weight_name, shard_ids)
+             # gate_up_proj is fused [E, 2*I, H] — chunk into w1 (gate) + w3 (up)
+@@ -767,9 +818,35 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+                 and int(m.group(1)) in k_eq_v_layers
+             )
+ 
++            orig_name = name
++
++            # --- Per-expert AWQ/GPTQ weights (experts.<E>.<proj>.qweight) ---
++            # v0.5.10 backport of v0.5.11 patch 028.  Checked before the
++            # fused-experts loop so per-expert keys win over the stacked
++            # dense MLP mapping.  `loaded_weight` is a 2D tensor for one
++            # expert's projection; FusedMoE.weight_loader handles the
++            # fused-tensor placement internally.
++            is_expert_weight = False
++            for param_name, weight_name, expert_id, shard_id in per_expert_params_mapping:
++                if weight_name not in name:
++                    continue
++                is_expert_weight = True
++                name = name.replace(weight_name, param_name)
++                if name not in params_dict:
++                    continue
++                param = params_dict[name]
++                weight_loader = param.weight_loader
++                weight_loader(
++                    param, loaded_weight, name,
++                    shard_id=shard_id, expert_id=expert_id,
++                )
++                loaded_params.add(name)
++                break
++            if is_expert_weight:
++                continue
++
+             # MoE expert weights checked first (gate_up_proj contains "up_proj"
+             # which would false-match the stacked dense MLP mapping).
+-            orig_name = name
+             for param_name, weight_name, shard_ids in expert_params_mapping:
+                 name = orig_name
+                 if weight_name not in name:
