@@ -2,7 +2,7 @@
 
 This file collects the details of **what was fixed and why** — per-patch narratives, root-cause notes, and cross-team learnings. The top-level `README.md` keeps only current state; once an issue is closed with a patch, the narrative lives here.
 
-Patches apply in numeric order against SGLang v0.5.10. `scripts/setup.sh` applies every `*.patch` in this directory idempotently.
+Patches apply in numeric order against SGLang v0.5.11 (post-rebase 2026-05-07, commit `1655e46` + post-rebase additions 028/029). `scripts/setup.sh` applies every `*.patch` in this directory idempotently. Patches dropped during the v0.5.11 rebase as upstreamed: 001, 002, 006, 008, 009, 014, 015, 016, 019, 020, 022 — historical narratives below kept for context but those `.patch` files no longer ship.
 
 ---
 
@@ -315,7 +315,7 @@ After R9700 flagged a `shared_experts` plural typo, swept all our self-calibrate
 
 ## Cross-team findings (3090 ⟷ R9700)
 
-The sister RDNA4 project runs the same SGLang v0.5.10 stack. Findings that produced patches or changed how we ship are here; day-to-day sync happens in the two READMEs.
+The sister RDNA4 project runs the same SGLang v0.5.11 stack (both rebased 2026-05-07). Findings that produced patches or changed how we ship are here; day-to-day sync happens in the two READMEs.
 
 - **BF16 attention precision** affects every new architecture (RDNA4, Blackwell SM12.x). Fix: FP32 accumulation in the online softmax (patch 011).
 - **AWQ calibration silently breaks thinking and vision.** Quants calibrated on plain text (Open-Platypus, WikiText2, c4) lose `<think>` stop-token behavior and vision-language alignment. Rule: every new quantized model must validate (a) an image+text roundtrip and (b) a thinking-tagged generation that cleanly terminates, before launch. `scripts/eval/validate_chat_template.py` (static) + R9700's `validate_capabilities.py` (live) are the pre-flight gates.
