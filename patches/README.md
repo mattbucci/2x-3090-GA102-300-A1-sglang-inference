@@ -187,6 +187,17 @@ After patch:
 
 **Cross-team portability — scope correction (2026-05-08, R9700 hardware test commit `e5b6175`):** R9700's `convert_moe_ct_to_awq.py` BF16 fallback covers the **AWQ-native serving path** on RDNA4, but R9700 ALSO supports CT-format direct serving via auto-detect in their launch.sh. Earlier "ROCm path unaffected" framing was over-stated — it holds for AWQ-native but R9700's CT path was never independently launched before today. R9700's actual launch test of `Qwen3.6-35B-A3B-AWQ-CT-thinking-vision` at TP=2 surfaced 3 regressions: (1) `moe_runner/triton.py:27 NameError is_hip undefined` — R9700-side patch hygiene from a prior regen auto-resolve; (2) `gemma4_causal.py:1074` `EntryClass` duplicate of `Gemma4ForConditionalGeneration` (collides with `gemma4_mm.py:120`) — R9700-side patch hygiene shape-equivalent to our retired patch 022; (3) MoE `_load_w2 RuntimeError narrow(start=4, length=4, size=4)` at TP=2 — likely an RDNA4-specific TP=2 sharding bug for CT-format MoE, NOT shared with patch 029's `(1, H)` shape (down_proj is per-expert, different code path). Patch 029 is **NVIDIA-side, validated only at TP=1 / 2K so far**; TP=2 remains untested on either stack until 2nd 3090 returns. Recipe-side ignore (`re:.*shared_expert_gate.*` in CT calibration) is still cleaner if R9700 recals — would let downstream consumers skip serving-side patches on either rig.
 
+### 030 — gemma4-mm-per-expert-awq-loader-v0510 (2026-05-08, ~28 LOC, v0.5.10 backport of 028)
+**Sister of patch 028; targets the v0.5.10 source line offsets.** v0.5.10's `gemma4_mm.py:802+` `expert_params_mapping` only handles HF-fused 3D experts via `for i in range(num_experts)` chunking — per-expert AWQ keys silently fall through unmatched, MoE blocks stay at default-init, server log shows `expert0_first4=[0,0,0,0]` for every MoE layer. v0.5.11's `gemma4_mm.py:714+` (where patch 028 inserts) is at different line offsets, so 028 silently fails `git apply --check` on the v0.5.10 source `setup.sh` clones.
+
+**Patch:** mirror of patch 028's `per_expert_params_mapping` builder + `is_expert_weight` check, retargeted to v0.5.10 line numbers. Imports `FusedMoE` + adds the per-expert match loop BEFORE the existing fused mapping check.
+
+**Verification 2026-05-08 against v3b 21B-REAP build:** pre-patch the AWQ MoE pre-repack diagnostic showed 27/30 layers with `expert0_nonzero=False`; post-patch all 30 layers `expert0_nonzero=True`. Loader path now correct for per-expert AWQ Gemma 4 multimodal builds on v0.5.10.
+
+**Caveat:** post-loader-fix, a separate v0.5.10-multimodal-Gemma4-specific generation bug surfaced — model serves but produces only `<pad>` tokens on three different per-expert AWQ multimodal Gemma 4 builds (our v3b 21B-REAP, v3 21B-REAP-CT, R9700's `mattbucci/gemma-4-26B-AWQ` HF mirror). Local Apr-12 `gemma-4-26B-A4B-it-AWQ-4bit` (CT, predates) serves loose-4/4. Final fix is the v0.5.11 env rebuild — at that point `setup.sh` will silently apply 028 instead of 030 (different source line offsets), restoring the multimodal serving path. Top-level README In Flight #0 + Suggested-next track this.
+
+**Both patches ship in `patches/`** until env rebuild; `git apply --check` skips whichever doesn't match the running source.
+
 ### 025 — gemma4-vision-pooler-padding-fp32 (2026-05-03, ~13 LOC, code-correctness)
 **Aligns `Gemma4VisionPooler` with HF reference; does NOT fix the user-visible vision degradation.** Two diffs vs `transformers/models/gemma4/modeling_gemma4.py:573-629`:
 
