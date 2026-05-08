@@ -172,7 +172,7 @@ Reference model: **Qwen3-30B REAM AWQ — 262K @ 74 tok/s** (13.5 ms TPOT, fresh
 
 | Preset | TP=1 cold | Note |
 |--------|:---------:|------|
-| `qwen35` | ❌ | Bare command OOMs on TP=1 (`RuntimeError: Not enough memory` at preset CTX=32K + MEM=0.80 + 17.5 GB weights). Use `qwen35-tp1` variant instead — same Qwen3.6-27B-AWQ recal, CTX=4K, 3/3 PASS. |
+| `qwen35` | ❌ | Bare command OOMs on TP=1 (`RuntimeError: Not enough memory` at preset CTX=32K + MEM=0.80 + 17.5 GB weights). Use `qwen35-tp1` variant instead — same Qwen3.6-27B-AWQ recal, CTX=4K, 4/4 PASS (2026-05-07 strict sweep). |
 | `qwen35-tp1` | ✅ | TP=1-tuned: CTX=4K, MEM=0.85, MAX_RUNNING=1. **2026-05-07 strict-validator re-sweep (post-validator-readiness fix `a51c29d`): 4/4 PASS in 36.9s.** basic + thinking (1182 tok finish=stop) + vision (`'(reasoning)the user wants a short description of the image. 1. **identify the subject:** it's a red circle.'`) + video (`'a red circle moves from the left to the right.'`). Genuine content-aware on both modalities. (Confirms 2026-05-04 prior claim.) |
 | `qwen36` | ❌ | Bare command OOMs on TP=1 at preset default CTX=262K. Use `qwen36-tp1` variant for single-card; `qwen36` is for TP=2 / 256K. |
 | `qwen36-tp1` | ✅ | TP=1-tuned: CTX=2K, MAX_RUNNING=1, MAX_MAMBA_CACHE=4 (must be ≥4 to satisfy SGLang's mamba ratio division). **2026-05-07 strict-validator re-sweep: 4/4 PASS in 54.3s.** basic + thinking (1528 tok finish=stop) + vision (`'(reasoning)... it's a circle.'`) + video (`'a red circle moves to the right.'`). Genuine content-aware on both modalities. (Confirms 2026-05-04 prior claim.) |
@@ -230,11 +230,11 @@ Open items only.  Resolved entries from prior loops live in [patches/README.md](
 
 # TP=1 / 24 GB friendly (current rig — second 3090 offline):
 ./scripts/launch.sh qwen3-ream              # fastest 256K — reference model (MoE active params fit cold)
-./scripts/launch.sh qwen35-tp1              # Qwen3.6-27B-AWQ R9700 recal — TP=1 cold-fit variant (CTX=4K), 3/3 PASS
+./scripts/launch.sh qwen35-tp1              # Qwen3.6-27B-AWQ R9700 recal — TP=1 cold-fit variant (CTX=4K), 4/4 PASS (2026-05-07 strict sweep)
 ./scripts/launch.sh coder-30b               # Coder-30B MoE — peak throughput
 ./scripts/launch.sh coder-reap              # Coder-REAP-25B — SWE-bench Lite leader (29.3%)
 ./scripts/launch.sh qwen3-vl-32b            # Qwen3-VL-32B Dense — TP=1 defaults boot cold (4K/MAX_RUNNING=1)
-./scripts/launch.sh qwen36-tp1              # Qwen3.6-35B-A3B AWQ-native — TP=1 cold-fit variant (CTX=2K), 3/3 PASS
+./scripts/launch.sh qwen36-tp1              # Qwen3.6-35B-A3B AWQ-native — TP=1 cold-fit variant (CTX=2K), 4/4 PASS (2026-05-07 strict sweep)
 
 # TP=2 only (second 3090 needed):
 ./scripts/launch.sh devstral-long           # Devstral-24B at 217K — OOMs on TP=1 (eager weight prealloc, see Known Issues)
