@@ -1,0 +1,38 @@
+{
+  "model": "qwen36-tp1-flashinfer-v0511",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-05-09 02:21:22",
+  "output_tokens": 100,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "throughput": 4.81,
+      "ttft_ms": 39.28,
+      "tpot_ms": 24.97,
+      "tok_per_sec": 40.0
+    },
+    {
+      "context": 4096,
+      "throughput": 4.81,
+      "ttft_ms": 131.36,
+      "tpot_ms": 25.11,
+      "tok_per_sec": 39.8
+    },
+    {
+      "context": 8192,
+      "throughput": 4.81,
+      "ttft_ms": 468.52,
+      "tpot_ms": 25.26,
+      "tok_per_sec": 39.6
+    },
+    {
+      "context": 16384,
+      "throughput": 4.81,
+      "ttft_ms": 569.08,
+      "tpot_ms": 25.44,
+      "tok_per_sec": 39.3
+    }
+  ]
+}
