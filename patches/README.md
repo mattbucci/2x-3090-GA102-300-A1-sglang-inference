@@ -2,7 +2,13 @@
 
 This file collects the details of **what was fixed and why** — per-patch narratives, root-cause notes, and cross-team learnings. The top-level `README.md` keeps only current state; once an issue is closed with a patch, the narrative lives here.
 
-Patches apply in numeric order against SGLang v0.5.11 (post-rebase 2026-05-07, commit `1655e46` + post-rebase additions 028/029). `scripts/setup.sh` applies every `*.patch` in this directory idempotently. Patches dropped during the v0.5.11 rebase as upstreamed: 001, 002, 006, 008, 009, 014, 015, 016, 019, 020, 022 — historical narratives below kept for context but those `.patch` files no longer ship.
+Patches apply in numeric order against SGLang v0.5.11. `scripts/setup.sh` applies every `*.patch` in this directory idempotently. **16 patches** ship currently (`ls patches/*.patch | wc -l`):
+
+- **13 v0.5.11-targeted patches** from the 2026-05-07 v0.5.10→v0.5.11 rebase (commit `1655e46`).
+- **002, 028, 029** added post-rebase (cross-team port + Gemma4 mm per-expert + Qwen3.5 CT shared_expert_gate).
+- **030 (v0.5.10 backport of 028) DELETED 2026-05-09** with the env upgrade — patch 028 now applies natively. Historical narrative kept below.
+
+Patches dropped during the v0.5.11 rebase as upstreamed: 001, 002 (original — the new 002 is unrelated cross-team), 006, 008, 009, 014, 015, 016, 019, 020, 022 — historical narratives below kept for context but those `.patch` files no longer ship.
 
 ---
 
