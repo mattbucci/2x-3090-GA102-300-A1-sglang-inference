@@ -145,18 +145,23 @@ apply_preset() {
             EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
             ;;
         gemma4)
-            # Gemma 4 26B MoE AWQ. Same head_dim=256 / Ampere FP8 incompat as
-            # gemma4-31b (FlashInfer rejects head_dim=256, triton rejects FP8
-            # E4M3 KV on sm_86) — same fix combo: triton attn + KV_DTYPE=auto
-            # + disable-cuda-graph. Validator 3/3 PASS (basic+thinking+vision)
-            # 2026-05-03 after patches 023 (dense MLP no quant_config on MoE
-            # layers) + 024 (vision/audio towers no quant_config) + BF16 dtype
-            # (FP16 NaN's in SigLIP vision tower → all-<pad> decode).
+            # Gemma 4 26B MoE AWQ — repointed 2026-05-09 to canonical HF mirror
+            # post patch 023 (gemma4-moe-mlp-no-quant-config) detection upgrade,
+            # which routes the dense MLP to AWQ when the checkpoint has
+            # quantized mlp.*.qweight (HF mirror + 21B-REAP-v3b case) and to
+            # BF16 only when the calibration recipe explicitly ignores mlp.*.
+            # Validator 4/4 PASS (basic + thinking + content-aware vision +
+            # video) 2026-05-09 with v0.5.11 + patch 023 detection.
+            # Same head_dim=256 / Ampere FP8 incompat as gemma4-31b (FlashInfer
+            # rejects head_dim=256, triton rejects FP8 E4M3 KV on sm_86) — fix
+            # combo: triton attn + KV_DTYPE=auto + disable-cuda-graph + bf16.
+            # Patches 024 (vision/audio towers no quant_config) + 025/026 also
+            # apply.
             #
             # IMPORTANT: requires checkpoint config arch=Gemma4ForConditionalGeneration
             # (multimodal route). With Gemma4ForCausalLM the language model loads
             # text-only and image_url payloads silently degrade.
-            MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-4bit}"
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/gemma-4-26B-AWQ}"
             REASONING="--reasoning-parser gemma4"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"
