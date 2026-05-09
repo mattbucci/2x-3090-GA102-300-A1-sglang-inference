@@ -79,7 +79,12 @@ def _call(host_port: str, model: str, prompt: str, max_tokens: int = 600):
     r = json.loads(urlopen(req, timeout=240).read())
     choice = r["choices"][0]
     msg = choice["message"]
-    return choice.get("finish_reason"), (msg.get("content") or ""), r.get("usage")
+    # Thinking-mode models (qwen3-ream, etc.) emit code into `reasoning_content`
+    # while leaving `content` null when finish_reason='stop' fires inside the
+    # think channel. Fall back to reasoning_content so the probe can still
+    # extract code from those models.
+    text = msg.get("content") or msg.get("reasoning_content") or ""
+    return choice.get("finish_reason"), text, r.get("usage")
 
 
 def _extract_code(text: str) -> str:
