@@ -54,7 +54,10 @@ scripts/launch.sh qwen3-ream           # Qwen3-30B REAM AWQ (96 experts, 197 tok
   ```
   Any job expected to run > 30 minutes (calibrations, long benches, downloads of 50 GB+) must use this pattern.
 
-## Workflow (RECONFIRMED 2026-04-24)
+## Current Hardware State (2026-05-09)
+- **One 3090 temporarily offline** (PCIe adapter swap pending). Active rig is single-card / 24 GB / TP=1 only. TP=2 / 256K headline benches paused until card returns. Default to `qwen35-tp1` / `qwen36-tp1` and similar TP=1-tuned presets. Devstral-24B Dense OOMs at TP=1 — skip until TP=2 returns.
+
+## Workflow (RECONFIRMED 2026-05-09)
 - **Work autonomously. Never stop to ask for confirmation.** User checks in periodically by reading the README and will interrupt with new ideas or redirects. Max effort is the default.
 - **Multi-hour calibrations are pre-authorized.** Downloading 50-70 GB BF16 bases + running 10-13h GPTQ calibrations does NOT need user check-in. Detach via `setsid` pattern and keep working on other fronts.
 - **Note the next step in the README before starting it** — user can interject if they see a better path. Commit + push as progress is made (small self-contained commits, not one giant batch). Every commit should stand on its own.
