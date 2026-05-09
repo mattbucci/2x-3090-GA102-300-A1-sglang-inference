@@ -1,0 +1,38 @@
+{
+  "model": "qwen36-tp1-triton-v0511",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-05-09 06:18:31",
+  "output_tokens": 100,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "throughput": 4.81,
+      "ttft_ms": 39.47,
+      "tpot_ms": 25.57,
+      "tok_per_sec": 39.1
+    },
+    {
+      "context": 4096,
+      "throughput": 4.81,
+      "ttft_ms": 131.31,
+      "tpot_ms": 25.85,
+      "tok_per_sec": 38.7
+    },
+    {
+      "context": 8192,
+      "throughput": 4.81,
+      "ttft_ms": 502.51,
+      "tpot_ms": 25.79,
+      "tok_per_sec": 38.8
+    },
+    {
+      "context": 16384,
+      "throughput": 4.81,
+      "ttft_ms": 727.1,
+      "tpot_ms": 25.97,
+      "tok_per_sec": 38.5
+    }
+  ]
+}
