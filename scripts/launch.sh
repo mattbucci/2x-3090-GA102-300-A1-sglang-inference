@@ -341,20 +341,24 @@ apply_preset() {
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
             ;;
         qwen36-tp1)
-            # TP=1 / 24 GB cold-fit variant of qwen36. Same model, same KV/quant
-            # combo, but trimmed to CTX=2048 / MAX_RUNNING=1 so the bare command
-            # boots cold on a single 3090. Validator 3/3 PASS at this config
-            # (qwen36-35b-awq-native-revalidate 2026-05-01). Once the second
-            # 3090 returns, switch back to the default `qwen36` preset for
-            # 256K TP=2 work.
+            # TP=1 / 24 GB cold-fit variant of qwen36. Default points at the
+            # CT-format build because the native AWQ variant has 144 flagged
+            # rare-expert scales (2026-05-07 audit) while CT is calibration-
+            # clean (0/31010 flagged). Patch 029 lands the shared_expert_gate
+            # CT dequant on Ampere; verified 4/4 PASS at TP=1 / 4K (2026-05-08
+            # 38.1s) + cleanly under v0.5.11 stack (2026-05-09 sweep).
+            # CTX=2048 / MAX_RUNNING=1 keeps cold-launch in the 24 GB budget.
+            # Override to the native AWQ via `MODEL=$MODELS_DIR/hf-mattbucci/
+            # Qwen3.6-35B-A3B-AWQ QUANT=awq_marlin ./scripts/launch.sh
+            # qwen36-tp1` for A/B comparison.
             #
             # max-mamba-cache-size must be >= 4 even with MAX_RUNNING=1 because
             # SGLang's `_resolve_max_num_reqs` divides cache size by a ratio
             # (2x for overlap-schedule + ping-pong) — `1 // 2 = 0` zeros out
             # max_running and trips the assertion. Each mamba cache entry is
             # ~0.12 GB so cache=4 costs ~0.48 GB.
-            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ}"
-            QUANT="${QUANT:-awq_marlin}"
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ-CT}"
+            QUANT="${QUANT:-compressed-tensors}"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             CTX="${_ENV_CTX:-2048}"; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
             MAMBA_CACHE="--max-mamba-cache-size 4"
