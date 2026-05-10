@@ -53,9 +53,15 @@ def parse_args():
     p.add_argument("--dataset", default="SWE-bench/SWE-bench_Lite",
                    help="HF dataset id passed to the harness")
     p.add_argument("--split", default="test")
-    p.add_argument("--max-workers", type=int, default=1,
-                   help="Parallel test runs. Default 1 to match the bake-off's "
-                        "single-user serving constraint.")
+    p.add_argument("--max-workers", type=int, default=8,
+                   help="Parallel test runs. Default 8 — the previous 24 was "
+                        "sized assuming ~140 MB / pytest container, which "
+                        "ignored the docker pull+extract spike and the GB-class "
+                        "peaks of sympy/matplotlib tests. 24 OOM'd the 92 GB / "
+                        "32-core host on 2026-05-09 when multiple bake-off "
+                        "phases stacked their background scorers. 8 keeps peak "
+                        "container memory well under host limits and leaves a "
+                        "stable budget for the concurrent rollout container.")
     p.add_argument("--timeout", type=int, default=1800,
                    help="Per-instance test timeout (seconds).")
     p.add_argument("--rewrite-reports", action="store_true",

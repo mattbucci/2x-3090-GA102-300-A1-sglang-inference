@@ -104,6 +104,8 @@ Three shipped models source from 3rd-party prunes — rebuild via `run_ream_qwen
 
 ### F. Coding-eval bake-off — Docker harness, 256K, single-user
 
+> **Running now (2026-05-10):** `bake_off.sh` phases p1–p10 detached via `setsid`. Score workers tightened to 8 (was 24) and scorers `flock`-serialized so only one runs at a time across phases — preserves the "1 rollout + 1 score concurrent" design. Tail `/tmp/loop-bakeoff-logs/bakeoff.log`.
+
 - **F1.** ✅ Coder-30B v2 — 300/300 predictions on disk (294 rc=0, 13 EMPTY), `evals/swebench/runs/coder-30b-docker-v2/`. Driver rebuilt 2026-05-09 (commit `d11bde7`). Next action: score against the official SWE-bench Docker harness.
 - **F2.** Coder-REAP-25B v2 — Docker rollout + Docker scoring; compares cleanly against F1 on the same driver.
 - **F3.** Qwen3.6-35B-A3B v2 — TP=2 / 256K serving validated; rollout unblocked.

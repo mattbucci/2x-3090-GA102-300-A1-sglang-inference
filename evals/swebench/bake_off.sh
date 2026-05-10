@@ -169,20 +169,25 @@ run_phase() {
         return 0
     fi
 
-    # Score in BACKGROUND so the next phase's rollout starts immediately.
-    # Score is post-inference (Docker pytest, no SGLang), so it doesn't
-    # contend with the next rollout's inference path. CPU usage of
-    # score (24 pytest workers) + rollout (1 SGLang user, GPU-bound, ~2 cores
-    # for the rollout driver) fits in 32 cores with headroom.
+    # Score in BACKGROUND, but flock-serialized across phases so only ONE
+    # scorer runs at a time. The "1 rollout + 1 score concurrent" design
+    # is preserved (Phase N+1's rollout still overlaps Phase N's score),
+    # but Phase N+1's score blocks on the lock until Phase N's score
+    # finishes — preventing the multi-scorer pile-up that OOM'd the box.
+    #
+    # Worker count: 8 (was 24). 24 sized peak memory at ~140 MB/container,
+    # which ignored the docker pull+extract spike + GB-class pytest peaks
+    # for sympy/matplotlib instances.
     #
     # Writes its own PID file so the chain can wait for all scores at the
     # end (or aggregate_bakeoff.py can detect in-progress runs by checking
     # whether scores-docker-summary.json exists).
-    echo "  scoring against Docker harness (background)..."
+    echo "  scoring against Docker harness (background, flock-serialized)..."
     setsid bash -c "
+        flock -x '$LOG_DIR/score.lock' \
         python '$REPO_DIR/evals/swebench/score_docker.py' \
             --predictions '$out_dir/predictions.jsonl' \
-            --max-workers '${BAKEOFF_SCORE_WORKERS:-24}' \
+            --max-workers '${BAKEOFF_SCORE_WORKERS:-8}' \
             > '$score_log' 2>&1
         echo \$? > '$out_dir/.score-rc'
     " </dev/null >/dev/null 2>&1 &
