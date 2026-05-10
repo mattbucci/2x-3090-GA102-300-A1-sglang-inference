@@ -1,0 +1,18 @@
+{
+  "model": "Qwen3.5-28B MoE REAP AWQ TP=2 v0.5.11",
+  "engine": "SGLang v0.5.11 + 16 patches",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-05-09 19:25",
+  "output_tokens": 100,
+  "preset": "qwen35-moe",
+  "preset_path": "hf-mattbucci/Qwen3.5-28B-A3B-REAP-AWQ",
+  "quant": "awq_marlin",
+  "context_sweep": [
+    {"context": 1024,   "ttft_ms": 46.89,   "tpot_ms": 32.70, "tok_per_sec": 30.6},
+    {"context": 131072, "ttft_ms": 1705.15, "tpot_ms": 32.77, "tok_per_sec": 30.5},
+    {"context": 250000, "ttft_ms": 1700.43, "tpot_ms": 32.74, "tok_per_sec": 30.5}
+  ],
+  "validator": "4/4 PASS basic+thinking+vision+video in 272s — qwen35-moe-tp2-262k-2026-05-09 entry",
+  "note": "Decode flat 30.5-30.6 tok/s across 1K to 250K. tok_per_sec = 1000 / tpot_ms."
+}

@@ -1,0 +1,19 @@
+{
+  "model": "Devstral-24B AWQ TP=2 v0.5.11 (devstral-long preset)",
+  "engine": "SGLang v0.5.11 + 16 patches",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-05-09 19:36",
+  "output_tokens": 100,
+  "preset": "devstral-long",
+  "preset_path": "Devstral-24B-AWQ-Marlin",
+  "quant": "awq_marlin",
+  "preset_flags": "MEM=0.97 / --disable-cuda-graph / --disable-overlap-schedule / --disable-radix-cache / --skip-server-warmup (added 2026-05-09)",
+  "context_sweep": [
+    {"context": 1024,   "ttft_ms": 27.92,     "tpot_ms": 16.86, "tok_per_sec": 59.3},
+    {"context": 131072, "ttft_ms": 104662.77, "tpot_ms": 19.80, "tok_per_sec": 50.5},
+    {"context": 200000, "ttft_ms": 107890.29, "tpot_ms": 19.94, "tok_per_sec": 50.2}
+  ],
+  "validator": "1/2 PASS basic + vision FAIL (CUDA OOM in pixtral image_processor at MEM=0.97 — only ~0.7 GB free per GPU after KV pool). Decode is text-only-clean.",
+  "note": "Decode 50-59 tok/s vs historical 56 tok/s @ 217K headline — slight lift. TTFT at 131K+ is ~100s due to --disable-cuda-graph (preset trade for max KV ceiling). For text-only inference at 217K this preset works as designed."
+}

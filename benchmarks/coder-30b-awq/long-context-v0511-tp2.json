@@ -1,0 +1,19 @@
+{
+  "model": "Qwen3-Coder-30B-A3B AWQ-Marlin TP=2 v0.5.11 (coder-30b preset)",
+  "engine": "SGLang v0.5.11 + 16 patches",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-05-09 20:00",
+  "output_tokens": 100,
+  "preset": "coder-30b",
+  "preset_path": "hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ-Marlin-from-CT",
+  "quant": "awq_marlin",
+  "preset_flags": "--disable-piecewise-cuda-graph (baked for TP=1 cold-fit safety; TP=2 retains the bake)",
+  "context_sweep": [
+    {"context": 1024,  "ttft_ms": 89.87, "tpot_ms": 5.34, "tok_per_sec": 187.3},
+    {"context": 4096,  "ttft_ms": 35.78, "tpot_ms": 4.99, "tok_per_sec": 200.4},
+    {"context": 16384, "ttft_ms": 49.90, "tpot_ms": 5.55, "tok_per_sec": 180.2}
+  ],
+  "validator": "1/1 PASS basic in 0.2s — coder-30b-tp2-16k-2026-05-09 entry",
+  "note": "Decode 180-200 tok/s. Slightly under historical 193 tok/s @ 16K headline (5.55 vs 5.0 ms TPOT) — likely the TP=1 cold-fit bake of --disable-piecewise-cuda-graph still applies at TP=2."
+}

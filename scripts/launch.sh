@@ -71,6 +71,7 @@ apply_preset() {
             CTX=131072; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
             CUDA_GRAPH="--cuda-graph-max-bs 1"
             CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
+            WARMUP="--skip-server-warmup"
             ;;
         devstral-32k)
             MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-Marlin}"
@@ -81,11 +82,22 @@ apply_preset() {
             # Single-user long-context preset: pushes KV ceiling from 131K (default)
             # to ~217K tokens at MEM=0.97 + no CUDA graph/overlap/radix cache.
             # Decode plateaus ~56 tok/s past 131K. Not for multi-user.
+            #
+            # 2026-05-09: --skip-server-warmup baked in. Devstral 24B is registered
+            # as Mistral3ForConditionalGeneration (Pixtral path) so SGLang warmup
+            # sends an image-bearing test request through the pixtral image
+            # processor; at MEM=0.97 there's <1 GB free per GPU and the image
+            # preprocess `torch.stack(images_list, dim=0)` OOMs on warmup,
+            # killing the server before /health=200. Skipping warmup defers the
+            # first image alloc to actual user requests where it will either
+            # succeed (text-only requests don't trip pixtral) or surface an
+            # actionable error to the caller.
             MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-Marlin}"
             QUANT="awq_marlin"
             CTX=262144; MEM=0.97; MAX_RUNNING=1; CHUNKED=2048
             EXTRA_ARGS="${EXTRA_ARGS} --disable-cuda-graph --disable-overlap-schedule --disable-radix-cache"
             CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
+            WARMUP="--skip-server-warmup"
             ;;
         coder-reap)
             # Coder-REAP-25B-A3B-W4A16. On TP=1 / 24 GB the piecewise CUDA

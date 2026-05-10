@@ -1,0 +1,19 @@
+{
+  "model": "Qwen3-Coder-REAP-25B-A3B-AWQ TP=2 v0.5.11 (coder-reap-25b preset)",
+  "engine": "SGLang v0.5.11 + 16 patches",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-05-09 19:48",
+  "output_tokens": 100,
+  "preset": "coder-reap-25b",
+  "preset_path": "hf-mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ",
+  "quant": "awq_marlin",
+  "context_sweep": [
+    {"context": 1024,   "ttft_ms": 88.01,  "tpot_ms": 5.46, "tok_per_sec": 183.2},
+    {"context": 65536,  "ttft_ms": 102.60, "tpot_ms": 7.00, "tok_per_sec": 142.9},
+    {"context": 131072, "ttft_ms": 195.93, "tpot_ms": 9.22, "tok_per_sec": 108.5},
+    {"context": 250000, "ttft_ms": 200.66, "tpot_ms": 9.18, "tok_per_sec": 108.9}
+  ],
+  "validator": "1/1 PASS basic in 0.4s — coder-reap-25b-tp2-256k-2026-05-09 entry",
+  "note": "Decode 108-183 tok/s across 1K to 250K — significant lift over historical 46 tok/s @ 131K. tok_per_sec = 1000 / tpot_ms."
+}

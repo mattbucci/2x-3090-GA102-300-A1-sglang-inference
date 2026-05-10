@@ -1,0 +1,19 @@
+{
+  "model": "Qwen3-VL-32B AWQ TP=2 v0.5.11 (qwen3-vl-32b preset, env override CTX=131072)",
+  "engine": "SGLang v0.5.11 + 16 patches",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-05-09 19:54",
+  "output_tokens": 100,
+  "preset": "qwen3-vl-32b",
+  "preset_path": "hf-mattbucci/Qwen3-VL-32B-AWQ",
+  "quant": "awq_marlin",
+  "preset_flags": "CTX=131072 MAX_RUNNING=4 MEM=0.85 (env overrides for TP=2; preset defaults are TP=1 single-card)",
+  "context_sweep": [
+    {"context": 1024,   "ttft_ms": 33.67,  "tpot_ms": 14.64, "tok_per_sec": 68.3},
+    {"context": 65536,  "ttft_ms": 111.51, "tpot_ms": 19.92, "tok_per_sec": 50.2},
+    {"context": 131072, "ttft_ms": 213.14, "tpot_ms": 25.04, "tok_per_sec": 39.9}
+  ],
+  "validator": "3/3 PASS basic+vision+video in 1.0s — qwen3-vl-32b-tp2-131k-2026-05-09 entry",
+  "note": "TP=2 unlocks the full 131K context (was 4K at TP=1 / 24 GB). Decode 40 tok/s @ 131K matches historical 40 tok/s @ 150K headline within margin."
+}
