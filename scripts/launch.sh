@@ -143,11 +143,23 @@ apply_preset() {
             # `coder-reap-25b` so the two models can be benched apples-to-apples.
             # mattbucci/Qwen3-Coder-30B-A3B-AWQ ships compressed-tensors format,
             # not the native AWQ-Marlin layout the local AWQ-Marlin dir uses.
+            #
+            # 2026-05-10: a TP1 worker SIGSEGV'd at decode #115k of a long
+            # claw-code rollout. Backtrace was Python heap corruption inside
+            # _PyFrame_ClearExceptCode → list_dealloc → garbage pointer,
+            # entered via the event_loop_overlap path → broadcast_pyobj.
+            # Pure 130K-token decode and tool-call requests both passed in
+            # isolation, so the bug is rare/state-dependent. Disable the
+            # overlap event loop (single-step instead of pipelined) and the
+            # radix prefix cache (its state machine is another source of
+            # cross-iteration shared state) as defense-in-depth. Costs ~5-10%
+            # throughput at long context but keeps TP=2 alive across 300+
+            # instances. Revisit once a deterministic repro lands.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ}"
             QUANT="compressed-tensors"
             CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
             CUDA_GRAPH="--cuda-graph-max-bs 1"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder --disable-overlap-schedule --disable-radix-cache"
             ;;
         coder-reap-25b)
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ}"
