@@ -90,6 +90,12 @@ launch_server() {
 wait_ready() {
     local timeout="$1"
     local start; start=$(date +%s)
+    # The bash prelude (cd + source common.sh + activate_conda + exec
+    # launch.sh) takes ~5-15s before `python -m sglang.launch_server` is
+    # spawned. Without a boot grace the first pgrep below can race the
+    # spawn and falsely report "server died" before the python process
+    # even appears.
+    local boot_grace=30
     while true; do
         local code
         code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:23334/health" 2>/dev/null || echo "000")
@@ -101,9 +107,12 @@ wait_ready() {
             echo "  TIMEOUT after ${timeout}s"
             return 1
         fi
-        if ! pgrep -f "sglang.launch_server" > /dev/null; then
-            echo "  server died"
-            return 1
+        if [ $(( $(date +%s) - start )) -gt "$boot_grace" ]; then
+            if ! pgrep -f "sglang.launch_server" > /dev/null && \
+               ! pgrep -f "scripts/launch.sh" > /dev/null; then
+                echo "  server died (post boot-grace; check log)"
+                return 1
+            fi
         fi
         sleep 6
     done
@@ -160,13 +169,27 @@ run_phase() {
         return 0
     fi
 
-    echo "  scoring against Docker harness..."
-    python "$REPO_DIR/evals/swebench/score_docker.py" \
-        --predictions "$out_dir/predictions.jsonl" \
-        --max-workers 1 \
-        > "$score_log" 2>&1
-    echo "  scoring last lines:"
-    tail -8 "$score_log"
+    # Score in BACKGROUND so the next phase's rollout starts immediately.
+    # Score is post-inference (Docker pytest, no SGLang), so it doesn't
+    # contend with the next rollout's inference path. CPU usage of
+    # score (24 pytest workers) + rollout (1 SGLang user, GPU-bound, ~2 cores
+    # for the rollout driver) fits in 32 cores with headroom.
+    #
+    # Writes its own PID file so the chain can wait for all scores at the
+    # end (or aggregate_bakeoff.py can detect in-progress runs by checking
+    # whether scores-docker-summary.json exists).
+    echo "  scoring against Docker harness (background)..."
+    setsid bash -c "
+        python '$REPO_DIR/evals/swebench/score_docker.py' \
+            --predictions '$out_dir/predictions.jsonl' \
+            --max-workers '${BAKEOFF_SCORE_WORKERS:-24}' \
+            > '$score_log' 2>&1
+        echo \$? > '$out_dir/.score-rc'
+    " </dev/null >/dev/null 2>&1 &
+    disown
+    local score_pid=$!
+    echo "$score_pid" > "$out_dir/.score-pid"
+    echo "  score PID: $score_pid (log: $score_log)"
 }
 
 # --- Main ------------------------------------------------------------------
@@ -194,6 +217,14 @@ for phase in "${PHASES[@]}"; do
 done
 
 stop_server
+
+echo
+echo "All rollouts dispatched. Waiting for in-flight scoring jobs to drain..."
+# Each phase's score runs in background; collect them before exit.
+while pgrep -f "swebench.harness.run_evaluation" > /dev/null; do
+    sleep 30
+done
+echo "All scoring jobs drained at $(date)."
 
 echo
 echo "=================================================="
