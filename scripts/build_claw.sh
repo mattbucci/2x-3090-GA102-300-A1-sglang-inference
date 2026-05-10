@@ -1,6 +1,9 @@
 #!/bin/bash
-# Build the claw-code Rust binary and stage it into evals/swebench/docker/
-# for Dockerfile.rollout's COPY step.
+# Build the claw-code Rust binary inside a Debian Bullseye container so the
+# resulting binary links against GLIBC 2.31 — old enough to run on every
+# SWE-bench eval base image (Ubuntu 22.04 / GLIBC 2.35 and similar). A
+# native build on the host (Arch / GLIBC 2.39) produces a binary that
+# fails inside the rollout container with `version GLIBC_2.39 not found`.
 #
 # Why pre-build instead of building inside each rollout image:
 #   - Rust toolchain + cargo build adds ~1.5 GB and ~5 min per image.
@@ -17,16 +20,30 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_DIR="$REPO_DIR/components/claw-code"
 DST="$REPO_DIR/evals/swebench/docker/claw"
 
+# Pinned: rust:bullseye uses Debian 11 base (GLIBC 2.31). Newer Debian/Ubuntu
+# images use GLIBC ≥ 2.34, which would re-introduce the cross-distro break.
+RUST_IMAGE="${CLAW_BUILDER_IMAGE:-rust:bullseye}"
+
 if [ ! -d "$SRC_DIR" ]; then
     echo "Cloning ultraworkers/claw-code into $SRC_DIR..."
     git clone --depth 1 https://github.com/ultraworkers/claw-code.git "$SRC_DIR"
 fi
 
-cd "$SRC_DIR/rust"
-echo "Building claw (cargo build --release --workspace)..."
-cargo build --release --workspace
+# Use a separate target dir so a stale host-side target/ (built against a
+# different GLIBC) doesn't poison cargo's incremental cache.
+BUILD_CACHE="${CLAW_BUILD_CACHE:-/tmp/claw-target}"
+mkdir -p "$BUILD_CACHE"
 
-BIN="$SRC_DIR/rust/target/release/claw"
+echo "Building claw inside $RUST_IMAGE (target=$BUILD_CACHE)..."
+docker run --rm \
+    -v "$SRC_DIR/rust:/work:ro" \
+    -v "$BUILD_CACHE:/build" \
+    -e CARGO_TARGET_DIR=/build \
+    -w /work \
+    "$RUST_IMAGE" \
+    cargo build --release --workspace
+
+BIN="$BUILD_CACHE/release/claw"
 if [ ! -x "$BIN" ]; then
     echo "ERROR: build did not produce $BIN" >&2
     exit 1
