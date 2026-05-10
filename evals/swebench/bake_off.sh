@@ -175,9 +175,11 @@ run_phase() {
     # but Phase N+1's score blocks on the lock until Phase N's score
     # finishes — preventing the multi-scorer pile-up that OOM'd the box.
     #
-    # Worker count: 8 (was 24). 24 sized peak memory at ~140 MB/container,
-    # which ignored the docker pull+extract spike + GB-class pytest peaks
-    # for sympy/matplotlib instances.
+    # Worker count: 2. 24 sized peak memory at ~140 MB/container, which
+    # ignored the docker pull+extract spike + GB-class pytest peaks for
+    # sympy/matplotlib instances. 8 was still enough to crash the host
+    # when stacked with rollout image rebuilds + Claude Code (bun); 2
+    # leaves the box comfortably interactive.
     #
     # Writes its own PID file so the chain can wait for all scores at the
     # end (or aggregate_bakeoff.py can detect in-progress runs by checking
@@ -187,7 +189,7 @@ run_phase() {
         flock -x '$LOG_DIR/score.lock' \
         python '$REPO_DIR/evals/swebench/score_docker.py' \
             --predictions '$out_dir/predictions.jsonl' \
-            --max-workers '${BAKEOFF_SCORE_WORKERS:-8}' \
+            --max-workers '${BAKEOFF_SCORE_WORKERS:-2}' \
             > '$score_log' 2>&1
         echo \$? > '$out_dir/.score-rc'
     " </dev/null >/dev/null 2>&1 &
