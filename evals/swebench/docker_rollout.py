@@ -1,34 +1,41 @@
 #!/usr/bin/env python3
-"""Docker-backed rollout: opencode runs INSIDE a swebench instance container.
-
-Same env as the official scoring harness (Python 3.6/3.8/3.9/..., conda
-testbed activated, all system deps installed). The model can run pytest
-mid-iteration against the actual environment its fix will be graded in.
+"""Docker-backed rollout: a coding-agent scaffold runs INSIDE a swebench
+instance container. Same env as the official scoring harness (Python
+3.6/3.8/3.9/..., conda testbed activated, all system deps installed) —
+the model can run pytest mid-iteration against the actual environment
+its fix will be graded in.
 
 Per-instance flow:
   1. Pull the upstream eval image  swebench/sweb.eval.x86_64.<normalized>:latest
      (instance_id with __ -> _1776_ per the swebench tag convention).
   2. Build a rollout image  swebench-rollout/<instance_id>:latest  by adding
-     Node + opencode + ripgrep on top of the eval image (Dockerfile.rollout).
-  3. Run a container with --network=host so opencode reaches the host SGLang
-     server at http://127.0.0.1:23334. Working directory is /testbed (already
-     cloned + conda-activated by the upstream eval image).
-  4. Exec opencode against the problem statement; capture the resulting
+     Node + opencode + little-coder + ripgrep on top of the eval image
+     (Dockerfile.rollout). claw-code lives in Dockerfile.rollout-claw
+     because of its Rust build + Anthropic-proxy requirement.
+  3. Run a container with --network=host so the scaffold reaches the host
+     SGLang server at http://127.0.0.1:23334. Working directory is /testbed
+     (already cloned + conda-activated by the upstream eval image).
+  4. Exec the scaffold against the problem statement; capture the resulting
      `git diff` as the prediction patch.
-  5. Append to predictions.jsonl in the v1 schema (instance_id,
-     model_name_or_path, model_patch, rollout_returncode, rollout_seconds)
-     so score_local.py and the official Docker harness both consume it
-     unchanged.
+  5. Append to predictions.jsonl in the v1 schema + a `rollout_scaffold`
+     field so downstream tools can group by scaffold.
+
+Per-(model, scaffold) results are isolated to their own output dir so
+predictions, logs, and scores never collide across scaffolds:
+
+    evals/swebench/runs/<preset>-<scaffold>-v2/
+        predictions.jsonl                # rollout output
+        predictions/<inst>.diff
+        logs/<inst>.log
+        scores-docker.jsonl              # filled by score_docker.py
+        meta.json                        # scaffold + model + run metadata
 
 Usage:
     python evals/swebench/docker_rollout.py \\
         --model sglang/coder-30b-eval \\
-        --out evals/swebench/runs/coder-30b-docker-v2 \\
+        --scaffold opencode \\
+        --out evals/swebench/runs/coder-30b-opencode-v2 \\
         --skip-existing
-
-Resuming after the 245-prediction run (2026-04-30) is the typical use:
-the --skip-existing flag walks predictions.jsonl and only invokes Docker
-for instance_ids not yet present.
 """
 from __future__ import annotations
 
@@ -50,10 +57,18 @@ DOCKERFILE = THIS_DIR / "docker" / "Dockerfile.rollout"
 DOCKER_CTX = THIS_DIR / "docker"
 
 
+SUPPORTED_SCAFFOLDS = ("opencode", "little-coder", "claw-code")
+
+
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--model", required=True,
-                   help="opencode model id, e.g. sglang/coder-30b-eval")
+                   help="Scaffold-side model id. opencode/little-coder format: "
+                        "<provider>/<served-name>. Examples: sglang/coder-30b-eval, "
+                        "openai/coder-30b-eval. Provider is opaque to the rollout — "
+                        "just controls the scaffold's request routing.")
+    p.add_argument("--scaffold", default="opencode", choices=SUPPORTED_SCAFFOLDS,
+                   help="Which agent scaffold to invoke inside the container.")
     p.add_argument("--dataset", default="princeton-nlp/SWE-bench_Lite",
                    help="HF dataset id (Lite=300, Verified=500)")
     p.add_argument("--split", default="test")
@@ -62,11 +77,13 @@ def parse_args():
     p.add_argument("--instance-ids", nargs="*", default=None,
                    help="Specific instance IDs to run (overrides --instances)")
     p.add_argument("--out", required=True,
-                   help="Output dir for predictions + logs")
+                   help="Output dir for predictions + logs (per-scaffold convention: "
+                        "evals/swebench/runs/<preset>-<scaffold>-v2/)")
     p.add_argument("--timeout", type=int, default=1800,
-                   help="Per-instance opencode timeout (seconds). The original "
-                        "v2 run's distribution: p50=121s, p90=210s, p99=1014s, "
-                        "max=1328s — 1800s catches all but pathological cases")
+                   help="Per-instance scaffold timeout (seconds). v2 opencode "
+                        "distribution: p50=121s, p90=210s, p99=1014s, max=1328s — "
+                        "1800s catches all but pathological cases. little-coder + "
+                        "claw-code default to the same ceiling pending real data.")
     p.add_argument("--server-url", default="http://127.0.0.1:23334",
                    help="SGLang server base URL (used for preflight)")
     p.add_argument("--served-name", default=None,
@@ -80,7 +97,90 @@ def parse_args():
     p.add_argument("--no-pull", action="store_true",
                    help="Skip `docker pull` of the upstream eval image (use only if "
                         "already cached locally; otherwise the build will fail)")
+    p.add_argument("--rebuild-image", action="store_true",
+                   help="Force `docker build` even when the rollout image already "
+                        "exists. Use after Dockerfile.rollout changes (e.g. adding "
+                        "a new scaffold) so the layered binaries are present.")
     return p.parse_args()
+
+
+def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tuple[list[str], str]:
+    """Return (docker_run_extra_envs, inner_shell_command) for the given
+    scaffold. The inner command runs opencode-equivalent against $PROMPT
+    in /testbed and emits `=== DIFF ===\\n<git diff>` to stdout for the
+    parent process to extract.
+
+    All three scaffolds share the same diff-capture protocol so the parent
+    `_extract_diff_from_stdout` works uniformly.
+    """
+    if scaffold == "opencode":
+        # opencode reads ~/.config/opencode/opencode.json which the Dockerfile
+        # provisions. The `sglang/<served-name>` model id wires there.
+        envs = []
+        inner = (
+            f"set -e\n"
+            f"git config --global user.email eval@local\n"
+            f"git config --global user.name eval\n"
+            f"git config --global --add safe.directory /testbed\n"
+            f"opencode run --dir /testbed --model {model} "
+            f"  --format json --dangerously-skip-permissions \"$PROMPT\" || true\n"
+            f"echo === DIFF ===\n"
+            f"git -C /testbed add -A\n"
+            f"git -C /testbed diff --cached\n"
+        )
+        return envs, inner
+
+    if scaffold == "little-coder":
+        # little-coder is built on pi; with --model openai/<served-name> it
+        # reads OPENAI_BASE_URL + OPENAI_API_KEY for the upstream endpoint.
+        # Force the model id to openai/<served-name> regardless of what the
+        # caller passed in --model (they may have used sglang/* for opencode
+        # parity); little-coder doesn't ship an `sglang` provider.
+        oc_model = f"openai/{served_name}"
+        envs = [
+            "--env", "OPENAI_BASE_URL=http://127.0.0.1:23334/v1",
+            "--env", "OPENAI_API_KEY=noop",
+        ]
+        inner = (
+            f"set -e\n"
+            f"git config --global user.email eval@local\n"
+            f"git config --global user.name eval\n"
+            f"git config --global --add safe.directory /testbed\n"
+            f"cd /testbed\n"
+            f"little-coder --model {oc_model} \"$PROMPT\" || true\n"
+            f"echo === DIFF ===\n"
+            f"git -C /testbed add -A\n"
+            f"git -C /testbed diff --cached\n"
+        )
+        return envs, inner
+
+    if scaffold == "claw-code":
+        # claw natively supports OpenAI-compat: OPENAI_BASE_URL +
+        # OPENAI_API_KEY, model id "openai/<served>". The openai/ prefix
+        # wins over the ambient credential sniffer, so DashScope's
+        # qwen-/qwen prefix routing won't intercept (claw USAGE.md
+        # "Provider matrix" + PR 3001 reasoning_content support). The
+        # rollout image must include the pre-built claw binary at
+        # /usr/local/bin/claw — Dockerfile.rollout COPYs it.
+        oc_model = f"openai/{served_name}"
+        envs = [
+            "--env", "OPENAI_BASE_URL=http://127.0.0.1:23334/v1",
+            "--env", "OPENAI_API_KEY=noop",
+        ]
+        inner = (
+            f"set -e\n"
+            f"git config --global user.email eval@local\n"
+            f"git config --global user.name eval\n"
+            f"git config --global --add safe.directory /testbed\n"
+            f"cd /testbed\n"
+            f"/usr/local/bin/claw --model {oc_model} prompt \"$PROMPT\" || true\n"
+            f"echo === DIFF ===\n"
+            f"git -C /testbed add -A\n"
+            f"git -C /testbed diff --cached\n"
+        )
+        return envs, inner
+
+    raise ValueError(f"unknown scaffold: {scaffold}")
 
 
 # --- helpers ---------------------------------------------------------------
@@ -120,19 +220,23 @@ def rollout_image_tag(instance_id: str) -> str:
     return f"swebench-rollout/{instance_id}:latest"
 
 
-def ensure_rollout_image(instance_id: str, *, no_pull: bool = False) -> str:
+def ensure_rollout_image(instance_id: str, *, no_pull: bool = False,
+                         rebuild: bool = False) -> str:
     """Build the per-instance rollout image if not already present.
 
     Idempotent: docker build is a no-op when the tag exists with all layers
-    cached, so re-runs after the first instance build are fast.
+    cached, so re-runs after the first instance build are fast. With
+    rebuild=True, forces a fresh build even if the tag already resolves —
+    use after Dockerfile.rollout changes (e.g. adding a new scaffold).
     """
     rollout_tag = rollout_image_tag(instance_id)
     base_tag = _swebench_image_tag(instance_id)
 
-    rc, out, _ = sh("docker", "image", "inspect", rollout_tag,
-                    check=False, capture=True)
-    if rc == 0:
-        return rollout_tag
+    if not rebuild:
+        rc, out, _ = sh("docker", "image", "inspect", rollout_tag,
+                        check=False, capture=True)
+        if rc == 0:
+            return rollout_tag
 
     if not no_pull:
         rc_pull = sh("docker", "pull", base_tag, check=False)
@@ -323,6 +427,31 @@ def main():
     (out / "predictions").mkdir(parents=True, exist_ok=True)
     (out / "logs").mkdir(parents=True, exist_ok=True)
 
+    # meta.json declares scaffold + model + run dates so future tooling can
+    # group predictions.jsonl files by scaffold without inferring from the
+    # parent dirname. Idempotent: appends a new run record on resume.
+    meta_path = out / "meta.json"
+    meta = {"runs": []}
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text())
+        except Exception:
+            pass
+    meta.setdefault("runs", []).append({
+        "started_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "scaffold": args.scaffold,
+        "model": args.model,
+        "served_name": args.served_name or args.model.split("/", 1)[-1],
+        "dataset": args.dataset,
+        "split": args.split,
+        "timeout_sec": args.timeout,
+    })
+    meta["scaffold"] = args.scaffold
+    meta["model"] = args.model
+    meta_path.write_text(json.dumps(meta, indent=2))
+
+    print(f"Scaffold: {args.scaffold}   Model: {args.model}   Out: {out}", flush=True)
+
     print(f"Loading dataset {args.dataset}/{args.split}...", flush=True)
     ds = load_dataset(args.dataset, args.split)
     print(f"  {len(ds)} instances total", flush=True)
@@ -355,24 +484,15 @@ def main():
             print(f"[{i+1}/{len(ds)}] {iid}  repo={row['repo']}  base={row['base_commit'][:8]}", flush=True)
             t0 = time.time()
             try:
-                image_tag = ensure_rollout_image(iid, no_pull=args.no_pull)
+                image_tag = ensure_rollout_image(
+                    iid, no_pull=args.no_pull, rebuild=args.rebuild_image,
+                )
                 prompt = PROMPT_TEMPLATE.format(
                     problem_statement=row["problem_statement"],
                     hints=row.get("hints_text", "") or "(none)",
                 )
-                # Append `=== DIFF ===` + git diff so we can extract from stdout.
-                # The container's --rm-on-exit means we don't have a stable
-                # path to docker exec a separate diff command later.
-                inner_with_diff = (
-                    f"set -e\n"
-                    f"git config --global user.email eval@local\n"
-                    f"git config --global user.name eval\n"
-                    f"git config --global --add safe.directory /testbed\n"
-                    f"opencode run --dir /testbed --model {args.model} "
-                    f"  --format json --dangerously-skip-permissions \"$PROMPT\" || true\n"
-                    f"echo === DIFF ===\n"
-                    f"git -C /testbed add -A\n"
-                    f"git -C /testbed diff --cached\n"
+                scaffold_envs, inner_with_diff = build_scaffold_invocation(
+                    args.scaffold, args.model, served,
                 )
                 container_name = f"swebench-rollout-{iid}-{int(time.time())}"
                 cmd = [
@@ -382,6 +502,7 @@ def main():
                     "--network=host",
                     "--env", f"PROMPT={prompt}",
                     "--env", "HOME=/root",
+                    *scaffold_envs,
                     "--workdir", "/testbed",
                     image_tag,
                     "bash", "-lc", inner_with_diff,
@@ -421,6 +542,7 @@ def main():
                     "model_patch": diff,
                     "rollout_returncode": rc,
                     "rollout_seconds": elapsed,
+                    "rollout_scaffold": args.scaffold,
                 }
                 fp.write(json.dumps(entry) + "\n")
                 fp.flush()

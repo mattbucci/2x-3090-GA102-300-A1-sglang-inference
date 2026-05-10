@@ -1,8 +1,11 @@
 # syntax=docker/dockerfile:1
 #
-# Per-instance rollout image: SWE-bench eval image + Node + opencode + ripgrep.
-# Built once per instance, baking the testbed conda env from the swebench
-# upstream image and adding the agent harness on top.
+# Per-instance rollout image: SWE-bench eval image + Node + (opencode,
+# little-coder) + ripgrep. claw-code is added in a sister Dockerfile
+# (Dockerfile.rollout-claw) because the Rust build is heavy and needs an
+# Anthropic-protocol translation proxy in front of SGLang.
+#
+# Built once per instance:
 #
 #   FROM swebench/sweb.eval.x86_64.<instance>:latest
 #   docker build -t swebench-rollout/<instance>:latest \
@@ -11,7 +14,8 @@
 #
 # The host SGLang server is reachable from inside the container via
 # `--network=host` (127.0.0.1:23334 maps to the host port). opencode.json
-# in this directory wires the `sglang/<preset>` model ids to that endpoint.
+# in this directory wires the `sglang/<preset>` model ids to that endpoint;
+# little-coder reads OPENAI_BASE_URL + OPENAI_API_KEY at the same target.
 
 ARG BASE
 FROM ${BASE}
@@ -20,6 +24,7 @@ USER root
 
 ARG NODE_VERSION=20.18.0
 ARG OPENCODE_VERSION=1.14.25
+ARG LITTLE_CODER_VERSION=1.1.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl xz-utils ca-certificates ripgrep && \
@@ -31,13 +36,26 @@ RUN curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-li
 
 ENV PATH=/opt/node/bin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-RUN npm install -g opencode-ai@${OPENCODE_VERSION}
+# Both scaffolds installed in the same image so a single rollout container
+# can dispatch to either via `docker_rollout.py --scaffold {opencode,little-coder}`.
+RUN npm install -g \
+        opencode-ai@${OPENCODE_VERSION} \
+        little-coder@${LITTLE_CODER_VERSION}
 
 RUN mkdir -p /root/.config/opencode
 
 COPY opencode.json /root/.config/opencode/opencode.json
 
+# claw is the OpenAI-compat-capable Rust scaffold (claw-code/USAGE.md
+# Provider matrix: model id `openai/<served>` + OPENAI_BASE_URL +
+# OPENAI_API_KEY routes to the OpenAI Chat Completions backend, which
+# SGLang serves natively). We pre-build claw on the host (~50MB binary)
+# and COPY it in to keep this layer light — the alternative (rustup +
+# cargo build --release inside every per-instance image) would inflate
+# the image by ~1.5 GB and add ~5 min build time per instance.
+COPY claw /usr/local/bin/claw
+
 # /testbed is the conda-activated repo working dir baked by setup_repo.sh +
 # setup_env.sh in the swebench eval image. The rollout entrypoint cd's there,
-# runs opencode, and captures `git diff` as the prediction patch.
+# runs the chosen scaffold, and captures `git diff` as the prediction patch.
 WORKDIR /testbed
