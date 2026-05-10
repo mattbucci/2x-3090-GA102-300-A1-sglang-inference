@@ -80,7 +80,6 @@ Per-iteration narrative + ship histories live in [`patches/README.md`](patches/R
 
 - **AWQ scales audit (2026-05-07) — 8 suspicious-class rare-expert under-calibration findings.** Affects `qwen36` (native, 144 flagged), `qwen36-tp1` source, and `qwen35-moe` — single rare expert per layer with `up_proj`/`gate_proj` scales 50-83% zero. Quality-degraded but serves; ~1-3% degraded tokens. CT variant of Qwen3.6-35B-A3B is calibration-clean (0/31010). Mitigation paths in **Suggested next §B** (recalibration backlog). Full report: [`evals/awq-audit-2026-05-07.md`](evals/awq-audit-2026-05-07.md).
 - **`gemma-4-21b-REAP-AWQ-thinking-vision-v2` — DO NOT USE.** 164 ALL-ZERO scale tensors (vision_tower + MoE experts) — empty `ignore` list silently produced zero scales. v3b build at `~/AI/models/gemma-4-21b-REAP-AWQ-thinking-vision-v3b-2026-05-08` is the shipping checkpoint (regex `ignore` covering `vision_tower` + `embed_vision` + `multi_modal_projector`).
-- **CT-format MoE at TP=2 fails in fused MoE w2 narrow** — `mattbucci/Qwen3.6-35B-A3B-AWQ-CT` loads at TP=1 but crashes at TP=2 in `fused_moe_triton/layer.py:537`: `RuntimeError: start (4) + length (4) exceeds dimension size (4)`. CT pre-shards w2 to per-rank size; loader still calls `narrow(shard_dim, shard_size*tp_rank, shard_size)` which overflows. Native AWQ at TP=2 unaffected. Cross-stack — reproduces on RDNA4 too. Patch sketch: detect `loaded_weight.shape[shard_dim] == shard_size` and skip the narrow. Blocks `qwen36` (TP=2) CT switch — see **Suggested next §A**.
 - **Qwen3-VL-30B MoE AWQ — SGLang loader broken.** `Qwen3VLMoeForConditionalGeneration` produces multilingual gibberish across 3 calibration variants + community vLLM AWQ + self-cal native. Source-independent → upstream loader fix or weight-mapping trace required. Narrative in [`patches/README.md`](patches/README.md).
 - **Qwen3.5-27B DeltaNet stuck at 32K.** DeltaNet TP replication forces 19 GB/GPU; only 2.2 GB left for KV. Use `qwen3-ream` for the long-context DeltaNet workload.
 - **60B+ models don't fit.** Coder-Next-REAM (35 GB), GLM-4.5-Air-REAP (43 GB) exceed the 48 GB total VRAM budget at MoE-AWQ.
@@ -93,9 +92,8 @@ Comprehensive backlog grouped by area. Final destination is **Docker-harness cod
 
 ### A. Loader patches (unblocks current bugs)
 
-- **A1. `_load_w2` narrow detection patch for CT-format MoE at TP≥2** (`fused_moe_triton/layer.py:537`). When `loaded_weight.shape[shard_dim] == shard_size` the tensor is already pre-sharded — skip the narrow and copy directly. Unblocks `qwen36` (TP=2) CT switch, qwen35-moe (TP=2) CT path, and any future CT MoE at TP≥2. Cross-stack — same fix lands on RDNA4 (R9700 README entry 8). Effort: ~1 day.
-- **A2. Qwen3VLMoeForConditionalGeneration loader fix** (Qwen3-VL-30B MoE AWQ). Loader produces multilingual gibberish across 4 distinct sources — source-independent → upstream weight-mapping bug. Either patch `Qwen3VLMoe*` weight loader or trace the divergence between `*ForCausalLM` (works) and `*ForConditionalGeneration` (broken) paths. Effort: ~3 days. Lower priority — non-coder model.
-- **A3. Devstral-24B Dense lazy/streamed weight loader** (TP=1 OOM). Upstream change: stream `create_weights` per layer instead of pre-allocating the full int32 destination at load time. Effort: ~2-3 days, upstream PR. Lower priority — TP=2 path works.
+- **A1. Qwen3VLMoeForConditionalGeneration loader fix** (Qwen3-VL-30B MoE AWQ). Loader produces multilingual gibberish across 4 distinct sources — source-independent → upstream weight-mapping bug. Either patch `Qwen3VLMoe*` weight loader or trace the divergence between `*ForCausalLM` (works) and `*ForConditionalGeneration` (broken) paths. Effort: ~3 days. Lower priority — non-coder model.
+- **A2. Devstral-24B Dense lazy/streamed weight loader** (TP=1 OOM). Upstream change: stream `create_weights` per layer instead of pre-allocating the full int32 destination at load time. Effort: ~2-3 days, upstream PR. Lower priority — TP=2 path works.
 
 ### B. Recalibration backlog (closes audit findings)
 
@@ -182,7 +180,7 @@ Single-user tok/s measured at the max-context value in the table. All numbers ar
 | Model | Type | Max ctx | tok/s @max | TPOT | Launch | Status |
 |-------|------|:-------:|:----------:|:----:|:------:|:-------|
 | **Qwen3-30B REAM AWQ** | MoE (96 exp) | **262K** | **107** | 9.3 ms | `qwen3-ream` | **Hits 256K target** — 1/1 PASS at TP=2 / 262K (2026-05-09 v0.5.11). 183 tok/s @ 1K → 107 tok/s @ 250K (`benchmarks/qwen3-30b-ream/long-context-v0511.json`). |
-| **Qwen3.6-35B-A3B AWQ-native** | DeltaNet+MoE (256 exp, VL) | **262K** | **31** | 32 ms | `qwen36` | **4/4 PASS** at TP=2 / 256K (2026-05-09 v0.5.11 sweep, 49.2s). **Decode flat 30.9-32.2 tok/s across full 1K-250K** on flashinfer (`benchmarks/qwen3.6-35b-a3b/v0511-tp2-flashinfer.json`); 30.2-31.8 tok/s on triton-attn (`benchmarks/qwen3.6-35b-a3b/v0511-tp2-triton.json`). Flashinfer wins TTFT at long context (~2× faster prefill at 131K+). Native AWQ has 144 flagged rare-expert scales per audit; CT variant is calibration-clean but blocked at TP=2 by a fused-MoE w2 loader bug (Known Issues). |
+| **Qwen3.6-35B-A3B AWQ-CT** | DeltaNet+MoE (256 exp, VL) | **262K** | **31** | 32 ms | `qwen36` | **4/4 PASS** at TP=2 / 256K on the calibration-clean CT variant (2026-05-09 v0.5.11 + patch 030, 137.4s). **Decode flat 30.3-31.5 tok/s across 1K-250K** (`benchmarks/qwen3.6-35b-a3b/v0511-tp2-ct-patch030.json`), within 1-3% of the native-AWQ TP=2 number on the same grid (`v0511-tp2-flashinfer.json` 30.9-32.2 tok/s; triton-attn `v0511-tp2-triton.json` 30.2-31.8 tok/s). CT is preferred default — 0/31010 audit-flagged scales vs native's 144 (rare-expert under-cal). Override to native: `MODEL=$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ QUANT=awq_marlin ./scripts/launch.sh qwen36`. |
 | **Qwen3.6-27B AWQ (R9700 recal Apr-29)** | DeltaNet+attn (VL) | **131K** | **21** | 47 ms | `qwen35` (preset → `mattbucci/Qwen3.6-27B-AWQ`) | **4/4 PASS basic+thinking+vision+video** at `qwen35-tp1` TP=1 / 4K (2026-05-07 strict-validator sweep, 36.9s). R9700's `balanced_thinking_text` recal. |
 | **Qwen3-VL-32B Instruct** | Dense (VL) | **131K** | **40** | 25 ms | `qwen3-vl-32b` | **3/3 PASS** at TP=2 / 131K (2026-05-09 v0.5.11 sweep). Decode 68 tok/s @ 1K → 50 tok/s @ 65K → 40 tok/s @ 131K (`benchmarks/qwen3-vl-32b/long-context-v0511-tp2.json`). Vision: `'a solid red circle with a black outline is centered on a white background'`. Video: `'a red circle moves from the left side of the screen to the right side'`. Preset repointed 2026-05-06 from community QuantTrio to R9700's self-cal `mattbucci/Qwen3-VL-32B-AWQ`. TP=1 / 4K cold-fit also passes (3/3, qwen3-vl-32b row in capability_check). |
 | **Devstral-24B AWQ (long)** | Dense | **217K** | **50** | 19.9 ms | `devstral-long` | **basic PASS** at TP=2 / 217K (2026-05-09 v0.5.11; vision OOMs at MEM=0.97 — text-only inference clean). 1/2 validator + decode 59 tok/s @ 1K → 50 tok/s @ 200K (`benchmarks/devstral-24b-awq/long-context-v0511-tp2.json`). Preset bakes `--skip-server-warmup` (added 2026-05-09 to dodge pixtral image_processor OOM during MEM=0.97 warmup). |
@@ -240,7 +238,7 @@ cd python && pip install -e ".[srt]"
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.11 + 16 local patches (`ls patches/*.patch \| wc -l`) |
+| SGLang | v0.5.11 + 17 local patches (`ls patches/*.patch \| wc -l`) |
 | PyTorch | 2.11.0 + cu130 |
 | CUDA | 13.2 driver (595.58) / cu130 wheel |
 | NCCL | bundled with torch 2.11 (P2P over NVLink) |
@@ -251,7 +249,7 @@ cd python && pip install -e ".[srt]"
 
 ## Patches
 
-16 patches (`ls patches/*.patch | wc -l`) targeting SGLang v0.5.11. Originally rebased from a v0.5.10 set 24→13 (2026-05-07 commit `1655e46`); 002 cross-team port of R9700's qwen3_next AWQ weight_loader fix; 028 v0.5.11 gemma4_mm per-expert AWQ loader (R9700 `gemma4_causal.py` port); 029 qwen35 shared_expert_gate CT dequant (Ampere-only). Per-patch narratives in [`patches/README.md`](patches/README.md).
+17 patches (`ls patches/*.patch | wc -l`) targeting SGLang v0.5.11. Originally rebased from a v0.5.10 set 24→13 (2026-05-07 commit `1655e46`); 002 cross-team port of R9700's qwen3_next AWQ weight_loader fix; 028 v0.5.11 gemma4_mm per-expert AWQ loader (R9700 `gemma4_causal.py` port); 029 qwen35 shared_expert_gate CT dequant; **030 fused_moe_triton presharded-w2 detection** (unblocks CT MoE at TP≥2 — qwen36 default switched to CT 2026-05-09). Per-patch narratives in [`patches/README.md`](patches/README.md).
 
 ## Quantization
 

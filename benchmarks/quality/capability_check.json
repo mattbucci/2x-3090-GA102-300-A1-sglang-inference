@@ -1102,5 +1102,33 @@
       "passed": 1,
       "total": 1
     }
+  },
+  "qwen36-ct-tp2-256k-patch030-2026-05-09": {
+    "tag": "qwen36-ct-tp2-256k-patch030-2026-05-09",
+    "model": "qwen36",
+    "timestamp": "2026-05-09 20:10",
+    "elapsed_sec": 137.4,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (3987 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with a'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'motion', 'across', 'ball', 'circle', 'red']  response='a red circle moves from left to right.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
   }
 }

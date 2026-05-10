@@ -1,0 +1,24 @@
+{
+  "model": "Qwen3.6-35B-A3B AWQ-CT TP=2 v0.5.11 + patch 030",
+  "engine": "SGLang v0.5.11 + 17 patches (incl. 030 fused-moe-w2-presharded-detect)",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-05-09 20:14",
+  "output_tokens": 100,
+  "preset": "qwen36 (with MODEL+QUANT env override pre-switch)",
+  "preset_path": "hf-mattbucci/Qwen3.6-35B-A3B-AWQ-CT",
+  "quant": "compressed-tensors",
+  "context_sweep": [
+    {"context": 1024,   "ttft_ms": 45.54,   "tpot_ms": 31.74, "tok_per_sec": 31.5},
+    {"context": 131072, "ttft_ms": 1384.90, "tpot_ms": 33.00, "tok_per_sec": 30.3},
+    {"context": 250000, "ttft_ms": 1390.86, "tpot_ms": 33.00, "tok_per_sec": 30.3}
+  ],
+  "validator": "4/4 PASS basic+thinking+vision+video in 137.4s — qwen36-ct-tp2-256k-patch030-2026-05-09 entry",
+  "comparison_with_native_awq_tp2": {
+    "ctx_1024":   "CT 31.5 vs native 32.2 tok/s (-2.2%)",
+    "ctx_131072": "CT 30.3 vs native 31.2 tok/s (-2.9%)",
+    "ctx_250000": "CT 30.3 vs native 30.9 tok/s (-1.9%)",
+    "verdict": "CT decode within measurement noise of native AWQ. CT is the calibration-clean variant (0/31010 audit-flagged scales) where native has 144 flagged rare-expert findings — preferred default for qwen36 (TP=2)."
+  },
+  "note": "Patch 030 detects already-presharded loaded_weight in fused_moe_triton/layer.py:_load_w2 and skips the narrow that overflowed at TP=2 with CT pre-shard. Unblocks qwen36 (TP=2) CT switch."
+}

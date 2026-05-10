@@ -328,30 +328,34 @@ apply_preset() {
             EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph"
             ;;
         qwen36)
-            # Qwen3.6-35B-A3B AWQ-native (thinking + vision): 256-expert hybrid
-            # DeltaNet + gated attn, 3B active, 262K native context. Default
-            # path is the canonical HF mirror at mattbucci/Qwen3.6-35B-A3B-AWQ
-            # (R9700-shipped 2026-04-29). The local Qwen3.6-35B-A3B-AWQ-native-
-            # r9700-conv directory is byte-identical (MD5 verified 2026-05-03)
-            # but kept the descriptive suffix from the local CT→AWQ conversion
-            # via scripts/quantize/convert_moe_ct_to_awq.py — repointed here so
-            # launch.sh matches the canonical HF naming convention. Loads as
-            # Qwen3_5MoeForConditionalGeneration with patch 019 applied.
-            # Validator 3/3 short-ctx on 3090 TP=2.
+            # Qwen3.6-35B-A3B (thinking + vision): 256-expert hybrid DeltaNet
+            # + gated attn, 3B active, 262K native context. Loads as
+            # Qwen3_5MoeForConditionalGeneration with patch 019 + patch 030
+            # applied (patch 030 detects pre-sharded w2 at TP>=2 so CT MoE
+            # serves cleanly; without it the loader crashes at narrow).
+            #
+            # 2026-05-09: default switched to mattbucci/Qwen3.6-35B-A3B-AWQ-CT
+            # (compressed-tensors). The CT mirror is the calibration-clean
+            # variant (0/31010 audit-flagged scales) while the native AWQ
+            # has 144 flagged rare-expert findings (evals/awq-audit-2026-05-07.md).
+            # TP=2 / 256K verified 4/4 PASS + decode 30-32 tok/s flat 1K-250K
+            # (benchmarks/qwen3.6-35b-a3b/v0511-tp2-ct-patch030.json), within
+            # 1-3% of native AWQ on the same context grid. Override to native:
+            #   MODEL=$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ \
+            #   QUANT=awq_marlin ./scripts/launch.sh qwen36
             #
             # On TP=1 / 24 GB the default CTX=262K OOMs ("Not enough memory")
             # — use the qwen36-tp1 preset variant below for cold-launch on a
             # single card.
-            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ}"
-            QUANT="${QUANT:-awq_marlin}"
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ-CT}"
+            QUANT="${QUANT:-compressed-tensors}"
             # Force bf16 KV: fp8_e4m3 KV produces garbage on this model via
             # Qwen3_5MoeForConditionalGeneration on Ampere. Env override
             # (KV_DTYPE=X on the command line) still wins.
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             # Cross-team breadcrumb (R9700 commit 6de2ff9): DECODE_STEPS=32 +
             # DeltaNet + thinking crashes scheduler on RDNA4; their fix was
-            # =8. Ampere TP=2 thinking-mode untested at this preset since 2nd
-            # 3090 went offline; if thinking regresses post-return, try =8.
+            # =8. Ampere TP=2 thinking-mode 4/4 PASS at =32 (2026-05-09).
             CTX=262144; MEM=0.85; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
