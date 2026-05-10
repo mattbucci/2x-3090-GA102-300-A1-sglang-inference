@@ -22,7 +22,7 @@ import requests
 DEFAULT_CONTEXTS = [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 196608, 262144]
 
 
-def run_bench(base_url, model, input_len, output_len):
+def run_bench(base_url, model, input_len, output_len, tokenizer=None):
     cmd = [
         sys.executable, "-m", "sglang.bench_serving",
         "--backend", "sglang",
@@ -35,6 +35,8 @@ def run_bench(base_url, model, input_len, output_len):
         "--request-rate", "1",
         "--disable-tqdm",
     ]
+    if tokenizer:
+        cmd += ["--tokenizer", tokenizer]
     try:
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
     except subprocess.TimeoutExpired:
@@ -75,6 +77,11 @@ def main():
     ap.add_argument("--contexts", type=int, nargs="*", default=None,
                     help="Override context list")
     ap.add_argument("--output", default=None)
+    ap.add_argument("--tokenizer", default=None,
+                    help="Tokenizer path. Required when the served model name "
+                         "(--served-model-name on launch.sh) is not a valid HF "
+                         "repo id or local path — bench_serving uses --model to "
+                         "load the tokenizer.")
     args = ap.parse_args()
 
     base = f"http://localhost:{args.port}"
@@ -92,12 +99,12 @@ def main():
 
     print("Warmup (3x 128-in 10-out)...")
     for _ in range(3):
-        run_bench(base, model, 128, 10)
+        run_bench(base, model, 128, 10, tokenizer=args.tokenizer)
 
     results = []
     for ctx in contexts:
         print(f"  ctx={ctx:>6}: ", end="", flush=True)
-        m = run_bench(base, model, ctx, args.output_tokens)
+        m = run_bench(base, model, ctx, args.output_tokens, tokenizer=args.tokenizer)
         if "error" in m:
             print(f"ERROR ({m.get('error')})")
             results.append({"context": ctx, **m})

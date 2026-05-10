@@ -1,0 +1,26 @@
+{
+  "model": "Qwen3.6-35B-A3B AWQ-native TP=2 v0.5.11 triton-attn",
+  "engine": "SGLang v0.5.11 + 16 patches",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-05-09 19:18",
+  "output_tokens": 100,
+  "preset": "qwen36",
+  "preset_path": "hf-mattbucci/Qwen3.6-35B-A3B-AWQ",
+  "quant": "awq_marlin",
+  "attention_backend": "triton (override via EXTRA_ARGS)",
+  "context_sweep": [
+    {"context": 1024,   "ttft_ms": 46.06,   "tpot_ms": 32.27, "tok_per_sec": 31.0},
+    {"context": 16384,  "ttft_ms": 517.69,  "tpot_ms": 31.91, "tok_per_sec": 31.3},
+    {"context": 65536,  "ttft_ms": 2092.37, "tpot_ms": 31.46, "tok_per_sec": 31.8},
+    {"context": 131072, "ttft_ms": 3859.54, "tpot_ms": 32.53, "tok_per_sec": 30.7},
+    {"context": 200000, "ttft_ms": 3856.54, "tpot_ms": 32.65, "tok_per_sec": 30.6},
+    {"context": 250000, "ttft_ms": 3862.78, "tpot_ms": 33.16, "tok_per_sec": 30.2}
+  ],
+  "comparison_with_flashinfer": {
+    "decode_tpot_delta_pct_at_250k": "triton ~2.6% slower TPOT at 250K (33.2 vs 32.3 ms)",
+    "ttft_delta_pct_at_250k": "triton ~84% slower TTFT at 250K (3863 vs 2096 ms)",
+    "verdict": "Both backends flat 30-32 tok/s decode across 1K-250K. Flashinfer wins long-context TTFT decisively. Triton is the safe-default backend for head_dim=256 / FP8 KV edge cases (Gemma 4) but for qwen36 TP=2 / 256K serve flashinfer remains the right choice."
+  },
+  "note": "Long-context decode regression that historically dropped 33 tok/s @ short to 2.6 tok/s @ 250K is closed on v0.5.11 for both backends. tok_per_sec = 1000 / tpot_ms."
+}

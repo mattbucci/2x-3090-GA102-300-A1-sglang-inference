@@ -1,0 +1,21 @@
+{
+  "model": "Qwen3.6-35B-A3B AWQ-native TP=2 v0.5.11 flashinfer",
+  "engine": "SGLang v0.5.11 + 16 patches",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-05-09 19:00",
+  "output_tokens": 100,
+  "preset": "qwen36",
+  "preset_path": "hf-mattbucci/Qwen3.6-35B-A3B-AWQ",
+  "quant": "awq_marlin",
+  "attention_backend": "flashinfer (default)",
+  "context_sweep": [
+    {"context": 1024,   "ttft_ms": 45.37,   "tpot_ms": 31.07, "tok_per_sec": 32.2},
+    {"context": 16384,  "ttft_ms": 436.75,  "tpot_ms": 31.89, "tok_per_sec": 31.4},
+    {"context": 65536,  "ttft_ms": 1274.49, "tpot_ms": 31.33, "tok_per_sec": 31.9},
+    {"context": 131072, "ttft_ms": 2096.22, "tpot_ms": 32.03, "tok_per_sec": 31.2},
+    {"context": 200000, "ttft_ms": 2091.07, "tpot_ms": 32.19, "tok_per_sec": 31.1},
+    {"context": 250000, "ttft_ms": 2095.57, "tpot_ms": 32.32, "tok_per_sec": 30.9}
+  ],
+  "note": "Long-context decode regression that historically dropped 33 tok/s @ short to 2.6 tok/s @ 250K is closed on v0.5.11. Decode is flat 30.9 to 32.2 tok/s across the full 1K to 250K range. tok_per_sec = 1000 / tpot_ms. The 'Output token throughput' field bench_serving reports (4.81 across all contexts) is computed including TTFT and is not the decode rate."
+}
