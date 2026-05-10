@@ -1,0 +1,18 @@
+{
+  "model": "Qwen3-30B REAM AWQ TP=2 v0.5.11",
+  "engine": "SGLang v0.5.11 + 16 patches",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-05-09 19:11",
+  "output_tokens": 100,
+  "preset": "qwen3-ream",
+  "preset_path": "Qwen3-30B-Instruct-2507-REAM-AWQ",
+  "quant": "awq_marlin",
+  "preset_flags": "--disable-piecewise-cuda-graph (baked for TP=1 cold-fit safety; TP=2 retains the bake)",
+  "context_sweep": [
+    {"context": 1024,   "ttft_ms": 86.53,  "tpot_ms": 5.46, "tok_per_sec": 183.2},
+    {"context": 131072, "ttft_ms": 190.93, "tpot_ms": 9.13, "tok_per_sec": 109.5},
+    {"context": 250000, "ttft_ms": 198.03, "tpot_ms": 9.31, "tok_per_sec": 107.4}
+  ],
+  "note": "Reaffirms the 2026-04-18 baseline (long-context-262k.json) on v0.5.11: ~107 tok/s @ 250K, TPOT 9.3 ms. Piecewise CUDA graph currently disabled by the preset bake. tok_per_sec = 1000 / tpot_ms."
+}
