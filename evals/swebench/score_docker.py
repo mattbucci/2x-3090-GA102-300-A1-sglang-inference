@@ -53,13 +53,14 @@ def parse_args():
     p.add_argument("--dataset", default="SWE-bench/SWE-bench_Lite",
                    help="HF dataset id passed to the harness")
     p.add_argument("--split", default="test")
-    p.add_argument("--max-workers", type=int, default=2,
-                   help="Parallel test runs. Default 2 — sized to leave the "
-                        "host comfortably interactive while a rollout is also "
-                        "running. 8 was still enough to crash the system when "
-                        "stacked with rollout image rebuilds and the user's "
-                        "Claude Code (bun) process. 2 keeps peak score memory "
-                        "well under 10 GB.")
+    p.add_argument("--max-workers", type=int, default=1,
+                   help="Parallel test runs. Default 1 — the box hit a kernel "
+                        "BUG (vfs_getattr_nosec page fault) under sustained "
+                        "concurrent docker I/O on 2026-05-10. Single-worker "
+                        "scoring + sequenced (non-concurrent) rollout/score "
+                        "minimizes VFS pressure on a system with the NVIDIA "
+                        "OOT modules + Arch kernel that's been unstable under "
+                        "heavy concurrent fs ops.")
     p.add_argument("--timeout", type=int, default=1800,
                    help="Per-instance test timeout (seconds).")
     p.add_argument("--rewrite-reports", action="store_true",

@@ -169,34 +169,27 @@ run_phase() {
         return 0
     fi
 
-    # Score in BACKGROUND, but flock-serialized across phases so only ONE
-    # scorer runs at a time. The "1 rollout + 1 score concurrent" design
-    # is preserved (Phase N+1's rollout still overlaps Phase N's score),
-    # but Phase N+1's score blocks on the lock until Phase N's score
-    # finishes — preventing the multi-scorer pile-up that OOM'd the box.
+    # Score in FOREGROUND so rollout and score never run concurrently.
+    # An earlier "1 rollout + 1 score" overlap design crashed the host
+    # twice on 2026-05-10 (once with bun OOM cascade, once with a kernel
+    # BUG in vfs_getattr_nosec page fault) under sustained concurrent
+    # docker fs ops + NVIDIA OOT modules. Sequencing rollout/score
+    # roughly doubles wall-clock per phase but eliminates the concurrent
+    # docker-pull / pytest-container / SGLang-inference / bun stacking
+    # that was the trigger.
     #
-    # Worker count: 2. 24 sized peak memory at ~140 MB/container, which
-    # ignored the docker pull+extract spike + GB-class pytest peaks for
-    # sympy/matplotlib instances. 8 was still enough to crash the host
-    # when stacked with rollout image rebuilds + Claude Code (bun); 2
-    # leaves the box comfortably interactive.
-    #
-    # Writes its own PID file so the chain can wait for all scores at the
-    # end (or aggregate_bakeoff.py can detect in-progress runs by checking
-    # whether scores-docker-summary.json exists).
-    echo "  scoring against Docker harness (background, flock-serialized)..."
-    setsid bash -c "
-        flock -x '$LOG_DIR/score.lock' \
-        python '$REPO_DIR/evals/swebench/score_docker.py' \
-            --predictions '$out_dir/predictions.jsonl' \
-            --max-workers '${BAKEOFF_SCORE_WORKERS:-2}' \
-            > '$score_log' 2>&1
-        echo \$? > '$out_dir/.score-rc'
-    " </dev/null >/dev/null 2>&1 &
-    disown
-    local score_pid=$!
-    echo "$score_pid" > "$out_dir/.score-pid"
-    echo "  score PID: $score_pid (log: $score_log)"
+    # Worker count: 1. Docker pytest containers can spike to GB-class
+    # memory on heavy instances (sympy, matplotlib); a single worker
+    # keeps peak fs/memory pressure minimal.
+    echo "  scoring against Docker harness (foreground, sequenced)..."
+    flock -x "$LOG_DIR/score.lock" \
+        python "$REPO_DIR/evals/swebench/score_docker.py" \
+            --predictions "$out_dir/predictions.jsonl" \
+            --max-workers "${BAKEOFF_SCORE_WORKERS:-1}" \
+            > "$score_log" 2>&1
+    local score_rc=$?
+    echo "$score_rc" > "$out_dir/.score-rc"
+    echo "  score finished rc=$score_rc (log: $score_log)"
 }
 
 # --- Main ------------------------------------------------------------------
@@ -226,13 +219,8 @@ done
 stop_server
 
 echo
-echo "All rollouts dispatched. Waiting for in-flight scoring jobs to drain..."
-# Each phase's score runs in background; collect them before exit.
-while pgrep -f "swebench.harness.run_evaluation" > /dev/null; do
-    sleep 30
-done
-echo "All scoring jobs drained at $(date)."
-
+# Scores now run in foreground per phase (no concurrent rollout+score),
+# so by the time we get here there are no backgrounded scores to drain.
 echo
 echo "=================================================="
 echo "Bake-off complete at $(date)"
