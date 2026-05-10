@@ -131,15 +131,16 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
         return envs, inner
 
     if scaffold == "little-coder":
-        # little-coder is built on pi; with --model openai/<served-name> it
-        # reads OPENAI_BASE_URL + OPENAI_API_KEY for the upstream endpoint.
-        # Force the model id to openai/<served-name> regardless of what the
-        # caller passed in --model (they may have used sglang/* for opencode
-        # parity); little-coder doesn't ship an `sglang` provider.
-        oc_model = f"openai/{served_name}"
+        # little-coder wraps pi-ai, which reads provider baseUrls from a
+        # packaged models.json — not from OPENAI_BASE_URL. Dockerfile.rollout
+        # repoints the "llamacpp" provider's baseUrl at our SGLang endpoint,
+        # so we route through llamacpp/<served-name>. pi will warn that the
+        # model id isn't in its known list and fall back to "Using custom
+        # model id" — that warning is benign and the request still reaches
+        # SGLang's OpenAI-compat endpoint.
+        oc_model = f"llamacpp/{served_name}"
         envs = [
-            "--env", "OPENAI_BASE_URL=http://127.0.0.1:23334/v1",
-            "--env", "OPENAI_API_KEY=noop",
+            "--env", "LLAMACPP_API_KEY=noop",
         ]
         inner = (
             f"set -e\n"

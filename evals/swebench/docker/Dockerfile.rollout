@@ -42,6 +42,14 @@ RUN npm install -g \
         opencode-ai@${OPENCODE_VERSION} \
         little-coder@${LITTLE_CODER_VERSION}
 
+# little-coder's pi-ai backend reads provider URLs from models.json — and
+# does NOT honor OPENAI_BASE_URL for the "openai" provider. Repoint the
+# packaged "llamacpp" provider (api=openai-completions) at our SGLang
+# endpoint so `--model llamacpp/<served-name>` reaches the host SGLang
+# server over `--network=host`.
+RUN sed -i 's|http://127.0.0.1:8888/v1|http://127.0.0.1:23334/v1|' \
+    /opt/node/lib/node_modules/little-coder/models.json
+
 RUN mkdir -p /root/.config/opencode
 
 COPY opencode.json /root/.config/opencode/opencode.json
