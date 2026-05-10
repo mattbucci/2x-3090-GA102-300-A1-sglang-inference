@@ -1,0 +1,40 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "sglang": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Local SGLang (host)",
+      "options": {
+        "baseURL": "http://127.0.0.1:23334/v1",
+        "apiKey": "not-needed"
+      },
+      "models": {
+        "coder-reap-25b": {
+          "name": "Qwen3-Coder-REAP-25B-A3B-AWQ",
+          "limit": { "context": 262144, "output": 8192 },
+          "tool_call": true
+        },
+        "coder-30b-eval": {
+          "name": "Qwen3-Coder-30B-A3B-AWQ",
+          "limit": { "context": 262144, "output": 8192 },
+          "tool_call": true
+        },
+        "devstral-24b": {
+          "name": "Devstral-24B-AWQ",
+          "limit": { "context": 65536, "output": 4096 },
+          "tool_call": true
+        },
+        "qwen36-35b": {
+          "name": "Qwen3.6-35B-A3B-AWQ",
+          "limit": { "context": 65536, "output": 8192 },
+          "tool_call": true
+        },
+        "qwen3-ream": {
+          "name": "Qwen3-30B-Instruct-2507-REAM-AWQ",
+          "limit": { "context": 262144, "output": 8192 },
+          "tool_call": true
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+#
+# Per-instance rollout image: SWE-bench eval image + Node + opencode + ripgrep.
+# Built once per instance, baking the testbed conda env from the swebench
+# upstream image and adding the agent harness on top.
+#
+#   FROM swebench/sweb.eval.x86_64.<instance>:latest
+#   docker build -t swebench-rollout/<instance>:latest \
+#       --build-arg BASE=swebench/sweb.eval.x86_64.<instance>:latest \
+#       -f Dockerfile.rollout .
+#
+# The host SGLang server is reachable from inside the container via
+# `--network=host` (127.0.0.1:23334 maps to the host port). opencode.json
+# in this directory wires the `sglang/<preset>` model ids to that endpoint.
+
+ARG BASE
+FROM ${BASE}
+
+USER root
+
+ARG NODE_VERSION=20.18.0
+ARG OPENCODE_VERSION=1.14.25
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl xz-utils ca-certificates ripgrep && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz \
+        | tar -xJ -C /opt && \
+    ln -s /opt/node-v${NODE_VERSION}-linux-x64 /opt/node
+
+ENV PATH=/opt/node/bin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+RUN npm install -g opencode-ai@${OPENCODE_VERSION}
+
+RUN mkdir -p /root/.config/opencode
+
+COPY opencode.json /root/.config/opencode/opencode.json
+
+# /testbed is the conda-activated repo working dir baked by setup_repo.sh +
+# setup_env.sh in the swebench eval image. The rollout entrypoint cd's there,
+# runs opencode, and captures `git diff` as the prediction patch.
+WORKDIR /testbed
