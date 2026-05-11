@@ -17,7 +17,7 @@ R9700 (RDNA4) and M4 (Apple) sister teams ship findings into our repo. Per-day f
 > | `mattbucci/gemma-4-21B-REAP-AWQ` | 80.7% | extractor-broken* | (n/a) | (n/a) |
 > | `coder-reap-25b` | 77.2% | 96.7% | (n/a) | ✓ to 65K |
 >
-> *Gemma 4 HumanEval extractor-broken; codegen-probe STRONG 8/8 is the cleaner signal there. Codegen-probe (`probe_codegen.py`) STRONG 8/8 across 7/7 production presets on v0.5.11; PARTIAL on `qwen3-ream` (generalist, not coder-tuned). Harness: opencode v1.14.25 headless, 256K, scored locally. Resolved-rate where tests actually ran: 88/236 = 37.3%. Artifacts: `evals/swebench/runs/coder-reap-25b-lite/`. Bake-off continues — see Suggested next §F.*
+> *Gemma 4 HumanEval extractor-broken; codegen-probe STRONG 8/8 is the cleaner signal there. Codegen-probe (`probe_codegen.py`) STRONG 8/8 across 7/7 production presets on v0.5.11; PARTIAL on `qwen3-ream` (generalist, not coder-tuned). Harness: opencode v1.14.25 headless, 256K, scored locally. Resolved-rate where tests actually ran: 88/236 = 37.3%. Artifacts: `evals/swebench/runs/coder-reap-25b-lite/`. Bake-off continues — see Suggested next §B.*
 
 Shipped-model history, patch-by-patch narratives, and cross-team learnings live in [`patches/README.md`](patches/README.md). The top-level doc below keeps only current state + open issues + next steps.
 
@@ -42,7 +42,7 @@ Per-iteration narrative + ship histories live in [`patches/README.md`](patches/R
 
 ## Known Issues (open)
 
-- **AWQ scales audit (2026-05-07) — 8 suspicious-class rare-expert under-cal findings.** Affects `qwen36` native (144 flagged) and `qwen35-moe`; CT variant of Qwen3.6-35B-A3B is clean (0/31010). Quality-degraded but serves. Recipe-side fixes in §B. Full report: [`evals/awq-audit-2026-05-07.md`](evals/awq-audit-2026-05-07.md).
+- **AWQ scales audit (2026-05-07) — 8 suspicious-class rare-expert under-cal findings.** Affects `qwen36` native (144 flagged) and `qwen35-moe`; CT variant of Qwen3.6-35B-A3B is clean (0/31010). Quality-degraded but serves. Recipe-side fix tracked by R9700 (`moe_calibrate_all_experts=True`). Full report: [`evals/awq-audit-2026-05-07.md`](evals/awq-audit-2026-05-07.md).
 - **`gemma-4-21b-REAP-AWQ-thinking-vision-v2` — DO NOT USE.** 164 ALL-ZERO scale tensors from an empty `ignore` list. v3b build (regex `ignore`) is the shipping checkpoint at [`mattbucci/gemma-4-21B-REAP-AWQ`](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ).
 - **Qwen3-VL-30B MoE AWQ — SGLang loader broken.** `Qwen3VLMoeForConditionalGeneration` produces gibberish across 4 distinct sources → upstream weight-mapping bug. Narrative in [`patches/README.md`](patches/README.md).
 - **Qwen3.5-27B DeltaNet stuck at 32K.** DeltaNet TP replication forces 19 GB/GPU. Use `qwen3-ream` for long-context DeltaNet workloads.
@@ -51,52 +51,28 @@ Per-iteration narrative + ship histories live in [`patches/README.md`](patches/R
 
 ## Suggested next
 
-Backlog grouped by area. Headline destination: **Docker-harness coding-eval rollouts at 256K / single-user / 1-req-at-a-time** (§F). Closed items live in [patches/README.md](patches/README.md) and `git log`.
+3090 team focus is **evals and serving validation**. Recalibration and in-house model rebuilds live with the [R9700 sister team](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference) — see their Active work for the calibration/REAM/REAP backlog. Cross-stack ship validation status: [`SHIP_VALIDATION_REPORT_2026-05-11.md`](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/blob/main/benchmarks/quality/SHIP_VALIDATION_REPORT_2026-05-11.md).
 
 ### A. Loader patches
 
 - **A1.** Qwen3VLMoe `*ForConditionalGeneration` weight-mapping fix — gibberish across 4 distinct sources, source-independent. Non-coder, lower priority.
 
-### B. Recalibration backlog
-
-Targets the 8 audit-flagged rare-expert findings ([`evals/awq-audit-2026-05-07.md`](evals/awq-audit-2026-05-07.md)). Recipe template: `NUM_CALIBRATION_SAMPLES≥1024`, regex `ignore` for `vision_tower` / `router` / `shared_expert_gate`, `drop_images=False` for multimodal, `force_route_all_experts` for MoE.
-
-- **B1.** Qwen3.6-35B-A3B-AWQ native (l1.exp.214, 144 flagged) — CT clone is already clean; recal would either match or beat.
-- **B2.** Qwen3.6-VL-REAP-26B-A3B-AWQ — better fixed by §C1 (vision-tower-retained REAP from upstream BF16).
-- **B3.** Qwen3-Coder-REAP-25B-A3B-AWQ (l1.exp.22) — SWE-bench Lite leader; quality lift affects bake-off.
-- **B4.** Qwen3-Coder-Next-REAM-AWQ — won't fit at 48 GB, deprioritized.
-
-### C. In-house rebuilds (build-from-scratch rule)
-
-Three shipped models source from 3rd-party prunes — rebuild via `run_ream_qwen3moe.sh` from upstream BF16 keeps quality knobs (vision tower, router, ignore lists) under our control.
-
-- **C1.** Qwen3.6-35B-A3B clean text-only REAP (R9700 task #60) — Samsung SAIL prune with vision tower retained.
-- **C2.** Gemma 4 26B REAM-or-REAP (R9700 task #61) — no in-house pruned variant yet.
-- **C3.** Coder-REAP-25B from upstream BF16 — currently Cerebras prune. Multi-week; keep current ship live until in-house validates.
-
-### D. Cross-team / portability
-
-- **D1.** R9700 v0.5.11 env upgrade — verify long-ctx regression also closes on RDNA4 (Ampere lift: `qwen36` TP=2 went 33→2.6 → flat 31 tok/s @ 250K).
-- **D2.** R9700 cross-validation of `mattbucci/gemma-4-21B-REAP-AWQ` after they port patch 023.
-- **D3.** Devstral-24B-AWQ HF mirror ship at `mattbucci/Devstral-24B-AWQ`. Validate at TP=2 first.
-
-### E. Quality improvements
-
-- **E1.** Gemma 4 vision quality — R9700 `drop_images=False` recal in flight; A/B their CT artifacts on 3090 when they land. Currently keyword-grep PASS but content-degraded ("scattered red pixels" instead of "red circle").
-- **E2.** Audio modality for Gemma 4 — upstream-blocked (Google BF16 base has zero audio_tower keys). Track for future releases.
-
-### F. Coding-eval bake-off — Docker harness, 256K, single-user
+### B. Coding-eval bake-off — Docker harness, 256K, single-user
 
 Bake-off runs detached via `systemd-run --user --scope`. Score runs in foreground per phase at 1 worker — no concurrent rollout+score (see Cooling and power profile for why).
 
-- **F1.** 5×3 matrix (dense first, then MoE) × 3 scaffolds (opencode, little-coder, claw-code). Configured in [`evals/swebench/bake_off.sh`](evals/swebench/bake_off.sh) PHASES.
-- **F2.** Diagnose+fix little-coder pipeline (currently 0% resolve due to scaffold misconfig).
-- **F3.** SWE-bench Verified (500-task) on top 1-2 finalists from F1 — final headline number.
+- **B1.** 5×3 matrix (dense first, then MoE) × 3 scaffolds (opencode, little-coder, claw-code). Configured in [`evals/swebench/bake_off.sh`](evals/swebench/bake_off.sh) PHASES.
+- **B2.** Diagnose+fix little-coder pipeline (currently 0% resolve due to scaffold misconfig).
+- **B3.** SWE-bench Verified (500-task) on top 1-2 finalists from B1 — final headline number.
 
-### G. Performance / optimization (post-bake-off)
+### C. Cross-team / portability
 
-- **G1.** `qwen3-ream` + `coder-30b` at TP=2 with piecewise CUDA graph re-enabled — current presets bake `--disable-piecewise-cuda-graph` for TP=1 awq_marlin MoE protection; test if conditional-on-`$TP` lifts the headline (107 tok/s @ 250K and 180 tok/s @ 16K respectively today).
-- **G2.** Multi-attention-backend Gemma 4 A/B at TP=2 — currently triton-attn forced (head_dim=256 + Ampere FP8 incompat). Revisit when v0.5.12+ lands.
+- **C1.** Devstral-24B-AWQ HF mirror ship at `mattbucci/Devstral-24B-AWQ`. Validate at TP=2 first.
+
+### D. Performance / optimization (post-bake-off)
+
+- **D1.** `qwen3-ream` + `coder-30b` at TP=2 with piecewise CUDA graph re-enabled — current presets bake `--disable-piecewise-cuda-graph`; test if conditional-on-`$TP` lifts the headline (107 tok/s @ 250K and 180 tok/s @ 16K respectively today).
+- **D2.** Multi-attention-backend Gemma 4 A/B at TP=2 — currently triton-attn forced (head_dim=256 + Ampere FP8 incompat). Revisit when v0.5.12+ lands.
 
 ## Quick Start
 
@@ -160,11 +136,11 @@ Single-user tok/s measured at the max-context value in the table. All numbers ar
 | **Qwen3-VL-32B Instruct** | Dense (VL) | **131K** | **40** | 25 ms | `qwen3-vl-32b` | R9700 self-cal at `mattbucci/Qwen3-VL-32B-AWQ`. TP=2: 68 → 50 → 40 tok/s @ 1K/65K/131K, 3/3 PASS. |
 | **Devstral-24B AWQ (long)** | Dense | **217K** | **50** | 19.9 ms | `devstral-long` | TP=2 / 217K, basic PASS, decode 59 → 50 tok/s @ 1K/200K. Vision OOMs at MEM=0.97 (preset bakes `--skip-server-warmup`). Text-only path clean. |
 | Devstral-24B AWQ | Dense | 131K | 56 | 17.9 ms | `devstral` | TP=2 only — same Dense 24B prealloc constraint. |
-| Coder-REAP-25B AWQ-Marlin | MoE (103 exp) | **262K** | **109** | 9.2 ms | `coder-reap-25b` | TP=2 / 256K, 183 → 109 tok/s @ 1K/250K. SWE-bench Lite: 29.3% on v1 host harness; v2 Docker queued (§F2). |
+| Coder-REAP-25B AWQ-Marlin | MoE (103 exp) | **262K** | **109** | 9.2 ms | `coder-reap-25b` | TP=2 / 256K, 183 → 109 tok/s @ 1K/250K. SWE-bench Lite: 29.3% on v1 host harness; v2 Docker matrix in flight (§B1). |
 | Coder-REAP-25B W4A16 | MoE (103 exp) | 131K | 46 | 22 ms | `coder-reap` | Auto-round W4A16 build of the same Cerebras REAP source. |
-| Coder-30B AWQ Marlin | MoE (128 exp) | 16K | **180** | 5.5 ms | `coder-30b` | TP=2 / 16K, 187 → 180 tok/s @ 1K/16K. SWE-bench Lite v2: 300/300 predictions ready for scoring (§F1). |
+| Coder-30B AWQ Marlin | MoE (128 exp) | 16K | **180** | 5.5 ms | `coder-30b` | TP=2 / 16K, 187 → 180 tok/s @ 1K/16K. |
 | Qwen3.5-28B MoE REAP | DeltaNet+MoE (205 exp) | 262K | **30** | 32.7 ms | `qwen35-moe` | TP=2 / 262K, decode flat 30.5 tok/s across 1K-250K, 4/4 PASS. R9700 cross-validated 4/4 on RDNA4. Cerebras REAP base + `balanced_thinking_vision` recal (333 vision tensors retained). |
-| Gemma 4 31B Dense | Dense | 16K | 22 | ~50 ms | `gemma4-31b` | basic+thinking real; vision validator-passes-but-degraded ("scattered red pixels" — see §E1 recal). |
+| Gemma 4 31B Dense | Dense | 16K | 22 | ~50 ms | `gemma4-31b` | basic+thinking real; vision validator-passes-but-degraded ("scattered red pixels"). R9700 recal in flight. |
 | Gemma 4 26B MoE | MoE (103 exp) | 16K | 22 | ~50 ms | `gemma4` | basic+thinking real; vision content-aware on v0.5.11 (`'a solid red circle with a black outline'`) — earlier "scattered pixels" output was the v0.5.10 SGLang serving gap. |
 | Gemma 4 21B REAP AWQ | MoE (128 exp) | 4K | — | — | — | [`mattbucci/gemma-4-21B-REAP-AWQ`](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ). Audit clean. v2 build is a calibration disaster — see Known Issues. |
 
