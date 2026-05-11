@@ -7,7 +7,7 @@
 ./scripts/launch.sh devstral             # Devstral-24B AWQ
 ./scripts/launch.sh coder-30b            # Coder-30B MoE AWQ
 ./scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ
-./scripts/launch.sh qwen35               # Qwen3.5-27B AWQ
+./scripts/launch.sh qwen36-dense         # Qwen3.6-27B Dense AWQ
 
 # Override defaults
 ./scripts/launch.sh devstral --context-length 16384 --port 8000

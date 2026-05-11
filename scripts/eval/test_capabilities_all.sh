@@ -38,17 +38,13 @@ mkdir -p "$(dirname "$RESULTS")"
 
 MODELS=("$@")
 if [ ${#MODELS[@]} -eq 0 ]; then
-    # Default: TP=1 / 24 GB compatible AWQ presets that boot cold under the
-    # global --context-length 8192 --mem-fraction 0.85 the sweep forces below.
+    # Default: TP=2 / 256K presets. Both 3090s online — TP=1 cold-fit testing
+    # is no longer the validation path; use the matrix bake-off
+    # (evals/swebench/bake_off.sh) for capability validation under load.
     # Excludes:
-    #   devstral / devstral-* — OOM at AWQ create_weights step regardless of
-    #     context (see Known Issues in README); fix needs upstream loader change.
-    #   qwen36 / qwen35 — preset defaults exceed TP=1 / 24 GB cold; use the
-    #     `qwen36-tp1` / `qwen35-tp1` variants below instead.
+    #   devstral / devstral-* — kept for matrix work; sweep target subset only.
     #   qwen3-vl-32b — 21 GB weights need MEM=0.93 (sweep uses 0.85).
-    #   coder-reap-25b — 256K-tuned preset; sweep override forces 8K which
-    #     is fine but coder-reap (W4A16 build) gives same eval result faster.
-    MODELS=(qwen3-ream coder-30b coder-reap qwen35-tp1 qwen36-tp1 gemma4 gemma4-31b)
+    MODELS=(qwen3-ream coder-30b coder-reap qwen36-dense qwen36 gemma4 gemma4-31b)
 fi
 
 # Auto-skip decisions (text-only / non-thinking / image-only) now live in
@@ -56,7 +52,8 @@ fi
 # TEXT_ONLY_MODELS, and IMAGE_ONLY_MODELS frozensets, so the validator is the
 # single source of truth and there's no risk of these lists drifting between
 # orchestrator and single-invocation runs (which is what happened on
-# 2026-05-01 when qwen35 was repointed to a multimodal default).
+# 2026-05-01 when the qwen36-dense preset — then called qwen35 — was
+# repointed to a multimodal default).
 
 wait_ready() {
     # SGLang surfaces /v1/models early (during warmup) but /health stays 503

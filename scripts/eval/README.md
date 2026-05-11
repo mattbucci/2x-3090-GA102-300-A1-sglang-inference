@@ -44,7 +44,7 @@ regressions** that the validator's loose keyword grep misses.
 ```bash
 # Run against any served model:
 python scripts/eval/probe_thinking.py  --port 23334 --model gemma4
-python scripts/eval/probe_vision.py    --port 23334 --model qwen35-tp1
+python scripts/eval/probe_vision.py    --port 23334 --model qwen36-dense-tp1
 python scripts/eval/probe_codegen.py   --port 23334 --model coder-reap-25b
 ```
 

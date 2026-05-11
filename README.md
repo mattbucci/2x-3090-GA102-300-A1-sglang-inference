@@ -18,7 +18,6 @@ R9700 (RDNA4) and M4 (Apple) sister teams ship findings into our repo. Per-day f
 > | `qwen3-vl-32b` | **91.2%** | 83.3% | **39.8%** | ✓ to 4K |
 > | `mattbucci/gemma-4-21B-REAP-AWQ` | 80.7% | extractor-broken* | (n/a) | (n/a) |
 > | `coder-reap-25b` | 77.2% | 96.7% | (n/a) | ✓ to 65K |
-> | `qwen36-tp1` (CT default) | 73.7% | 80.0% | (partial) | (partial) |
 >
 > *Gemma 4 HumanEval extractor-broken; codegen-probe STRONG 8/8 is the cleaner signal there. Codegen-probe (`probe_codegen.py`) STRONG 8/8 across 7/7 production presets on v0.5.11; PARTIAL on `qwen3-ream` (generalist, not coder-tuned). Harness: opencode v1.14.25 headless, 256K, scored locally. Resolved-rate where tests actually ran: 88/236 = 37.3%. Artifacts: `evals/swebench/runs/coder-reap-25b-lite/`. Bake-off continues — see Suggested next §F.*
 
@@ -34,24 +33,12 @@ Shipped-model history, patch-by-patch narratives, and cross-team learnings live 
 
 Reference model: **Qwen3-30B REAM AWQ — 262K @ 107 tok/s** (9.3 ms TPOT, fresh prefill, **measured at TP=2** — 2026-05-09 v0.5.11 sweep at `benchmarks/qwen3-30b-ream/long-context-v0511.json`; matches the 2026-04-18 baseline). For thinking + vision at 256K on the same GPU budget: **Qwen3.6-35B-A3B AWQ-native — 31 tok/s flat across 1K-250K** (TPOT 31.1-32.3 ms, 2026-05-09 v0.5.11 TP=2 sweep at `benchmarks/qwen3.6-35b-a3b/v0511-tp2-flashinfer.json`). The historical decode regression that dropped 33 → 2.6 tok/s @ 250K closed on v0.5.11.
 
-### Cold-launch matrix (TP=1 / 24 GB single-card)
+### Active presets (TP=2 / 256K)
 
-All `✅` rows are 4/4 PASS at TP=1 from the 2026-05-09 v0.5.11 sweep (`benchmarks/quality/capability_check.json`).
-
-| Preset | TP=1 cold | Note |
-|--------|:---------:|------|
-| `qwen35` | ❌ | OOM at preset CTX=32K. Use `qwen35-tp1` (CTX=4K). |
-| `qwen35-tp1` | ✅ | Qwen3.6-27B-AWQ R9700 recal. CTX=4K. |
-| `qwen36` | ❌ | OOM at preset CTX=262K. Use `qwen36-tp1` for single-card; `qwen36` is for TP=2 / 256K. |
-| `qwen36-tp1` | ✅ | CT default. CTX=2K, MAX_MAMBA_CACHE=4. |
-| `qwen3-ream` | ✅ | Bakes `--disable-piecewise-cuda-graph` (TP=1 awq_marlin MoE protection). |
-| `coder-30b` | ✅ | Same piecewise bake as `qwen3-ream`. STRONG 8/8 codegen-probe. |
-| `coder-reap` | ✅ | Text-only (W4A16 auto-round). Bakes `--disable-piecewise-cuda-graph` for the cold-launch detokenizer hang. STRONG 8/8 codegen-probe. |
-| `qwen3-vl-32b` | ✅ | R9700 self-cal `mattbucci/Qwen3-VL-32B-AWQ`. CTX=4K @ TP=1; TP=2 unlocks 131K. |
-| `gemma4-31b` | ⚠️ | Validator-passes but vision content-degraded ("scattered red and black pixels" instead of "red circle"). Same Gemma-4 calibration limitation as 26B; recipe-side recal in §B / §E1. |
-| `gemma4` (26B MoE) | ✅ | v0.5.11 + patches 023/024/025/026/028. Content-aware vision/video as of 2026-05-09. |
-| `qwen3-vl-moe` | ❌ | SGLang `Qwen3VLMoeForConditionalGeneration` loader broken; see Known Issues. |
-| `devstral` / `devstral-long` | ❌ | TP=2 only — Dense 24B AWQ create_weights prealloc OOMs on TP=1. |
+Both 3090s are online and all matrix work runs at TP=2 / 256K. Per-preset launch
+notes (chat template, reasoning parser, piecewise-CUDA-graph disables) live in
+the case comments inside [`scripts/launch.sh`](scripts/launch.sh). The model
+table further down has measured tok/s + TPOT for each.
 
 Per-iteration narrative + ship histories live in [`patches/README.md`](patches/README.md) (per-patch entries + "Shipped model history" + "Open investigations"). Capability-sweep details are in `benchmarks/quality/capability_check.json`.
 
@@ -125,13 +112,14 @@ Launched detached via `systemd-run --user --scope` so the cgroup persists across
 ```bash
 ./scripts/setup.sh                          # clone SGLang v0.5.11, apply patches, create conda env
 
-# TP=1 / 24 GB friendly (single-card cold-fit baseline):
-./scripts/launch.sh qwen3-ream              # fastest 256K — reference model (MoE active params fit cold)
-./scripts/launch.sh qwen35-tp1              # Qwen3.6-27B-AWQ R9700 recal — TP=1 cold-fit variant (CTX=4K), 4/4 PASS (2026-05-07 strict sweep)
-./scripts/launch.sh coder-30b               # Coder-30B MoE — peak throughput
-./scripts/launch.sh coder-reap              # Coder-REAP-25B — SWE-bench Lite leader (29.3%)
-./scripts/launch.sh qwen3-vl-32b            # Qwen3-VL-32B Dense — TP=1 defaults boot cold (4K/MAX_RUNNING=1)
-./scripts/launch.sh qwen36-tp1              # Qwen3.6-35B-A3B AWQ-native — TP=1 cold-fit variant (CTX=2K), 4/4 PASS (2026-05-07 strict sweep)
+# TP=2 / 256K presets (matrix standard):
+./scripts/launch.sh qwen3-ream              # 262K @ 107 tok/s — REAM merged MoE, 96 experts
+./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B MoE CT — 256K @ 31 tok/s, thinking+vision
+./scripts/launch.sh qwen36-dense            # Qwen3.6-27B Dense AWQ — DeltaNet+attn
+./scripts/launch.sh coder-30b               # Coder-30B-A3B MoE — peak throughput
+./scripts/launch.sh coder-reap-25b          # Coder-REAP-25B MoE AWQ-Marlin — 256K @ 109 tok/s
+./scripts/launch.sh qwen3-vl-32b            # Qwen3-VL-32B Dense — 131K @ TP=2
+./scripts/launch.sh gemma4-31b              # Gemma 4 31B Dense AutoRound-AWQ
 
 # TP=2:
 ./scripts/launch.sh devstral-long           # Devstral-24B at 217K — TP=2 only (Dense AWQ create_weights prealloc OOMs on TP=1)
@@ -177,7 +165,7 @@ Single-user tok/s measured at the max-context value in the table. All numbers ar
 |-------|------|:-------:|:----------:|:----:|:------:|:-------|
 | **Qwen3-30B REAM AWQ** | MoE (96 exp) | **262K** | **107** | 9.3 ms | `qwen3-ream` | TP=2 / 262K, 183 tok/s @ 1K → 107 tok/s @ 250K. Receipt: `benchmarks/qwen3-30b-ream/long-context-v0511.json`. |
 | **Qwen3.6-35B-A3B AWQ-CT** | DeltaNet+MoE (256 exp, VL) | **262K** | **31** | 32 ms | `qwen36` | TP=2 / 256K, decode flat 30.3-31.5 tok/s across 1K-250K, 4/4 PASS via patch 030. CT is calibration-clean (0/31010 vs native's 144 flagged). Native override: `MODEL=$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ QUANT=awq_marlin`. Receipt: `benchmarks/qwen3.6-35b-a3b/v0511-tp2-ct-patch030.json`. |
-| **Qwen3.6-27B AWQ** | DeltaNet+attn (VL) | **131K** | **21** | 47 ms | `qwen35` | R9700 self-cal at `mattbucci/Qwen3.6-27B-AWQ`. 4/4 PASS at `qwen35-tp1` TP=1 / 4K. |
+| **Qwen3.6-27B AWQ** | Dense + DeltaNet | **131K** | **21** | 47 ms | `qwen36-dense` | R9700 self-cal at `mattbucci/Qwen3.6-27B-AWQ`. 4/4 PASS at TP=2; bakeoff matrix validation pending. |
 | **Qwen3-VL-32B Instruct** | Dense (VL) | **131K** | **40** | 25 ms | `qwen3-vl-32b` | R9700 self-cal at `mattbucci/Qwen3-VL-32B-AWQ`. TP=2: 68 → 50 → 40 tok/s @ 1K/65K/131K, 3/3 PASS. TP=1 / 4K cold-fit also passes. |
 | **Devstral-24B AWQ (long)** | Dense | **217K** | **50** | 19.9 ms | `devstral-long` | TP=2 / 217K, basic PASS, decode 59 → 50 tok/s @ 1K/200K. Vision OOMs at MEM=0.97 (preset bakes `--skip-server-warmup`). Text-only path clean. |
 | Devstral-24B AWQ | Dense | 131K | 56 | 17.9 ms | `devstral` | TP=2 only — same Dense 24B prealloc constraint. |

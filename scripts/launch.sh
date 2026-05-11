@@ -8,16 +8,27 @@
 #   ./scripts/launch.sh gemma4 --port 8000
 #   MODEL=/path/to/weights ./scripts/launch.sh devstral
 #
-# Models:
-#   qwen3-ream     Qwen3-30B REAM AWQ (262K, 197 tok/s, fastest)
-#   devstral       Devstral-24B AWQ (131K, best all-round)
-#   coder-30b      Qwen3-Coder-30B MoE AWQ (16K)
-#   qwen35-moe     Qwen3.5-28B MoE REAP CT (262K, DeltaNet)
-#   qwen35         Qwen3.5-27B DeltaNet AWQ (32K)
-#   qwen36         Qwen3.6-35B-A3B GPTQ-Int4 (262K, DeltaNet + vision, thinking default)
-#   gemma4         Gemma 4 26B MoE AWQ (4K)
-#   gemma4-31b     Gemma 4 31B Dense AWQ (4K)
-#   devstral-long  Devstral-24B AWQ at 217K KV ceiling (single-user long-context)
+# Models (all TP=2 / 48 GB; matrix work runs --context-length 262144 --max-running 1):
+#
+# Dense:
+#   devstral / devstral-32k / devstral-long  Devstral-24B AWQ (131K / 32K / 217K)
+#   qwen35-dense                              Qwen3.5-27B Dense AWQ
+#   qwen36-dense / qwen36-27b                 Qwen3.6-27B Dense AWQ (native)
+#   qwen36-dense-ct                           Qwen3.6-27B Dense compressed-tensors
+#   gemma4-31b                                Gemma 4 31B Dense AutoRound-AWQ
+#   qwen3-vl-32b                              Qwen3-VL-32B Dense (VL)
+#
+# MoE (R9700 team is actively recalibrating MoE checkpoints):
+#   qwen3-ream                                Qwen3-30B-Instruct-2507-REAM (96 exp)
+#   coder-30b / coder-30b-eval                Qwen3-Coder-30B-A3B (128 exp)
+#   coder-reap / coder-reap-25b               Qwen3-Coder-REAP-25B-A3B (103 exp)
+#   coder-30b-ream                            Qwen3-Coder-30B-A3B-REAM (96 exp)
+#   qwen35-moe                                Qwen3.5-28B-A3B-REAP (205 exp)
+#   qwen36                                    Qwen3.6-35B-A3B (256 exp, thinking+vision)
+#   qwen36-ream                               Qwen3.6-REAM-A3B (192 exp)
+#   qwen36-vl-reap                            Qwen3.6-VL-REAP-26B-A3B (192 exp, VL)
+#   gemma4                                    Gemma 4 26B MoE (103 exp)
+#   qwen3-vl-moe                              Qwen3-VL-30B-A3B (VL MoE)
 #
 # Note: 80B+ models (coder-next, glm45-air) do NOT fit in 48GB VRAM.
 
@@ -156,6 +167,18 @@ apply_preset() {
             CUDA_GRAPH="--cuda-graph-max-bs 1"
             EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
             ;;
+        coder-30b-ream)
+            # Qwen3-Coder-30B-A3B-REAM-AWQ — Samsung SAIL REAM merge of the
+            # Coder-30B-A3B MoE down to 96 experts (~23B params). Native AWQ
+            # format. Distinct from `coder-reap-25b` (Cerebras prune of the
+            # same coder base) and from `coder-30b` (full 128-expert base
+            # in awq_marlin) and `coder-30b-eval` (CT format of base).
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-REAM-AWQ}"
+            QUANT="awq_marlin"
+            CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
+            CUDA_GRAPH="--cuda-graph-max-bs 1"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
+            ;;
         gemma4)
             # Gemma 4 26B MoE AWQ — repointed 2026-05-09 to canonical HF mirror
             # post patch 023 (gemma4-moe-mlp-no-quant-config) detection upgrade,
@@ -269,7 +292,28 @@ apply_preset() {
             MAX_RUNNING="${_ENV_MAX_RUNNING:-1}"
             CHUNKED="${_ENV_CHUNKED:-4096}"
             ;;
-        qwen35)
+        qwen36-vl-reap)
+            # Qwen3.6-VL-REAP-26B-A3B-AWQ — Qwen3.6 VL (vision-language) with
+            # Cerebras REAP prune to ~26B params (192 experts). Native AWQ.
+            # Multimodal serving path same as qwen3-vl-moe; --enable-multimodal
+            # required for image inputs.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-VL-REAP-26B-A3B-AWQ}"
+            QUANT="awq_marlin"
+            CTX=262144; MEM=0.85; MAX_RUNNING=4; CHUNKED=8192; DECODE_STEPS=32
+            MAMBA_CACHE="--max-mamba-cache-size 8"
+            REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
+            CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            ;;
+        qwen36-dense|qwen36-27b)
+            # Qwen3.6-27B Dense AWQ. Canonical preset name is qwen36-dense
+            # (alias: qwen36-27b). The earlier `qwen35` alias was removed
+            # because it served a Qwen3.6-family model — misleading.
+            # Qwen3.5 and Qwen3.6 are distinct generations: each has its own
+            # dense and MoE variants. The Qwen3.5-27B Dense AWQ is available
+            # at $MODELS_DIR/hf-mattbucci/Qwen3.5-27B-AWQ-4bit-calibrated;
+            # add a separate `qwen35-dense` preset if it ever ships.
+            #
             # Repointed 2026-05-01 (second time): now defaults to
             # mattbucci/Qwen3.6-27B-AWQ (R9700's `balanced_thinking_text` recal
             # 2026-05-01, 3/3 PASS basic+thinking+vision on Ampere TP=1 / 4K).
@@ -290,6 +334,29 @@ apply_preset() {
             CTX=32768; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
+            REASONING="--reasoning-parser qwen3"
+            ;;
+        qwen36-dense-ct)
+            # CT-format variant of qwen36-dense (Qwen3.6-27B Dense, compressed-
+            # tensors quant instead of native AWQ). Same Qwen3.6 base, different
+            # layout — useful for A/B against the AWQ variant since some
+            # patches behave differently across quant formats.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-27B-AWQ-CT}"
+            QUANT="compressed-tensors"
+            CTX=32768; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
+            MAMBA_CACHE="--max-mamba-cache-size 8"
+            CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
+            REASONING="--reasoning-parser qwen3"
+            ;;
+        qwen35-dense)
+            # Qwen3.5-27B Dense AWQ (R9700 self-cal at hf-mattbucci/Qwen3.5-
+            # 27B-AWQ-4bit-calibrated). Older sibling of qwen36-dense —
+            # Qwen3.5 family, not Qwen3.6. Vision regressed on the
+            # validator-patch (basic+thinking only); fine for SWE-bench since
+            # codegen is text-only.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.5-27B-AWQ-4bit-calibrated}"
+            CTX=32768; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
+            MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
             ;;
         qwen35-moe)
@@ -361,41 +428,17 @@ apply_preset() {
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
             ;;
-        qwen36-tp1)
-            # TP=1 / 24 GB cold-fit variant of qwen36. Default points at the
-            # CT-format build because the native AWQ variant has 144 flagged
-            # rare-expert scales (2026-05-07 audit) while CT is calibration-
-            # clean (0/31010 flagged). Patch 029 lands the shared_expert_gate
-            # CT dequant on Ampere; verified 4/4 PASS at TP=1 / 4K (2026-05-08
-            # 38.1s) + cleanly under v0.5.11 stack (2026-05-09 sweep).
-            # CTX=2048 / MAX_RUNNING=1 keeps cold-launch in the 24 GB budget.
-            # Override to the native AWQ via `MODEL=$MODELS_DIR/hf-mattbucci/
-            # Qwen3.6-35B-A3B-AWQ QUANT=awq_marlin ./scripts/launch.sh
-            # qwen36-tp1` for A/B comparison.
-            #
-            # max-mamba-cache-size must be >= 4 even with MAX_RUNNING=1 because
-            # SGLang's `_resolve_max_num_reqs` divides cache size by a ratio
-            # (2x for overlap-schedule + ping-pong) — `1 // 2 = 0` zeros out
-            # max_running and trips the assertion. Each mamba cache entry is
-            # ~0.12 GB so cache=4 costs ~0.48 GB.
-            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ-CT}"
-            QUANT="${QUANT:-compressed-tensors}"
-            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
-            CTX="${_ENV_CTX:-2048}"; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
-            MAMBA_CACHE="--max-mamba-cache-size 4"
+        qwen36-ream)
+            # Qwen3.6-REAM-A3B-AWQ — Qwen3.6 base with Samsung SAIL REAM
+            # merge to 192 experts. Distinct from `qwen3-ream` (which is
+            # Qwen3-30B-Instruct-2507-REAM, an older Qwen3 base with REAM
+            # applied) and from `qwen36` (full 256-expert Qwen3.6 MoE).
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-REAM-A3B-AWQ}"
+            QUANT="awq_marlin"
+            CTX=262144; MEM=0.85; MAX_RUNNING=4; CHUNKED=8192; DECODE_STEPS=32
+            MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
-            ;;
-        qwen35-tp1)
-            # TP=1 / 24 GB cold-fit variant of qwen35 (Qwen3.6-27B Dense AWQ).
-            # The default qwen35 preset uses CTX=32K / MAX_RUNNING=8 which
-            # overshoots the 24 GB budget after 17.5 GB weights at MEM=0.80
-            # leave only 5.74 GB for the KV pool. Validator 3/3 PASS at the
-            # CTX=4K / MAX_RUNNING=1 trim below.
-            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-27B-AWQ}"
-            CTX="${_ENV_CTX:-4096}"; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
-            CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
-            REASONING="--reasoning-parser qwen3"
             ;;
         *)
             echo "Unknown model: $1"
