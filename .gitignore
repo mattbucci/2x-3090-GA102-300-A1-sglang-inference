@@ -1,10 +1,20 @@
 # Cloned and built by setup.sh / scripts/build_claw.sh
 components/sglang/
-components/sglang.v0.5.11-prepped/
+components/sglang.v0.5.*-prepped/
+components/sglang.v0.5.*-backup-*/
 components/claw-code/
+components/llmcompressor/
 
 # Built scaffold binary — regenerate via scripts/build_claw.sh
 evals/swebench/docker/claw
+
+# Bake-off rollouts + per-phase scoring artifacts (large, reproducible)
+evals/swebench/runs/
+
+# SWE-bench harness per-instance test outputs + stray score reports the
+# harness drops in CWD when --report_dir isn't honored
+logs/
+sglang__*.json
 
 # Python
 __pycache__/
@@ -16,4 +26,3 @@ build/
 # GPTQ calibration temp files
 gptqmodel_offload/
 gptq_log_*.log
-components/llmcompressor/
