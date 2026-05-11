@@ -104,7 +104,7 @@ Three shipped models source from 3rd-party prunes — rebuild via `run_ream_qwen
 
 ### F. Coding-eval bake-off — Docker harness, 256K, single-user
 
-> **Running now (2026-05-10):** `bake_off.sh` phases p1–p10 detached via `setsid`. Score workers tightened to 8 (was 24) and scorers `flock`-serialized so only one runs at a time across phases — preserves the "1 rollout + 1 score concurrent" design. Tail `/tmp/loop-bakeoff-logs/bakeoff.log`.
+Launched detached via `systemd-run --user --scope` so the cgroup persists across shell death. Score runs in foreground per phase (no concurrent rollout + score) at 1 worker — the box would not stay up under the prior "1 rollout + 1 score concurrent" design plus the user's Claude Code (bun) process. SGLang for `coder-30b-eval` / `coder-reap-25b` / `qwen36` also runs with `--disable-overlap-schedule --disable-radix-cache` after a TP1 worker SIGSEGV'd at decode #115k of a long claw-code rollout.
 
 - **F1.** ✅ Coder-30B v2 — 300/300 predictions on disk (294 rc=0, 13 EMPTY), `evals/swebench/runs/coder-30b-docker-v2/`. Driver rebuilt 2026-05-09 (commit `d11bde7`). Next action: score against the official SWE-bench Docker harness.
 - **F2.** Coder-REAP-25B v2 — Docker rollout + Docker scoring; compares cleanly against F1 on the same driver.
@@ -150,6 +150,24 @@ Use `temperature >= 0.3` on Qwen3 family models — greedy decode at `temp=0` tr
 - NVIDIA driver 595+ / CUDA 13.x
 - Miniforge3 or Conda
 - ~150 GB disk for models
+
+### Kernel and driver
+
+- `linux-zen` kernel (Arch `extra/linux-zen`), not stock `linux` — the stock Arch kernel + the open NVIDIA module hard-locked the host repeatedly under sustained TP=2 / 256K bake-off load on this rig. The zen patchset's scheduler and IO tuning eliminated the recurrence; same major version (6.19.11), so all other config carries over.
+- `nvidia-open-dkms` (not `nvidia-open`) — DKMS rebuilds the module for every kernel that has headers installed, so the same NVIDIA driver version covers both `linux` and `linux-zen`.
+
+### Cooling and power profile (load-bearing)
+
+Two systemd units hold a cooling profile that's required for the bake-off to survive multi-hour runs on this chassis. The DDR5 SPD sensors crossed `ALARM HIGH` (55 °C) under stock cooling + default 350 W per 3090; that correlated with random Python heap corruption / kernel BUGs / hard resets. The profile below stays inside spec under sustained TP=2 inference.
+
+| Unit | Action |
+|------|--------|
+| `gpu-cooling.service` | Boot oneshot. Enables NVIDIA persistence mode, sets each 3090's power limit to **260 W** (down from default 350 W), pushes Corsair Commander Core XT case fans to 100% via `liquidctl`, enables manual GPU fan control, seeds 75 % fan floor. |
+| `gpu-fan-curve.service` | Long-running daemon. Polls each GPU's temperature every 4 s. Fan speed = 75 % below 60 °C, linear ramp to 100 % between 60 °C and 80 °C, 100 % at 80 °C+. Re-asserts manual fan control once on start. |
+
+Scripts live at `/usr/local/bin/gpu-cooling.sh` and `/usr/local/bin/gpu-fan-curve.sh`. Enable with `systemctl enable --now gpu-cooling.service gpu-fan-curve.service`. Verify after a reboot with `nvidia-smi --query-gpu=power.limit,fan.speed,temperature.gpu --format=csv` (expect 260 W limit, ~75 % fans idle).
+
+Ampere consumer cards do not expose VRAM junction temperature, so the GPU-core temp shown by `nvidia-smi` is an underestimate of the real thermal pressure. 260 W picked to leave inference throughput headroom while still cutting peak heat ~25 %.
 
 ## Model Support
 
