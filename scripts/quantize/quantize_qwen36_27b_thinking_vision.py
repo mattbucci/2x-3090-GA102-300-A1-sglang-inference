@@ -27,8 +27,8 @@ Everything else matches the Qwen3VL script: `thinking_vision` recipe,
 Usage:
     conda activate quant
     CUDA_VISIBLE_DEVICES="" \
-        BASE_MODEL=/home/letsrtfm/AI/models/Qwen3.6-27B-BF16 \
-        OUTPUT_DIR=/home/letsrtfm/AI/models/Qwen3.6-27B-CT-thinking-vision \
+        BASE_MODEL=$MODELS_DIR/Qwen3.6-27B-BF16 \
+        OUTPUT_DIR=$MODELS_DIR/Qwen3.6-27B-CT-thinking-vision \
         python scripts/quantize/quantize_qwen36_27b_thinking_vision.py
 """
 from __future__ import annotations
@@ -50,8 +50,8 @@ from transformers import AutoModelForImageTextToText, AutoProcessor, AutoTokeniz
 from llmcompressor.modifiers.quantization import GPTQModifier
 from llmcompressor import oneshot
 
-BASE_MODEL = os.environ.get("BASE_MODEL", "/home/letsrtfm/AI/models/Qwen3.6-27B-BF16")
 MODELS_DIR = os.environ.get("MODELS_DIR", os.path.expanduser("~/AI/models"))
+BASE_MODEL = os.environ.get("BASE_MODEL", f"{MODELS_DIR}/Qwen3.6-27B-BF16")
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", f"{MODELS_DIR}/Qwen3.6-27B-CT-thinking-vision")
 
 NUM_CALIBRATION_SAMPLES = int(os.environ.get("NUM_SAMPLES", "256"))

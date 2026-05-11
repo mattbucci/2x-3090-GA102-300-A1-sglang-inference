@@ -34,8 +34,8 @@ from transformers import AutoModelForImageTextToText, AutoProcessor, AutoTokeniz
 from llmcompressor.modifiers.quantization import GPTQModifier
 from llmcompressor import oneshot
 
-BASE_MODEL = os.environ.get("BASE_MODEL", "/home/letsrtfm/AI/models/Qwen3-VL-32B-Instruct-BF16")
 MODELS_DIR = os.environ.get("MODELS_DIR", os.path.expanduser("~/AI/models"))
+BASE_MODEL = os.environ.get("BASE_MODEL", f"{MODELS_DIR}/Qwen3-VL-32B-Instruct-BF16")
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", f"{MODELS_DIR}/Qwen3-VL-32B-AWQ-CT-thinking-vision")
 
 NUM_CALIBRATION_SAMPLES = int(os.environ.get("NUM_SAMPLES", "256"))
