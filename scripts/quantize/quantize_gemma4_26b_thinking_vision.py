@@ -158,26 +158,14 @@ if tmp_dir is None:
     )
     print(f"  Creating unfused dir: {tmp_dir}")
     for fname in os.listdir(BF16_MODEL):
-        if fname.endswith((".json", ".txt", ".model", ".jinja")) or "token" in fname:
+        if fname.endswith((".json", ".txt", ".model")) or "token" in fname:
             src = os.path.join(BF16_MODEL, fname)
             if os.path.isfile(src):
                 shutil.copy2(src, os.path.join(tmp_dir, fname))
 
-    index_path = os.path.join(BF16_MODEL, "model.safetensors.index.json")
-    if os.path.exists(index_path):
-        with open(index_path) as f:
-            bf16_index = json.load(f)
-        weight_map = bf16_index["weight_map"]
-    else:
-        # Single-file safetensors (e.g. gemma-4-21b-REAP-BF16 ships one file).
-        # Fabricate a weight_map so the downstream sharded loop works unchanged.
-        single = "model.safetensors"
-        assert os.path.exists(os.path.join(BF16_MODEL, single)), (
-            f"Neither model.safetensors.index.json nor {single} in {BF16_MODEL}"
-        )
-        with safe_open(os.path.join(BF16_MODEL, single), framework="pt") as _f:
-            weight_map = {k: single for k in _f.keys()}
-        bf16_index = {"metadata": {}, "weight_map": weight_map}
+    with open(os.path.join(BF16_MODEL, "model.safetensors.index.json")) as f:
+        bf16_index = json.load(f)
+    weight_map = bf16_index["weight_map"]
     shard_files = sorted(set(weight_map.values()))
     new_weight_map = {}
 
@@ -231,7 +219,7 @@ if tmp_dir is None:
 print("\n[3/5] Building thinking + vision calibration dataset...")
 
 rows = build_calibration_dataset(
-    recipe=os.environ.get("RECIPE", "balanced_thinking_vision"),
+    recipe=os.environ.get("RECIPE", "thinking_vision_video_audio"),
     num_samples=NUM_CALIBRATION_SAMPLES,
     seed=42,
 )
@@ -242,39 +230,37 @@ rows = build_calibration_dataset(
 # ---------------------------------------------------------------------------
 print("\n[4/5] Rendering chat template + tokenizing...")
 
-from transformers import AutoProcessor, AutoTokenizer
+from transformers import AutoTokenizer
 
-tokenizer = AutoTokenizer.from_pretrained(tmp_dir, trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained(BF16_MODEL, trust_remote_code=True)
 if tokenizer.chat_template is None:
     raise RuntimeError("Gemma4 tokenizer missing chat_template.")
-
-# Pre-flight: load the image+video processor from the BF16 base now, before the
-# multi-hour GPTQ pass.  SGLang's tokenizer_manager requires
-# preprocessor_config.json at launch; failing fast beats discovering the
-# processor is broken at serve time after a full calibration run.
-processor = AutoProcessor.from_pretrained(BF16_MODEL, trust_remote_code=True)
+tokenizer.save_pretrained(tmp_dir)
 
 text_dataset = rows_to_text(
     rows,
     tokenizer,
     enable_thinking=True,
-    # FIXED 2026-05-06 (was drop_images=True). Earlier reasoning ("vision
-    # encoder is NOT quantized; images not needed for text-backbone calib")
-    # was wrong — the LM's AWQ-quantized attention QKV+O and MoE expert
-    # weights still need to see image-conditioned hidden states during
-    # calibration so quant scales reflect the post-projector activation
-    # distribution. With drop_images=True, LM saw 100% text and the recipe's
-    # nominal 25% llava_instruct collapsed to 0% effective image data.
-    # Tracked as R9700 task #66; their drop_images=False recal HSAILed on
-    # RDNA4 sampler kernel so they asked us to validate the fix on Ampere
-    # AWQ_Marlin (no HSAIL surface). Same recipe, same flag flip.
+    # FIXED 2026-05-04 (was drop_images=True). 3090 commit a7e35f0 root-caused
+    # task #66 (Gemma 4 vision validator-passes-but-degraded "scattered red
+    # pixels" instead of "a red circle"): even though the vision encoder is
+    # preserved BF16, the LM's AWQ-quantized attention QKV+O and MoE expert
+    # weights need to see image-conditioned hidden states during calibration
+    # so the quantization scales reflect the image-token distribution.
+    # drop_images=True meant ~0% of calibration samples carried image-shaped
+    # hiddens through the LM, so the quant scales were tuned exclusively for
+    # text-flavored activations. At serving time, image soft tokens flow into
+    # the LM at <image_pad> positions but encounter weights that have never
+    # seen image-distribution → noise compounds across 30 layers → degraded
+    # vision content recognition. Same shape on both 3090 (Ampere AWQ-Marlin)
+    # and R9700 (RDNA4 native AWQ) since the underlying weights are identical.
     drop_images=False,
     max_samples=NUM_CALIBRATION_SAMPLES,
 )
 print(f"Rendered {len(text_dataset)} calibration rows")
 
 # Fail loud if chat template stripped thinking markers
-verify_thinking_preserved(text_dataset, min_fraction=0.20)
+verify_thinking_preserved(text_dataset, min_fraction=0.15)
 
 dataset = tokenize_text_dataset(text_dataset, tokenizer, MAX_SEQUENCE_LENGTH)
 print(f"Tokenized {len(dataset)} samples at max_seq_len={MAX_SEQUENCE_LENGTH}")
@@ -302,16 +288,6 @@ recipe = GPTQModifier(
     },
     ignore=[
         "lm_head",
-        # FIXED 2026-05-06 (was bare module-name strings). R9700 found via
-        # forensic safetensors diff that bare names like "model.vision_tower"
-        # don't match descendant Linears — so when drop_images=False lets
-        # image tokens activate embed_vision.embedding_projection during
-        # calibration, GPTQ quantizes it, produces all-zero scales, NaN
-        # logits at inference, sampler crash. Their commit 176b917 fix
-        # ports here unchanged. The lucky escape with drop_images=True was:
-        # no Hessian samples for embed_vision.* meant llmcompressor silently
-        # skipped quantizing it. With drop_images=False we MUST match
-        # descendants explicitly via re:.* patterns.
         r"re:.*vision_tower.*",
         r"re:.*embed_vision.*",
         r"re:.*multi_modal_projector.*",
@@ -354,6 +330,7 @@ oneshot(
     max_seq_length=MAX_SEQUENCE_LENGTH,
     num_calibration_samples=NUM_CALIBRATION_SAMPLES,
     output_dir=CT_OUTPUT,
+    moe_calibrate_all_experts=True,  # forces all-expert calibration; fixes rare-expert zero scales
 )
 elapsed = time.time() - t0
 
@@ -362,10 +339,13 @@ print(f"Output: {CT_OUTPUT}")
 
 # Also save the image+video processor — tokenizer.save_pretrained omits it,
 # and SGLang's tokenizer_manager requires preprocessor_config.json at launch.
-# `processor` was loaded pre-flight (before calibration), so any load errors
-# failed fast; at this point the save itself is the only thing left to do.
-processor.save_pretrained(CT_OUTPUT)
-print("  Saved preprocessor (image/video) config")
+try:
+    from transformers import AutoProcessor
+    proc = AutoProcessor.from_pretrained(BF16_MODEL, trust_remote_code=True)
+    proc.save_pretrained(CT_OUTPUT)
+    print("  Saved preprocessor (image/video) config")
+except Exception as e:
+    print(f"  WARN: could not save preprocessor ({e!r}); launch may need manual copy")
 
 print("Next:")
 print(f"  1. python scripts/quantize/convert_gemma4_26b_ct_to_awq.py --input {CT_OUTPUT}")

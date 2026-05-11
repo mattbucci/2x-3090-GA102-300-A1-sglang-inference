@@ -21,13 +21,32 @@ import os
 import sys
 import time
 
+# 2026-05-08: Apply Qwen3MoeExperts unfusing patch BEFORE any from_pretrained.
+# Necessary if the source model is Qwen3MoeForCausalLM (Coder-30B-A3B-style);
+# no-op for Qwen3_5MoeForConditionalGeneration which already uses ModuleList.
+# Without it, transformers 5.x silently drops per-expert checkpoint keys as
+# UNEXPECTED and random-inits fused 3D params, garbaging GPTQ saliency.
+# See memory project_ream_qwen3moe_root_cause.md.
+_REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PATCH_DIR = os.path.join(_REPO_DIR, "patches")
+if os.path.isfile(os.path.join(_PATCH_DIR, "qwen3moe_unfused_experts.py")):
+    sys.path.insert(0, _PATCH_DIR)
+    try:
+        import qwen3moe_unfused_experts  # noqa: F401
+        print("[quantize_qwen35_moe_ream] Qwen3MoeExperts → Qwen3MoeExpertsUnfused (per-expert ModuleList)")
+    except ImportError as e:
+        print(f"[quantize_qwen35_moe_ream] WARNING: failed to apply unfused patch: {e}")
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", default=None,
                     help="BF16 model path (default: ~/AI/models/Qwen3.5-35B-A3B-REAM-BF16)")
 parser.add_argument("--output", default=None,
                     help="Output dir (default: <model>-AWQ-CT)")
 parser.add_argument("--samples", type=int, default=256,
-                    help="Calibration samples")
+                    help="Calibration samples (default 256). Cross-team audit "
+                         "2026-05-08 found rare-expert under-cal at 256 on "
+                         "Qwen3MoE-family — bump to 1024+ for cleaner scales "
+                         "if calibration time + RAM budget allow.")
 parser.add_argument("--seq-len", type=int, default=512,
                     help="Max sequence length for calibration")
 parser.add_argument("--offload-dir", default=None,
@@ -102,20 +121,17 @@ ignore_list = [
 if num_experts > 0:
     # MoE router gates must stay full precision for routing accuracy
     ignore_list.append("re:.*mlp\\.gate$")
-    # shared_expert_gate is the (1, H) scalar gate that decides whether to
-    # route through the shared expert. qwen2_moe.py constructs it as plain
-    # torch.nn.Linear with no quant_config (GPU path); SGLang's NVIDIA CT
-    # loader can't accept the resulting weight_packed/scale/shape triplet
-    # — pre-3090-patch-029 the model served multilingual gibberish (see
-    # patches/README.md narrative for patch 029 + audit doc 2026-05-07).
-    # Excluding from calibration → BF16 weight in checkpoint → both NVIDIA
-    # CT and ROCm AWQ loaders consume cleanly without serving-side patches.
-    # Cross-team port from R9700 commit 202e674. Also covers the broader
-    # shared_expert.{up,gate,down}_proj MLP linears (separate dim, but
-    # also too small/scalar to benefit from group-AWQ quant).
+    # 2026-05-08 cross-team request from 3090: exclude shared_expert_gate
+    # (Qwen3MoE family has a (1, H) scalar gate per layer that's too narrow
+    # for AWQ group-quantization and trips SGLang's NVIDIA CT loader if
+    # exported as quantized triplet — the loader expects nn.Linear `weight`
+    # only, not `weight_packed/scale/shape`. Exporting BF16 here lets both
+    # NVIDIA CT and ROCm AWQ loaders consume the same checkpoint cleanly.
     ignore_list.append("re:.*shared_expert_gate$")
+    # Also exclude shared_expert {gate,up,down}_proj (broader, narrower than
+    # the gate above — separate Linears at the same module level on Qwen3.5MoE).
     ignore_list.append("re:.*shared_expert\\.[a-z_]+_proj$")
-    print(f"  Added MoE router + shared_expert gate exclusions")
+    print(f"  Added MoE router gate + shared_expert exclusions")
 
 print(f"  Ignore list: {ignore_list}")
 
@@ -161,13 +177,15 @@ oneshot(
     max_seq_length=args.seq_len,
     num_calibration_samples=args.samples,
     processor=tokenizer,
+    moe_calibrate_all_experts=True,  # forces all-expert calibration; fixes rare-expert zero scales
 )
 elapsed = time.time() - t0
 print(f"\nGPTQ completed in {elapsed / 3600:.1f} hours ({elapsed:.0f}s)")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 print(f"\nSaving to {OUTPUT_DIR}...")
-model.save_pretrained(OUTPUT_DIR, save_compressed=True)
+# max_shard_size="2GB" — default 5GB OOMs the safetensors write on 62GB hosts at 32B+ params.
+model.save_pretrained(OUTPUT_DIR, save_compressed=True, max_shard_size="2GB")
 tokenizer.save_pretrained(OUTPUT_DIR)
 print(f"Done! Compressed-tensors model saved to {OUTPUT_DIR}")
 print(f"Next: python scripts/quantize/convert_moe_ct_to_awq.py {OUTPUT_DIR} {MODELS_DIR}/{model_name}-AWQ")

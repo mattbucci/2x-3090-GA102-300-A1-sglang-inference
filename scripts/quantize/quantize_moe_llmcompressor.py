@@ -23,10 +23,37 @@ import os
 import sys
 import time
 
+# 2026-05-08: Apply Qwen3MoeExperts unfusing patch BEFORE any from_pretrained.
+# transformers 5.x ships Qwen3MoeExperts with fused 3D Parameters; loading a
+# checkpoint with per-expert keys silently drops them as UNEXPECTED, fused
+# params init random, GPTQ saliency runs on garbage. The patch swaps in
+# Qwen3MoeExpertsUnfused (ModuleList[Qwen3MoeMLP]) which matches the
+# checkpoint shape so per-expert weights load cleanly.
+#
+# No-op for non-Qwen3MoE models — the patch only touches the
+# transformers.models.qwen3_moe.modeling_qwen3_moe namespace.
+# See memory project_ream_qwen3moe_root_cause.md.
+_REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PATCH_DIR = os.path.join(_REPO_DIR, "patches")
+if os.path.isfile(os.path.join(_PATCH_DIR, "qwen3moe_unfused_experts.py")):
+    sys.path.insert(0, _PATCH_DIR)
+    try:
+        import qwen3moe_unfused_experts  # noqa: F401
+        print("[quantize_moe_llmcompressor] Qwen3MoeExperts → Qwen3MoeExpertsUnfused (per-expert ModuleList)")
+    except ImportError as e:
+        print(f"[quantize_moe_llmcompressor] WARNING: failed to apply unfused patch: {e}")
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from expert_utilization import ExpertUtilizationTracker
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", required=True, help="HF model ID or local path")
 parser.add_argument("--output", default=None, help="Output dir (default: auto)")
-parser.add_argument("--samples", type=int, default=256, help="Calibration samples")
+parser.add_argument("--samples", type=int, default=256,
+                    help="Calibration samples (default 256). Cross-team audit "
+                         "2026-05-08 found rare-expert under-cal at 256 on "
+                         "Qwen3MoE-family — bump to 1024+ for cleaner scales "
+                         "if calibration time + RAM budget allow.")
 parser.add_argument("--seq-len", type=int, default=512, help="Max sequence length")
 parser.add_argument("--offload-dir", default=None,
                     help="Disk offload dir for models that don't fit in RAM")
@@ -104,15 +131,17 @@ if num_experts > 0:
     print(f"  MoE model with {num_experts} experts")
     # Router gates should be excluded — they're critical for routing
     ignore_list.append("re:.*mlp\\.gate$")
-    # shared_expert_gate (Qwen3.5/3.6MoE) is plain nn.Linear in qwen2_moe.py
-    # GPU path; CT-format quantized triplet has nowhere to land at serve
-    # time → 120 missing-param warnings + multilingual gibberish on NVIDIA.
-    # Excluding here ships BF16 weight that both stacks load cleanly.
-    # Cross-team port from R9700 commit 202e674; see 3090 patch 029 for
-    # the loader-side bridge that also fixes already-shipped CT builds.
+    # 2026-05-08 cross-team request from 3090: exclude shared_expert_gate
+    # (Qwen3MoE family has a (1, H) scalar gate per layer that's too narrow
+    # for AWQ group-quantization and trips SGLang's NVIDIA CT loader if
+    # exported as quantized triplet — the loader expects nn.Linear `weight`
+    # only, not `weight_packed/scale/shape`. Exporting BF16 here lets both
+    # NVIDIA CT and ROCm AWQ loaders consume the same checkpoint cleanly.
     ignore_list.append("re:.*shared_expert_gate$")
+    # Also exclude shared_expert {gate,up,down}_proj — Qwen3.5MoE has separate
+    # Linears at the same module level alongside shared_expert_gate.
     ignore_list.append("re:.*shared_expert\\.[a-z_]+_proj$")
-    print("  Added MoE router + shared_expert gate exclusions")
+    print("  Added MoE router gate + shared_expert exclusions")
 
 print(f"  Ignore list: {ignore_list}")
 
@@ -149,9 +178,15 @@ recipe = GPTQModifier(
     offload_hessians=True,
 )
 
+top_k = getattr(model.config, "num_experts_per_tok", 8)
+tracker = ExpertUtilizationTracker(model, top_k=top_k) if num_experts > 0 else None
+
 print(f"\nStarting GPTQ calibration + quantization...")
 print(f"This will take several hours on CPU.")
 t0 = time.time()
+# moe_calibrate_all_experts=True forces every token through every expert during
+# calibration regardless of router output — fixes rare-routed expert under-cal.
+# See feedback_moe_quant_best_practices.md + project_ship_validation_2026_05_11.md.
 oneshot(
     model=model,
     dataset=ds,
@@ -159,14 +194,24 @@ oneshot(
     max_seq_length=args.seq_len,
     num_calibration_samples=args.samples,
     processor=tokenizer,
+    moe_calibrate_all_experts=True,
 )
 elapsed = time.time() - t0
 print(f"\nGPTQ quantization completed in {elapsed / 3600:.1f} hours ({elapsed:.0f}s)")
 
 # Save
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+if tracker is not None:
+    print("\n" + tracker.summary())
+    tracker.dump_json(os.path.join(OUTPUT_DIR, "expert_utilization.json"))
+    if tracker.has_blocking_issues():
+        print("*** WARNING: at least one expert saw ZERO routing decisions during calibration. ***")
+        print("*** AWQ scales for these experts will be degenerate. Inspect expert_utilization.json ***")
+    tracker.remove()
+
 print(f"\nSaving to {OUTPUT_DIR}...")
-model.save_pretrained(OUTPUT_DIR, save_compressed=True)
+# max_shard_size="2GB" — default 5GB OOMs the safetensors write on 62GB hosts at 32B+ params.
+model.save_pretrained(OUTPUT_DIR, save_compressed=True, max_shard_size="2GB")
 tokenizer.save_pretrained(OUTPUT_DIR)
 print(f"Done! Compressed-tensors model saved to {OUTPUT_DIR}")
 print(f"Next: python scripts/convert_moe_ct_to_awq.py {OUTPUT_DIR} /data/models/{model_name}-AWQ")

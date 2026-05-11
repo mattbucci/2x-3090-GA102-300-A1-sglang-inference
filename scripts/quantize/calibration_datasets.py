@@ -287,12 +287,11 @@ RECIPE_BALANCED_THINKING_VISION = {
     # Balanced thinking + non-thinking + vision (Qwen3.5/3.6 family with
     # `enable_thinking` runtime toggle).  Existing `thinking_vision` recipe
     # is 70% thinking-tagged / 30% non-thinking — fine for thinking-default
-    # workloads but starves the model of non-thinking traces, contributing
-    # to the `</think>\nX\n</think>…` repetition loop M4 + 3090 audited on
+    # workloads but starves the model of non-thinking traces, contributing to
+    # the `</think>\nX\n</think>…` repetition loop M4 + 3090 audited on
     # Qwen3.5-27B / Qwen3-30B-MoE / Qwen3-32B (validator confirms with
-    # `enable_thinking=True` on the AWQ uploads). This recipe rebalances
+    # `enable_thinking=True` on the AWQ uploads).  This recipe rebalances
     # to ~40/60 thinking/non-thinking so both modes see real activations.
-    # Ported from R9700 2026-04-30.
     "am_thinking": 0.30,        # explicit thinking traces (terminated </think>)
     "llava_instruct": 0.25,     # vision Q&A (no thinking tags)
     "ultrachat": 0.25,          # plain chat (no thinking tags)
@@ -306,9 +305,8 @@ RECIPE_BALANCED_THINKING_TEXT = {
     # Text-only counterpart to balanced_thinking_vision — for models without
     # a vision tower (Qwen3.5-27B dense+DeltaNet, Qwen3.5-35B MoE).  Existing
     # `thinking_text` recipe is 50/25/25 across am_thinking/numina/ultrachat
-    # ≈ 75% thinking-tagged, same starvation problem. This one rebalances
+    # ≈ 75% thinking-tagged, same starvation problem.  This one rebalances
     # to ~40/60 thinking/non-thinking with all-text data.
-    # Ported from R9700 2026-04-30.
     "am_thinking": 0.30,        # explicit thinking traces (terminated </think>)
     "ultrachat": 0.35,          # plain chat (no thinking tags) — dominant non-thinking
     "numina_math": 0.15,        # math reasoning (mixed thinking)
