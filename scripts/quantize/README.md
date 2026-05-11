@@ -1,205 +1,76 @@
-# Quantization Pipeline
+# Quantization Scripts
 
-All models use **INT4 quantized** weights on SGLang. Pipeline:
+All models use **AWQ 4-bit** format on SGLang. The pipeline is:
 
 ```
-BF16 model → GPTQ calibration (llmcompressor, quant env) → compressed-tensors format
+BF16 model → GPTQ calibration (llmcompressor, quant env) → compressed-tensors → CT→AWQ conversion → native AWQ
 ```
 
-SGLang loads compressed-tensors directly with `--quantization compressed-tensors`.
-For optimized Marlin kernels, an optional CT→AWQ conversion step can be added, but
-has known quality issues for some models (see Gemma 4 notes in README).
+**CRITICAL: Use a separate conda env for calibration.** See `rules-for-agents.md` for setup.
 
-## Environment Setup
+## Active recipes
 
-**CRITICAL: Use a separate conda env.** llmcompressor conflicts with sglang deps.
+One recipe per model family. Override `BASE_MODEL` / `OUTPUT_DIR` / `NUM_SAMPLES` via env vars
+to run the same recipe over canonical / REAM-pruned / REAP-pruned variants.
 
-```bash
-conda create -n quant python=3.12 -y
-conda activate quant
-pip install llmcompressor transformers compressed-tensors accelerate datasets
+| Recipe | Model family | Arch | Notes |
+|--------|-------------|------|-------|
+| `quantize_coder30b_code_thinking.py` | Qwen3-Coder-30B (canonical/REAM/REAP) | Qwen3MoE | code+thinking corpus; unfused-experts patch + ExpertUtilizationTracker + `moe_calibrate_all_experts=True` |
+| `quantize_qwen35_moe_ream.py` | Qwen3.5/3.6 MoE REAM/REAP | Qwen3_5MoE + DeltaNet | argparse-driven; --model / --offload-dir / --samples |
+| `quantize_qwen36_thinking_vision.py` | Qwen3.6-35B-A3B canonical + Qwen3.6 family | Qwen3_5MoE + DeltaNet + vision | balanced_thinking_vision corpus |
+| `quantize_qwen3vl_thinking_vision.py` | Qwen3-VL-32B canonical | Qwen3VL Dense (no DeltaNet) | balanced_thinking_vision corpus |
+| `quantize_qwen35_thinking_aware.py` | Qwen3.5-27B canonical | Dense + DeltaNet | thinking_text corpus |
+| `quantize_devstral_code_vision.py` | Devstral-24B canonical | Mistral3 Dense + vision | code_vision corpus |
+| `quantize_gemma4_26b_thinking_vision.py` | Gemma-4-26B canonical | Gemma4MoE + vision | balanced_thinking_vision corpus; unfused-experts wrapper |
+| `quantize_gemma4_31b_llmcompressor.py` | Gemma-4-31B canonical | Gemma4 Dense | balanced_thinking_vision corpus; max_shard_size=2GB |
+| `quantize_moe_llmcompressor.py` | **Generic MoE** | any | ad-hoc fallback with --model / --gpu / --offload-dir |
 
-# Or install dev versions for latest model support:
-pip install git+https://github.com/vllm-project/llm-compressor.git --no-deps
-pip install git+https://github.com/neuralmagic/compressed-tensors.git --no-deps
-```
+All active recipes use:
+- `calibration_datasets.build_calibration_dataset(...)` for the corpus mix
+- `ExpertUtilizationTracker` (MoE) to dump per-expert routing counts as a ship-gate
+- `moe_calibrate_all_experts=True` on `oneshot(...)` (MoE) to force every token through every expert
+- `max_shard_size="2GB"` on `save_pretrained` (≥24B Dense; CLAUDE.md feedback_calib_save_oom)
+- `AutoProcessor.save_pretrained` for multimodal models (preserves image+video processor config)
 
-Always drop filesystem caches before calibration:
-```bash
-echo 3 | sudo tee /proc/sys/vm/drop_caches
-```
+Wrapped pipelines (shell):
 
-## GPTQModifier API Reference
+| Script | Pipeline |
+|--------|----------|
+| `quantize_gemma4_31b_llmcompressor.sh` | calibrate → CT → AWQ |
+| `quantize_qwen35_moe_ream.sh` | calibrate → CT → AWQ |
+| `run_ream_qwen3moe.sh` | REAM/REAP merger (Samsung SAIL `merge.py`) with unfused-experts patch |
+| `run_full_pipeline.sh` | calibrate → CT→AWQ → merge vision → launch → validate (per preset) |
+| `run_all_calibrations.sh` | queue of recals across active models |
+| `run_calibration_queue.sh` | sequential queue runner |
 
-Source: [github.com/vllm-project/llm-compressor](https://github.com/vllm-project/llm-compressor)
+## CT → AWQ Conversion
 
-### Basic usage (preset scheme)
+Each converter handles model-specific weight naming and layout.
 
-```python
-from llmcompressor.modifiers.quantization import GPTQModifier
-from llmcompressor import oneshot
+| Script | Model | Special handling |
+|--------|-------|------------------|
+| `convert_devstral_ct_to_awq.py` | Devstral | Vision tower + multi-modal projector (FP16) |
+| `convert_qwen35_ct_to_awq.py` | Qwen3.5/3.6 | DeltaNet/SSM layers kept BF16 |
+| `convert_gemma4_ct_to_awq.py` | Gemma 4 MoE | Expert naming regex, router dequant |
+| `convert_gemma4_26b_ct_to_awq.py` | Gemma 4 26B | Per-expert AWQ + vision splice |
+| `convert_gemma4_31b_ct_to_awq.py` | Gemma 4 31B Dense | CT→AWQ, skips vision tower |
+| `convert_moe_ct_to_awq.py` | **Generic MoE** | CLI args: `src_dir`, `dst_dir`, `--group-size` |
+| `convert_gptq_to_awq.py` | Any GPTQ | Repack to AWQ when starting from GPTQ output |
 
-recipe = GPTQModifier(
-    targets="Linear",          # What to quantize
-    scheme="W4A16",            # Preset: 4-bit weights, 16-bit activations (group_size=128)
-    ignore=["lm_head"],        # Skip these modules
-    offload_hessians=True,     # Keep hessians on CPU to save VRAM
-)
+## MoE Expert Pruning (REAM/REAP)
 
-oneshot(
-    model=model,
-    dataset=ds,
-    recipe=recipe,
-    max_seq_length=512,
-    num_calibration_samples=256,
-    processor=tokenizer,
-)
+See [REAM.md](REAM.md) for full documentation on shrinking MoE models by reducing expert count.
 
-model.save_pretrained(output_dir, save_compressed=True)
-```
+## Post-Processing
 
-### Custom group_size (config_groups)
-
-When `group_size=128` doesn't divide evenly (e.g., Gemma 4 moe_intermediate_size=704):
-
-```python
-from compressed_tensors.quantization import QuantizationArgs, QuantizationScheme
-
-recipe = GPTQModifier(
-    ignore=["lm_head"],
-    config_groups={
-        "group_0": QuantizationScheme(
-            targets=["Linear"],
-            weights=QuantizationArgs(
-                num_bits=4, type="int", symmetric=True,
-                strategy="group", group_size=32,  # 704 % 32 = 0
-            ),
-        ),
-    },
-    offload_hessians=True,
-)
-```
-
-### Ignore patterns
-
-Supports exact names and regex:
-
-```python
-ignore = [
-    "lm_head",              # Exact: output head
-    "re:.*in_proj_a$",      # Regex: DeltaNet alpha gates (dim 48)
-    "re:.*in_proj_b$",      # Regex: DeltaNet beta gates (dim 48)
-    "re:.*mlp.gate$",       # Regex: MoE router gates (sensitive)
-    "re:visual.*",          # Regex: vision encoder
-]
-```
-
-## Model-Specific Recipes
-
-### Dense model (Devstral-24B)
-
-Standard — all Linear layers quantized.
-
-```python
-recipe = GPTQModifier(targets="Linear", scheme="W4A16", ignore=["lm_head"],
-                      offload_hessians=True)
-```
-
-### Pure MoE (Qwen3-Coder-30B, Gemma 4 26B)
-
-Same as dense, but for Gemma 4 use group_size=32 because moe_intermediate_size=704
-is not divisible by 128.
-
-```python
-# Qwen3 MoE (group_size=128 works)
-recipe = GPTQModifier(targets="Linear", scheme="W4A16", ignore=["lm_head"],
-                      offload_hessians=True)
-
-# Gemma 4 MoE (needs group_size=32)
-recipe = GPTQModifier(
-    ignore=["lm_head"],
-    config_groups={
-        "group_0": QuantizationScheme(
-            targets=["Linear"],
-            weights=QuantizationArgs(num_bits=4, type="int", symmetric=True,
-                                    strategy="group", group_size=32),
-        ),
-    },
-    offload_hessians=True,
-)
-```
-
-### DeltaNet hybrid (Qwen3.5-27B)
-
-Exclude DeltaNet gate layers (dim=48, tiny, keep in BF16):
-
-```python
-recipe = GPTQModifier(
-    targets="Linear",
-    scheme="W4A16",
-    ignore=[
-        "lm_head",
-        "re:.*in_proj_b$",   # DeltaNet beta gate (dim 48)
-        "re:.*in_proj_a$",   # DeltaNet alpha gate (dim 48)
-    ],
-    offload_hessians=True,
-)
-```
-
-## Running Calibration
-
-All calibration runs on **CPU only** (`CUDA_VISIBLE_DEVICES=""`).
-
-```bash
-conda activate quant
-echo 3 | sudo tee /proc/sys/vm/drop_caches
-
-# Dense / MoE
-CUDA_VISIBLE_DEVICES="" python scripts/quantize/quantize_gemma4_reap.py
-
-# DeltaNet hybrid
-CUDA_VISIBLE_DEVICES="" python scripts/quantize/quantize_qwen35_llmcompressor.py
-```
-
-**Expected time**: ~4-6 hours for 27B model on CPU (92GB RAM).
-
-**Expected RAM**: ~50-60GB for 27B BF16 model + hessians.
-
-## Output Format
-
-`save_pretrained(save_compressed=True)` produces compressed-tensors format:
-
-- `weight_packed`: int32 with packed 4-bit values
-- `weight_scale`: per-group scales
-- `weight_zero_point`: per-group zero points (if asymmetric)
-- `weight_g_idx`: column→group mapping (if using actorder=GROUP)
-
-SGLang loads this directly with `--quantization compressed-tensors`.
-
-## Optional: CT → AWQ Conversion
-
-For SGLang's AWQ Marlin kernels (faster decode), convert compressed-tensors to native AWQ:
-
-```bash
-python scripts/quantize/convert_qwen35_ct_to_awq.py
-```
-
-**WARNING**: CT→AWQ conversion has known quality issues for Gemma 4 (cosine similarity
-drops on large output dimensions). Use compressed-tensors directly when possible.
-
-## Scripts
-
-| Script | Model | group_size | Notes |
-|--------|-------|:----------:|-------|
-| `quantize_qwen35_llmcompressor.py/sh` | Qwen3.5-27B | 128 | Skips DeltaNet layers |
-| `quantize_devstral_llmcompressor.py/sh` | Devstral-24B | 128 | Dense, skips vision |
-| `quantize_gemma4_reap.py` | Gemma 4 21B REAP | 32 | MoE, 704 not div by 128 |
-| `quantize_ream_qwen3.py` | REAM'd Qwen3 | 128 | Pure MoE |
-| `quantize_moe_llmcompressor.py` | Generic MoE | 128 | Template |
-| `convert_qwen35_ct_to_awq.py` | Qwen3.5 CT→AWQ | — | Optional Marlin conversion |
-| `convert_devstral_ct_to_awq.py` | Devstral CT→AWQ | — | Optional Marlin conversion |
-| `convert_moe_ct_to_awq.py` | Generic MoE CT→AWQ | — | Template |
-
-## MoE Expert Compression (REAM/REAP)
-
-See [REAM.md](REAM.md) for reducing expert count to fit in 48GB VRAM.
+| Script | Purpose |
+|--------|---------|
+| `fix_gemma4_awq_checkpoint.py` | Fix expert naming, dequant router to BF16, clamp scales |
+| `fix_shared_expert_bf16_to_awq.py` | Promote BF16 shared_expert to AWQ if calibration left it BF16 |
+| `merge_vision_weights.py` | Splice vision tower from BF16 base back into a text-only-calibrated AWQ |
+| `flatten_qwen36_config.py` | Normalize Qwen3.6 config.json for SGLang loader compatibility |
+| `audit_shared_expert.py` | Spot-check shared_expert quantization state across a model |
+| `create_gemma4_hybrid_awq.py` | Create hybrid BF16+AWQ checkpoint |
+| `expert_utilization.py` | `ExpertUtilizationTracker` — hook MoE routers during calibration |
+| `calibration_datasets.py` | Shared corpus builder: `code_thinking`, `balanced_thinking_vision`, etc. |
+| `upload_repo_per_file.py` | HF upload fallback when single-commit upload stalls (>30 GB) |
