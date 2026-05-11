@@ -125,7 +125,7 @@ def main():
     # Save
     all_results = {
         "model": "Qwen3.5-27B-AWQ-DeltaNet",
-        "engine": "SGLang v0.5.10 + patches",
+        "engine": "SGLang v0.5.11 + patches",
         "hardware": "2x RTX 3090 TP=2",
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "output_tokens": args.output_tokens,

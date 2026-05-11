@@ -1,17 +1,11 @@
 #!/bin/bash
 # SGLang setup for 2x RTX 3090
 #
-# Clones SGLang v0.5.11 and applies 13 local patches in patches/*.patch
-# NOTE: v0.5.11 requires torch 2.11 + sglang-kernel 0.4.2 ABI. Patches were
-# rebased + verified clean on v0.5.11 (commit 1655e46) but the dev rig env
-# is still on torch 2.9.1 + sglang-kernel 0.4.1 — keeping v0.5.10 source
-# active at components/sglang/ until full env upgrade is committed. The
-# v0.5.11-patched source is preserved at components/sglang.v0.5.11-prepped/.
-# A fresh ./scripts/setup.sh (without --skip-env) does the full env rebuild
-# and is the supported path forward.
-# (idempotent — git apply --check skips already-applied). See
-# patches/README.md for per-patch narratives. Header was stale claiming
-# "no patches needed on NVIDIA"; corrected 2026-05-01.
+# Clones SGLang v0.5.11 and applies the local patches in patches/*.patch
+# (idempotent — git apply --check skips already-applied).
+# Requires torch 2.11 + sglang-kernel 0.4.2 + transformers 5.6 + flashinfer
+# 0.6.8.post1 + compressed-tensors 0.15 (env rebuilt 2026-05-09).
+# See patches/README.md for per-patch narratives.
 #
 # Prerequisites:
 #   - NVIDIA drivers + CUDA toolkit installed
