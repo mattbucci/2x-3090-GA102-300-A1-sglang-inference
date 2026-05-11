@@ -143,32 +143,18 @@ apply_preset() {
             # `coder-reap-25b` so the two models can be benched apples-to-apples.
             # mattbucci/Qwen3-Coder-30B-A3B-AWQ ships compressed-tensors format,
             # not the native AWQ-Marlin layout the local AWQ-Marlin dir uses.
-            #
-            # 2026-05-10: a TP1 worker SIGSEGV'd at decode #115k of a long
-            # claw-code rollout. Backtrace was Python heap corruption inside
-            # _PyFrame_ClearExceptCode → list_dealloc → garbage pointer,
-            # entered via the event_loop_overlap path → broadcast_pyobj.
-            # Pure 130K-token decode and tool-call requests both passed in
-            # isolation, so the bug is rare/state-dependent. Disable the
-            # overlap event loop (single-step instead of pipelined) and the
-            # radix prefix cache (its state machine is another source of
-            # cross-iteration shared state) as defense-in-depth. Costs ~5-10%
-            # throughput at long context but keeps TP=2 alive across 300+
-            # instances. Revisit once a deterministic repro lands.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ}"
             QUANT="compressed-tensors"
             CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
             CUDA_GRAPH="--cuda-graph-max-bs 1"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder --disable-overlap-schedule --disable-radix-cache"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
             ;;
         coder-reap-25b)
-            # Same SGLang TP=2 long-decode hardening as `coder-30b-eval`
-            # (see that preset's comment for the 2026-05-10 SIGSEGV story).
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ}"
             QUANT="awq_marlin"
             CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
             CUDA_GRAPH="--cuda-graph-max-bs 1"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder --disable-overlap-schedule --disable-radix-cache"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
             ;;
         gemma4)
             # Gemma 4 26B MoE AWQ — repointed 2026-05-09 to canonical HF mirror
@@ -374,11 +360,6 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
-            # Same SGLang TP=2 long-decode hardening as `coder-30b-eval` —
-            # disable overlap scheduling + radix cache after the 2026-05-10
-            # claw-rollout SIGSEGV. Costs are absorbable; bake-off must
-            # survive 300+ instances per phase without scheduler death.
-            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-overlap-schedule --disable-radix-cache"
             ;;
         qwen36-tp1)
             # TP=1 / 24 GB cold-fit variant of qwen36. Default points at the
