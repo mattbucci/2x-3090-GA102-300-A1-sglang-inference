@@ -74,56 +74,106 @@ def parse_args():
     return p.parse_args()
 
 
-def summarize(report_dir: Path, run_id: str, predictions: list[dict]) -> dict:
-    """Aggregate the harness's per-model report into a flat summary."""
-    # The harness writes <run_id>.<model_name>.report.json per (run_id, model).
-    # When predictions all share one model_name_or_path, there's one report.
-    reports = list(report_dir.glob(f"{run_id}.*.report.json"))
-    if not reports:
-        # Try recursive fallback
-        reports = list(report_dir.rglob(f"{run_id}.*.report.json"))
+def _find_reports(report_dir: Path, run_id: str) -> list[Path]:
+    """Locate the harness report files.
 
-    by_instance = {}
-    resolved = unresolved = error = 0
+    The current swebench harness writes `<model_sanitized>.<run_id>.json`
+    to CWD (where the python invocation ran from) and ignores `--report_dir`
+    for the summary file. Earlier versions wrote `<run_id>.<model>.report.json`
+    into report_dir. Search both shapes in both places so we always find it.
+    """
+    candidates: list[Path] = []
+    # Canonical (legacy) shape under report_dir
+    candidates += list(report_dir.glob(f"{run_id}.*.report.json"))
+    candidates += list(report_dir.rglob(f"{run_id}.*.report.json"))
+    # Current shape: <model>.<run_id>.json — could be at repo root (CWD when
+    # called via bake_off.sh) or beside report_dir.
+    repo_root = report_dir.parents[3] if len(report_dir.parents) >= 4 else report_dir.parent
+    for d in (Path.cwd(), repo_root, report_dir, report_dir.parent):
+        candidates += list(d.glob(f"*.{run_id}.json"))
+    # De-dup preserving order
+    seen, out = set(), []
+    for p in candidates:
+        rp = p.resolve()
+        if rp in seen:
+            continue
+        seen.add(rp)
+        out.append(p)
+    return out
+
+
+def summarize(report_dir: Path, run_id: str, predictions: list[dict]) -> dict:
+    """Aggregate the harness's per-model report into a flat summary.
+
+    Handles schema v2 (counts as `*_instances`, ids as plain string lists).
+    Falls back to id-list counting if counts are absent.
+    """
+    reports = _find_reports(report_dir, run_id)
+    by_instance: dict[str, str] = {}
+    counts = {"resolved": 0, "unresolved": 0, "error": 0,
+              "empty_patch": 0, "incomplete": 0, "submitted": 0,
+              "completed": 0}
+    archived = []
     for rp in reports:
         try:
             r = json.loads(rp.read_text())
         except Exception as e:
             print(f"  warn: could not parse {rp}: {e}", flush=True)
             continue
-        for iid, status in (r.get("resolved_ids") or []):
-            by_instance[iid if isinstance(iid, str) else status] = "resolved"
-        # The schema varies between swebench versions; do a permissive lift.
+        # Schema v2: explicit counts
+        for ck, vk in [("resolved", "resolved_instances"),
+                       ("unresolved", "unresolved_instances"),
+                       ("error", "error_instances"),
+                       ("empty_patch", "empty_patch_instances"),
+                       ("incomplete", "incomplete_instances"),
+                       ("submitted", "submitted_instances"),
+                       ("completed", "completed_instances")]:
+            if isinstance(r.get(vk), int):
+                counts[ck] += r[vk]
+        # ID lists (v1 and v2 both expose these; v2 entries are plain strings)
         for key, label in [
             ("resolved_ids", "resolved"),
             ("unresolved_ids", "unresolved"),
             ("error_ids", "error"),
-            ("empty_patch_ids", "empty"),
+            ("empty_patch_ids", "empty_patch"),
             ("incomplete_ids", "incomplete"),
             ("submitted_ids", "submitted"),
         ]:
             for iid in r.get(key, []) or []:
                 if isinstance(iid, str):
                     by_instance.setdefault(iid, label)
+        # Archive a copy into report_dir so the aggregator can find it
+        # later even if CWD has moved.
+        target = report_dir / f"{run_id}.{rp.stem.split('.')[0]}.report.json"
+        try:
+            if rp.resolve() != target.resolve():
+                report_dir.mkdir(parents=True, exist_ok=True)
+                target.write_text(rp.read_text())
+                archived.append(str(target.relative_to(report_dir.parent)))
+        except Exception:
+            pass
 
-    for label in by_instance.values():
-        if label == "resolved":
-            resolved += 1
-        elif label == "unresolved":
-            unresolved += 1
-        elif label == "error":
-            error += 1
+    # Fallback: derive counts from id lists if counts weren't present
+    if not any(counts.values()):
+        for label in by_instance.values():
+            if label in counts:
+                counts[label] += 1
 
     total = len(predictions)
     return {
         "run_id": run_id,
         "total_predictions": total,
-        "resolved": resolved,
-        "unresolved": unresolved,
-        "error": error,
+        "resolved": counts["resolved"],
+        "unresolved": counts["unresolved"],
+        "error": counts["error"],
+        "empty_patch": counts["empty_patch"],
+        "incomplete": counts["incomplete"],
+        "submitted": counts["submitted"],
+        "completed": counts["completed"],
         "per_instance": by_instance,
-        "resolve_rate_pct": round(100.0 * resolved / total, 1) if total else 0.0,
+        "resolve_rate_pct": round(100.0 * counts["resolved"] / total, 1) if total else 0.0,
         "report_files": [str(p) for p in reports],
+        "archived_reports": archived,
     }
 
 

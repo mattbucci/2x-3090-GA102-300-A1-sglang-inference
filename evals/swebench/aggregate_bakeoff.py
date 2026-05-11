@@ -77,11 +77,15 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
 
     counts = {"resolved": resolved}
     for label in ("unresolved", "error", "empty_patch",
-                  "incomplete", "submitted"):
-        n = 0
-        for v in (summary.get("per_instance") or {}).values():
-            if v == label or v == label.split("_")[0]:
-                n += 1
+                  "incomplete", "submitted", "completed"):
+        # Prefer direct count from the summary (schema v2); fall back to
+        # per_instance iteration for older summaries that only have ids.
+        n = summary.get(label)
+        if not isinstance(n, int):
+            n = 0
+            for v in (summary.get("per_instance") or {}).values():
+                if v == label or v == label.split("_")[0]:
+                    n += 1
         counts[label] = n
 
     payload = {
