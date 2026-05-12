@@ -152,10 +152,12 @@ def main():
                                 quality_dir, repo_root)
             )
 
-    # Special-case: the legacy `coder-30b-docker-v2` dir is opencode but
-    # doesn't follow the new naming. Pick it up if present.
+    # Special-case: the legacy `coder-30b-docker-v2` dir is the opencode
+    # cell for coder-30b-eval but doesn't follow the
+    # `<preset>-<scaffold>-v2` naming. Pick it up whenever the opencode
+    # slot for coder-30b-eval is empty.
     legacy = runs_dir / "coder-30b-docker-v2"
-    if legacy.exists() and "coder-30b-eval" not in results:
+    if legacy.exists() and "opencode" not in results.get("coder-30b-eval", {}):
         summary_path = legacy / "scores-docker-summary.json"
         summary = None
         if summary_path.exists():
