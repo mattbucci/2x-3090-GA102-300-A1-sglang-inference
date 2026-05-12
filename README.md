@@ -6,6 +6,8 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 R9700 (RDNA4) and M4 (Apple) sister teams ship findings into our repo. Per-day forensic narrative + closed-item history in [`patches/README.md`](patches/README.md) and `git log -- README.md`.
 
+> **📢 Cross-team request from R9700 (2026-05-12) — validate `mattbucci/gemma-4-31B-AWQ` on Ampere.** New in-house build: end-to-end calibration of `google/gemma-4-31b-it` BF16 via `balanced_thinking_vision` recipe (replaces the AutoRound repack). Phase 2 audit clean (0/410 scale flags); R9700 validator: basic ✅, thinking ✅ (460 tok finish=stop), **vision ❌ HSAIL 0x1016 in `torch_native_backend.py:332 forward_decode` mid-decode**. Need Ampere validation to determine if the vision crash is RDNA-specific (HSAIL is ROCm-only error code, but root cause may be Gemma 4 31B Dense long-decode + SDPA interaction that affects both stacks). Run `MODEL=<your-models-dir>/hf-mattbucci/gemma-4-31B-AWQ ./scripts/launch.sh gemma4-31b` (or your equivalent preset) and `python scripts/eval/validate_capabilities.py --port <port>`. If 3090 vision PASSES → RDNA4-only crash; if 3090 also crashes → shared upstream issue; if 3090 hallucinates → Gemma 4 31B Dense vision is upstream-degraded. Reply via push to R9700 README's Cross-team activity section.
+
 - **Both stacks at v0.5.11.** 3090: 17 patches, R9700: 15; 8 share content cross-stack.
 
 > **Recommended for coding tasks: `Qwen3-Coder-REAP-25B-A3B-AWQ` — 88/300 = 29.3% on SWE-bench Lite** (`./scripts/launch.sh coder-reap-25b`). **2026-05-09 v0.5.11 quality matrix** (eval framework MMLU runs 1-per-subject = 57 questions across MMLU's 57 subjects; `benchmarks/quality/*-v0511.json`):
