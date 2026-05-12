@@ -75,31 +75,26 @@ def parse_args():
 
 
 def _find_reports(report_dir: Path, run_id: str) -> list[Path]:
-    """Locate the harness report files.
+    """Locate ONE harness report file (the source of truth for this run_id).
 
     The current swebench harness writes `<model_sanitized>.<run_id>.json`
-    to CWD (where the python invocation ran from) and ignores `--report_dir`
-    for the summary file. Earlier versions wrote `<run_id>.<model>.report.json`
-    into report_dir. Search both shapes in both places so we always find it.
+    to CWD and ignores `--report_dir` for the summary file. Prefer the
+    CWD copy; only fall back to an archived `<run_id>.<model>.report.json`
+    under report_dir if no CWD/repo-root original exists. Returning more
+    than one would double-count when we re-summarize a cell whose archive
+    has already been written from a prior run.
     """
-    candidates: list[Path] = []
-    # Canonical (legacy) shape under report_dir
-    candidates += list(report_dir.glob(f"{run_id}.*.report.json"))
-    candidates += list(report_dir.rglob(f"{run_id}.*.report.json"))
-    # Current shape: <model>.<run_id>.json — could be at repo root (CWD when
-    # called via bake_off.sh) or beside report_dir.
     repo_root = report_dir.parents[3] if len(report_dir.parents) >= 4 else report_dir.parent
-    for d in (Path.cwd(), repo_root, report_dir, report_dir.parent):
-        candidates += list(d.glob(f"*.{run_id}.json"))
-    # De-dup preserving order
-    seen, out = set(), []
-    for p in candidates:
-        rp = p.resolve()
-        if rp in seen:
-            continue
-        seen.add(rp)
-        out.append(p)
-    return out
+    # Prefer the harness's CWD original (or anywhere outside report_dir).
+    for d in (Path.cwd(), repo_root, report_dir.parent):
+        for p in d.glob(f"*.{run_id}.json"):
+            if p.resolve().parent != report_dir.resolve():
+                return [p]
+    # Fall back to archived copies (re-summarize from a prior run).
+    archived = sorted(report_dir.glob(f"{run_id}.*.report.json"))
+    if archived:
+        return [archived[0]]  # one is enough; we don't dual-count
+    return []
 
 
 def summarize(report_dir: Path, run_id: str, predictions: list[dict]) -> dict:
