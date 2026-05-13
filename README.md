@@ -15,7 +15,14 @@ R9700 (RDNA4) and M4 (Apple) sister teams ship findings into our repo. Per-day f
 >
 > **Round-1 Docker-harness bake-off:** Coder-30B 40.3% (opencode) / 38.3% (claw) / 26.3% (little-coder, partial); REAP-25B 33.0% (claw); Qwen3.6-35B 0.3% (claw — round-1, root-caused 2026-05-13 to missing `--tool-call-parser qwen3_coder`). Parser audit fixed 15 presets ([commit `5fa80fb`](scripts/launch.sh)).
 >
-> **Post-fix qwen36 5-instance smokes (2026-05-13)** — same 5 astropy instances both scaffolds, identical model + chat template + tool-call parser: **claw 0/5, opencode 4/5 (+80 pp).** Two opencode resolves are canonical gold patches (`cright[...] = right` for separability_matrix; `output_field[:] = chararray.replace(...)` for FITS D-exponent). The one unresolved (14365 / qdp.py) used the same incomplete `re.IGNORECASE` fix in both scaffolds → that's a model-side limitation, scaffold-independent. **Conclusion: qwen36 × claw underperforms because of scaffold workflow mismatch (thinking-mode silence + claw's iteration model), not the model or tool-call parser.** Per-cell receipts at [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/).
+> **Post-fix smoke matrix (2026-05-13, same 5 astropy instances both scaffolds):**
+>
+> | Preset | claw-code | opencode |
+> |--------|:---------:|:--------:|
+> | `qwen36` (Qwen3.6-35B-A3B MoE) | 0/5 | **4/5** |
+> | `qwen36-dense` (Qwen3.6-27B Dense) | 0/5 | 1/5 |
+>
+> Identical model + chat template + tool-call parser per pair. The Qwen3.6-family **swings 0→1/5→4/5** when moving from claw to opencode. Two qwen36 × opencode resolves are canonical gold patches (`cright[...] = right` for separability_matrix; `output_field[:] = chararray.replace(...)` for FITS D-exponent). The shared unresolved instance (14365 qdp.py) used the same incomplete `re.IGNORECASE` fix across **all four cells** → model-side understanding limit, scaffold-independent. **Conclusion: thinking-mode Qwen3.6 models underperform in claw because of scaffold workflow mismatch (model spends tokens in `<think>` and exhausts the budget before committing a tool_call); opencode's iteration model lets them succeed.** Coder-tuned models (Coder-30B, REAP-25B) which trained directly on claw's tool registry are the right fit for claw. Per-cell receipts at [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/).
 >
 > **2026-05-09 v0.5.11 quality matrix** (eval framework MMLU runs 1-per-subject = 57 questions across MMLU's 57 subjects; `benchmarks/quality/*-v0511.json`):
 >
