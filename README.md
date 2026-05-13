@@ -18,12 +18,19 @@ R9700 (RDNA4) and M4 (Apple) sister teams ship findings into our repo. Per-day f
 >
 > **Post-fix smoke matrix (2026-05-13, same 5 astropy instances both scaffolds):**
 >
-> | Preset | claw-code | opencode |
-> |--------|:---------:|:--------:|
-> | `qwen36` (Qwen3.6-35B-A3B MoE) | 0/5 | **4/5** |
-> | `qwen36-dense` (Qwen3.6-27B Dense) | 0/5 | 1/5 |
+> | Preset | tool-call parser | claw-code | opencode |
+> |--------|------------------|:---------:|:--------:|
+> | `qwen36` (Qwen3.6-35B-A3B MoE, thinking) | `qwen3_coder` | 0/5 | **4/5** |
+> | `qwen36-dense` (Qwen3.6-27B Dense, thinking) | `qwen3_coder` | 0/5 | 1/5 |
+> | `qwen3-ream` (Qwen3-30B-Instruct REAM, non-thinking) | `qwen25` | 0/5 | 0/5 |
 >
-> Identical model + chat template + tool-call parser per pair. The Qwen3.6-family **swings 0→1/5→4/5** when moving from claw to opencode. Two qwen36 × opencode resolves are canonical gold patches (`cright[...] = right` for separability_matrix; `output_field[:] = chararray.replace(...)` for FITS D-exponent). The shared unresolved instance (14365 qdp.py) used the same incomplete `re.IGNORECASE` fix across **all four cells** → model-side understanding limit, scaffold-independent. **Conclusion: thinking-mode Qwen3.6 models underperform in claw because of scaffold workflow mismatch (model spends tokens in `<think>` and exhausts the budget before committing a tool_call); opencode's iteration model lets them succeed.** Coder-tuned models (Coder-30B, REAP-25B) which trained directly on claw's tool registry are the right fit for claw. Per-cell receipts at [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/).
+> **Findings:**
+> - **Thinking-mode Qwen3.6 + qwen3_coder format → opencode works, claw fails.** Both qwen36 sizes show the same scaffold swing. Two qwen36 × opencode resolves are canonical gold patches (`cright[...] = right` for separability_matrix; `output_field[:] = chararray.replace(...)` for FITS D-exponent). Claw fails because the model spends tokens in `<think>` before committing a tool_call. Smaller dense variant resolves fewer absolute (1/5) but the same scaffold pattern.
+> - **Qwen3-30B-Instruct REAM (non-thinking) fails BOTH scaffolds.** claw: `assistant stream produced no content` — model never streams back. opencode: model emits 97-8192 tokens of text but no tool_call extracted. The qwen25 chat template advertises tools but the Instruct-REAM model isn't trained on tool-call output for either scaffold. **This is a model-capability issue, not a scaffold or parser issue.**
+> - **Cross-cell consistency check:** instance 14365 (qdp.py case-insensitivity) was unresolved across **all 4 qwen36-family cells** using the same incomplete `re.IGNORECASE` fix → model-understanding limit on that specific bug, scaffold-independent.
+> - **Recommendation:** Qwen3.6 thinking-mode models → opencode. Coder-tuned models (Coder-30B at 40.3% opencode / 38.3% claw, REAP-25B) → either scaffold but claw has trained tool registry match. Qwen3-30B-Instruct REAM → not viable for tool-call-driven codegen evals.
+>
+> Per-cell receipts at [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/).
 >
 > **2026-05-09 v0.5.11 quality matrix** (eval framework MMLU runs 1-per-subject = 57 questions across MMLU's 57 subjects; `benchmarks/quality/*-v0511.json`):
 >
