@@ -25,6 +25,7 @@ R9700 (RDNA4) and M4 (Apple) sister teams ship findings into our repo. Per-day f
 > | `qwen35-moe` (Qwen3.5-28B-A3B-REAP, thinking) | `qwen3_coder` | not run | 2/5 |
 > | `qwen36-ream` (Qwen3.6-REAM-A3B MoE, thinking) | `qwen3_coder` | not run | 2/5 |
 > | `qwen3-ream` (Qwen3-30B-Instruct REAM, non-thinking) | `qwen25` | 0/5 | 0/5 |
+> | `coder-30b-ream` (Qwen3-Coder-30B REAM, coder-tuned) | `qwen3_coder` | 1/5 | 1/5 |
 >
 > **Findings:**
 > - **Thinking-mode Qwen3.6 + qwen3_coder format → opencode works, claw fails.** Both qwen36 sizes show the same scaffold swing. Two qwen36 × opencode resolves are canonical gold patches (`cright[...] = right` for separability_matrix; `output_field[:] = chararray.replace(...)` for FITS D-exponent). Claw fails because the model spends tokens in `<think>` before committing a tool_call. Smaller dense variant resolves fewer absolute (1/5) but the same scaffold pattern.

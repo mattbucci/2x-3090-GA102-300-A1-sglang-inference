@@ -1,0 +1,23 @@
+{
+  "preset": "coder-30b-ream",
+  "scaffold": "claw-code",
+  "smoke": true,
+  "smoke_size": 5,
+  "model_path": "hf-mattbucci/Qwen3-Coder-30B-A3B-REAM-AWQ",
+  "parser_flag": "--tool-call-parser qwen3_coder",
+  "total_predictions": 5,
+  "resolved": 1,
+  "unresolved": 4,
+  "empty_patch": 0,
+  "resolve_rate_pct": 20.0,
+  "per_instance_only5": {
+    "astropy__astropy-12907": "unresolved",
+    "astropy__astropy-14182": "unresolved",
+    "astropy__astropy-14365": "unresolved",
+    "astropy__astropy-14995": "resolved",
+    "astropy__astropy-6938": "unresolved"
+  },
+  "notes": "REAM-merge of Qwen3-Coder-30B base. Matches opencode result (1/5=20%) \u2014 uniform degradation across BOTH scaffolds vs un-REAM coder-30b-eval (2/5 on same 5 = 40%). NOT a scaffold issue: REAM merge appears to have degraded codegen quality by ~50% relative on this small subset. Suggests R9700 team should revisit REAM recipe for coder bases, or that REAM is better suited to thinking-mode models than coder-tuned ones.",
+  "rollout_dir": "evals/swebench/runs/coder-30b-ream-claw-code-smoke",
+  "timestamp": "2026-05-13T09:55:00"
+}
