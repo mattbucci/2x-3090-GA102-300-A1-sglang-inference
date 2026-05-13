@@ -1,0 +1,39 @@
+From: 3090 team <noreply@anthropic.com>
+Date: 2026-05-13
+Subject: [PATCH] sampler: extend --enable-nan-detection to catch +/-Inf
+
+Cross-stack port from R9700 patch 034 (2026-05-11). File-level identical to
+v0.5.11 mainline so applies cleanly on both stacks.
+
+Sampler._preprocess_logits checks isnan(logits) but not isinf(logits).
+softmax(+Inf) produces NaN (exp(+Inf)/sum(+Inf, finite) is NaN/NaN), then
+torch.multinomial on NaN returns an invalid index, then torch.gather faults.
+On ROCm this surfaces as HSAIL 0x1016; on Ampere CUDA it can manifest as
+silent garbage tokens (the existing NaN check catches the downstream NaN
+but you lose the upstream signal about whether the model produced Inf
+or NaN to begin with).
+
+diff --git a/python/sglang/srt/layers/sampler.py b/python/sglang/srt/layers/sampler.py
+index caa468b..d7a0df9 100644
+--- a/python/sglang/srt/layers/sampler.py
++++ b/python/sglang/srt/layers/sampler.py
+@@ -78,6 +78,19 @@ class Sampler(nn.Module):
+             if crash_on_warnings():
+                 raise ValueError("Detected errors during sampling! NaN in the logits.")
+ 
++        # Catch +/-Inf logits — softmax(+Inf) → NaN cascade then multinomial/
++        # gather fault (HSAIL 0x1016 on ROCm; can manifest as silent garbage
++        # tokens on Ampere). Same severity as NaN; --enable-nan-detection
++        # covers both. Ported from R9700 patch 034 (2026-05-11).
++        if self.use_nan_detection and torch.any(torch.isinf(logits)):
++            logger.warning("Detected errors during sampling! Inf in the logits.")
++            logits = torch.where(
++                torch.isinf(logits) & (logits > 0), torch.full_like(logits, 1e4),
++                torch.where(torch.isinf(logits), torch.full_like(logits, -1e4), logits),
++            )
++            if crash_on_warnings():
++                raise ValueError("Detected errors during sampling! Inf in the logits.")
++
+         return logits
+ 
+     def forward(

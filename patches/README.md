@@ -208,6 +208,13 @@ Three gaps in `Qwen3_5GatedDeltaNet`:
 
 **Cross-team note for R9700:** their patch 002 (`002-qwen3-deltanet-awq-weight-loader.patch`, commits `eec67c0` + `d1dbc77` adapted) ports the same fix shape but only for `qwen3_next.py` — they explicitly skipped `qwen3_5.py` thinking it was "RDNA4-specific". It isn't — both stacks need this when on v0.5.11. R9700 is currently still on v0.5.10 source so they don't hit the bug yet; cross-team advisory in their README points at this patch.
 
+### 034 — sampler-inf-detection (2026-05-13, ~13 LOC, R9700 backport)
+**Extends `--enable-nan-detection` to catch `+/-Inf` logits parallel to the existing NaN branch in `Sampler._preprocess_logits`.** R9700 found this on Gemma 4 26B HSAIL bisects: `softmax(+Inf)` → NaN cascade, then `multinomial` returns an invalid index, then `gather` faults — same crash surface as raw NaN logits but caused by upstream Inf instead. The existing NaN check catches the downstream NaN AFTER softmax has already destroyed the signal about whether the model originally produced Inf or NaN, which made bisection ambiguous.
+
+On Ampere CUDA the surface is different (no HSAIL) but the cascade is the same — Inf logits propagate to NaN through softmax and produce silent garbage tokens; the new branch makes the warning fire AT the offending sample. With `SGLANG_IS_IN_CI=1` the branch escalates to `ValueError("Detected errors during sampling! Inf in the logits.")` so CI runs surface the bug loudly.
+
+Mechanic mirrors the NaN branch: replace +Inf with `+1e4`, -Inf with `-1e4` (signed-aware versions of the NaN→`-1e5` replacement). Source file (`python/sglang/srt/layers/sampler.py`) is identical between R9700 and 3090 at v0.5.11, so the patch is verbatim from R9700 commit ec1cf36.
+
 ### 030 — gemma4-mm-per-expert-awq-loader-v0510 (DELETED 2026-05-09)
 **Deleted on env upgrade to v0.5.11.** This was the v0.5.10 backport of patch 028 — sister patch covering per-expert AWQ multimodal Gemma 4 keys at the v0.5.10 source line offsets (`gemma4_mm.py:802+` instead of v0.5.11's `gemma4_mm.py:714+`). Once the dev rig moved to v0.5.11 source, patch 028 applies natively and 030 became redundant. Historical context: it lived in `patches/` for two days (2026-05-08 → 2026-05-09) with `setup.sh`'s `git apply --check` silently routing to whichever sister patch matched the running source.
 
