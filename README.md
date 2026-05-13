@@ -16,12 +16,14 @@ R9700 (RDNA4) and M4 (Apple) sister teams ship findings into our repo. Per-day f
 >
 > **Round-1 Docker-harness bake-off:** Coder-30B 40.3% (opencode) / 38.3% (claw) / 26.3% (little-coder, partial); REAP-25B 33.0% (claw); Qwen3.6-35B 0.3% (claw — round-1, root-caused 2026-05-13 to missing `--tool-call-parser qwen3_coder`). Parser audit fixed 15 presets ([commit `5fa80fb`](scripts/launch.sh)).
 >
-> **Post-fix smoke matrix (2026-05-13, same 5 astropy instances both scaffolds):**
+> **Post-fix smoke matrix (2026-05-13, same 5 astropy instances both scaffolds; partial 23-inst for qwen36):**
 >
 > | Preset | tool-call parser | claw-code | opencode |
 > |--------|------------------|:---------:|:--------:|
-> | `qwen36` (Qwen3.6-35B-A3B MoE, thinking) | `qwen3_coder` | 0/5 | **4/5** |
+> | `qwen36` (Qwen3.6-35B-A3B MoE, thinking) | `qwen3_coder` | 0/5 | **4/5 smoke · 14/23 partial = 60.9%** |
 > | `qwen36-dense` (Qwen3.6-27B Dense, thinking) | `qwen3_coder` | 0/5 | 1/5 |
+> | `qwen35-moe` (Qwen3.5-28B-A3B-REAP, thinking) | `qwen3_coder` | not run | 2/5 |
+> | `qwen36-ream` (Qwen3.6-REAM-A3B MoE, thinking) | `qwen3_coder` | not run | 2/5 |
 > | `qwen3-ream` (Qwen3-30B-Instruct REAM, non-thinking) | `qwen25` | 0/5 | 0/5 |
 >
 > **Findings:**
