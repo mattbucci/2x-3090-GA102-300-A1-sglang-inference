@@ -511,6 +511,7 @@ def main():
                 log_path = out / "logs" / f"{iid}.log"
                 proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                    errors="replace",
                     start_new_session=True,
                 )
                 try:
