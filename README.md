@@ -11,7 +11,7 @@ R9700 (RDNA4) and M4 (Apple) sister teams ship findings into our repo. Per-day f
 - **Both stacks at v0.5.11.** 3090: 17 patches, R9700: 15; 8 share content cross-stack.
 - **M4 (2026-05-13):** Ported our probe trio (`probe_thinking`/`probe_vision`/`probe_codegen`) and surfaced a **VLM image regression** on the v0.5.11 MLX stack — Devstral now fabricates content for a red-circle-on-white prompt (`"A diagram of a circular flow chart..."`) where the April 18 stack returned `"I see a red circle with a black outline."`. Qwen3.5-9B-8bit reports `"a solid image of a pale pink color"` — different signature, same conclusion (vision tower features degraded). Important cross-stack data point: `validate_capabilities.py:check_vision` keyword grep passed both fabricated responses because "circle"/color words appeared — the **probe trio is the gate**, the keyword validator is not sufficient. M4 cross-stack codegen confirm: `coder-30b-DWQ` STRONG 8/8 matches our `coder-reap-25b` baseline.
 
-> **Recommended for coding tasks: `Qwen3-Coder-REAP-25B-A3B-AWQ` — 88/300 = 29.3% on SWE-bench Lite** (`./scripts/launch.sh coder-reap-25b`). **2026-05-09 v0.5.11 quality matrix** (eval framework MMLU runs 1-per-subject = 57 questions across MMLU's 57 subjects; `benchmarks/quality/*-v0511.json`):
+> **Recommended for coding tasks: `Qwen3-Coder-30B-A3B-AWQ` (eval variant) — 121/300 = 40.3% on SWE-bench Lite via opencode** (`./scripts/launch.sh coder-30b-eval`). Round-1 Docker-harness bake-off: Coder-30B 40.3% (opencode) / 38.3% (claw) / 26.3% (little-coder, partial); REAP-25B 33.0% (claw); Qwen3.6-35B 0.3% (claw — root-caused 2026-05-13 to missing `--tool-call-parser qwen3_coder`; runtime-validated end-to-end: server now returns structured `tool_calls` for the qwen3-coder XML format claw expects). Audit found **15 presets** missing explicit `--tool-call-parser` flags; all fixed in [`scripts/launch.sh`](scripts/launch.sh) 2026-05-13. Per-cell receipts at [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/). **2026-05-09 v0.5.11 quality matrix** (eval framework MMLU runs 1-per-subject = 57 questions across MMLU's 57 subjects; `benchmarks/quality/*-v0511.json`):
 >
 > | Model | MMLU | HumanEval | LAB-Bench | Needle |
 > |-------|:----:|:---------:|:---------:|:------:|
@@ -51,6 +51,7 @@ Per-iteration narrative + ship histories live in [`patches/README.md`](patches/R
 - **Qwen3.5-27B DeltaNet stuck at 32K.** DeltaNet TP replication forces 19 GB/GPU. Use `qwen3-ream` for long-context DeltaNet workloads.
 - **60B+ models don't fit.** Coder-Next-REAM (35 GB), GLM-4.5-Air-REAP (43 GB) exceed the 48 GB total at MoE-AWQ.
 - **Per-preset piecewise CUDA graph disables.** `coder-reap` / `coder-reap-25b` (cold-launch detokenizer hang); `qwen35-moe` / `qwen36` (DeltaNet+MoE+mamba_cache); `gemma4` / `gemma4-31b` (head_dim=256 + Ampere FP8 → triton-attn forced). Reasons in launch.sh comments.
+- **Model-scaffold tool-call format compatibility.** Coding harnesses (opencode / claw-code / little-coder) consume the SGLang OpenAI-compat endpoint's `tool_calls` field. SGLang only emits structured `tool_calls` when the preset passes `--tool-call-parser <fmt>` matching the format the model produces. Without the flag the model's raw `<function=NAME>...</function>` XML (qwen3-coder), `<tool_call>{json}</tool_call>` (qwen25), `[TOOL_CALLS]` (mistral) or Gemma `<\|tool>` is served as plain assistant text and the harness silently drops it — no edits applied. Audited all 19 presets against their chat templates (2026-05-13): 15 were missing flags. Mapping now: Qwen3-Coder + Qwen3.5/3.6 (incl. VL-REAP, dense, MoE, REAM) → `qwen3_coder`; Qwen3-VL non-coder + Qwen3-30B-Instruct REAM → `qwen25`; Devstral (Mistral arch) → `mistral`; Gemma 4 → `gemma4`. Runtime-validated end-to-end on qwen36 2026-05-13: request with `tools=[get_weather]` returns `finish_reason: tool_calls` with structured `function.arguments`.
 
 ## Suggested next
 
@@ -64,9 +65,20 @@ Per-iteration narrative + ship histories live in [`patches/README.md`](patches/R
 
 Bake-off runs detached via `systemd-run --user --scope`. Score runs in foreground per phase at 1 worker — no concurrent rollout+score (see Cooling and power profile for why).
 
-- **B1.** 5×3 matrix (dense first, then MoE) × 3 scaffolds (opencode, little-coder, claw-code). Configured in [`evals/swebench/bake_off.sh`](evals/swebench/bake_off.sh) PHASES.
-- **B2.** Diagnose+fix little-coder pipeline (currently 0% resolve due to scaffold misconfig).
-- **B3.** SWE-bench Verified (500-task) on top 1-2 finalists from B1 — final headline number.
+**Round 1 (complete, 2026-05-12) — 5 cells, all 300-prediction except little-coder-partial 38:**
+
+| Preset | opencode | little-coder | claw-code |
+|--------|:--------:|:------------:|:---------:|
+| `coder-30b-eval` | **40.3%** | 26.3% (38/300) | 38.3% |
+| `coder-reap-25b` | — | — | 33.0% |
+| `qwen36` | — | — | 0.3% ⚠️ scaffold-bug, fixed 2026-05-13 |
+
+- **B1.** Re-roll `qwen36` × claw-code with `--tool-call-parser qwen3_coder` (fix in launch.sh 2026-05-13). Expected lift: 0.3% → 30%+ if it's purely scaffold-routing.
+- **B2.** Expand opencode + little-coder columns across remaining dense presets (`qwen36-dense`, `qwen35-dense`, `qwen36-dense-ct`) and MoE presets (`qwen3-ream`, `qwen35-moe`, `coder-reap-25b`, `coder-30b-ream`, `qwen36-ream`, `qwen36-vl-reap`).
+- **B3.** Diagnose why little-coder rollout stops at 38/300 (pipeline halts mid-run, not all-instances scored).
+- **B4.** SWE-bench Verified (500-task) on top 1-2 finalists from B1+B2 — final headline number.
+
+Per-cell receipts at `benchmarks/quality/bakeoff-<preset>-<scaffold>.json`.
 
 ### C. Cross-team / portability
 

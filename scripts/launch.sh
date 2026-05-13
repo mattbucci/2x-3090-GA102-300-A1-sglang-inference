@@ -83,11 +83,13 @@ apply_preset() {
             CUDA_GRAPH="--cuda-graph-max-bs 1"
             CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
             WARMUP="--skip-server-warmup"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser mistral"
             ;;
         devstral-32k)
             MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-Marlin}"
             QUANT="awq_marlin"
             CTX=32768; MEM=0.90; MAX_RUNNING=64; CHUNKED=8192
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser mistral"
             ;;
         devstral-long)
             # Single-user long-context preset: pushes KV ceiling from 131K (default)
@@ -106,7 +108,7 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-Marlin}"
             QUANT="awq_marlin"
             CTX=262144; MEM=0.97; MAX_RUNNING=1; CHUNKED=2048
-            EXTRA_ARGS="${EXTRA_ARGS} --disable-cuda-graph --disable-overlap-schedule --disable-radix-cache"
+            EXTRA_ARGS="${EXTRA_ARGS} --disable-cuda-graph --disable-overlap-schedule --disable-radix-cache --tool-call-parser mistral"
             CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
             WARMUP="--skip-server-warmup"
             ;;
@@ -126,6 +128,7 @@ apply_preset() {
             CTX=131072; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
             CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         coder-30b)
             # Repointed 2026-05-01 from local Apr-17 self-built AWQ-Marlin to the
@@ -147,7 +150,7 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ-Marlin-from-CT}"
             QUANT="awq_marlin"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
-            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
             ;;
         coder-30b-eval)
             # SWE-bench eval preset: 256K + single-batch CUDA graph, mirrors
@@ -204,7 +207,7 @@ apply_preset() {
             # max_tokens=4096 which overflows 4096 CTX with any prompt.
             CTX=16384; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
             ;;
         gemma4-31b)
             # Gemma 4 31B Dense AWQ AutoRound (head_dim=256). On 3090 sm_86 the
@@ -252,7 +255,7 @@ apply_preset() {
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             CTX=16384; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
             ;;
         qwen3-vl-moe)
             # Repointed 2026-05-07 from missing $MODELS_DIR/Qwen3-VL-30B-A3B-
@@ -264,6 +267,7 @@ apply_preset() {
             # qwen3-vl-moe` for the community 6-shard variant if needed.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-VL-30B-A3B-AWQ-native-thinking-vision}"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen25"
             ;;
         qwen3-vl-32b)
             # Qwen3-VL-32B-Instruct AWQ — 20 GB weights (11 shards). The prior
@@ -291,6 +295,7 @@ apply_preset() {
             MEM="${_ENV_MEM:-0.93}"
             MAX_RUNNING="${_ENV_MAX_RUNNING:-1}"
             CHUNKED="${_ENV_CHUNKED:-4096}"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen25"
             ;;
         qwen36-vl-reap)
             # Qwen3.6-VL-REAP-26B-A3B-AWQ — Qwen3.6 VL (vision-language) with
@@ -302,7 +307,7 @@ apply_preset() {
             CTX=262144; MEM=0.85; MAX_RUNNING=4; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --tool-call-parser qwen3_coder"
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
             ;;
         qwen36-dense|qwen36-27b)
@@ -335,6 +340,7 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen36-dense-ct)
             # CT-format variant of qwen36-dense (Qwen3.6-27B Dense, compressed-
@@ -347,6 +353,7 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen35-dense)
             # Qwen3.5-27B Dense AWQ (R9700 self-cal at hf-mattbucci/Qwen3.5-
@@ -358,6 +365,7 @@ apply_preset() {
             CTX=32768; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen35-moe)
             # Repointed 2026-05-02 from local Apr-14 REAP-AWQ (broken thinking
@@ -379,6 +387,7 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 4"
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen3-ream)
             # 2026-05-07: bake --disable-piecewise-cuda-graph for TP=1 cold-fit.
@@ -392,7 +401,8 @@ apply_preset() {
             QUANT="awq_marlin"
             CTX=262144; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             REASONING="--reasoning-parser qwen3"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph"
+            # Qwen3-30B-Instruct uses qwen25 JSON-in-<tool_call> format (vs qwen3-coder XML).
+            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen25"
             ;;
         qwen36)
             # Qwen3.6-35B-A3B (thinking + vision): 256-expert hybrid DeltaNet
@@ -427,6 +437,14 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            # 2026-05-13: bakeoff p13 ran qwen36 x claw at 1/300 = 0.3%. Forensics
+            # (286/300 .claw-only diffs) showed the model emits valid
+            # <function=NAME><parameter=...>VAL</parameter></function> tool tags
+            # but without --tool-call-parser SGLang serves them as raw text;
+            # claw treats them as commentary and never executes any edit.
+            # Coder-30B/REAP-25B work in claw because their presets already
+            # carry this flag. Add it here so qwen36 routes correctly.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen36-ream)
             # Qwen3.6-REAM-A3B-AWQ — Qwen3.6 base with Samsung SAIL REAM
@@ -439,6 +457,7 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         *)
             echo "Unknown model: $1"
