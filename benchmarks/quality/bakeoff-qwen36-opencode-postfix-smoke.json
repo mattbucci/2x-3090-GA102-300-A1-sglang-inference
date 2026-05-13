@@ -1,0 +1,28 @@
+{
+  "preset": "qwen36",
+  "scaffold": "opencode",
+  "smoke": true,
+  "smoke_size": 5,
+  "model_path": "hf-mattbucci/Qwen3.6-35B-A3B-AWQ-CT",
+  "total_predictions": 5,
+  "resolved": 4,
+  "unresolved": 1,
+  "empty_patch": 0,
+  "resolve_rate_pct": 80.0,
+  "per_instance": {
+    "astropy__astropy-12907": "resolved",
+    "astropy__astropy-14182": "resolved",
+    "astropy__astropy-14365": "unresolved",
+    "astropy__astropy-14995": "resolved",
+    "astropy__astropy-6938": "resolved"
+  },
+  "comparison": {
+    "claw_5_inst_smoke": "0/5 = 0%",
+    "opencode_5_inst_smoke": "4/5 = 80%",
+    "delta": "+80 pp on identical instances, identical model — confirms scaffold mismatch"
+  },
+  "notes": "Same 5 astropy instances as the claw smoke. opencode lets qwen36 produce real source edits including the canonical gold patches for separability_matrix (cright[...] = right) and FITS D-exponent (output_field[:] = chararray.replace(...)). The 1 unresolved (14365) used the same incomplete re.IGNORECASE fix in BOTH scaffolds — that's a model limitation on that specific bug, not scaffold-dependent. Conclusion: qwen36's underperformance in claw was the scaffold workflow (thinking-mode silence + claw's iteration model), not the model or the tool-call parser fix alone.",
+  "rollout_dir": "evals/swebench/runs/qwen36-opencode-postfix-smoke",
+  "score_summary": "evals/swebench/runs/qwen36-opencode-postfix-smoke/scores-docker-summary.json",
+  "timestamp": "2026-05-13T09:20:24"
+}
