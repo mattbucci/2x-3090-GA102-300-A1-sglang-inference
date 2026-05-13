@@ -9,29 +9,74 @@
         "apiKey": "not-needed"
       },
       "models": {
+        "coder-30b-eval": {
+          "name": "Qwen3-Coder-30B-A3B-AWQ (CT)",
+          "limit": { "context": 262144, "output": 8192 },
+          "tool_call": true
+        },
         "coder-reap-25b": {
           "name": "Qwen3-Coder-REAP-25B-A3B-AWQ",
           "limit": { "context": 262144, "output": 8192 },
           "tool_call": true
         },
-        "coder-30b-eval": {
-          "name": "Qwen3-Coder-30B-A3B-AWQ",
+        "coder-30b-ream": {
+          "name": "Qwen3-Coder-30B-A3B-REAM-AWQ",
           "limit": { "context": 262144, "output": 8192 },
           "tool_call": true
         },
-        "devstral-24b": {
-          "name": "Devstral-24B-AWQ",
-          "limit": { "context": 65536, "output": 4096 },
+        "coder-30b": {
+          "name": "Qwen3-Coder-30B-A3B-AWQ (Marlin)",
+          "limit": { "context": 16384, "output": 4096 },
           "tool_call": true
         },
-        "qwen36-35b": {
-          "name": "Qwen3.6-35B-A3B-AWQ",
-          "limit": { "context": 65536, "output": 8192 },
+        "qwen36": {
+          "name": "Qwen3.6-35B-A3B-AWQ-CT (thinking+vision)",
+          "limit": { "context": 262144, "output": 8192 },
+          "tool_call": true
+        },
+        "qwen36-dense": {
+          "name": "Qwen3.6-27B-AWQ (Dense)",
+          "limit": { "context": 32768, "output": 4096 },
+          "tool_call": true
+        },
+        "qwen36-dense-ct": {
+          "name": "Qwen3.6-27B-AWQ-CT (Dense, CT)",
+          "limit": { "context": 32768, "output": 4096 },
+          "tool_call": true
+        },
+        "qwen36-ream": {
+          "name": "Qwen3.6-REAM-A3B-AWQ",
+          "limit": { "context": 262144, "output": 8192 },
+          "tool_call": true
+        },
+        "qwen36-vl-reap": {
+          "name": "Qwen3.6-VL-REAP-26B-A3B-AWQ",
+          "limit": { "context": 262144, "output": 8192 },
+          "tool_call": true
+        },
+        "qwen35-dense": {
+          "name": "Qwen3.5-27B-AWQ (Dense)",
+          "limit": { "context": 32768, "output": 4096 },
+          "tool_call": true
+        },
+        "qwen35-moe": {
+          "name": "Qwen3.5-28B-A3B-REAP-AWQ",
+          "limit": { "context": 262144, "output": 8192 },
           "tool_call": true
         },
         "qwen3-ream": {
           "name": "Qwen3-30B-Instruct-2507-REAM-AWQ",
           "limit": { "context": 262144, "output": 8192 },
+          "tool_call": true
+        },
+        "devstral": {
+          "name": "Devstral-24B-AWQ",
+          "limit": { "context": 131072, "output": 4096 },
+          "tool_call": true
+        },
+        "devstral-long": {
+          "name": "Devstral-24B-AWQ (long ctx)",
+          "limit": { "context": 217088, "output": 4096 },
           "tool_call": true
         }
       }

@@ -13,15 +13,18 @@ SGLang for 2x NVIDIA RTX 3090 (GA102-300-A1, 48GB total VRAM).
 
 ## Key Commands
 ```bash
-scripts/setup.sh                       # Full setup (clones SGLang v0.5.11, applies 16 patches)
-scripts/launch.sh devstral             # Devstral 24B AWQ
-scripts/launch.sh coder-30b            # Coder-30B MoE AWQ
-scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ
+scripts/setup.sh                       # Full setup (clones SGLang v0.5.11, applies 17 patches)
+scripts/launch.sh devstral             # Devstral 24B AWQ (Dense, Mistral)
+scripts/launch.sh coder-30b-eval       # Qwen3-Coder-30B-A3B AWQ CT (256K, bakeoff lead 40.3% opencode)
+scripts/launch.sh coder-reap-25b       # Qwen3-Coder-REAP-25B-A3B AWQ (256K, 33% claw)
+scripts/launch.sh qwen36               # Qwen3.6-35B-A3B-AWQ-CT (thinking+vision, 256K)
+scripts/launch.sh qwen36-dense         # Qwen3.6-27B Dense AWQ
+scripts/launch.sh qwen35-moe           # Qwen3.5-28B-A3B-REAP-AWQ (DeltaNet+MoE, thinking+vision)
+scripts/launch.sh qwen3-ream           # Qwen3-30B Instruct REAM AWQ (96 experts, 107 tok/s @ 256K)
+scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ (thinking+image+video+audio)
 scripts/launch.sh gemma4-31b           # Gemma 4 31B Dense AWQ
-scripts/launch.sh qwen35               # Qwen3.5-27B DeltaNet AWQ
-scripts/launch.sh qwen35-moe           # Qwen3.5-28B MoE REAP CT (205 experts)
-scripts/launch.sh qwen3-ream           # Qwen3-30B REAM AWQ (96 experts, 197 tok/s)
 ```
+Full preset list (20 total — `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scripts/launch.sh`); every preset carries an explicit `--tool-call-parser` matching its chat-template's tool format (qwen3_coder / qwen25 / mistral / gemma4 — see Critical Rules below).
 
 ## Critical Rules
 - **SGLang only** — uses AWQ_Marlin kernels (sm_80+), patches may be needed for tuning
@@ -54,8 +57,8 @@ scripts/launch.sh qwen3-ream           # Qwen3-30B REAM AWQ (96 experts, 197 tok
   ```
   Any job expected to run > 30 minutes (calibrations, long benches, downloads of 50 GB+) must use this pattern.
 
-## Current Hardware State (2026-05-09)
-- **One 3090 temporarily offline** (PCIe adapter swap pending). Active rig is single-card / 24 GB / TP=1 only. TP=2 / 256K headline benches paused until card returns. Default to `qwen35-tp1` / `qwen36-tp1` and similar TP=1-tuned presets. Devstral-24B Dense OOMs at TP=1 — skip until TP=2 returns.
+## Current Hardware State (2026-05-13)
+- **Both 3090s online.** TP=2 / 256K is the matrix-standard configuration. No TP=1 fallback presets exist — every preset in launch.sh is tuned for TP=2 / 256K. Default `--tp 2 --context-length 262144 --max-running 1`. Cooling profile (260W power cap + gpu-fan-curve.service) is load-bearing for sustained bake-off runs.
 
 ## Workflow (RECONFIRMED 2026-05-09)
 - **Work autonomously. Never stop to ask for confirmation.** User checks in periodically by reading the README and will interrupt with new ideas or redirects. Max effort is the default.
