@@ -163,8 +163,19 @@ apply_preset() {
             CUDA_GRAPH="--cuda-graph-max-bs 1"
             EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
             ;;
-        coder-reap-25b)
-            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ}"
+        coder-reap-25b|coder-reap-30b)
+            # 2026-05-14: SWAPPED from Cerebras pre-pruned 25B-AWQ to R9700's
+            # in-house Qwen3-Coder-30B-A3B-REAP-AWQ (HF commit d09a18c). Built
+            # end-to-end from upstream Qwen/Qwen3-Coder-30B-A3B-Instruct BF16
+            # via R9700's homegrown pure-pytorch REAP (no vLLM dep): saliency
+            # = Σ_t(gate_t × ‖down_proj_E(x)‖₂) on 1024 evol-codealpaca samples;
+            # 128→96 experts/layer (per-layer survivor lists, NOT uniform);
+            # then GPTQ W4A16 group_size=128 on code+thinking+math+chat mix
+            # with moe_calibrate_all_experts=True. Replaces the broken
+            # 2026-04-29 Cerebras-pre-pruned ship per "build-from-scratch"
+            # rule. The "25b" alias is kept for backward compat but the model
+            # is now 30B-base reduced to 96 experts.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ}"
             QUANT="awq_marlin"
             CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
             CUDA_GRAPH="--cuda-graph-max-bs 1"
