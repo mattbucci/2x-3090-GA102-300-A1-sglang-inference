@@ -125,6 +125,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
             f"opencode run --dir /testbed --model {model} "
             f"  --format json --dangerously-skip-permissions \"$PROMPT\" || true\n"
             f"echo === DIFF ===\n"
+            f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
             f"git -C /testbed diff --cached\n"
         )
@@ -150,6 +151,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
             f"cd /testbed\n"
             f"little-coder --model {oc_model} \"$PROMPT\" || true\n"
             f"echo === DIFF ===\n"
+            f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
             f"git -C /testbed diff --cached\n"
         )
@@ -176,6 +178,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
             f"cd /testbed\n"
             f"/usr/local/bin/claw --model {oc_model} prompt \"$PROMPT\" || true\n"
             f"echo === DIFF ===\n"
+            f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
             f"git -C /testbed diff --cached\n"
         )
