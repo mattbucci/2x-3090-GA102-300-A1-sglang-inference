@@ -4,18 +4,17 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 ## Headline — coding-eval bake-off (v2 Docker harness, 256K, single-user)
 
-Best `(model, scaffold)` pair: `coder-30b-eval` × **opencode** = **121/300 = 40.3%** on SWE-bench Lite (`./scripts/launch.sh coder-30b-eval`). qwen36 × opencode partial 23-inst = 14/23 = 60.9% (full-300 cycle pending).
+Best `(model, scaffold)` pair so far: `coder-30b-eval` × **opencode** = **121/300 = 40.3%** on SWE-bench Lite (`./scripts/launch.sh coder-30b-eval`).
 
 | Preset | opencode | claw-code | little-coder |
 |--------|:--------:|:---------:|:------------:|
-| `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | **121/300 = 40.3%** | 115/300 = 38.3% | 8/40 = 20% (partial) |
-| `coder-reap-25b` (R9700 in-house Qwen3-Coder-30B-A3B-REAP-AWQ) | — | 99/300 = 33.0%¹ | — |
-| `qwen36` (Qwen3.6-35B-A3B-AWQ-CT, thinking) | 14/23 partial = 60.9% | 0/5 smoke² | — |
+| `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | **121/300 = 40.3%** | 115/300 = 38.3% | rolling |
 
-¹ Pre-2026-05-14 score against the Cerebras-pre-pruned ship; will refresh after the R9700 in-house replacement cycle completes.
-² Thinking-mode models silently fail in claw: model spends tokens in `<think>` before committing a `tool_call`, claw-iteration model gives up. Coder-tuned models match claw's tool registry; thinking-mode generalists belong on opencode.
+Other models (qwen36, qwen36-ream, qwen35-moe, qwen36-dense, coder-30b-ream, coder-reap-25b [R9700 in-house], devstral, gemma4) queued for fresh full-300 cycles via [`run_model_cycle.sh`](evals/swebench/run_model_cycle.sh). Pre-fix smoke matrix + partial data was deleted 2026-05-14 — all cells re-roll clean against the current launch.sh + opencode.json + parser-fix world.
 
-Per-cell receipts at [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/). Methodology, failure-mode analysis (incomplete fixes / symptom-only patches), and tool-call-parser audit (15 presets fixed 2026-05-13) live in [`patches/README.md`](patches/README.md).
+**Established scaffold-fit pattern** (from 30-instance smoke matrix, since wiped): thinking-mode Qwen3.5/3.6 models silently fail in claw (model exhausts `<think>` budget before committing a `tool_call`); they belong on opencode. Coder-tuned models match claw's `Bash`/`Edit`/`Read` tool registry and score similarly on claw vs opencode. `--tool-call-parser` audit fixed 15 presets 2026-05-13 — every preset now passes the right parser for its chat-template format.
+
+Per-cell receipts at [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/). Methodology, failure-mode analysis, and full audit trail live in [`patches/README.md`](patches/README.md).
 
 ## Recent cross-team activity
 
