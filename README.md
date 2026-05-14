@@ -16,6 +16,16 @@ Other models (qwen36, qwen36-ream, qwen35-moe, qwen36-dense, coder-30b-ream, cod
 
 Per-cell receipts at [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/). Methodology, failure-mode analysis, and full audit trail live in [`patches/README.md`](patches/README.md).
 
+## Why 40% — failure modes in the unresolved 170 (coder-30b-eval × opencode)
+
+Patch-shape analysis across all 300 opencode predictions (2026-05-14). **The model attempts every instance; failure is over-patching, not silence.**
+
+- **Over-edit signature.** Unresolved patches: median 3 files / p90 8 / p90 +278 added lines. Resolved: median 2 files / p90 5 / p90 +197. When the model is uncertain it widens the blast radius and breaks adjacent code paths it didn't need to touch.
+- **Per-repo skew dominates the score.** scikit-learn 56.5%, django 47.4%, matplotlib 43.5%, sympy 37.7%. Long-tail: pytest 29.4%, xarray 20%, **sphinx-doc 6.2% (1/16), pallets/flask 0/3**. RST/docs tooling and Werkzeug request semantics are nearly unsolvable for a 30B-class coder; together they cost ~10 instances against any reasonable ceiling.
+- **Two catastrophic patches.** `psf__requests-863` = 882 KB, 75 files, model created an entire `build/lib/requests/` shadow tree of the library. `psf__requests-2317` patch *adds* a new `comprehensive_test.py` (SWE-bench rejects new test files). Both score `error`. Tool-call agent occasionally loops on duplicate-tree generation or violates the "no new files" rule — 2/300 wasted slots, not a fix priority but worth a runaway-stop heuristic upstream.
+- **Only 7 empty patches**, spread across 6 repos — these are real model give-ups on hard instances, not infra. The audit script already separates infra-fail (Connection error / HSAIL / UnicodeDecodeError) from model-silent.
+- **Structural floor:** ~10 sphinx + 3 pallets + 7 empty + 2 error ≈ 22 instances are unwinnable at this model class without scaffold or prompt changes. Headroom to 50% lives in sympy (48 unsolved) and django (60 unsolved) — both candidates for scaffold/prompt iteration rather than model swap.
+
 ## Recent cross-team activity
 
 R9700 (RDNA4, ROCm) and M4 (Apple Silicon, MLX) sister teams push findings into our README. Older entries (>1 week) archived to [`patches/README.md`](patches/README.md).
