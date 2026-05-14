@@ -71,6 +71,15 @@ def parse_args():
                    help="Harness cache level — see swebench docs.")
     p.add_argument("--run-id", default=None,
                    help="Override run_id (default: parent dir name of predictions).")
+    p.add_argument("--filter-helpers", action=argparse.BooleanOptionalAction,
+                   default=True,
+                   help="Strip model-generated helper files (test_*.py, "
+                        "reproduce*.py, debug*.py, .claw/, .sandbox-tmp/, etc. "
+                        "at testbed root) from each prediction's model_patch "
+                        "before scoring.  These helpers cause pytest collection "
+                        "errors that make SWE-bench mark the instance \"error\" "
+                        "rather than scoring the actual code edit. Default: ON. "
+                        "See evals/swebench/filter_predictions.py for the rules.")
     return p.parse_args()
 
 
@@ -184,6 +193,28 @@ def main():
     run_id = args.run_id or out_dir.name
     report_dir = out_dir / "scores-docker"
     report_dir.mkdir(parents=True, exist_ok=True)
+
+    # Pre-pass: strip model-helper noise (test_*.py / debug*.py / etc. at
+    # /testbed root, plus .claw/.sandbox-* dirs) so SWE-bench doesn't mark
+    # an instance "error" purely because pytest collected a model-generated
+    # reproducer that errors at import time. The actual code edit, if any,
+    # is preserved. Filter rules: evals/swebench/filter_predictions.py.
+    if args.filter_helpers:
+        filtered_path = report_dir / "predictions.filtered.jsonl"
+        print(f"\n[filter-helpers] writing cleaned predictions to {filtered_path}",
+              flush=True)
+        filt_cmd = [
+            sys.executable,
+            str(Path(__file__).parent / "filter_predictions.py"),
+            "--in", str(pred_path),
+            "--out", str(filtered_path),
+        ]
+        rc_filt = subprocess.run(filt_cmd).returncode
+        if rc_filt != 0:
+            print(f"  filter exited rc={rc_filt}; falling back to raw predictions",
+                  file=sys.stderr, flush=True)
+        else:
+            pred_path = filtered_path
 
     predictions = []
     for line in pred_path.read_text().splitlines():
