@@ -124,6 +124,9 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
             f"git config --global --add safe.directory /testbed\n"
             f"opencode run --dir /testbed --model {model} "
             f"  --format json --dangerously-skip-permissions \"$PROMPT\" || true\n"
+            f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            f"opencode run --dir /testbed --model {model} "
+            f"  --format json --dangerously-skip-permissions \"$CLEANUP_PROMPT\" || true\n"
             f"echo === DIFF ===\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
@@ -150,6 +153,8 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
             f"git config --global --add safe.directory /testbed\n"
             f"cd /testbed\n"
             f"little-coder --model {oc_model} \"$PROMPT\" || true\n"
+            f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            f"little-coder --model {oc_model} \"$CLEANUP_PROMPT\" || true\n"
             f"echo === DIFF ===\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
@@ -177,6 +182,8 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
             f"git config --global --add safe.directory /testbed\n"
             f"cd /testbed\n"
             f"/usr/local/bin/claw --model {oc_model} prompt \"$PROMPT\" || true\n"
+            f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            f"/usr/local/bin/claw --model {oc_model} prompt \"$CLEANUP_PROMPT\" || true\n"
             f"echo === DIFF ===\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
@@ -276,6 +283,27 @@ exercise it correctly, stop — your final state will be captured as a `git diff
 # Hints (optional, may be empty)
 
 {hints}
+"""
+
+
+# Self-clean pass: invoked AFTER the original prompt finishes. Same scaffold,
+# same model, fresh session. The model inspects git state and rm's its own
+# reproducer/debug helpers so they don't make it into the captured diff. Why
+# this matters: SWE-bench's grader marks an instance "error" (not unresolved)
+# when pytest collects a model-written helper at /testbed root that errors
+# at import time, because then the harness can't find FAIL_TO_PASS test
+# results in the malformed log. See evals/swebench/filter_predictions.py
+# for the score-time regex fallback that catches what self-clean misses.
+CLEANUP_PROMPT = """\
+Cleanup step. You just finished fixing a bug in this Python repository. The original task said "Do not add new files unless strictly required" — but during exploration you may have created reproducer / debug / analysis scripts. Clean those up now so only your real fix remains.
+
+Steps:
+1. Run `git status` to see what changed.
+2. For each NEW file at the repository root (or other non-standard location) that looks like a model-generated helper — names matching reproduce_*, debug_*, analyze_*, test_fix*, simple_test_*, comprehensive_*, check_*, *_bug.py, etc. — delete it with `rm`.
+3. Do NOT touch modifications to pre-existing tracked files: those are your real fix.
+4. Do NOT delete files inside the official test directory (tests/, test_*/, *_test/).
+
+After cleanup, stop. Don't run pytest, don't edit any code.
 """
 
 
@@ -505,6 +533,7 @@ def main():
                     "--name", container_name,
                     "--network=host",
                     "--env", f"PROMPT={prompt}",
+                    "--env", f"CLEANUP_PROMPT={CLEANUP_PROMPT}",
                     "--env", "HOME=/root",
                     *scaffold_envs,
                     "--workdir", "/testbed",
