@@ -26,6 +26,8 @@ Patch-shape analysis across all 300 opencode predictions (2026-05-14). **The mod
 - **Only 7 empty patches**, spread across 6 repos — these are real model give-ups on hard instances, not infra. The audit script already separates infra-fail (Connection error / HSAIL / UnicodeDecodeError) from model-silent.
 - **Structural floor:** ~10 sphinx + 3 pallets + 7 empty + 2 error ≈ 22 instances are unwinnable at this model class without scaffold or prompt changes. Headroom to 50% lives in sympy (48 unsolved) and django (60 unsolved) — both candidates for scaffold/prompt iteration rather than model swap.
 
+**Scaffolds aren't redundant — oracle-ensemble ceiling is 49%.** opencode and claw resolved 89 instances in common, **plus 32 opencode-only and 26 claw-only** (147/300 union = 49.0%, +8.7 pp above the 40.3% single-scaffold leader). Disagreement is distributed across repos, not concentrated: matplotlib 5-0 opencode, pytest 2-3 claw, psf/pydata 0-3 claw, django/sympy roughly even. **Running both scaffolds and unioning the diffs is the simplest 40%→49% lift** with no model change required. The two scaffolds fail in genuinely different ways (claw's `Bash`/`Edit`/`Read` registry vs opencode's filesystem-edit prompts); they are not noisy variants of each other.
+
 ## Sister teams
 
 - **[R9700 (RDNA4, ROCm)](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference)** — calibration / quantization owner; ships the `mattbucci/*-AWQ` checkpoints this stack serves. We push bake-off + capability findings back into their README.
