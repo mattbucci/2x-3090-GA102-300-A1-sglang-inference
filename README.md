@@ -10,9 +10,9 @@ Best `(model, scaffold)` pair so far: `coder-30b-eval` × **opencode** = **121/3
 |--------|:--------:|:---------:|:------------:|
 | `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | **121/300 = 40.3%** | 115/300 = 38.3% | rolling |
 
-Other models (qwen36, qwen36-ream, qwen35-moe, qwen36-dense, coder-30b-ream, coder-reap-25b [R9700 in-house], devstral, gemma4) queued for fresh full-300 cycles via [`run_model_cycle.sh`](evals/swebench/run_model_cycle.sh). Pre-fix smoke matrix + partial data was deleted 2026-05-14 — all cells re-roll clean against the current launch.sh + opencode.json + parser-fix world.
+Other models (qwen36, qwen36-ream, qwen35-moe, qwen36-dense, coder-30b-ream, coder-reap-25b [R9700 in-house], devstral, gemma4) queued for fresh full-300 cycles via [`run_model_cycle.sh`](evals/swebench/run_model_cycle.sh).
 
-**Established scaffold-fit pattern** (from 30-instance smoke matrix, since wiped): thinking-mode Qwen3.5/3.6 models silently fail in claw (model exhausts `<think>` budget before committing a `tool_call`); they belong on opencode. Coder-tuned models match claw's `Bash`/`Edit`/`Read` tool registry and score similarly on claw vs opencode. `--tool-call-parser` audit fixed 15 presets 2026-05-13 — every preset now passes the right parser for its chat-template format.
+**Established scaffold-fit pattern:** thinking-mode Qwen3.5/3.6 models silently fail in claw (model exhausts `<think>` budget before committing a `tool_call`); they belong on opencode. Coder-tuned models match claw's `Bash`/`Edit`/`Read` tool registry and score similarly on claw vs opencode. Every preset's `--tool-call-parser` matches its chat-template tool format (see Known Issues for the family→parser mapping).
 
 Per-cell receipts at [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/). Methodology, failure-mode analysis, and full audit trail live in [`patches/README.md`](patches/README.md).
 
@@ -26,15 +26,12 @@ Patch-shape analysis across all 300 opencode predictions (2026-05-14). **The mod
 - **Only 7 empty patches**, spread across 6 repos — these are real model give-ups on hard instances, not infra. The audit script already separates infra-fail (Connection error / HSAIL / UnicodeDecodeError) from model-silent.
 - **Structural floor:** ~10 sphinx + 3 pallets + 7 empty + 2 error ≈ 22 instances are unwinnable at this model class without scaffold or prompt changes. Headroom to 50% lives in sympy (48 unsolved) and django (60 unsolved) — both candidates for scaffold/prompt iteration rather than model swap.
 
-## Recent cross-team activity
+## Sister teams
 
-R9700 (RDNA4, ROCm) and M4 (Apple Silicon, MLX) sister teams push findings into our README. Older entries (>1 week) archived to [`patches/README.md`](patches/README.md).
+- **[R9700 (RDNA4, ROCm)](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference)** — calibration / quantization owner; ships the `mattbucci/*-AWQ` checkpoints this stack serves. We push bake-off + capability findings back into their README.
+- **[M4 (Apple Silicon, MLX)](https://github.com/mattbucci/m4-sglang-inference)** — MLX bridge; cross-checks chat-template + multimodal-plumbing assumptions.
 
-- **R9700 (2026-05-13) — `mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ` rebuilt in-house** end-to-end from upstream BF16 (homegrown pure-pytorch REAP, no vLLM dep; saliency `Σ_t gate_t × ‖down_proj_E(x)‖₂` on 1024 evol-codealpaca; 128→96 experts; GPTQ W4A16 + `moe_calibrate_all_experts=True`). Swapped into `coder-reap-25b` preset (alias `coder-reap-30b`) per "build-from-scratch" rule.
-- **R9700 (2026-05-12) — validate `mattbucci/gemma-4-31B-AWQ` on Ampere.** R9700 saw vision HSAIL 0x1016 mid-decode; need Ampere reproduction to decide RDNA-specific vs upstream. Run `MODEL=$MODELS_DIR/hf-mattbucci/gemma-4-31B-AWQ ./scripts/launch.sh gemma4-31b` + `validate_capabilities.py`.
-- **M4 (2026-05-13) — MLX metadata audit** found `mlx-community/gemma-4-26b-a4b-it-4bit` ships with `embed_vision.embedding_projection` INT4 (same module class as our 2026-05-06 NaN cascade) and Qwen3.5/3.6 DeltaNet `in_proj_a/b` INT4 across all hybrid checkpoints. Cross-arch hazard list for any community-AWQ ingestion.
-
-Both stacks on v0.5.11 — 3090: 19 patches, R9700: 15, 8 shared content.
+Both stacks on v0.5.11 (3090: 19 patches, R9700: 15, 8 shared content).
 
 ## Current Focus
 
@@ -61,7 +58,6 @@ Reference throughput: **Qwen3-30B REAM AWQ 262K @ 107 tok/s** (TP=2, 9.3 ms TPOT
 3090 owns **evals and serving validation**. Recalibration / in-house model rebuilds live with the [R9700 sister team](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 - **Per-model eval cycles** ([`run_model_cycle.sh <preset>`](evals/swebench/run_model_cycle.sh)): `qwen36`, `qwen36-ream`, `qwen35-moe`, `qwen36-dense`, `coder-30b-ream`, `coder-reap-25b` (R9700 in-house refresh), `devstral`, `gemma4`. Each cycle: full 300-inst × 3 scaffolds + audit + reroll + score. Estimated 8-18h per preset.
-- **Fresh full-300 re-roll for `coder-30b-eval`** — original headline 40.3% was scored 2026-05-10 against predictions generated before patch 034 + docker_rollout UTF-8 fix + opencode.json registry edits. Post-reroll audit landed at the same number (40.3%), but a clean re-roll gives definitive post-fix data.
 - **SWE-bench Verified (500-task)** on the top 1-2 finalists once the matrix is settled.
 - **Qwen3-VL-30B MoE loader fix** — gibberish across 4 sources; upstream weight-mapping bug. Non-coder, lower priority.
 - **Devstral-24B-AWQ HF mirror** at `mattbucci/Devstral-24B-AWQ` after TP=2 validation.
