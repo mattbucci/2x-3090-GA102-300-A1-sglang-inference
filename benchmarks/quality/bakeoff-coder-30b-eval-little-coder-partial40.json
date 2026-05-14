@@ -1,0 +1,25 @@
+{
+  "preset": "coder-30b-eval",
+  "scaffold": "little-coder",
+  "partial_run": true,
+  "n_instances_attempted": 40,
+  "n_instances_full_lite": 300,
+  "model_path": "hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ",
+  "parser_flag": "--tool-call-parser qwen3_coder",
+  "total_predictions": 40,
+  "resolved": 8,
+  "unresolved": 29,
+  "empty_patch": 3,
+  "resolve_rate_pct": 20.0,
+  "audit_infra_failures": 0,
+  "notes": "Fresh clean run after round-1 little-coder hit transient connection failures and aborted at 38/300. This re-run: 40 instances, server continuously healthy throughout 37 min, audit confirms 0 infra failures. Resolution rate 20% on the actual model attempts. Head-to-head on the SAME 40 instances: opencode 17/40 = 42.5%, claw-code 14/40 = 35.0%, little-coder 8/40 = 20.0%. little-coder underperforms the other two scaffolds by 15-22pp on identical instances — suggests pi-ai's iteration model or tool registry is less effective for SWE-bench than opencode's or claw's.",
+  "head_to_head_same_40": {
+    "opencode": "17/40 = 42.5%",
+    "claw-code": "14/40 = 35.0%",
+    "little-coder": "8/40 = 20.0%"
+  },
+  "rollout_dir": "evals/swebench/runs/coder-30b-eval-little-coder-diag-v2",
+  "score_summary": "evals/swebench/runs/coder-30b-eval-little-coder-diag-v2/scores-docker-summary.json",
+  "audit_report": "evals/swebench/runs/coder-30b-eval-little-coder-diag-v2/audit-report.json",
+  "timestamp": "2026-05-14T01:30:00"
+}
