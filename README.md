@@ -48,6 +48,10 @@ R9700 (RDNA4) and M4 (Apple) sister teams ship findings into our repo. Per-day f
 >
 > *Gemma 4 HumanEval extractor-broken; codegen-probe STRONG 8/8 is the cleaner signal there. Codegen-probe (`probe_codegen.py`) STRONG 8/8 across 7/7 production presets on v0.5.11; PARTIAL on `qwen3-ream` (generalist, not coder-tuned). Harness: opencode v1.14.25 headless, 256K, scored locally. Resolved-rate where tests actually ran: 88/236 = 37.3%. Artifacts: `evals/swebench/runs/coder-reap-25b-lite/`. Bake-off continues — see Suggested next §B.*
 
+**Note on `reasoning_tokens` reporting (2026-05-14):** opencode's session logs show `tokens.reasoning: 0` for qwen36 rollouts. **Thinking is still engaged** — the model emits `<think>` blocks and SGLang extracts them into `delta.reasoning_content` in every streaming chunk. The `0` is a display artifact: SGLang returns `usage.reasoning_tokens` as a flat field; opencode parses OpenAI's o1 nested path (`completion_tokens_details.reasoning_tokens`). Direct curl confirms: qwen36 returns 256+ reasoning tokens by default on the same server opencode hit. The 40-65% headline rates reflect the model's real capability with full 256K + thinking.
+
+**Note on common failure modes (2026-05-14):** Sampled 6 unresolved qwen36 × opencode partial-23 instances. Pattern: model identifies the right file/function and iterates heavily (10-54 bash calls, 2-5 edits, 30-96K session tokens), but **the fix is incomplete or symptom-only**. Example astropy-14182 (RST `header_rows`): model adds the kwarg to `__init__` correctly but leaves the `write()` method's `lines[1]` separator assumption unchanged → output RST has wrong separators when `header_rows` expands. Example astropy-14365 (qdp.py): `re.IGNORECASE` fix solves casing but misses the bad-continue-line handling. Industry baseline: 30B-class on SWE-bench Lite hits 35-50%; we're in that band, not under-performing infrastructure.
+
 Shipped-model history, patch-by-patch narratives, and cross-team learnings live in [`patches/README.md`](patches/README.md). The top-level doc below keeps only current state + open issues + next steps.
 
 ## Current Focus
