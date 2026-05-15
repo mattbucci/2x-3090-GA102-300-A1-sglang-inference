@@ -115,7 +115,18 @@ def filter_patch(patch: str, log: dict[str, int] | None = None) -> str:
                 log[reason] = log.get(reason, 0) + 1
             continue
         kept.append(s)
-    return "".join(kept)
+    cleaned = "".join(kept)
+    # Never empty a non-empty patch.  SWE-bench classifies a fully-empty
+    # model_patch as `empty_patch` (a distinct, non-resolved status), so
+    # stripping the last section regresses instances that would have
+    # resolved on the raw patch — even when the only thing the model added
+    # was helper files (the gold test sometimes passes regardless on the
+    # unpatched repo, and an empty submission is graded differently).
+    if patch.strip() and not cleaned.strip():
+        if log is not None:
+            log["KEEP-NON-EMPTY-FALLBACK"] = log.get("KEEP-NON-EMPTY-FALLBACK", 0) + 1
+        return patch
+    return cleaned
 
 
 def main() -> int:
