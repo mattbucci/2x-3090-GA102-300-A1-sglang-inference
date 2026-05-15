@@ -30,9 +30,12 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Default bake-off queue: ordered by expected value-per-hour.
-# qwen36 first (best smoke match for opencode); gemma4 last (highest risk + longest cycle).
-QUEUE="${QUEUE:-qwen36 coder-reap-25b qwen36-ream qwen35-moe coder-30b-ream qwen36-dense devstral gemma4}"
+# Default bake-off queue: coder-30b-eval first so a boot-time invocation
+# correctly resumes the in-flight cycle if the box rebooted mid-rollout
+# (kernel BUG ~9-17h uptime — see project_3090_kernel_bug_reboots memory).
+# Every cycle is idempotent via --skip-existing; replaying a finished
+# cycle is a ~45s no-op.
+QUEUE="${QUEUE:-coder-30b-eval qwen36 coder-reap-25b qwen36-ream qwen35-moe coder-30b-ream qwen36-dense devstral gemma4}"
 POLL_SECS="${POLL_SECS:-60}"
 WAIT_FOR_PID="${WAIT_FOR_PID:-}"
 
@@ -40,6 +43,16 @@ LOG_ROOT="/tmp/run-model-cycle-logs"
 mkdir -p "$LOG_ROOT"
 
 log() { echo "[run-all-cycles $(date +%F\ %H:%M:%S)] $*"; }
+
+# Single-instance lock so the systemd boot unit doesn't double-start when
+# a setsid'd queue is already running. The lock lives in /tmp (tmpfs, wiped
+# on reboot), so a fresh boot always proceeds.
+LOCKFILE="/tmp/swebench-bakeoff.lock"
+exec 9>"$LOCKFILE"
+if ! flock -n 9; then
+  log "another queue runner holds $LOCKFILE; exiting"
+  exit 0
+fi
 
 if [ -n "$WAIT_FOR_PID" ]; then
   if kill -0 "$WAIT_FOR_PID" 2>/dev/null; then

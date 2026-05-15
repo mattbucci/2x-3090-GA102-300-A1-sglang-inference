@@ -1,0 +1,28 @@
+[Unit]
+Description=SWE-bench bake-off queue (resume after reboot)
+Documentation=https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference
+After=docker.service gpu-fan-curve.service network-online.target
+Wants=docker.service gpu-fan-curve.service
+
+[Service]
+Type=simple
+User=letsrtfm
+Group=letsrtfm
+WorkingDirectory=/home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference
+# `-lc` makes bash a login shell so it picks up the user's PATH (conda etc.).
+# run_all_cycles.sh holds a flock so this unit no-ops if another queue is
+# already running (e.g. an interactive setsid'd queue from a Claude session).
+ExecStart=/bin/bash -lc '/home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference/evals/swebench/run_all_cycles.sh'
+# The queue exits when all cycles are scored. No infinite restart loop;
+# RestartSec just delays the one retry if something explodes during boot.
+Restart=on-failure
+RestartSec=120
+# Long jobs — disable systemd's idle/timeout killers.
+TimeoutStartSec=0
+TimeoutStopSec=300
+# Logs go to journalctl -u swebench-bakeoff
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
