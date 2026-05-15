@@ -72,14 +72,18 @@ def parse_args():
     p.add_argument("--run-id", default=None,
                    help="Override run_id (default: parent dir name of predictions).")
     p.add_argument("--filter-helpers", action=argparse.BooleanOptionalAction,
-                   default=True,
+                   default=False,
                    help="Strip model-generated helper files (test_*.py, "
                         "reproduce*.py, debug*.py, .claw/, .sandbox-tmp/, etc. "
                         "at testbed root) from each prediction's model_patch "
-                        "before scoring.  These helpers cause pytest collection "
-                        "errors that make SWE-bench mark the instance \"error\" "
-                        "rather than scoring the actual code edit. Default: ON. "
-                        "See evals/swebench/filter_predictions.py for the rules.")
+                        "before scoring. NOTE: default OFF as of 2026-05-15 — "
+                        "on coder-30b-eval x opencode the filter rescued 1 "
+                        "error (psf-2317-like) but regressed 3 resolved cases "
+                        "where root-level `test_*.py` was actually the model's "
+                        "fix (40.3% -> 39.3%). Tighten ROOT_HELPER_PATTERNS in "
+                        "filter_predictions.py before turning back on. The "
+                        "LLM self-clean pass in docker_rollout.py is the "
+                        "preferred mechanism for new rolls.")
     return p.parse_args()
 
 
