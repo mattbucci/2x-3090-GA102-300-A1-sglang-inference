@@ -62,4 +62,11 @@ setup_nvidia_env() {
     export TOKENIZERS_PARALLELISM=false
     export SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1
     export PYTHONWARNINGS="ignore::UserWarning"
+
+    # Force tvm_ffi's JIT compiler to target CUDA. If /opt/rocm exists or
+    # ROCM_PATH/ROCM_HOME is set (R9700 sister-stack leftovers on a swapped
+    # motherboard, or a partial ROCm install for other reasons), tvm_ffi
+    # auto-detects "hip" and crashes the awq_marlin_repack JIT with
+    # `Could not detect ROCm GPU architecture automatically`.
+    export TVM_FFI_GPU_BACKEND=cuda
 }
