@@ -73,3 +73,41 @@ Full preset list (20 total — `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scri
   - **R9700 (AMD RDNA4, ROCm 7.2):** `~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference` — calibration pipeline owner, FP32-softmax patch 011 originator, CT→native AWQ converter (saved us 13h on Qwen3.6-35B).
   - **M4 (Apple Silicon, MLX bridge):** `~/AI/m4-sglang-inference` — patch 013 owner (DeltaNet cache-wiring fix). Identified that Qwen3.5/3.6 support video and Gemma 4 supports audio; preprocessor_config.json often missing on community checkpoints.
   - `git fetch origin` each, read their commits, push findings to their READMEs. Patches are often portable; findings about model behavior (stop tokens, template quirks) always are.
+  - **Division of labor (current):** 3090 owns evals + serving validation (SWE-bench bake-offs, capability sweeps). R9700 owns recalibration (GPTQ → CT → AWQ pipelines, REAM/REAP rebuilds). Both stacks keep full pipeline capability so either can step in. When a 3090 bake-off surfaces a model regression, push the recal TODO to R9700's README, not ours.
+
+## Operational Lessons (consolidated from working memory)
+
+### Hardware quirks
+- **Kernel BUG reboots every ~9-17h.** Sustained docker rollout I/O hangs the box (kernel-level lock; journal stops writing mid-`docker run swebench-rollout-...`). User hard-resets when noticed. Predictions on disk survive; last 5-15 unflushed pagecache writes are lost. To resume: relaunch wrapper via setsid + relaunch `run_all_cycles.sh WAIT_FOR_PID=<new-pid>`. systemd unit `swebench-bakeoff.service` (tracked at `systemd/`) auto-resumes on boot. Forensic recipe: `journalctl --boot=-1 --no-pager | tail -1`. Durable fix needs sudo (kernel upgrade or storage-driver swap); don't try to "prevent" from inside the agent.
+- **Rule 1 — no concurrent calibration + eval.** GPTQ calibration (15+ cores, ~60 GB RAM hessians) + SGLang server (90% VRAM) + opencode-driven traffic exceeds host headroom. Crashed the box 2026-04-25 on Qwen3.5-28B.
+- **Rule 2 — no concurrent rollout + score.** Both spin per-instance docker containers. Concurrent VFS pressure triggers the kernel BUG (above). `run_model_cycle.sh` sequences them; don't bypass.
+- **Cooling profile is load-bearing.** 260 W power cap + `gpu-fan-curve.service` keeps DDR5 below ALARM HIGH and prevents thermal-Python-heap corruption (separate failure from Rule 1/2). Don't disable.
+
+### Conda env split — `quant` vs `sglang`
+- **`sglang`** — serving. Has SGLang + CUDA + `compressed_tensors==0.15.0.1` (lacks `.distributed`). Use for `launch.sh`, `validate_capabilities.py`, `probe_*.py`.
+- **`quant`** — calibration. Has `compressed_tensors==0.15.1.dev6+g077e752` with `.distributed`, llmcompressor importable. Use for `quantize_*.py`, GPTQ, CT→AWQ conversion.
+- Wrong env on quantize gives `ModuleNotFoundError: compressed_tensors.distributed`. Don't try to upgrade `sglang` env — use `quant`. Pattern: `conda activate quant` (NOT sglang) before any llmcompressor work.
+
+### README discipline (public-facing surface)
+- **README is current-state, not a historical trail.** Delete obsolete entries rather than annotating with strikethrough or `**RESOLVED**`. `git log` has the resolution narrative.
+- **Cross-team / sister-teams section is a heartbeat.** Show only open asks + current relationships. Remove past-tense bullets ("we adopted X" — the preset list IS the receipt) and informational-only sister-stack findings with no 3090 action. Same applies to narrative residue like "(from 30-instance smoke matrix, since wiped)".
+- **No internal/agent notes in the public README.** No `/tmp/...` paths, no `setsid` mechanics, no "active session YYYY-MM-DD" banners, no "in flight this session" framing. Those belong in CLAUDE.md, task lists, or memory — not the project face. Quick test: would a stranger visiting the repo find this line useful?
+
+### Calibration recipe specifics
+- **DeltaNet narrow ignore — only `in_proj_a$/b$`.** Broad `re:.*linear_attn\..*` fails because loader expects INT4 qkvz. v1 (everything INT4) and v2 (whole linear_attn BF16) both gave garbage; v3 working pattern: `["lm_head", "re:.*visual.*", "re:.*in_proj_a$", "re:.*in_proj_b$"]` + model-specific MoE router/shared-gate exclusions. Probe with "What is the capital of France?"; `!!!!!` output means wrong ignore.
+- **Per-expert AWQ dense-MLP detection.** Don't hardcode `quant_config=None` for "dense MLP on MoE block" — recipes vary. Detect at construction from `quantization_config.ignore`: regex-match the module path against ignore entries, switch to None only when matched. Symptom of getting this wrong: `<pad>` output for every prompt; `check_awq_scales.py` won't catch it (safetensors are correct; the model just doesn't bind them).
+- **Drop file caches before calibration; don't reduce quality settings.** `echo 3 > /proc/sys/vm/drop_caches` first. Investigate actual memory before lowering samples / sequence length.
+- **Recalibrate over source edits.** When a detached calibration dies, find the external cause (RAM pressure, competing process) and restart. Don't add try/except, checkpointing, or "harden" the script — compute is cheap, silent correctness bugs are expensive.
+
+### SWE-bench rollout details
+- **Three scaffold landmines that silently produce empty diffs.** (a) little-coder ignores `OPENAI_BASE_URL` — use `--model llamacpp/<served-name>` and sed-patch the packaged `models.json`. (b) claw binary GLIBC mismatch — build inside `rust:bullseye` (Debian 11, GLIBC 2.31) in `scripts/build_claw.sh`, not host Arch. (c) per-instance rollout images cached by tag — Dockerfile/opencode.json edits do NOT propagate; nuke `swebench-rollout/*` after every scaffold-config edit.
+- **`--tool-call-parser` is per-preset and load-bearing.** Without the right parser, the model's `<tool_call><function=NAME>...` XML is served as `content` plain text, harness drops it, diff is empty. Family→parser mapping audited 2026-05-13: Qwen3-Coder + every Qwen3.5/3.6 (incl. dense, MoE, VL-REAP, REAM) → `qwen3_coder`; Qwen3-VL non-coder + Qwen3-30B-Instruct REAM → `qwen25`; Devstral → `mistral`; Gemma 4 → `gemma4`. Reasoning + tool-call parsers compose correctly when thinking is enabled.
+- **Scaffold-model fit can swing +80 pp on the same model.** qwen36 × claw smoke = 0/5; qwen36 × opencode = 4/5 with identical model + parser. Thinking-mode generalists fit opencode; coder-tuned models fit claw. The right bake-off cell is `(model_family, scaffold)`, not model alone. qwen3-ream (Instruct, non-thinking) failed in both → model-capability gap, not scaffold mismatch.
+- **Common failure mode for 30B-class on SWE-bench Lite: incomplete fix, not silence.** Thinking IS engaged in production (opencode under-reports because SGLang returns `usage.reasoning_tokens` FLAT, but opencode parses OpenAI's nested `completion_tokens_details.reasoning_tokens` path). 40% on Lite is competitive for 30B-class; failures are "model patched the symptom but missed the root cause", not infra. Don't treat 40% as broken.
+
+### Project hygiene
+- **No hardcoded `/home/letsrtfm/...` paths.** Use `$REPO_DIR` / `$MODELS_DIR` (set in `scripts/common.sh`) or derive from `$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)`. Hardcoded paths break for any other operator or host.
+- **HuggingFace push target: `mattbucci/<NAME>`** (not `letsrtfm/`). Token at `~/.secrets/hf_token_hf`. For uploads ≤25 GB use `hf upload <repo> <dir>`; for 50 GB+ that stall in commit phase, use R9700's `scripts/quantize/upload_repo_per_file.py` (one `HfApi.upload_file()` per file, idempotent on retry). GitHub PAT at `~/.secrets/gh_token` (already embedded in remote URLs).
+
+### Known model issues
+- **CT-format MoE at TP=2 crashes in `_load_w2`** with `RuntimeError: start (4) + length (4) exceeds dimension size (4)`. CT ships w2 already at per-rank size; the loader still calls `narrow(shard_dim, shard_size*tp_rank, shard_size)` which overflows. Native AWQ (awq_marlin quant) ships full-global w2, narrow works. Don't repoint qwen36 (TP=2) to CT until patched. TP=1 (qwen36-tp1) is fine. Affects any CT MoE at TP≥2; check qwen35-moe + Coder-30B-REAM when reaching them.
