@@ -105,14 +105,25 @@ Use `temperature >= 0.3` on Qwen3 family models — greedy decode at `temp=0` tr
 
 ## Prerequisites
 
-- 2x NVIDIA RTX 3090 (24 GB each, 48 GB total) with NVLink bridge
-- NVIDIA driver 595+ / CUDA 13.x
-- Miniforge3 or Conda
-- ~150 GB disk for models
+Reference host (current 3090 rig as of 2026-05-17 motherboard swap):
+
+| Component | Spec |
+|-----------|------|
+| GPU | 2× NVIDIA RTX 3090 (24 GB each, 48 GB total) — NVLink bridge present (`nvidia-smi topo -m` reports `NV4` ≈ 56 GB/s aggregate) |
+| CPU | AMD Ryzen 9 7900 (12C/24T, max 5.48 GHz, Zen 4 AM5) |
+| RAM | 2× 32 GB DDR5-6000 (64 GB total; 62 GB usable in OS) |
+| Motherboard | MSI MPG B650I EDGE WIFI (MS-7D73, mini-ITX, AM5) |
+| Storage | 2× Crucial P5 Plus 2 TB NVMe (`nvme0n1` = root, `nvme1n1` = `/data` models) |
+| Chassis fans | Corsair Commander Core XT (controlled via `liquidctl`) |
+| OS | EndeavourOS (Arch-based, rolling) |
+| Kernel | `linux-zen-p2p` 6.18.0 (custom zen variant with NVIDIA-driver P2P-BAR1 patches) |
+| NVIDIA driver | 595.71.05 (`nvidia-open-dkms`) / CUDA toolkit 13.2 |
+
+Both 3090s sit at PCIe Gen4 with the NVLink bridge spanning them. NCCL selects `P2P/IPC` transport (NVLink + peer-to-peer CUDA IPC, not host-mediated sockets) once the driver/kernel combination below is in place.
 
 ### Kernel and driver
 
-- `linux-zen` kernel (Arch `extra/linux-zen`), not stock `linux` — the stock Arch kernel + the open NVIDIA module hard-locked the host repeatedly under sustained TP=2 / 256K bake-off load on this rig. The zen patchset's scheduler and IO tuning eliminated the recurrence; same major version (6.19.11), so all other config carries over.
+- `linux-zen`-family kernel (the host currently runs `linux-zen-p2p` 6.18.0), not stock `linux` — the stock Arch kernel + the open NVIDIA module hard-locked the host repeatedly under sustained TP=2 / 256K bake-off load on the prior chassis. The zen patchset's scheduler and IO tuning eliminated the recurrence; the `-p2p` variant additionally carries community patches that re-enable consumer-Ampere PCIe-BAR1 P2P so `nvidia-smi topo -m` reports `NV4` instead of `PHB` on this AM5 platform.
 - `nvidia-open-dkms` (not `nvidia-open`) — DKMS rebuilds the module for every kernel that has headers installed, so the same NVIDIA driver version covers both `linux` and `linux-zen`.
 
 ### Cooling and power profile (load-bearing)
