@@ -1,0 +1,23 @@
+[Unit]
+Description=GPU fan-curve daemon (4 s poll, 75%/60 C..100%/80 C linear ramp)
+Documentation=file:///%h/AI/2x-3090-GA102-300-A1-sglang-inference/README.md
+After=gpu-cooling.service
+Requires=gpu-cooling.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/gpu-fan-curve.py
+Restart=on-failure
+RestartSec=10
+# Writes /sys/class/hwmon pwm endpoints; needs root.
+User=root
+Group=root
+# These tunables can be overridden at the unit level if needed.
+Environment=POLL_SECS=4
+Environment=FLOOR_PCT=75
+Environment=CEILING_PCT=100
+Environment=RAMP_LOW_C=60
+Environment=RAMP_HIGH_C=80
+
+[Install]
+WantedBy=multi-user.target

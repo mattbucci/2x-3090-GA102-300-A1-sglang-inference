@@ -132,12 +132,26 @@ Two systemd units hold a cooling profile that's required for the bake-off to sur
 
 | Unit | Action |
 |------|--------|
-| `gpu-cooling.service` | Boot oneshot. Enables NVIDIA persistence mode, sets each 3090's power limit to **260 W** (down from default 350 W), pushes Corsair Commander Core XT case fans to 100% via `liquidctl`, enables manual GPU fan control, seeds 75 % fan floor. |
-| `gpu-fan-curve.service` | Long-running daemon. Polls each GPU's temperature every 4 s. Fan speed = 75 % below 60 °C, linear ramp to 100 % between 60 °C and 80 °C, 100 % at 80 °C+. Re-asserts manual fan control once on start. |
+| `gpu-cooling.service` | Boot oneshot. Enables NVIDIA persistence mode, sets each 3090's power limit to **260 W** (down from default 350 W), pushes Corsair Commander Core XT case fans to 100% via `liquidctl`, seeds a 75% GPU fan floor via NVML (`nvmlDeviceSetFanSpeed_v2`). |
+| `gpu-fan-curve.service` | Long-running NVML daemon. Polls each GPU's temperature every 4 s. Fan duty = 75% below 60 °C, linear ramp to 100% between 60 °C and 80 °C, 100% at 80 °C+. Drives every fan on every GPU to the max-temp duty (one card heating up pulls all fans). |
 
-Scripts live at `/usr/local/bin/gpu-cooling.sh` and `/usr/local/bin/gpu-fan-curve.sh`. Enable with `systemctl enable --now gpu-cooling.service gpu-fan-curve.service`. Verify after a reboot with `nvidia-smi --query-gpu=power.limit,fan.speed,temperature.gpu --format=csv` (expect 260 W limit, ~75 % fans idle).
+The fan curve runs through NVML rather than hwmon — consumer Ampere on the open NVIDIA driver does not expose `pwm*` endpoints under `/sys/class/hwmon` for the GPU itself, only for the NVMe SSDs and SPD modules. NVML's `SetFanSpeed_v2` works as root.
 
-Ampere consumer cards do not expose VRAM junction temperature, so the GPU-core temp shown by `nvidia-smi` is an underestimate of the real thermal pressure. 260 W picked to leave inference throughput headroom while still cutting peak heat ~25 %.
+Scripts are tracked in this repo under [`systemd/`](systemd/). Install them with:
+
+```bash
+sudo pacman -S --needed python-nvidia-ml-py
+sudo install -m 0755 systemd/gpu-cooling.sh   /usr/local/bin/gpu-cooling.sh
+sudo install -m 0755 systemd/gpu-fan-curve.py /usr/local/bin/gpu-fan-curve.py
+sudo install -m 0644 systemd/gpu-cooling.service   /etc/systemd/system/
+sudo install -m 0644 systemd/gpu-fan-curve.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now gpu-cooling.service gpu-fan-curve.service
+```
+
+Verify with `nvidia-smi --query-gpu=power.limit,fan.speed,temperature.gpu --format=csv` (expect 260 W limit, ~75% fans idle).
+
+Ampere consumer cards do not expose VRAM junction temperature, so the GPU-core temp shown by `nvidia-smi` is an underestimate of the real thermal pressure. 260 W picked to leave inference throughput headroom (a 256K coder-30b cycle pulls only ~245 W per card under steady-state decode, so the cap costs no throughput) while still cutting peak heat ~25%.
 
 ## Model Support
 

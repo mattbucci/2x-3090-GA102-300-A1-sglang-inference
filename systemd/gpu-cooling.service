@@ -1,0 +1,16 @@
+[Unit]
+Description=Boot-time GPU cooling profile (persistence, 260 W cap, chassis fans, GPU fan floor)
+Documentation=file:///%h/AI/2x-3090-GA102-300-A1-sglang-inference/README.md
+After=multi-user.target
+Wants=nvidia-persistenced.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/gpu-cooling.sh
+# Writes /sys/class/hwmon and runs nvidia-smi -pm/-pl; needs root.
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
