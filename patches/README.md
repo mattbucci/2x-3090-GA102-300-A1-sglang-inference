@@ -2,11 +2,11 @@
 
 This file collects the details of **what was fixed and why** — per-patch narratives, root-cause notes, and cross-team learnings. The top-level `README.md` keeps only current state; once an issue is closed with a patch, the narrative lives here.
 
-Patches apply in numeric order against SGLang v0.5.11. `scripts/setup.sh` applies every `*.patch` in this directory idempotently. **20 patches** ship currently (`ls patches/*.patch | wc -l`):
+Patches apply in numeric order against SGLang v0.5.11. `scripts/setup.sh` applies every `*.patch` in this directory idempotently. **21 patches** ship currently (`ls patches/*.patch | wc -l`):
 
 - **13 v0.5.11-targeted patches** from the 2026-05-07 v0.5.10→v0.5.11 rebase (commit `1655e46`).
 - **002, 028, 029** added post-rebase (cross-team port + Gemma4 mm per-expert + Qwen3.5 CT shared_expert_gate).
-- **031, 034, 035** added post-rebase for v0.5.11 Qwen3.5/3.6 + sampler-Inf surface (deltanet AWQ loader, sampler ±Inf detection, MoeForCausalLM EntryClass).
+- **031, 034, 035, 036** added post-rebase for v0.5.11 Qwen3.5/3.6 + sampler-Inf surface (deltanet AWQ loader, sampler ±Inf detection, MoeForCausalLM EntryClass + HF layer_types fallback).
 - **030 (v0.5.10 backport of 028) DELETED 2026-05-09** with the env upgrade — patch 028 now applies natively. Historical narrative kept below.
 
 Patches dropped during the v0.5.11 rebase as upstreamed: 001, 002 (original — the new 002 is unrelated cross-team), 006, 008, 009, 014, 015, 016, 019, 020, 022 — historical narratives below kept for context but those `.patch` files no longer ship.
@@ -227,6 +227,19 @@ Mechanic mirrors the NaN branch: replace +Inf with `+1e4`, -Inf with `-1e4` (sig
 This is the failure mode the `qwen36` preset hit during the 2026-05-17 bake-off (cycle exited rc=1 in 12 min). The preset points at `mattbucci/Qwen3.6-35B-A3B-AWQ-CT`, whose `config.json` declares `Qwen3_5MoeForCausalLM` (text-only). The native multimodal mirrors at `Qwen3.6-35B-A3B-AWQ-native-thinking-vision` still load because they declare `Qwen3_5MoeForConditionalGeneration`. Also affects `Qwen3.6-27B-AWQ-CT-balanced` (declares `Qwen3_5ForCausalLM`).
 
 Fix is a straight registration update — `Qwen3_5MoeForCausalLM` inherits from `Qwen3_5ForCausalLM` and both classes already have complete `__init__` + `load_weights` + `forward` implementations. No new code, just expose them to the architecture registry. Cross-team note: R9700 should mirror this on their v0.5.11 source (their `qwen3_5.py` carries the same EntryClass list).
+
+### 036 — qwen3_5-layer-types-hf-fallback (2026-05-19, 9 LOC, sister to 035)
+**Defensive read of `layer_types` / `layers_block_type` in `Qwen3_5ForCausalLM.get_layer`.** After patch 035 unblocked the bare causal-LM load path, the next step in `make_layers` hit `AttributeError: 'Qwen3_5MoeTextConfig' object has no attribute 'layers_block_type'`.
+
+There are two classes with the same name `Qwen3_5MoeTextConfig`:
+- sglang's at `srt/configs/qwen3_5.py:119` — inherits `layers_block_type` as a `@property` from `Qwen3NextConfig` that returns sglang's internal values (`"attention"` / `"linear_attention"`).
+- HF transformers' at `models/qwen3_5_moe/configuration_qwen3_5_moe.py` — has only `layer_types` with HF's values (`"full_attention"` / `"linear_attention"`).
+
+Both declare `model_type = "qwen3_5_moe_text"`. sglang's qwen3_5 config module never calls `AutoConfig.register()` (only qwen3_asr / lfm2* do), so HF's class wins the AutoConfig lookup and the model receives the HF object. The multimodal path is fine because the top-level `Qwen3_5MoeConfig` (model_type `qwen3_5_moe`) declares `sub_configs = {"text_config": Qwen3_5MoeTextConfig}` — that sub_config constructor uses sglang's class explicitly.
+
+Fix: in `get_layer`, prefer `layers_block_type` (sglang's path), fall back to `layer_types` (HF's path), translate HF's `"full_attention"` to sglang's `"attention"` so the lookup in `ALL_DECODER_LAYER_TYPES` matches either way. 9 lines, no new code outside this function.
+
+R9700 cross-team note: their v0.5.11 source has the same shape; they should mirror this whenever they pick up patch 035.
 
 ### 030 — gemma4-mm-per-expert-awq-loader-v0510 (DELETED 2026-05-09)
 **Deleted on env upgrade to v0.5.11.** This was the v0.5.10 backport of patch 028 — sister patch covering per-expert AWQ multimodal Gemma 4 keys at the v0.5.10 source line offsets (`gemma4_mm.py:802+` instead of v0.5.11's `gemma4_mm.py:714+`). Once the dev rig moved to v0.5.11 source, patch 028 applies natively and 030 became redundant. Historical context: it lived in `patches/` for two days (2026-05-08 → 2026-05-09) with `setup.sh`'s `git apply --check` silently routing to whichever sister patch matched the running source.
