@@ -2,10 +2,11 @@
 
 This file collects the details of **what was fixed and why** — per-patch narratives, root-cause notes, and cross-team learnings. The top-level `README.md` keeps only current state; once an issue is closed with a patch, the narrative lives here.
 
-Patches apply in numeric order against SGLang v0.5.11. `scripts/setup.sh` applies every `*.patch` in this directory idempotently. **16 patches** ship currently (`ls patches/*.patch | wc -l`):
+Patches apply in numeric order against SGLang v0.5.11. `scripts/setup.sh` applies every `*.patch` in this directory idempotently. **20 patches** ship currently (`ls patches/*.patch | wc -l`):
 
 - **13 v0.5.11-targeted patches** from the 2026-05-07 v0.5.10→v0.5.11 rebase (commit `1655e46`).
 - **002, 028, 029** added post-rebase (cross-team port + Gemma4 mm per-expert + Qwen3.5 CT shared_expert_gate).
+- **031, 034, 035** added post-rebase for v0.5.11 Qwen3.5/3.6 + sampler-Inf surface (deltanet AWQ loader, sampler ±Inf detection, MoeForCausalLM EntryClass).
 - **030 (v0.5.10 backport of 028) DELETED 2026-05-09** with the env upgrade — patch 028 now applies natively. Historical narrative kept below.
 
 Patches dropped during the v0.5.11 rebase as upstreamed: 001, 002 (original — the new 002 is unrelated cross-team), 006, 008, 009, 014, 015, 016, 019, 020, 022 — historical narratives below kept for context but those `.patch` files no longer ship.
@@ -214,6 +215,18 @@ Three gaps in `Qwen3_5GatedDeltaNet`:
 On Ampere CUDA the surface is different (no HSAIL) but the cascade is the same — Inf logits propagate to NaN through softmax and produce silent garbage tokens; the new branch makes the warning fire AT the offending sample. With `SGLANG_IS_IN_CI=1` the branch escalates to `ValueError("Detected errors during sampling! Inf in the logits.")` so CI runs surface the bug loudly.
 
 Mechanic mirrors the NaN branch: replace +Inf with `+1e4`, -Inf with `-1e4` (signed-aware versions of the NaN→`-1e5` replacement). Source file (`python/sglang/srt/layers/sampler.py`) is identical between R9700 and 3090 at v0.5.11, so the patch is verbatim from R9700 commit ec1cf36.
+
+### 035 — qwen3_5-causal-lm-entry-class (2026-05-19, 7 LOC, v0.5.11 + Qwen3.6 CT)
+**Expands `qwen3_5.py`'s `EntryClass` registry to expose the two text-only CausalLM heads alongside the existing ConditionalGeneration ones.** SGLang discovers supported model architectures by walking each model file's module-level `EntryClass` list — anything not in `EntryClass` is treated as "no SGLang implementation" even when the class is defined right there in the file.
+
+`qwen3_5.py` defines four heads (`Qwen3_5ForCausalLM` at line 961, `Qwen3_5MoeForCausalLM` at 1256, `Qwen3_5ForConditionalGeneration` at 1466, `Qwen3_5MoeForConditionalGeneration` at 1661), but `EntryClass` only listed the two `ConditionalGeneration` variants. Result: any Qwen3.5/3.6 checkpoint whose `config.json` declares `architectures: ["Qwen3_5MoeForCausalLM"]` or `["Qwen3_5ForCausalLM"]` fails to load:
+
+    ValueError: Qwen3_5MoeForCausalLM has no SGlang implementation and
+    the Transformers implementation is not compatible with SGLang.
+
+This is the failure mode the `qwen36` preset hit during the 2026-05-17 bake-off (cycle exited rc=1 in 12 min). The preset points at `mattbucci/Qwen3.6-35B-A3B-AWQ-CT`, whose `config.json` declares `Qwen3_5MoeForCausalLM` (text-only). The native multimodal mirrors at `Qwen3.6-35B-A3B-AWQ-native-thinking-vision` still load because they declare `Qwen3_5MoeForConditionalGeneration`. Also affects `Qwen3.6-27B-AWQ-CT-balanced` (declares `Qwen3_5ForCausalLM`).
+
+Fix is a straight registration update — `Qwen3_5MoeForCausalLM` inherits from `Qwen3_5ForCausalLM` and both classes already have complete `__init__` + `load_weights` + `forward` implementations. No new code, just expose them to the architecture registry. Cross-team note: R9700 should mirror this on their v0.5.11 source (their `qwen3_5.py` carries the same EntryClass list).
 
 ### 030 — gemma4-mm-per-expert-awq-loader-v0510 (DELETED 2026-05-09)
 **Deleted on env upgrade to v0.5.11.** This was the v0.5.10 backport of patch 028 — sister patch covering per-expert AWQ multimodal Gemma 4 keys at the v0.5.10 source line offsets (`gemma4_mm.py:802+` instead of v0.5.11's `gemma4_mm.py:714+`). Once the dev rig moved to v0.5.11 source, patch 028 applies natively and 030 became redundant. Historical context: it lived in `patches/` for two days (2026-05-08 → 2026-05-09) with `setup.sh`'s `git apply --check` silently routing to whichever sister patch matched the running source.

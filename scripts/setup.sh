@@ -107,8 +107,14 @@ if [ "$SKIP_ENV" = false ]; then
     # but imageio[ffmpeg] is needed for the validate_capabilities.py video
     # check (12-frame mp4 build via iio.imwrite). Without it the video step
     # silently skips with "no module named imageio" and you lose the modality.
+    #
+    # swebench is the official harness called by evals/swebench/score_docker.py
+    # — without it the score step prints `ModuleNotFoundError: No module named
+    # 'swebench'` and writes a 0/300 cell JSON, silently masking the real
+    # numbers behind a "harness exited rc=1; trying to summarize anyway" line
+    # in score-<scaffold>.log. We hit this on 2026-05-19 after a 25h cycle.
     echo "Installing eval/validator deps..."
-    pip install "imageio[ffmpeg]"
+    pip install "imageio[ffmpeg]" swebench
 else
     echo "[2/3] Skipping conda env creation"
     init_conda

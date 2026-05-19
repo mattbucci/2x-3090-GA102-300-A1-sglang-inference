@@ -1,0 +1,64 @@
+From: 3090 team <noreply@anthropic.com>
+Date: 2026-05-19
+Subject: [PATCH] qwen3_5: register MoeForCausalLM + ForCausalLM in EntryClass
+
+SGLang discovers supported model architectures by walking each model
+file's module-level `EntryClass` list. Whatever isn't in `EntryClass`
+is treated as "no SGLang implementation" even when the class is
+defined right there in the file.
+
+`qwen3_5.py` defines four model heads:
+
+  - `Qwen3_5ForCausalLM`               (line 961)   — dense, text-only
+  - `Qwen3_5MoeForCausalLM`            (line 1256)  — MoE, text-only
+  - `Qwen3_5ForConditionalGeneration`  (line 1466)  — dense, multimodal
+  - `Qwen3_5MoeForConditionalGeneration` (line 1661) — MoE, multimodal
+
+…but `EntryClass` only listed the two `ConditionalGeneration` variants.
+Result: any Qwen3.5/3.6 checkpoint whose `config.json` declares
+`architectures: ["Qwen3_5MoeForCausalLM"]` or `["Qwen3_5ForCausalLM"]`
+fails to load:
+
+    ValueError: Qwen3_5MoeForCausalLM has no SGlang implementation and
+    the Transformers implementation is not compatible with SGLang.
+
+This is the failure mode we hit on the `qwen36` preset
+(`mattbucci/Qwen3.6-35B-A3B-AWQ-CT` declares `Qwen3_5MoeForCausalLM`
+in its config; the multimodal mirrors at
+`Qwen3.6-35B-A3B-AWQ-native-thinking-vision` still load because they
+declare `Qwen3_5MoeForConditionalGeneration`). Also affects
+`Qwen3.6-27B-AWQ-CT-balanced` (declares `Qwen3_5ForCausalLM`).
+
+The fix is a straight registration update — `Qwen3_5MoeForCausalLM`
+inherits from `Qwen3_5ForCausalLM` and both classes already have
+complete `__init__` + `load_weights` + `forward` implementations in
+the file. No new code, just expose them to SGLang's model-architecture
+registry.
+
+Repro: launch the qwen36 preset at TP=2 with the CT mirror:
+
+    MODEL=$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ-CT \
+    QUANT=compressed-tensors \
+    ./scripts/launch.sh qwen36
+
+Before this patch: ValueError above, cycle exits rc=1 in <1 min.
+After this patch: server boots, /health=200, rollouts proceed.
+
+---
+ python/sglang/srt/models/qwen3_5.py | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
+--- a/python/sglang/srt/models/qwen3_5.py
++++ b/python/sglang/srt/models/qwen3_5.py
+@@ -1976,4 +1976,9 @@ class Qwen3_5MoeForConditionalGeneration(Qwen3VLForConditionalGeneration):
+         )
+
+
+-EntryClass = [Qwen3_5MoeForConditionalGeneration, Qwen3_5ForConditionalGeneration]
++EntryClass = [
++    Qwen3_5MoeForConditionalGeneration,
++    Qwen3_5MoeForCausalLM,
++    Qwen3_5ForConditionalGeneration,
++    Qwen3_5ForCausalLM,
++]
