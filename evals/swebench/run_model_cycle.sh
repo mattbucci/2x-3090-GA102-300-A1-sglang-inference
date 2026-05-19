@@ -68,6 +68,33 @@ launch_server() {
   echo $pid > "$LOG_DIR/server.pid"
 }
 
+# Presets whose launch.sh entry omits QUANT (so the default vs awq_marlin
+# choice is left implicit). For these we run a pre-cycle pair smoke test to
+# verify both kernels produce coherent output and pick whichever decodes
+# faster. Result is exported as QUANT for this cycle's launch_server.
+needs_kernel_smoke() {
+  case "$1" in
+    qwen36-dense|gemma4) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+run_kernel_smoke() {
+  log "kernel smoke (default vs awq_marlin)"
+  bash "$SCRIPT_DIR/smoke_kernel_pair.sh" "$PRESET" \
+    > "$LOG_DIR/smoke.log" 2>&1
+  local rc=$?
+  local winner_env="/tmp/smoke-kernel/$PRESET/winner.env"
+  if [ -f "$winner_env" ]; then
+    # shellcheck disable=SC1090
+    source "$winner_env"
+    export QUANT
+    log "smoke winner: QUANT=${QUANT:-<preset-default>} (rc=$rc)"
+  else
+    log "smoke produced no winner.env (rc=$rc); falling back to preset default"
+  fi
+}
+
 wait_ready() {
   local end=$(($(date +%s) + $SERVER_TIMEOUT))
   while [ "$(date +%s)" -lt "$end" ]; do
@@ -79,6 +106,11 @@ wait_ready() {
   tail -40 "$LOG_DIR/server.log"
   return 1
 }
+
+# --- Phase 0: per-preset kernel smoke (only for presets that need it) ---
+if needs_kernel_smoke "$PRESET"; then
+  run_kernel_smoke
+fi
 
 # --- Phase 1: launch + rollouts ---
 launch_server
