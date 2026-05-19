@@ -70,10 +70,10 @@ Full preset list (20 total — `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scri
   - **Chat templates are load-bearing.** Wrong BOS/EOS, missing `<think>` handling, or reasoning stripped from calibration data silently destroys quality. Inspect `chat_template.jinja` and validate thinking tags on every new model before claiming ship.
   - **Calibration data must cover all live modalities** (thinking + image + video + audio as applicable). Text-only Open-Platypus breaks both reasoning and vision alignment.
 - **Sister-team collaboration:**
-  - **R9700 (AMD RDNA4, ROCm 7.2):** `~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference` — calibration pipeline owner, FP32-softmax patch 011 originator, CT→native AWQ converter (saved us 13h on Qwen3.6-35B).
+  - **R9700 (AMD RDNA4, ROCm 7.2):** `~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference` — FP8 calibration owner (RDNA4 gfx1201 has native FP8 weight acceleration); RDNA4/ROCm serving stack. Recipe originator for FP32-softmax patch 011 and the CT→native AWQ converter (saved us 13h on Qwen3.6-35B).
   - **M4 (Apple Silicon, MLX bridge):** `~/AI/m4-sglang-inference` — patch 013 owner (DeltaNet cache-wiring fix). Identified that Qwen3.5/3.6 support video and Gemma 4 supports audio; preprocessor_config.json often missing on community checkpoints.
   - `git fetch origin` each, read their commits, push findings to their READMEs. Patches are often portable; findings about model behavior (stop tokens, template quirks) always are.
-  - **Division of labor (current):** 3090 owns evals + serving validation (SWE-bench bake-offs, capability sweeps). R9700 owns recalibration (GPTQ → CT → AWQ pipelines, REAM/REAP rebuilds). Both stacks keep full pipeline capability so either can step in. When a 3090 bake-off surfaces a model regression, push the recal TODO to R9700's README, not ours.
+  - **Division of labor (current, 2026-05-19):** 3090 owns **all evals + AWQ/INT4 calibrations** end-to-end — Ampere has native INT4 / AWQ_Marlin acceleration so GPTQ → CT → AWQ recipe runs, REAM/REAP rebuilds, SWE-bench bake-offs, and capability sweeps all live here. **R9700 owns FP8 calibrations** — gfx1201 has native FP8 weight acceleration that doesn't pay off on Ampere. When a 3090 bake-off surfaces an AWQ model regression, the recal lands in *this* repo, not R9700's; an FP8 variant request goes to them. Both stacks keep full pipeline capability so either can step in for parallel/backup runs.
 
 ## Operational Lessons (consolidated from working memory)
 

@@ -38,9 +38,13 @@ Patch-shape analysis across all 300 opencode predictions (2026-05-14). **The mod
 
 2. **Model-helper file noise broke scoring on edge cases — fixed at the score layer.** Both scaffolds write reproducer/debug scripts at `/testbed/` root (`reproduce_bug.py`, `test_fix.py`, `comprehensive_test.py`, `debug_*.py`). On `psf__requests-2317` opencode's actual code edit (`builtin_str(method)` → `to_native_string(method)`) was correct and identical to claw's resolved version, but opencode also added two new test files at root → pytest collected them, hit an import error, SWE-bench's `get_eval_report` couldn't parse the malformed test output, `run_instance` marked the instance `error`. [`evals/swebench/filter_predictions.py`](evals/swebench/filter_predictions.py) (wired into `score_docker.py` as `--filter-helpers`, default ON) now strips new root-level helper files and `.claw/.sandbox-*` dirs from each prediction before the SWE-bench harness sees it. The original `predictions.jsonl` stays untouched as the rollout receipt; the harness reads `scores-docker/predictions.filtered.jsonl`. On coder-30b-eval × opencode the filter dropped 548 helper sections across 300 predictions (36% byte reduction).
 
+## Scope
+
+This rig owns **all evals + AWQ/INT4 model calibrations** end-to-end. Ampere has native INT4 / AWQ_Marlin acceleration, so the GPTQ → CT → AWQ recalibration pipelines that produce the `mattbucci/*-AWQ` checkpoints land here; SWE-bench Lite / Verified bake-offs and capability sweeps for every supported preset also run here. **FP8 calibration work lives with [R9700](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference)** — RDNA4 gfx1201 has native FP8 weight acceleration and the headroom to run FP8 recipes that don't pay off on Ampere. Eval results from this rig still inform their FP8 requant priorities, and both stacks publish under `mattbucci/*` with format suffixes.
+
 ## Sister teams
 
-- **[R9700 (RDNA4, ROCm)](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference)** — calibration / quantization owner; ships the `mattbucci/*-AWQ` checkpoints this stack serves. We push bake-off + capability findings back into their README.
+- **[R9700 (RDNA4, ROCm)](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference)** — FP8 calibration owner (native gfx1201 FP8 weight acceleration); RDNA4/ROCm serving stack. Shares cross-stack recipes (FP32-softmax patch 011 originated there, the CT→native AWQ converter saved us 13h on Qwen3.6-35B). We push bake-off + capability findings back into their README.
 - **[M4 (Apple Silicon, MLX)](https://github.com/mattbucci/m4-sglang-inference)** — MLX bridge; cross-checks chat-template + multimodal-plumbing assumptions.
 
 Both stacks on v0.5.11 (3090: 19 patches, R9700: 15, 8 shared content).
@@ -67,7 +71,7 @@ Reference throughput: **Qwen3-30B REAM AWQ 262K @ 107 tok/s** (TP=2, 9.3 ms TPOT
 
 ## Suggested next
 
-3090 owns **evals and serving validation**. Recalibration / in-house model rebuilds live with the [R9700 sister team](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
+3090 owns **all evals + AWQ/INT4 calibrations** end-to-end (Ampere INT4 acceleration). FP8 recipes live with R9700 (RDNA4 native FP8). AWQ recipe-side fixes and requant runs land in this repo first.
 
 - **Per-model eval cycles** ([`run_model_cycle.sh <preset>`](evals/swebench/run_model_cycle.sh)): `qwen36`, `qwen36-ream`, `qwen35-moe`, `qwen36-dense`, `coder-30b-ream`, `coder-reap-25b` (R9700 in-house refresh), `devstral`, `gemma4`. Each cycle: full 300-inst × 3 scaffolds + audit + reroll + score. Estimated 8-18h per preset.
 - **SWE-bench Verified (500-task)** on the top 1-2 finalists once the matrix is settled.
