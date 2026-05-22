@@ -4,13 +4,16 @@ High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with 
 
 ## Headline — coding-eval bake-off (v2 Docker harness, 256K, single-user)
 
-Best `(model, scaffold)` pair so far: `coder-30b-eval` × **opencode** = **121/300 = 40.3%** on SWE-bench Lite (`./scripts/launch.sh coder-30b-eval`).
+Best `(model, scaffold)` pair so far: `coder-30b-eval` × **opencode** = **129/300 = 43.0%** on SWE-bench Lite (`./scripts/launch.sh coder-30b-eval`).
 
 | Preset | opencode | claw-code | little-coder |
 |--------|:--------:|:---------:|:------------:|
-| `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | **121/300 = 40.3%** | 115/300 = 38.3% | rolling |
+| `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | **129/300 = 43.0%** | 107/300 = 35.7% | 74/300 = 24.7% |
+| `coder-reap-25b` (Cerebras Qwen3-Coder-REAP-25B-A3B-AWQ) | 125/300 = 41.7% | 122/300 = 40.7% | 101/300 = 33.7% |
 
-Other models (qwen36, qwen36-ream, qwen35-moe, qwen36-dense, coder-30b-ream, coder-reap-25b [R9700 in-house], devstral, gemma4) queued for fresh full-300 cycles via [`run_model_cycle.sh`](evals/swebench/run_model_cycle.sh).
+`coder-reap-25b` is the most-rounded preset to date — only 1.3 pp behind on opencode while leading every other model on claw-code (+5.0 pp vs `coder-30b-eval`) and little-coder (+9.0 pp). REAP pruning preserves the coder-fit pattern across all three scaffolds rather than concentrating it in one.
+
+Other models (qwen36, qwen36-ream, qwen35-moe, qwen36-dense, coder-30b-ream, devstral, gemma4) queued for fresh full-300 cycles via [`run_model_cycle.sh`](evals/swebench/run_model_cycle.sh).
 
 **Established scaffold-fit pattern:** thinking-mode Qwen3.5/3.6 models silently fail in claw (model exhausts `<think>` budget before committing a `tool_call`); they belong on opencode. Coder-tuned models match claw's `Bash`/`Edit`/`Read` tool registry and score similarly on claw vs opencode. Every preset's `--tool-call-parser` matches its chat-template tool format (see Known Issues for the family→parser mapping).
 
