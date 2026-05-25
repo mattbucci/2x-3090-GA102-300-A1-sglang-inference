@@ -71,6 +71,16 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float) -> 
     Categories:
       - real_diff: prediction has a non-empty patch
       - model_silent: model returned no patch but ran normally (no infra error)
+      - model_timeout: scaffold agent hit the per-instance wall-clock cap
+        (rc=124 from GNU `timeout`, elapsed at/above the timeout boundary,
+        empty diff). This IS a model verdict on the (model, scaffold,
+        instance) tuple — same combo will loop the same way on retry — so
+        we keep it OUT of the reroll list to avoid burning hours of doomed
+        re-rolls. Cross-cycle data 2026-05-25 (4 cycles × 3 scaffolds):
+        81% of "infra" failures were this pattern, zero chronic across
+        runs, distributed by instance count per repo. Counts toward the
+        denominator as "model couldn't converge in 1800s" — matrix
+        accuracy preserved.
       - infra_<sub>: matched an infrastructure failure pattern
     """
     has_patch = bool((patch or "").strip())
@@ -82,6 +92,12 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float) -> 
         m = re.search(pat, log_text, re.IGNORECASE)
         if m:
             return (f"infra_{cat}", m.group(0))
+
+    # GNU `timeout` exit code 124 + elapsed at/over the configured wall
+    # cap + empty patch = scaffold agent couldn't converge in budget.
+    # Treat as model verdict, not infra (see docstring above).
+    if rollout_rc == 124 and elapsed >= 1799:
+        return ("model_timeout", f"rc=124 elapsed={elapsed:.0f}s")
 
     # Rollout subprocess died non-zero with no patch and no pattern
     if rollout_rc not in (0, None):
