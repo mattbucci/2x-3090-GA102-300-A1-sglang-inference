@@ -13,12 +13,13 @@ Best `(model, scaffold)` pair so far: `qwen36-ream` × **opencode** = **176/300 
 | `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **176/300 = 58.7%** | 20/123 = 16.3% † | 0/10 = 0.0% † |
 | `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | 129/300 = 43.0% | 107/300 = 35.7% | 74/300 = 24.7% |
 | `coder-reap-25b` (Cerebras Qwen3-Coder-REAP-25B-A3B-AWQ) | 125/300 = 41.7% | 122/300 = 40.7% | 101/300 = 33.7% |
+| `coder-30b-ream` (Samsung SAIL Qwen3-Coder-30B-A3B-REAM-AWQ) | 116/300 = 38.7% | 109/300 = 36.3% | 73/300 = 24.3% |
 
 † `qwen36-ream` claw-code and little-coder rerolls hit the "10 consecutive empty diffs" safety abort at the partial denominators shown — the same scaffold-fit pattern documented below (thinking-mode models exhaust `<think>` budget before committing a `tool_call` on tool-call-heavy scaffolds). Opencode lets the model think before edit, hence the 58.7% lift.
 
 `coder-reap-25b` remains the most-rounded preset (only 1.3 pp behind `coder-30b-eval` on opencode while leading on claw-code +5.0 pp and little-coder +9.0 pp). `qwen36-ream` is the right pick when the scaffold matches the model (opencode); `coder-reap-25b` is the right pick when scaffold mix is uncertain.
 
-Other models (qwen36, qwen35-moe, qwen36-dense, coder-30b-ream, devstral, gemma4) queued / in flight via [`run_model_cycle.sh`](evals/swebench/run_model_cycle.sh). `qwen35-moe` is currently blocked on a missing local checkpoint (`hf-mattbucci/Qwen3.5-28B-A3B-REAP-AWQ` not yet downloaded) — re-add to the queue after that lands.
+`coder-30b-ream` (REAM-merged coder) lands below both the base CT `coder-30b-eval` and the REAP-pruned `coder-reap-25b` on every scaffold — the merge didn't help here. **Next: the matrix moves to sglang v0.5.12** for a uniform single-stack re-run of all presets — it upstreams most of our patches and clears the `gemma4` head_dim=256 blocker — adding the not-yet-run `qwen36`, `qwen36-dense`, `devstral`, `gemma4`. `qwen35-moe` stays blocked on its checkpoint (`hf-mattbucci/Qwen3.5-28B-A3B-REAP-AWQ` — needs download + fuse-convert per R9700). The 0.5.11 numbers above hold until that re-run lands.
 
 **Established scaffold-fit pattern:** thinking-mode Qwen3.5/3.6 models silently fail in claw (model exhausts `<think>` budget before committing a `tool_call`); they belong on opencode. Coder-tuned models match claw's `Bash`/`Edit`/`Read` tool registry and score similarly on claw vs opencode. Every preset's `--tool-call-parser` matches its chat-template tool format (see Known Issues for the family→parser mapping).
 
