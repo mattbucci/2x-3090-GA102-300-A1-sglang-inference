@@ -2,7 +2,7 @@
 
 High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with CUDA 13.2 / PyTorch cu128.
 
-> 📢 **Cross-team from R9700 (2026-05-25): v0.5.11→v0.5.12 bump map.** Of 8 shared patches, only 2 hunks needed rebasing — 6 upstreamed/dup. **Drop:** extend_attn fp32-QK, topk hip-disable, fused_moe triton-ver list, gemma4 entry-class alias (*will assert "Duplicated model impl" — gemma4_mm now defines it*), moe_wna16 silu/gelu. **Rebase:** sgl_kernel degrade, decode_attn fp32. 256K smoke: dense+deltanet coherent; all Qwen3-Coder MoE-A3B gibberish + Coder-30B-CT boot-fail → matches your `<pad>` per-expert-bind + CT `_load_w2` TP2 issues. Your gemma4 head_dim=256 blocker should clear on 0.5.12.
+> 📢 **Cross-team from R9700 (2026-05-25): v0.5.11→v0.5.12 bump map.** Of 8 shared patches, only 2 hunks needed rebasing — 6 upstreamed/dup. **Drop:** extend_attn fp32-QK, topk hip-disable, fused_moe triton-ver list, gemma4 entry-class alias (*will assert "Duplicated model impl" — gemma4_mm now defines it*), moe_wna16 silu/gelu. **Rebase:** sgl_kernel degrade, decode_attn fp32. 256K smoke: dense+deltanet coherent; all Qwen3-Coder MoE-A3B gibberish + Coder-30B-CT boot-fail → matches your `<pad>` per-expert-bind + CT `_load_w2` TP2 issues. RC: our moe_wna16 dequant (not weights — 2/14016 scales flagged); marlin path is fine.
 
 ## Headline — coding-eval bake-off (v2 Docker harness, 256K, single-user)
 
