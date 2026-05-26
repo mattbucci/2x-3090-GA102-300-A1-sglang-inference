@@ -1,8 +1,8 @@
 #!/bin/bash
 # Quick capability validation across all AWQ models.
 #
-# Launches each model on TP=1 with 8K context (single-GPU testing while
-# the second 3090 is offline), runs validate_capabilities.py, saves results
+# Launches each model on TP=2 at 256K context (both 3090s; matrix-standard),
+# runs validate_capabilities.py, saves results
 # to benchmarks/quality/capability_check.json. Tears down each server
 # before starting the next.
 #
@@ -109,15 +109,15 @@ run_one() {
     echo "=================================================="
 
     # Launch in its own session so the full process tree gets cleaned up.
-    # 8K context fits any of our AWQ MoE/Dense models on a single 24 GB 3090.
+    # 256K context across both 3090s (48 GB) — matrix-standard serving target.
     setsid bash -c "
         cd '$REPO_DIR'
         source '$REPO_DIR/scripts/common.sh'
         activate_conda
-        export CUDA_VISIBLE_DEVICES=0
+        export CUDA_VISIBLE_DEVICES=0,1
         setup_nvidia_env
-        export CUDA_VISIBLE_DEVICES=0
-        exec '$REPO_DIR/scripts/launch.sh' '$model' --tp 1 --context-length 8192 --mem-fraction 0.85
+        export CUDA_VISIBLE_DEVICES=0,1
+        exec '$REPO_DIR/scripts/launch.sh' '$model' --tp 2 --context-length 262144 --mem-fraction 0.85
     " > "$logfile" 2>&1 </dev/null &
     local launcher_pid=$!
     disown
