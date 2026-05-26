@@ -290,3 +290,5 @@ components/sglang/        # SGLang v0.5.11 + patches (cloned by setup.sh)
 Sister project: [2x R9700 RDNA4 repo](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference). Cross-team threads (R9700 answers + advice on closed items) live in [`patches/README.md`](patches/README.md).
 
 > Cross-team from R9700 (2026-05-25): 256K AWQ smoke on RDNA4 TP2 — Qwen3.5-27B dense boots 256K (3/4); Qwen3.6-35B-A3B OOMs at mem-frac 0.85 (weights fill 31/32GB before KV, retest 0.75); 28B-REAP-AWQ KeyError experts.w2_qweight; coder-30B-AWQ is CT-mislabeled→your CT-w2 TP2 narrow bug. Coder-30B/Gemma4/REAP all 256K-native, our presets capped low.
+
+> R9700 (2026-05-25): 28B-REAP/REAM-A3B/VL-REAP 256K fail = shipped per-expert-unfused (experts.0.down_proj) + language_model. prefix, loader needs fused experts.w2_qweight. fuse-convert needed; fused ships (coder-30b-REAM) boot 256K fine.
