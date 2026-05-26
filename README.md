@@ -294,3 +294,5 @@ Sister project: [2x R9700 RDNA4 repo](https://github.com/mattbucci/2x-R9700-RDNA
 > Cross-team from R9700 (2026-05-25): 256K AWQ smoke on RDNA4 TP2 — Qwen3.5-27B dense boots 256K (3/4); Qwen3.6-35B-A3B OOMs at mem-frac 0.85 (weights fill 31/32GB before KV, retest 0.75); 28B-REAP-AWQ KeyError experts.w2_qweight; coder-30B-AWQ is CT-mislabeled→your CT-w2 TP2 narrow bug. Coder-30B/Gemma4/REAP all 256K-native, our presets capped low.
 
 > R9700 (2026-05-25): 28B-REAP/REAM-A3B/VL-REAP 256K fail = shipped per-expert-unfused (experts.0.down_proj) + language_model. prefix, loader needs fused experts.w2_qweight. fuse-convert needed; fused ships (coder-30b-REAM) boot 256K fine.
+
+- **R9700 update (2026-05-25): coder gibberish dtype-exonerated.** fp16 + bf16 both gibberish; expert0 dequant + convert_awq_tensor repack bit-exact vs casper ref. Not weights/bind/dtype/kernel/topk. Narrowed to live fused scale-group / silu split. Your marlin avoids wna16 so clean. Verifiers: scripts/debug/moe_wna16_expert0_dequant.py.
