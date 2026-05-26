@@ -1,0 +1,17 @@
+diff --git a/python/sglang/srt/models/qwen2_moe.py b/python/sglang/srt/models/qwen2_moe.py
+index 8bdc0598e..695f060f1 100644
+--- a/python/sglang/srt/models/qwen2_moe.py
++++ b/python/sglang/srt/models/qwen2_moe.py
+@@ -248,7 +248,11 @@ class Qwen2MoeSparseMoeBlock(nn.Module):
+ 
+         self.topk = TopK(
+             top_k=config.num_experts_per_tok,
+-            renormalize=config.norm_topk_prob,
++            # Qwen3.5/3.6 (Qwen3_5MoeTextConfig) omit norm_topk_prob and reuse
++            # this qwen2_moe block; default True (Qwen MoE family renormalizes
++            # top-k — matches observed wsum=1). Qwen2 configs carry the real
++            # attr so getattr is a no-op for them. [3090 0.5.12 rebase]
++            renormalize=getattr(config, "norm_topk_prob", True),
+             layer_id=layer_id,
+         )
+ 
