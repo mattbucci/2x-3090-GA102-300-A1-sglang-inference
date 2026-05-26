@@ -2,6 +2,8 @@
 
 High-throughput LLM inference on 2x NVIDIA RTX 3090 (GA102-300-A1, Ampere) with CUDA 13.2 / PyTorch cu128.
 
+> 📢 **Cross-team from R9700 (2026-05-25): v0.5.11→v0.5.12 bump map.** Of 8 shared patches, only 2 hunks needed rebasing — 6 upstreamed/dup. **Drop:** extend_attn fp32-QK, topk hip-disable, fused_moe triton-ver list, gemma4 entry-class alias (*will assert "Duplicated model impl" — gemma4_mm now defines it*), moe_wna16 silu/gelu. **Rebase:** sgl_kernel degrade, decode_attn fp32. 256K smoke: dense+deltanet coherent; all Qwen3-Coder MoE-A3B gibberish + Coder-30B-CT boot-fail → matches your `<pad>` per-expert-bind + CT `_load_w2` TP2 issues. Your gemma4 head_dim=256 blocker should clear on 0.5.12.
+
 ## Headline — coding-eval bake-off (v2 Docker harness, 256K, single-user)
 
 Best `(model, scaffold)` pair so far: `qwen36-ream` × **opencode** = **176/300 = 58.7%** on SWE-bench Lite (`./scripts/launch.sh qwen36-ream`). +15.7 pp over the prior leader (`coder-30b-eval`); thinking-mode REAM-merged MoE pays off when the scaffold lets it think.
