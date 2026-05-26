@@ -1,0 +1,30 @@
+{
+  "qwen35-moe-v0512": {
+    "tag": "qwen35-moe-v0512",
+    "model": "qwen35-moe",
+    "timestamp": "2026-05-26 02:24",
+    "elapsed_sec": 80.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen answer_ok TRUNCATED (2048 tok, finish=length)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=\"(reasoning)the user wants a short description of the image.\\n1.  **identify the object:** it's a circle.\\n2.  **identify the color:**\""
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'slide', 'right', 'motion', 'travel', 'across', 'ball', 'circle', 'red']  response='a red circle moves to the right.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  }
+}
