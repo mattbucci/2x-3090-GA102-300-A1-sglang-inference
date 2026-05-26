@@ -1,114 +1,43 @@
-From: 3090 team <noreply@anthropic.com>
-Date: 2026-05-08
-Subject: [PATCH] gemma4_mm: support per-expert AWQ source format (mirror gemma4_causal)
-
-Closes 21B-REAP rebuild + Gemma 4 26B HF mirror compatibility issues
-(both surfaced in 3090 README "Suggested next" 2026-05-04). Upstream
-v0.5.11 gemma4_mm.py only supports HF transformers' fused-experts source
-format (experts.gate_up_proj [E, 2*I, H], one tensor per layer) — but
-llmcompressor-saved AWQ checkpoints (mattbucci/gemma-4-26B-AWQ,
-gemma-4-21b-REAP-AWQ-thinking-vision-v2, etc.) ship per-expert keys like
-experts.<i>.gate_proj.qweight / qzeros / scales.
-
-Result: 3090's gemma4_mm.py loader silently fails to find the per-expert
-weights → vision tower stays at random init (validator passes round/circle
-keyword grep but model hallucinates content), or the entire MoE block
-stays uninit → 0/3 PASS on the gemma-4-21b-REAP-AWQ-thinking-vision-v2.
-
-R9700's gemma4_causal.py at python/sglang/srt/models/gemma4_causal.py:920+
-already handles BOTH formats via a two-tier mapping (per-expert via
-FusedMoE.make_expert_params_mapping + fused via the hand-built mapping).
-This is the symmetric port for the gemma4_mm.py multimodal loader.
-
-After patch:
-- llmcompressor per-expert AWQ source (experts.0.gate_proj.qweight) →
-  loaded into experts.w13_qweight shard "w1" expert 0 via FusedMoE
-  weight_loader (handles awq_marlin runtime conversion).
-- HF transformers fused source (experts.gate_up_proj [E, 2I, H]) →
-  unchanged path, still chunks gate/up internally.
-
-Note on testing: dev rig is on TP=1 / 24 GB which is too tight for Gemma 4
-26B + KV cache; full TP=2 verification deferred to second-card return.
-Static apply check + ast.parse() verified clean against fresh v0.5.11
-worktree. Patch is symmetric to R9700's already-validated
-gemma4_causal.py implementation.
-
 diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
+index 4ce8a5909..fdfd6d458 100644
 --- a/python/sglang/srt/models/gemma4_mm.py
 +++ b/python/sglang/srt/models/gemma4_mm.py
-@@ -32,6 +32,7 @@ from sglang.srt.layers.attention.triton_backend import TritonAttnBackend
- from sglang.srt.layers.layernorm import Gemma4RMSNorm
- from sglang.srt.layers.linear import ReplicatedLinear
- from sglang.srt.layers.logits_processor import LogitsProcessor
-+from sglang.srt.layers.moe.fused_moe_triton.layer import FusedMoE
- from sglang.srt.layers.quantization.base_config import QuantizationConfig
- from sglang.srt.managers.mm_utils import (
-     MultiModalityDataPaddingPatternMultimodalTokens,
-@@ -714,7 +715,28 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
-         k_eq_v_layers = self._get_k_eq_v_layers()
-
-         num_experts = getattr(self.config.text_config, "num_experts", 0) or 0
--        expert_params_mapping = [
-+
-+        # Per-expert mapping for AWQ/GPTQ checkpoints saved by llmcompressor
-+        # (experts.<i>.gate_proj.qweight / qzeros / scales).  Mirrors the
-+        # dual-format support already present in gemma4_causal.py; closes
-+        # 3090 Suggested-next entries for 21B-REAP rebuild + gemma-4-26B-AWQ
-+        # HF mirror format mismatch.  Returns tuples of (param_name,
-+        # weight_name, expert_id, shard_id) where weight_name is e.g.
-+        # "experts.0.gate_proj.".
-+        per_expert_params_mapping = (
-+            FusedMoE.make_expert_params_mapping(
-+                ckpt_gate_proj_name="gate_proj",
-+                ckpt_down_proj_name="down_proj",
-+                ckpt_up_proj_name="up_proj",
-+                num_experts=num_experts,
-+            )
-+            if num_experts > 0
-+            else []
-+        )
-+
-+        # Fused mapping for BF16 HF-transformers checkpoints
-+        # (experts.gate_up_proj [E, 2*I, H], one tensor per layer).
-+        fused_expert_params_mapping = [
-             # (param_name, ckpt_weight_name, shard_ids)
-             # gate_up_proj is fused [E, 2*I, H] — chunk into w1 (gate) + w3 (up)
-             ("experts.w13_weight", "experts.gate_up_proj", ("w1", "w3")),
-@@ -767,10 +789,34 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
-                 and int(m.group(1)) in k_eq_v_layers
+@@ -813,7 +841,7 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+             #   experts.w2_weight[_scale]   (down->shard "w2")
+             per_expert_match = re.match(
+                 r"^(.*?\.moe\.experts\.)(\d+)\.(gate_proj|up_proj|down_proj)"
+-                r"\.(weight|weight_scale)$",
++                r"\.(weight|weight_scale|qweight|qzeros|scales)$",
+                 name,
              )
-
--            # MoE expert weights checked first (gate_up_proj contains "up_proj"
--            # which would false-match the stacked dense MLP mapping).
-             orig_name = name
--            for param_name, weight_name, shard_ids in expert_params_mapping:
-+
-+            # --- Per-expert AWQ/GPTQ weights (experts.<i>.gate_proj.qweight) ---
-+            # Checked first so the per-expert format takes precedence over the
-+            # fused format and the stacked dense MLP mapping.
-+            is_expert_weight = False
-+            for param_name, weight_name, expert_id, shard_id in per_expert_params_mapping:
-+                if weight_name not in name:
-+                    continue
-+                is_expert_weight = True
-+                name = name.replace(weight_name, param_name)
-+                if name not in params_dict:
-+                    continue
-+                param = params_dict[name]
-+                weight_loader = param.weight_loader
-+                weight_loader(
-+                    param, loaded_weight, name,
-+                    shard_id=shard_id, expert_id=expert_id,
-+                )
-+                loaded_params.add(name)
-+                break
-+            if is_expert_weight:
-+                continue
-+
-+            # --- Fused BF16 experts (experts.gate_up_proj [E, 2*I, H]) ---
-+            # MoE expert weights checked next (gate_up_proj contains "up_proj"
-+            # which would false-match the stacked dense MLP mapping).
-+            for param_name, weight_name, shard_ids in fused_expert_params_mapping:
-                 name = orig_name
-                 if weight_name not in name:
-                     continue
+             if per_expert_match:
+@@ -821,14 +849,24 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+                 expert_id = int(per_expert_match.group(2))
+                 proj = per_expert_match.group(3)
+                 suffix = per_expert_match.group(4)
++                # gate->w1 and up->w3 both fold into the fused w13; down->w2.
+                 if proj == "gate_proj":
+-                    base, sid = "w13_weight", "w1"
++                    stem, sid = "w13", "w1"
+                 elif proj == "up_proj":
+-                    base, sid = "w13_weight", "w3"
++                    stem, sid = "w13", "w3"
+                 else:  # down_proj
+-                    base, sid = "w2_weight", "w2"
+-                if suffix == "weight_scale":
+-                    base += "_scale"
++                    stem, sid = "w2", "w2"
++                # Map checkpoint suffix -> fused param suffix. Dense/FP8 use
++                # weight/weight_scale; AWQ (compressed-tensors, e.g.
++                # mattbucci/gemma-4-26B-AWQ) uses qweight/qzeros/scales. 0.5.12
++                # upstream only handled dense/FP8, so AWQ experts went unloaded
++                # -> garbage output. [3090 028 re-port for 0.5.12]
++                if suffix == "weight":
++                    base = f"{stem}_weight"
++                elif suffix == "weight_scale":
++                    base = f"{stem}_weight_scale"
++                else:  # qweight | qzeros | scales  (AWQ)
++                    base = f"{stem}_{suffix}"
+                 fused_name = prefix + base
+                 if fused_name in params_dict:
+                     param = params_dict[fused_name]

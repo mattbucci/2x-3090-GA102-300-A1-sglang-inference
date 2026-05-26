@@ -2,12 +2,13 @@
 
 This file collects the details of **what was fixed and why** — per-patch narratives, root-cause notes, and cross-team learnings. The top-level `README.md` keeps only current state; once an issue is closed with a patch, the narrative lives here.
 
-Patches apply in numeric order against SGLang v0.5.11. `scripts/setup.sh` applies every `*.patch` in this directory idempotently. **21 patches** ship currently (`ls patches/*.patch | wc -l`):
+Patches apply in numeric order against SGLang **v0.5.12** (rebased from v0.5.11 on 2026-05-26 — see the v0.5.12-rebase note below). `scripts/setup.sh` applies every `*.patch` in this directory idempotently. **22 patches** ship currently (`ls patches/*.patch | wc -l`):
 
 - **13 v0.5.11-targeted patches** from the 2026-05-07 v0.5.10→v0.5.11 rebase (commit `1655e46`).
 - **002, 028, 029** added post-rebase (cross-team port + Gemma4 mm per-expert + Qwen3.5 CT shared_expert_gate).
 - **031, 034, 035, 036** added post-rebase for v0.5.11 Qwen3.5/3.6 + sampler-Inf surface (deltanet AWQ loader, sampler ±Inf detection, MoeForCausalLM EntryClass + HF layer_types fallback).
 - **030 (v0.5.10 backport of 028) DELETED 2026-05-09** with the env upgrade — patch 028 now applies natively. Historical narrative kept below.
+- **v0.5.11 → v0.5.12 rebase (2026-05-26):** 17 patches applied clean; **005, 011, 021, 028 re-ported** + **037 added**. 005: dropped the obsolete flashinfer-version hunk (0.5.12 pins `flashinfer 0.6.11.post1` and adds `SGLANG_SKIP_SGL_KERNEL_VERSION_CHECK`); kept the Ampere fp8 + batch-invariant bf16 fixes. 011: CUDA fp32-softmax casts only (decode all sites + extend p/v accum + q/k dot); HIP-only hunks dropped (R9700's domain). 021: gelu dispatch relocated into 0.5.12's new `clamp_limit` else-branch + `activation` arg added to the `register_custom_op`-wrapped `fused_marlin_moe` signature (it infers `str` schema args). 028: re-cast as a regex+suffix extension to 0.5.12's *native* `per_expert_match` so AWQ `qweight/qzeros/scales` per-expert keys bind to the fused `w13/w2` params — upstream only handled dense/FP8 `weight/weight_scale`, so AWQ experts silently went unloaded → garbage (caught by the correctness gate). 037: drops the new mandatory gRPC Rust ext from `python/pyproject.toml` (needs `protoc`; we serve over HTTP, `grpc._core` has zero imports). All 22 verified applying clean to a fresh v0.5.12 tree; build validated on coder-30b-eval (silu MoE) + gemma4 (gelu MoE) before landing.
 
 Patches dropped during the v0.5.11 rebase as upstreamed: 001, 002 (original — the new 002 is unrelated cross-team), 006, 008, 009, 014, 015, 016, 019, 020, 022 — historical narratives below kept for context but those `.patch` files no longer ship.
 

@@ -56,7 +56,7 @@ This rig owns **all evals + AWQ/INT4 model calibrations** end-to-end. Ampere has
 - **[R9700 (RDNA4, ROCm)](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference)** — FP8 calibration owner (native gfx1201 FP8 weight acceleration); RDNA4/ROCm serving stack. Shares cross-stack recipes (FP32-softmax patch 011 originated there, the CT→native AWQ converter saved us 13h on Qwen3.6-35B). We push bake-off + capability findings back into their README.
 - **[M4 (Apple Silicon, MLX)](https://github.com/mattbucci/m4-sglang-inference)** — MLX bridge; cross-checks chat-template + multimodal-plumbing assumptions.
 
-Both stacks on v0.5.11 (3090: 19 patches, R9700: 15, 8 shared content).
+3090 stack on **v0.5.12** (22 patches, rebased 2026-05-26); R9700 still on v0.5.11 (15 patches, 8 shared content).
 
 ## Current Focus
 
@@ -94,7 +94,7 @@ Performance / post-bake-off:
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # clone SGLang v0.5.11, apply patches, create conda env
+./scripts/setup.sh                          # clone SGLang v0.5.12, apply patches, create conda env
 
 # TP=2 / 256K presets (matrix standard):
 ./scripts/launch.sh qwen3-ream              # 262K @ 107 tok/s — REAM merged MoE, 96 experts
@@ -221,25 +221,25 @@ Methodology: MMLU (1 question per subject × 57 subjects), HumanEval pass@1 (30)
 
 Or manually:
 ```bash
-cd components/sglang && git checkout v0.5.11
+cd components/sglang && git checkout v0.5.12
 for p in ../../patches/*.patch; do git apply "$p"; done
-cd python && pip install -e ".[srt]"
+cd python && pip install -e .
 ```
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.11 + 19 local patches (`ls patches/*.patch \| wc -l`) |
+| SGLang | v0.5.12 + 22 local patches (`ls patches/*.patch \| wc -l`) |
 | PyTorch | 2.11.0 + cu130 |
 | CUDA | 13.2 driver (595.58) / cu130 wheel |
 | NCCL | bundled with torch 2.11 (P2P over NVLink) |
-| FlashInfer | 0.6.8.post1 (v0.5.11 pin) |
-| transformers | 5.6.0 (v0.5.11 pin) |
+| FlashInfer | 0.6.11.post1 (v0.5.12 pin) |
+| transformers | 5.6.0 (v0.5.12 pin) |
 | sglang-kernel | 0.4.2 |
 | compressed-tensors | 0.15.0.1 |
 
 ## Patches
 
-19 patches (`ls patches/*.patch | wc -l`) targeting SGLang v0.5.11. Notable:
+22 patches (`ls patches/*.patch | wc -l`) targeting SGLang v0.5.12. Notable:
 - **002** Qwen3-Next AWQ weight_loader fix (cross-team port from R9700)
 - **028** Gemma 4 MM per-expert AWQ loader (cross-stack with R9700)
 - **029** Qwen3.5 shared_expert_gate CT dequant

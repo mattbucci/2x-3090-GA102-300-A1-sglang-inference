@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
-index 23184e94b..822ba2982 100644
+index f62fe7278..0631212ad 100644
 --- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
 +++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
-@@ -10,7 +10,7 @@ _is_cuda = is_cuda()
+@@ -11,7 +11,7 @@ _is_cuda = is_cuda()
  if _is_cuda:
      from sgl_kernel import moe_sum_reduce
  
@@ -11,29 +11,29 @@ index 23184e94b..822ba2982 100644
      from sglang.jit_kernel.moe_wna16_marlin import moe_wna16_marlin_gemm
  
  
-@@ -47,6 +47,7 @@ def fused_marlin_moe(
-     is_k_full: bool = True,
+@@ -72,6 +72,7 @@ def fused_marlin_moe(
      inplace: bool = False,
      routed_scaling_factor: Optional[float] = None,
+     clamp_limit: Optional[float] = None,
 +    activation: str = "silu",
  ) -> torch.Tensor:
      """
      This function computes a Mixture of Experts (MoE) layer using two sets of
-@@ -174,7 +175,11 @@ def fused_marlin_moe(
-         is_zp_float=False,
-     )
- 
--    silu_and_mul(intermediate_cache1.view(-1, 2 * N), intermediate_cache2)
-+    # Gemma 4 MoE uses GeLU (gelu_pytorch_tanh); Qwen/Mixtral/etc. use SiLU.
-+    if activation == "gelu":
-+        gelu_and_mul(intermediate_cache1.view(-1, 2 * N), intermediate_cache2)
-+    else:
-+        silu_and_mul(intermediate_cache1.view(-1, 2 * N), intermediate_cache2)
+@@ -219,7 +220,11 @@ def fused_marlin_moe(
+             clamp_limit,
+         )
+     else:
+-        silu_and_mul(intermediate_cache1.view(-1, 2 * N), intermediate_cache2)
++        # Gemma 4 MoE uses GeLU (gelu_pytorch_tanh); Qwen/Mixtral/etc. use SiLU.
++        if activation == "gelu":
++            gelu_and_mul(intermediate_cache1.view(-1, 2 * N), intermediate_cache2)
++        else:
++            silu_and_mul(intermediate_cache1.view(-1, 2 * N), intermediate_cache2)
  
      if expert_map is not None:
          intermediate_cache3.zero_()
 diff --git a/python/sglang/srt/layers/moe/moe_runner/marlin.py b/python/sglang/srt/layers/moe/moe_runner/marlin.py
-index 45104dd27..ccfa05c17 100644
+index 4e335f330..a6a26583d 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/marlin.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/marlin.py
 @@ -87,7 +87,11 @@ def fused_experts_none_to_marlin(
@@ -50,13 +50,13 @@ index 45104dd27..ccfa05c17 100644
      if (
          MARLIN_MOE_WORKSPACE is None
 @@ -118,6 +122,7 @@ def fused_experts_none_to_marlin(
-         is_k_full=quant_info.is_k_full,
-         inplace=runner_config.inplace,
-         routed_scaling_factor=runner_config.routed_scaling_factor,
+     output = fused_marlin_moe(
+         hidden_states=marlin_hidden_states,
+         w1=quant_info.w13_qweight,
 +        activation=runner_config.activation,
-     ).to(hidden_states.dtype)
- 
-     return StandardCombineInput(
+         w2=quant_info.w2_qweight,
+         w1_scale=quant_info.w13_scales,
+         w2_scale=quant_info.w2_scales,
 diff --git a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
 index 0ac18784c..5fdb32d58 100644
 --- a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
@@ -101,10 +101,10 @@ index 0ac18784c..5fdb32d58 100644
          quant_info = self.get_triton_quant_info(layer)
          return self.runner.run(dispatch_output, quant_info)
 diff --git a/python/sglang/srt/layers/quantization/marlin_utils.py b/python/sglang/srt/layers/quantization/marlin_utils.py
-index 04b72ca0d..2bdb3c8be 100644
+index 0c754b9b2..c58440d42 100644
 --- a/python/sglang/srt/layers/quantization/marlin_utils.py
 +++ b/python/sglang/srt/layers/quantization/marlin_utils.py
-@@ -238,8 +238,8 @@ def check_moe_marlin_supports_layer(layer: FusedMoE, group_size: int) -> bool:
+@@ -239,8 +239,8 @@ def check_moe_marlin_supports_layer(layer: FusedMoE, group_size: int) -> bool:
      intermediate_size_per_partition = layer.intermediate_size_per_partition
      # apply_router_weight_on_input is not supported for moe marlin
      supports_router_weight = not layer.moe_runner_config.apply_router_weight_on_input

@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/batch_invariant_ops/batch_invariant_ops.py b/python/sglang/srt/batch_invariant_ops/batch_invariant_ops.py
-index 30a8cdb46..96a620f80 100644
+index 482d75028..bb9a58c94 100644
 --- a/python/sglang/srt/batch_invariant_ops/batch_invariant_ops.py
 +++ b/python/sglang/srt/batch_invariant_ops/batch_invariant_ops.py
 @@ -156,7 +156,7 @@ def matmul_kernel_persistent(
@@ -20,19 +20,6 @@ index 30a8cdb46..96a620f80 100644
              c = accumulator.to(tl.bfloat16)
          elif c_ptr.dtype.element_ty == tl.float32:
              c = accumulator.to(tl.float32)
-diff --git a/python/sglang/srt/entrypoints/engine.py b/python/sglang/srt/entrypoints/engine.py
-index 0b7849a6b..2abab1cb5 100644
---- a/python/sglang/srt/entrypoints/engine.py
-+++ b/python/sglang/srt/entrypoints/engine.py
-@@ -1162,7 +1162,7 @@ def _set_envs_and_config(server_args: ServerArgs):
-         if server_args.attention_backend == "flashinfer":
-             assert_pkg_version(
-                 "flashinfer_python",
--                "0.6.8.post1",
-+                "0.6.8",  # Allow custom FlashInfer builds (was 0.6.8.post1 strict)
-                 "Please uninstall the old version and "
-                 "reinstall the latest version by following the instructions "
-                 "at https://docs.flashinfer.ai/installation.html.",
 diff --git a/python/sglang/srt/layers/attention/triton_ops/trtllm_fp8_kv_kernel.py b/python/sglang/srt/layers/attention/triton_ops/trtllm_fp8_kv_kernel.py
 index 41cc9c9dc..3987c69b1 100644
 --- a/python/sglang/srt/layers/attention/triton_ops/trtllm_fp8_kv_kernel.py

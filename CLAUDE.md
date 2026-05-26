@@ -13,7 +13,7 @@ SGLang for 2x NVIDIA RTX 3090 (GA102-300-A1, 48GB total VRAM).
 
 ## Key Commands
 ```bash
-scripts/setup.sh                       # Full setup (clones SGLang v0.5.11, applies 19 patches)
+scripts/setup.sh                       # Full setup (clones SGLang v0.5.12, applies 22 patches)
 scripts/launch.sh devstral             # Devstral 24B AWQ (Dense, Mistral)
 scripts/launch.sh coder-30b-eval       # Qwen3-Coder-30B-A3B AWQ CT (256K, bakeoff lead 40.3% opencode)
 scripts/launch.sh coder-reap-25b       # Qwen3-Coder-REAP-25B-A3B AWQ (256K, 33% claw)

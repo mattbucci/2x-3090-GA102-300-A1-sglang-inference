@@ -1,10 +1,13 @@
 #!/bin/bash
 # SGLang setup for 2x RTX 3090
 #
-# Clones SGLang v0.5.11 and applies the local patches in patches/*.patch
+# Clones SGLang v0.5.12 and applies the local patches in patches/*.patch
 # (idempotent — git apply --check skips already-applied).
-# Requires torch 2.11 + sglang-kernel 0.4.2 + transformers 5.6 + flashinfer
-# 0.6.8.post1 + compressed-tensors 0.15 (env rebuilt 2026-05-09).
+# Requires torch 2.11 + transformers 5.6 + flashinfer 0.6.11.post1 +
+# compressed-tensors 0.15 (0.5.12 rebase 2026-05-26).
+# NB: 0.5.12 folds the serving runtime into the base package (no [srt] extra)
+# and adds a mandatory Rust gRPC ext that needs protoc; patch 037 drops that
+# ext (we serve over HTTP) so `pip install -e .` works without protoc.
 # See patches/README.md for per-patch narratives.
 #
 # Prerequisites:
@@ -21,7 +24,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-SGLANG_TAG="v0.5.11"
+SGLANG_TAG="v0.5.12"
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -98,7 +101,7 @@ if [ "$SKIP_ENV" = false ]; then
 
     echo "Installing SGLang from source (CUDA)..."
     cd "$SGLANG_DIR/python"
-    pip install -e ".[srt]"
+    pip install -e .   # 0.5.12 folded srt deps into base; patch 037 dropped the gRPC Rust ext (no protoc needed)
 
     echo "Upgrading transformers..."
     pip install --no-deps "transformers>=5.0" gguf
