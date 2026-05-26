@@ -196,7 +196,7 @@ for SCAFFOLD in "${NEED_RESCORE[@]}"; do
     python3 -c "
 import json
 d = json.load(open('$OUT/scores-docker-summary.json'))
-print(f'  {\"$PRESET\":15s} x {\"$SCAFFOLD\":12s}: {d[\"resolved\"]}/{d[\"total_predictions\"]} = {d[\"resolve_rate_pct\"]}%  (unresolved={d[\"unresolved\"]} empty={d.get(\"empty_patch\",0)} err={d.get(\"error\",0)})'
+print(f'  {\"$PRESET\":15s} x {\"$SCAFFOLD\":12s}: {d[\"resolved\"]}/{d[\"total_predictions\"]} = {d[\"resolve_rate_pct\"]}%  (unresolved={d[\"unresolved\"]} empty={d.get(\"empty_patch\",0)} err={d.get(\"error\",0)})')
 "
   fi
 done
