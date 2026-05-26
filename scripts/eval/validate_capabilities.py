@@ -251,6 +251,64 @@ def check_basic(base_url: str, model: str) -> tuple[bool, str]:
     return passed, f"finish={finish} answer={sample!r}"
 
 
+def check_tool_call(base_url: str, model: str) -> tuple[bool, str]:
+    """Verify the server emits STRUCTURED tool_calls, not raw markup as content.
+
+    Sends a weather query with an OpenAI-style tools=[...] spec. When a preset's
+    `--tool-call-parser` matches its chat-template tool format, SGLang returns
+    finish_reason='tool_calls' with a parsed function.name + JSON arguments. With
+    the wrong/missing parser, the model's raw `<function=...>` / `<tool_call>` /
+    `[TOOL_CALLS]` markup is served as plain assistant `content` and every coding
+    harness silently drops it → empty diff (README Known Issues). This probe
+    catches that regression at the server layer.
+    """
+    tools = [{
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather for a city.",
+            "parameters": {
+                "type": "object",
+                "properties": {"location": {"type": "string", "description": "City name"}},
+                "required": ["location"],
+            },
+        },
+    }]
+    payload = {
+        "model": model,
+        "messages": [{"role": "user",
+                      "content": "What's the weather in Paris right now? Use the get_weather tool."}],
+        "tools": tools,
+        "tool_choice": "auto",
+        "max_tokens": 512,
+        "temperature": 0.4, "top_p": 0.95, "top_k": 20,
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+    try:
+        r = _http_post(f"{base_url}/v1/chat/completions", payload, timeout=150)
+    except Exception as e:
+        return False, f"request failed: {e!r}"
+    choice = r["choices"][0]
+    msg = choice.get("message", {})
+    finish = choice.get("finish_reason")
+    tcs = msg.get("tool_calls") or []
+    if not tcs:
+        content = msg.get("content") or ""
+        hint = next((f" raw-markup-in-content({m})" for m in
+                     ("<function", "<tool_call", "[TOOL_CALLS]", "functools", "<|tool")
+                     if m in content), "")
+        return False, f"no tool_calls finish={finish}{hint} content={content[:60]!r}"
+    fn = tcs[0].get("function", {})
+    name = fn.get("name", "")
+    raw_args = fn.get("arguments", "")
+    try:
+        parsed = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+    except Exception:
+        parsed = None
+    ok = name == "get_weather" and isinstance(parsed, dict) and "location" in parsed
+    return ok, f"finish={finish} name={name!r} args={str(raw_args)[:80]!r}"
+
+
 def _make_test_video() -> bytes:
     """A 12-frame synthetic video: red circle moves left→right across white bg.
 
@@ -436,6 +494,16 @@ IMAGE_ONLY_MODELS = frozenset({
 })
 
 
+# Models whose base is not trained to emit tool calls — the SGLang parser is
+# wired correctly but the model never produces a tool-call to parse, so the
+# probe FAILs for a model reason, not a serving bug. Auto-skip (override with
+# explicit run). qwen3-ream = Qwen3-30B-Instruct-2507 REAM (R9700-documented
+# not tool-trained; not viable for codegen scaffolds via either parser).
+NON_TOOL_MODELS = frozenset({
+    "qwen3-ream",
+})
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--port", type=int, default=23334)
@@ -446,6 +514,8 @@ def main() -> int:
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--model", default=None, help="Override model name (default: server-reported)")
     p.add_argument("--skip-thinking", action="store_true")
+    p.add_argument("--skip-tools", action="store_true",
+                   help="skip the tool-call probe (auto-skipped for NON_TOOL_MODELS)")
     p.add_argument("--skip-vision", action="store_true")
     p.add_argument("--skip-video", action="store_true",
                    help="skip the video roundtrip (Devstral has no video; Qwen/Gemma do)")
@@ -521,6 +591,10 @@ def main() -> int:
     if auto_skip_video_only:
         args.skip_video = True
 
+    auto_skip_tools = not args.skip_tools and model in NON_TOOL_MODELS
+    if auto_skip_tools:
+        args.skip_tools = True
+
     print(f"=== Capability validator — {base}  model={model} ===")
     if auto_skip_thinking:
         print(f"  (auto-skipping thinking — '{model}' is in NON_THINKING_MODELS; "
@@ -534,10 +608,18 @@ def main() -> int:
 
     results: list[tuple[str, bool, str]] = []
 
+    if auto_skip_tools:
+        print(f"  (auto-skipping tool-call — '{model}' is in NON_TOOL_MODELS)")
+
     t0 = time.time()
     ok, msg = check_basic(base, model)
     results.append(("basic", ok, msg))
     print(f"  [{'PASS' if ok else 'FAIL'}] basic     {msg}")
+
+    if not args.skip_tools:
+        ok, msg = check_tool_call(base, model)
+        results.append(("tool_call", ok, msg))
+        print(f"  [{'PASS' if ok else 'FAIL'}] tool_call {msg}")
 
     if not args.skip_thinking:
         ok, msg = check_thinking(base, model, thinking_kwargs, max_tokens=args.max_tokens_thinking)
