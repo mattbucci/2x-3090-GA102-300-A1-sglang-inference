@@ -147,7 +147,7 @@ apply_preset() {
             # piecewise enabled (where the preset was originally tuned), but
             # TP=1 either needs piecewise off or further investigation of the
             # awq_marlin MoE replay path. Tracked in README Known Issues.
-            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ-Marlin-from-CT}"
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ-CT}"
             QUANT="awq_marlin"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"

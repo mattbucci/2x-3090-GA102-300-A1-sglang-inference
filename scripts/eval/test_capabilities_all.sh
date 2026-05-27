@@ -135,8 +135,12 @@ run_one() {
     # flags lets the validator decide based on the served model name.
     local extra_flags=()
 
+    # --max-tokens-thinking 2048 + --timeout 300: at 256K the slow MoE+DeltaNet
+    # presets decode ~30 tok/s, so an 8192-token thinking chain would exceed the
+    # per-request timeout. 2048 still triggers reasoning_seen + answer_correct.
     python "$REPO_DIR/scripts/eval/validate_capabilities.py" \
         --port "$PORT" --tag "$model" --save "$RESULTS" \
+        --max-tokens-thinking 2048 --timeout 300 \
         "${extra_flags[@]}" || true
 
     stop_server

@@ -458,8 +458,11 @@ def check_vision(base_url: str, model: str) -> tuple[bool, str]:
 # scripts/eval/test_capabilities_all.sh::NON_THINKING — keep them in sync.
 NON_THINKING_MODELS = frozenset({
     "coder-30b",        # Qwen3-Coder-30B-A3B-Instruct
+    "coder-30b-eval",   # Qwen3-Coder-30B-A3B CT (bakeoff name)
+    "coder-30b-ream",   # Qwen3-Coder-30B-A3B REAM (coder, text-only)
     "coder-reap",       # Qwen3-Coder-REAP-25B-A3B (preset shorthand)
     "coder-reap-25b",   # legacy preset name (alternate served-model-name)
+    "coder-reap-30b",   # Qwen3-Coder-REAP-30B (in-house rebuild)
     "qwen3-ream",       # Qwen3-30B-A3B-Instruct-2507 base
     "devstral",         # Devstral 24B Instruct
     "devstral-long",    # same model, long-context preset
@@ -472,8 +475,11 @@ NON_THINKING_MODELS = frozenset({
 # Same list as scripts/eval/test_capabilities_all.sh::TEXT_ONLY — keep in sync.
 TEXT_ONLY_MODELS = frozenset({
     "coder-30b",        # Qwen3-Coder-30B-A3B-Instruct (text)
+    "coder-30b-eval",   # Qwen3-Coder-30B-A3B CT (bakeoff name, text)
+    "coder-30b-ream",   # Qwen3-Coder-30B-A3B REAM (text)
     "coder-reap",       # Qwen3-Coder-REAP-25B-A3B (preset shorthand, text)
     "coder-reap-25b",   # legacy preset name (alternate served-model-name, text)
+    "coder-reap-30b",   # Qwen3-Coder-REAP-30B (in-house rebuild, text)
     "qwen3-ream",       # Qwen3-30B-A3B-Instruct-2507 base (text after REAM)
     # Note: qwen35-moe was on this list during the broken-thinking era; removed
     # 2026-05-02 after the recal landed and 3/3 PASS verified (basic+thinking+vision
