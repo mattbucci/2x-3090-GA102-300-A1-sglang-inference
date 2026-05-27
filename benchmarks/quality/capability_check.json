@@ -830,8 +830,8 @@
   "gemma4": {
     "tag": "gemma4",
     "model": "gemma4",
-    "timestamp": "2026-05-26 17:27",
-    "elapsed_sec": 59.8,
+    "timestamp": "2026-05-26 19:19",
+    "elapsed_sec": 62.7,
     "checks": {
       "basic": {
         "passed": true,
@@ -843,7 +843,7 @@
       },
       "thinking": {
         "passed": true,
-        "message": "reasoning_seen terminated answer_ok (1840 tok, finish=stop)"
+        "message": "reasoning_seen terminated answer_ok TRUNCATED (2048 tok, finish=length)"
       },
       "vision": {
         "passed": true,
@@ -851,7 +851,7 @@
       },
       "video": {
         "passed": true,
-        "message": "saw=['move', 'right', 'across', 'red']  response='a red dot moves across the screen from left to right.'"
+        "message": "saw=['move', 'across', 'circle', 'red']  response='a red circle moves across a white background.'"
       }
     },
     "summary": {
@@ -862,29 +862,33 @@
   "gemma4-31b": {
     "tag": "gemma4-31b",
     "model": "gemma4-31b",
-    "timestamp": "2026-05-09 18:40",
-    "elapsed_sec": 14.6,
+    "timestamp": "2026-05-26 19:16",
+    "elapsed_sec": 15.7,
     "checks": {
       "basic": {
         "passed": true,
         "message": "finish=stop answer='paris'"
       },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
       "thinking": {
         "passed": true,
-        "message": "reasoning_seen terminated answer_ok (441 tok, finish=stop)"
+        "message": "reasoning_seen terminated answer_ok (454 tok, finish=stop)"
       },
       "vision": {
-        "passed": true,
-        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black outline on a white background.'"
+        "passed": false,
+        "message": "saw=[]  response='this image shows a cuneiform sign, an ancient system of writing used in mesopotamia.'"
       },
       "video": {
-        "passed": true,
-        "message": "saw=['move', 'right', 'circle', 'red']  response='a red circle moves from the left side of the screen to the right side.'"
+        "passed": false,
+        "message": "saw=[]  response='there is no video provided; only a cuneiform character.'"
       }
     },
     "summary": {
-      "passed": 4,
-      "total": 4
+      "passed": 3,
+      "total": 5
     }
   },
   "qwen35-moe": {
