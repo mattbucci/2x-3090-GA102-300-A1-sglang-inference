@@ -147,8 +147,13 @@ apply_preset() {
             # piecewise enabled (where the preset was originally tuned), but
             # TP=1 either needs piecewise off or further investigation of the
             # awq_marlin MoE replay path. Tracked in README Known Issues.
+            # 2026-05-26: the intended native AWQ-Marlin-from-CT checkpoint was
+            # never built; point at the on-disk CT dir and serve as
+            # compressed-tensors (Qwen3MoeForCausalLM CT loads cleanly on
+            # v0.5.12 — the w2_weight_packed bug is qwen3_5-only). coder-30b-eval
+            # is the 256K eval-tuned sibling on the same model.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ-CT}"
-            QUANT="awq_marlin"
+            QUANT="compressed-tensors"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
             ;;
