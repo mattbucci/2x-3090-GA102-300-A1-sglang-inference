@@ -34,33 +34,41 @@
   "coder-30b": {
     "tag": "coder-30b",
     "model": "coder-30b",
-    "timestamp": "2026-05-09 18:34",
-    "elapsed_sec": 0.5,
+    "timestamp": "2026-05-26 17:20",
+    "elapsed_sec": 0.4,
     "checks": {
       "basic": {
         "passed": true,
         "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
       }
     },
     "summary": {
-      "passed": 1,
-      "total": 1
+      "passed": 2,
+      "total": 2
     }
   },
   "coder-reap-25b": {
     "tag": "coder-reap-25b",
     "model": "coder-reap-25b",
-    "timestamp": "2026-04-30 08:50",
-    "elapsed_sec": 0.2,
+    "timestamp": "2026-05-26 17:09",
+    "elapsed_sec": 4.4,
     "checks": {
       "basic": {
         "passed": true,
         "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
       }
     },
     "summary": {
-      "passed": 1,
-      "total": 1
+      "passed": 2,
+      "total": 2
     }
   },
   "gemma4-clippable-fix": {
@@ -822,16 +830,20 @@
   "gemma4": {
     "tag": "gemma4",
     "model": "gemma4",
-    "timestamp": "2026-05-09 18:39",
-    "elapsed_sec": 12.2,
+    "timestamp": "2026-05-26 17:27",
+    "elapsed_sec": 59.8,
     "checks": {
       "basic": {
         "passed": true,
         "message": "finish=stop answer='paris'"
       },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
       "thinking": {
         "passed": true,
-        "message": "reasoning_seen terminated answer_ok (499 tok, finish=stop)"
+        "message": "reasoning_seen terminated answer_ok (1840 tok, finish=stop)"
       },
       "vision": {
         "passed": true,
@@ -839,12 +851,12 @@
       },
       "video": {
         "passed": true,
-        "message": "saw=['move', 'right', 'circle', 'red']  response='a red circle moves from the top left to the bottom right.'"
+        "message": "saw=['move', 'right', 'across', 'red']  response='a red dot moves across the screen from left to right.'"
       }
     },
     "summary": {
-      "passed": 4,
-      "total": 4
+      "passed": 5,
+      "total": 5
     }
   },
   "gemma4-31b": {
@@ -878,53 +890,61 @@
   "qwen35-moe": {
     "tag": "qwen35-moe",
     "model": "qwen35-moe",
-    "timestamp": "2026-05-09 18:44",
-    "elapsed_sec": 206.1,
+    "timestamp": "2026-05-26 17:05",
+    "elapsed_sec": 77.3,
     "checks": {
       "basic": {
         "passed": true,
         "message": "finish=stop answer='paris'"
       },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
       "thinking": {
         "passed": true,
-        "message": "reasoning_seen answer_ok TRUNCATED (7936 tok, finish=length)"
+        "message": "reasoning_seen answer_ok TRUNCATED (2048 tok, finish=length)"
       },
       "vision": {
         "passed": true,
-        "message": "saw=['red', 'circle']  response=\"(reasoning)the user wants a short description of the image.\\n1.  **identify the object:** it's a circle.\\n2.  **identify the color:**\""
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)the user wants a short description of the image.\\n\\n1.  **identify the main subject:** it is a circle.\\n2.  **identify the '"
       },
       "video": {
         "passed": true,
-        "message": "saw=['move', 'right', 'across', 'ball', 'circle', 'red']  response='a red circle moves from the left to the right.'"
+        "message": "saw=['move', 'right', 'across', 'ball', 'circle', 'red']  response='a red ball moves from left to right.'"
       }
     },
     "summary": {
-      "passed": 4,
-      "total": 4
+      "passed": 5,
+      "total": 5
     }
   },
   "qwen3-vl-32b": {
     "tag": "qwen3-vl-32b",
     "model": "qwen3-vl-32b",
-    "timestamp": "2026-05-09 18:45",
-    "elapsed_sec": 1.4,
+    "timestamp": "2026-05-26 17:30",
+    "elapsed_sec": 1.6,
     "checks": {
       "basic": {
         "passed": true,
         "message": "finish=stop answer='paris'"
       },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
       "vision": {
         "passed": true,
-        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black outline is centered on a white background.'"
+        "message": "saw=['red', 'circle', 'round']  response='a solid red circle with a black outline centered on a white background.'"
       },
       "video": {
         "passed": true,
-        "message": "saw=['move', 'right', 'circle', 'red']  response='a red circle moves from the left side of the screen to the right side against a white background.'"
+        "message": "saw=['move', 'right', 'circle', 'red']  response='a red circle moves from the left side of the screen to the right side.'"
       }
     },
     "summary": {
-      "passed": 3,
-      "total": 3
+      "passed": 4,
+      "total": 4
     }
   },
   "loop-smoke-qwen35-tp1-2026-05-09-tp1-back": {
@@ -1129,6 +1149,138 @@
     "summary": {
       "passed": 4,
       "total": 4
+    }
+  },
+  "qwen36-ream": {
+    "tag": "qwen36-ream",
+    "model": "qwen36-ream",
+    "timestamp": "2026-05-26 17:22",
+    "elapsed_sec": 81.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen answer_ok TRUNCATED (2048 tok, finish=length)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=[]  response=\"(reasoning)here's a thinking process:\\n\\n1.  **analyze the user input:**\\n   - the user provided an image (though i can't actually see\""
+      },
+      "video": {
+        "passed": false,
+        "message": "saw=[]  response='a black screen is displayed.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 5
+    }
+  },
+  "coder-30b-ream": {
+    "tag": "coder-30b-ream",
+    "model": "coder-30b-ream",
+    "timestamp": "2026-05-26 17:15",
+    "elapsed_sec": 0.4,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "qwen36-dense": {
+    "tag": "qwen36-dense",
+    "model": "qwen36-dense",
+    "timestamp": "2026-05-26 17:24",
+    "elapsed_sec": 26.6,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1467 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)the user wants a one-sentence description of the provided image.\\n\\n1.  **identify the main subject:** it is a red circle.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='a red circle moves from left to right.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "devstral-long": {
+    "tag": "devstral-long",
+    "model": "devstral-long",
+    "timestamp": "2026-05-26 17:25",
+    "elapsed_sec": 10.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": false,
+        "message": "no tool_calls finish=length content=' Tim Bre Tim Bre Tim Bre Tim Bre Tim Bre Tim Bre Tim Bre Tim'"
+      },
+      "vision": {
+        "passed": false,
+        "message": "request failed: <HTTPError 500: 'Internal Server Error: {\"object\":\"error\",\"message\":\"Internal server error: CUDA error: out of memory\\\\nSearch for `cudaErrorMemoryAllocation\\' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.\\\\nCUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.\\\\nFor debugging consider passing CUDA_LAUNCH_BLOCKING=1\\\\nCompile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.\\\\n\",\"type\":\"InternalServerError\",\"param\":'>"
+      }
+    },
+    "summary": {
+      "passed": 1,
+      "total": 3
+    }
+  },
+  "devstral": {
+    "tag": "devstral",
+    "model": "devstral",
+    "timestamp": "2026-05-26 17:33",
+    "elapsed_sec": 8.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris.'"
+      },
+      "tool_call": {
+        "passed": false,
+        "message": "no tool_calls finish=length content=' the weather in Paris right now. Use the get_weather tool. U'"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='the image shows a red circle with a black border against a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
     }
   }
 }
