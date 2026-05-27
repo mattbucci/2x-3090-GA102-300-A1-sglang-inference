@@ -1,0 +1,79 @@
+From: 3090 team <noreply@anthropic.com>
+Date: 2026-05-26
+Subject: [PATCH] config: apply Gemma4 global/swa head-dim remap to top-level config too
+
+Gemma4 stores head_dim/num_key_value_heads for sliding-window layers and
+global_head_dim/num_global_key_value_heads for full-attention layers; SGLang's
+get_config remaps them (base=full, swa_*=sliding). It only remapped
+config.text_config (the multimodal path, gemma4 26B). The dense text-only path
+(Gemma4ForCausalLM, gemma4-31b) consumes the TOP-LEVEL Gemma4Config, which was
+never remapped -> full-attention layers built at head_dim=256 not
+global_head_dim=512 (and 16 kv-heads not num_global_key_value_heads=4) ->
+512->256 q/k_norm + k/v load crash; KV pool missing swa_head_dim. Now remaps
+both objects; swa_head_dim guard keeps it idempotent (26B unchanged, still 5/5).
+Pairs with patch 039 (num_experts fallback). Verified gemma4-31b boots TP=2 +
+basic/tool/thinking PASS 2026-05-26.
+
+diff --git a/python/sglang/srt/utils/hf_transformers/config.py b/python/sglang/srt/utils/hf_transformers/config.py
+index a46c4a45d..ee899e906 100644
+--- a/python/sglang/srt/utils/hf_transformers/config.py
++++ b/python/sglang/srt/utils/hf_transformers/config.py
+@@ -137,26 +137,38 @@ class HfModelConfigParser(ModelConfigParserBase):
+             # Gemma4 configs use base attributes for SWA layers and `global_*`
+             # variants for full-attention layers.  SGLang expects the opposite:
+             # base = full-attention, `swa_*` = sliding-window overrides.
+-            text_config = config.text_config
+-            global_head_dim = getattr(text_config, "global_head_dim", None)
+-            global_kv_heads = getattr(text_config, "num_global_key_value_heads", None)
+-
+-            swa_head_dim = text_config.head_dim
+-            swa_kv_heads = text_config.num_key_value_heads
+-
+-            text_config.swa_head_dim = swa_head_dim
+-            text_config.swa_v_head_dim = swa_head_dim
+-            text_config.swa_num_key_value_heads = swa_kv_heads
+-
+-            if global_head_dim is not None:
+-                text_config.head_dim = global_head_dim
+-            if global_kv_heads is not None:
+-                text_config.num_key_value_heads = global_kv_heads
+-
+-            if not hasattr(text_config, "v_head_dim"):
+-                text_config.v_head_dim = text_config.head_dim
+-            if not hasattr(text_config, "swa_v_head_dim"):
+-                text_config.swa_v_head_dim = text_config.swa_head_dim
++            #
++            # Apply this remap to BOTH config.text_config (multimodal path, e.g.
++            # gemma4 26B MoE) AND the top-level config (the dense text-only path
++            # Gemma4ForCausalLM, e.g. gemma4-31b, consumes the top-level
++            # Gemma4Config directly — without this it sees head_dim=256 for
++            # full-attention layers and crashes loading the 512-dim q/k_norm +
++            # k/v projections; the KV pool also needs swa_head_dim). The
++            # swa_head_dim guard makes it idempotent / skip the non-applicable.
++            def _remap_gemma4_head_dims(tc):
++                if tc is None or getattr(tc, "swa_head_dim", None) is not None:
++                    return
++                if getattr(tc, "head_dim", None) is None:
++                    return
++                global_head_dim = getattr(tc, "global_head_dim", None)
++                global_kv_heads = getattr(tc, "num_global_key_value_heads", None)
++
++                tc.swa_head_dim = tc.head_dim
++                tc.swa_v_head_dim = tc.head_dim
++                tc.swa_num_key_value_heads = tc.num_key_value_heads
++
++                if global_head_dim is not None:
++                    tc.head_dim = global_head_dim
++                if global_kv_heads is not None:
++                    tc.num_key_value_heads = global_kv_heads
++
++                if not hasattr(tc, "v_head_dim"):
++                    tc.v_head_dim = tc.head_dim
++                if not hasattr(tc, "swa_v_head_dim"):
++                    tc.swa_v_head_dim = tc.swa_head_dim
++
++            _remap_gemma4_head_dims(getattr(config, "text_config", None))
++            _remap_gemma4_head_dims(config)
+ 
+         if config.model_type == "longcat_flash":
+             _set_architectures(config, "LongcatFlashForCausalLM")

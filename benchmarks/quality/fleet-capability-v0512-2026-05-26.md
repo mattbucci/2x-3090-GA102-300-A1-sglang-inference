@@ -19,7 +19,7 @@ not applicable to that model (auto-skipped). Receipts in
 | **coder-reap-25b** | 256K | ✅ | ✅ | n/a | n/a | n/a | OK (text coder) |
 | qwen36-ream | 256K | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | thinking+tool OK; **vision degraded/unstable** |
 | devstral | 131K | ✅ | ❌ | n/a | ✅ | n/a | basic+vision OK; **tool-call not emitted** (prompt echo) |
-| gemma4-31b | — | — | — | — | — | — | **blocked**: v0.5.12 AutoRound-AWQ loader regression |
+| gemma4-31b | 16K | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | loader FIXED (patches 039+040); basic+tool+thinking pass, vision degraded |
 | qwen3-ream | — | — | — | — | — | — | **model not on disk** |
 
 ## What got fixed this pass
@@ -31,7 +31,7 @@ not applicable to that model (auto-skipped). Receipts in
 - **patch 039**: `gemma4_causal` `num_experts` getattr fallback (dense Gemma4 crash on load).
 
 ## Remaining gaps (pre-existing, need deeper work)
-- **gemma4-31b** (AutoRound-AWQ): after the 039 num_experts fix, hits a weight-shape mismatch (`512 → 256`) — an AutoRound packing-layout regression on v0.5.12. Needs loader investigation; 26B MoE `gemma4` is unaffected.
+- **gemma4-31b** loader RESOLVED (patches 039 + 040) — boots TP=2, basic+tool+thinking pass. Was a config-remap gap (dense `Gemma4ForCausalLM` reads the top-level `Gemma4Config`, which never got the global/swa head-dim remap → full-attention layers built at head_dim 256 not 512). Vision remains degraded (separate AutoRound vision-tower issue).
 - **devstral tool-calling**: the model echoes the prompt (degenerate, finish=length) instead of emitting a `tool_call`. NOT a template gap — the custom `scripts/devstral_chat_template.jinja` *does* render `[AVAILABLE_TOOLS]`/`[TOOL_CALLS]`, and basic + vision pass. Likely a model-behavior / sampling issue on the non-coding weather prompt, or an assistant-turn-open edge in the template under `tools=`. Needs a deeper trace of the rendered prompt vs Mistral's expected `[AVAILABLE_TOOLS]` placement.
 - **qwen36-ream vision**: unstable — sometimes describes the image, sometimes "I can't see it" (degraded VLM alignment from the REAM merge / calibration; keyword-grep masked it). Coding-critical thinking + tool-calling are solid.
 - **qwen3-ream**: `Qwen3-30B-Instruct-2507-REAM-AWQ` is not on disk; preset references a missing checkpoint. (Text-only, non-thinking; documented not viable for codegen.)
