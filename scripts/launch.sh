@@ -418,25 +418,26 @@ apply_preset() {
         qwen36)
             # Qwen3.6-35B-A3B (thinking + vision): 256-expert hybrid DeltaNet
             # + gated attn, 3B active, 262K native context. Loads as
-            # Qwen3_5MoeForConditionalGeneration with patch 019 + patch 030
-            # applied (patch 030 detects pre-sharded w2 at TP>=2 so CT MoE
-            # serves cleanly; without it the loader crashes at narrow).
+            # Qwen3_5MoeForConditionalGeneration.
             #
-            # 2026-05-09: default switched to mattbucci/Qwen3.6-35B-A3B-AWQ-CT
-            # (compressed-tensors). The CT mirror is the calibration-clean
-            # variant (0/31010 audit-flagged scales) while the native AWQ
-            # has 144 flagged rare-expert findings (evals/awq-audit-2026-05-07.md).
-            # TP=2 / 256K verified 4/4 PASS + decode 30-32 tok/s flat 1K-250K
-            # (benchmarks/qwen3.6-35b-a3b/v0511-tp2-ct-patch030.json), within
-            # 1-3% of native AWQ on the same context grid. Override to native:
-            #   MODEL=$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ \
-            #   QUANT=awq_marlin ./scripts/launch.sh qwen36
+            # 2026-05-26: default switched to native AWQ-Marlin (the fleet's
+            # standard path). The prior CT (compressed-tensors) default hit a
+            # v0.5.12 MoE-loader bug — KeyError: experts.w2_weight_packed, since
+            # patch 028's per-expert key map handles AWQ suffixes (qweight/qzeros/
+            # scales) but not CT's weight_packed. Rebuilt from the BF16 base:
+            # fresh GPTQ W4A16 (1024-tok x 256-sample, moe_calibrate_all_experts,
+            # thinking_vision recipe) -> convert_moe_ct_to_awq -> merge BF16
+            # vision tower. 5/5 PASS (basic+tool_call+thinking+vision+video) at
+            # TP=2/256K (benchmarks/quality/qwen36-awq-marlin-rebuild-v0512.json).
+            # NOTE: the 144 "zero-scale" check_awq_scales flags are inherent
+            # base-model expert sparsity (gate/up channels are 7.8e-38 in the
+            # BF16 base, faithfully flushed to 0 in fp16 AWQ) — NOT under-cal.
             #
             # On TP=1 / 24 GB the default CTX=262K OOMs ("Not enough memory")
             # — use the qwen36-tp1 preset variant below for cold-launch on a
             # single card.
-            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ-CT}"
-            QUANT="${QUANT:-compressed-tensors}"
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ}"
+            QUANT="${QUANT:-awq_marlin}"
             # Force bf16 KV: fp8_e4m3 KV produces garbage on this model via
             # Qwen3_5MoeForConditionalGeneration on Ampere. Env override
             # (KV_DTYPE=X on the command line) still wins.

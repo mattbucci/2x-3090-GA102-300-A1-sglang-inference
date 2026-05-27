@@ -1,0 +1,34 @@
+{
+  "qwen36-awq-marlin-rebuild": {
+    "tag": "qwen36-awq-marlin-rebuild",
+    "model": "qwen36",
+    "timestamp": "2026-05-26 16:58",
+    "elapsed_sec": 54.5,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1280 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'across', 'ball', 'circle', 'red']  response='a red circle moves from left to right.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  }
+}
