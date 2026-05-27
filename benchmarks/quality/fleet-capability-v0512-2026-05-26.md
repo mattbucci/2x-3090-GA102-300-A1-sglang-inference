@@ -32,6 +32,6 @@ not applicable to that model (auto-skipped). Receipts in
 
 ## Remaining gaps (pre-existing, need deeper work)
 - **gemma4-31b** (AutoRound-AWQ): after the 039 num_experts fix, hits a weight-shape mismatch (`512 → 256`) — an AutoRound packing-layout regression on v0.5.12. Needs loader investigation; 26B MoE `gemma4` is unaffected.
-- **devstral tool-calling**: the model echoes the prompt instead of emitting a `tool_call` (Mistral chat-template/`--tool-call-parser mistral` tools-rendering issue). basic + vision are fine.
+- **devstral tool-calling**: the model echoes the prompt (degenerate, finish=length) instead of emitting a `tool_call`. NOT a template gap — the custom `scripts/devstral_chat_template.jinja` *does* render `[AVAILABLE_TOOLS]`/`[TOOL_CALLS]`, and basic + vision pass. Likely a model-behavior / sampling issue on the non-coding weather prompt, or an assistant-turn-open edge in the template under `tools=`. Needs a deeper trace of the rendered prompt vs Mistral's expected `[AVAILABLE_TOOLS]` placement.
 - **qwen36-ream vision**: unstable — sometimes describes the image, sometimes "I can't see it" (degraded VLM alignment from the REAM merge / calibration; keyword-grep masked it). Coding-critical thinking + tool-calling are solid.
 - **qwen3-ream**: `Qwen3-30B-Instruct-2507-REAM-AWQ` is not on disk; preset references a missing checkpoint. (Text-only, non-thinking; documented not viable for codegen.)
