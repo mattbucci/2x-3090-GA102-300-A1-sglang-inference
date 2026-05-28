@@ -1,0 +1,34 @@
+{
+  "qwen36-ream": {
+    "tag": "qwen36-ream",
+    "model": "qwen36-ream",
+    "timestamp": "2026-05-28 10:40",
+    "elapsed_sec": 44.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1033 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)the user wants a description of the provided image.\\nthe image shows a red circle with a black outline on a white backgro'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'across', 'ball', 'circle', 'red']  response='a red circle moves to the right.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  }
+}
