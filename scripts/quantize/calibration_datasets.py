@@ -21,8 +21,10 @@ the model must learn to terminate.
 """
 from __future__ import annotations
 
+import json
 import os
 import random
+import re
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -44,6 +46,12 @@ class Mix:
     # DatasetGenerationError mid-stream. Setting data_files to a specific file
     # forces a clean single-file load.
     data_files: str | None = None
+    # Optional per-row tool-definitions extractor. When set, build_calibration_dataset
+    # stores tools=tools_fn(row) on each row, and rows_to_text passes them to
+    # apply_chat_template so the Mistral/Devstral `[AVAILABLE_TOOLS]…[/AVAILABLE_TOOLS]`
+    # + `[TOOL_CALLS]name[ARGS]args` token pathways appear in calibration — the
+    # under-calibrated rare-token route is the root cause we fix for Devstral.
+    tools_fn: Callable[[dict], list[dict] | None] | None = None
 
 
 def _am_thinking(row: dict) -> list[dict]:
@@ -93,6 +101,22 @@ def _thestack_code(row: dict) -> list[dict]:
     return [
         {"role": "user", "content": "Show me a code example."},
         {"role": "assistant", "content": content},
+    ]
+
+
+def _code_instruct(row: dict) -> list[dict]:
+    """iamtarun/python_code_instructions_18k_alpaca: instruction (+optional input) -> code output.
+
+    Non-gated replacement for bigcode/the-stack-smol (which now requires access
+    approval). Instruction->code pairs give more realistic coder activations than
+    raw code dumps, and render cleanly through the chat template.
+    """
+    instr = (row.get("instruction") or "").strip()
+    inp = (row.get("input") or "").strip()
+    user = instr if not inp else f"{instr}\n\n{inp}"
+    return [
+        {"role": "user", "content": user or "Write a Python function."},
+        {"role": "assistant", "content": row.get("output", "")},
     ]
 
 
@@ -164,6 +188,79 @@ def _covost2_audio(row: dict) -> list[dict]:
     ]
 
 
+_HERMES_TOOL_CALL_RE = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
+_HERMES_TOOL_RESP_RE = re.compile(r"<tool_response>\s*(.*?)\s*</tool_response>", re.DOTALL)
+
+
+def _hermes_tools(row: dict) -> list[dict]:
+    """NousResearch/hermes-function-calling-v1: parse the conversation into messages
+    with STRUCTURED `tool_calls` so the chat template renders the model's real
+    inference tokens (e.g. Devstral: `[TOOL_CALLS]name[ARGS]args`). Hermes encodes
+    the assistant tool-call as `<tool_call>{"name":..., "arguments":...}</tool_call>`
+    XML inside the `gpt` turn — we extract it into the OpenAI tool_calls schema.
+    Hermes' `system` turn embeds `<tools>` XML; we DROP it because the tool defs
+    are passed separately via `tools_fn` (template's `[AVAILABLE_TOOLS]` block),
+    otherwise the tools would render twice.
+    """
+    convs = row.get("conversations")
+    if isinstance(convs, str):
+        try:
+            convs = json.loads(convs)
+        except Exception:
+            return []
+    if not isinstance(convs, list):
+        return []
+    msgs: list[dict] = []
+    for t in convs:
+        frm = t.get("from")
+        val = t.get("value", "") or ""
+        if frm == "system":
+            continue
+        if frm == "human":
+            msgs.append({"role": "user", "content": val})
+        elif frm == "gpt":
+            tcs = _HERMES_TOOL_CALL_RE.findall(val)
+            if tcs:
+                tool_calls: list[dict] = []
+                for tc in tcs:
+                    try:
+                        d = json.loads(tc)
+                    except Exception:
+                        continue
+                    args = d.get("arguments")
+                    if not isinstance(args, (str, dict)):
+                        args = {}
+                    tool_calls.append({
+                        "type": "function",
+                        "function": {
+                            "name": d.get("name", ""),
+                            "arguments": args,
+                        },
+                    })
+                if tool_calls:
+                    msgs.append({"role": "assistant", "content": "", "tool_calls": tool_calls})
+                else:
+                    msgs.append({"role": "assistant", "content": val})
+            else:
+                msgs.append({"role": "assistant", "content": val})
+        elif frm == "tool":
+            m = _HERMES_TOOL_RESP_RE.search(val)
+            content = m.group(1) if m else val
+            msgs.append({"role": "tool", "content": content})
+    return msgs
+
+
+def _hermes_tools_extract(row: dict):
+    """Pull the OpenAI-format tool definitions list out of a Hermes row."""
+    t = row.get("tools")
+    if isinstance(t, str):
+        try:
+            return json.loads(t)
+        except Exception:
+            return None
+    return t
+
+
 # --- Registry of available mixes ---
 
 MIXES: dict[str, Mix] = {
@@ -198,6 +295,10 @@ MIXES: dict[str, Mix] = {
         split="train", weight=0.0, format_fn=_thestack_code,
         config="data/python",
     ),
+    "code_instruct": Mix(
+        "code_instruct", "iamtarun/python_code_instructions_18k_alpaca",
+        split="train", weight=0.0, format_fn=_code_instruct,
+    ),
     "vatex_video": Mix(
         "vatex_video", "Multimodal-Fatima/VATEX",
         split="train", weight=0.0, format_fn=_vatex_video, streaming=True,
@@ -216,6 +317,12 @@ MIXES: dict[str, Mix] = {
         "covost2_audio", "google/covost2",
         split="train", weight=0.0, format_fn=_covost2_audio, streaming=True,
         config="en_de",
+    ),
+    "hermes_tools": Mix(
+        "hermes_tools", "NousResearch/hermes-function-calling-v1",
+        split="train", weight=0.0, format_fn=_hermes_tools, streaming=True,
+        config="func_calling_singleturn",
+        tools_fn=_hermes_tools_extract,
     ),
 }
 
@@ -275,6 +382,20 @@ RECIPE_CODE_VISION = {
     "numina_math": 0.10,
 }
 
+RECIPE_CODE_VISION_TOOLS = {
+    # Devstral-2 multimodal agentic: code-heavy with strong tool-format coverage
+    # AND preserved vision. The under-calibrated `[TOOL_CALLS]`/`[AVAILABLE_TOOLS]`
+    # pathway is the root cause we proved devstral tool-calling fails on; 30%
+    # Hermes function-calling forces those rare-token routes to see real
+    # activations. `tools_fn` is wired so apply_chat_template gets `tools=…`
+    # and renders the full Mistral tool prompt at calibration time.
+    "code_instruct":  0.30,
+    "hermes_tools":   0.30,
+    "llava_instruct": 0.20,
+    "ultrachat":      0.10,
+    "numina_math":    0.10,
+}
+
 RECIPE_CODE_THINKING = {
     # Coder with optional thinking (Qwen3-Coder-30B, Coder-Next 80B).
     "thestack_code": 0.40,
@@ -321,6 +442,7 @@ RECIPES = {
     "thinking_vision_video": RECIPE_THINKING_VISION_VIDEO,
     "thinking_vision_video_audio": RECIPE_THINKING_VISION_VIDEO_AUDIO,
     "code_vision": RECIPE_CODE_VISION,
+    "code_vision_tools": RECIPE_CODE_VISION_TOOLS,
     "code_thinking": RECIPE_CODE_THINKING,
     "balanced_thinking_vision": RECIPE_BALANCED_THINKING_VISION,
     "balanced_thinking_text": RECIPE_BALANCED_THINKING_TEXT,
@@ -411,10 +533,12 @@ def build_calibration_dataset(
             images = row.get("image") or row.get("images") or []
             if images and not isinstance(images, list):
                 images = [images]
+            tools = mix.tools_fn(row) if mix.tools_fn is not None else None
             rows.append({
                 "messages": messages,
                 "images": images,
                 "source": mix.name,
+                "tools": tools,
             })
 
     # Pad to num_samples with fallback if any mix under-delivered
@@ -422,9 +546,15 @@ def build_calibration_dataset(
     if deficit > 0 and fallback_mix in MIXES:
         print(f"  Padding {deficit} samples from {fallback_mix}")
         extra = _load_slice(MIXES[fallback_mix], deficit, seed + 1)
-        fmt = MIXES[fallback_mix].format_fn
+        fb_mix = MIXES[fallback_mix]
         for row in extra:
-            rows.append({"messages": fmt(row), "images": [], "source": fallback_mix})
+            tools = fb_mix.tools_fn(row) if fb_mix.tools_fn is not None else None
+            rows.append({
+                "messages": fb_mix.format_fn(row),
+                "images": [],
+                "source": fallback_mix,
+                "tools": tools,
+            })
 
     random.Random(seed).shuffle(rows)
     rows = rows[:num_samples]
@@ -459,25 +589,30 @@ def rows_to_text(
     out = []
     for row in rows[:max_samples] if max_samples else rows:
         if row["images"] and drop_images:
-            # Strip <image> placeholders from message content if present
-            msgs = [
-                {**m, "content": m["content"].replace("<image>", "").strip()}
-                for m in row["messages"]
-            ]
+            # Strip <image> placeholders from message content if present (content may
+            # be a list-of-blocks in some sources — only str needs the replace).
+            msgs = []
+            for m in row["messages"]:
+                c = m.get("content")
+                msgs.append({**m, "content": c.replace("<image>", "").strip() if isinstance(c, str) else c})
         else:
             msgs = row["messages"]
+        tools_arg = row.get("tools") if isinstance(row, dict) else None
+        base_kwargs: dict = dict(tokenize=False, add_generation_prompt=False)
+        if tools_arg:
+            base_kwargs["tools"] = tools_arg
         try:
             text = tokenizer.apply_chat_template(
-                msgs,
-                tokenize=False,
-                add_generation_prompt=False,
-                enable_thinking=enable_thinking,
+                msgs, enable_thinking=enable_thinking, **base_kwargs,
             )
         except TypeError:
             # Older tokenizers don't accept enable_thinking
-            text = tokenizer.apply_chat_template(
-                msgs, tokenize=False, add_generation_prompt=False,
-            )
+            text = tokenizer.apply_chat_template(msgs, **base_kwargs)
+        except Exception as e:
+            # Bad tool-row (e.g. role alternation under a strict template) — skip.
+            # We'd rather lose a calibration row than poison the dataset.
+            print(f"  [rows_to_text] skipping row (source={row.get('source')}): {type(e).__name__}: {str(e)[:120]}")
+            continue
         if text:
             out.append({"text": text})
     return Dataset.from_list(out)
