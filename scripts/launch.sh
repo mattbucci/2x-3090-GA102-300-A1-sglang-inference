@@ -77,11 +77,19 @@ EXTRA_ARGS="${EXTRA_ARGS:-}"
 apply_preset() {
     case "$1" in
         devstral)
-            MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-Marlin}"
+            # Devstral-Small-2-24B-Instruct-2512 — in-house BF16->GPTQ->AWQ rebuild
+            # (mattbucci/Devstral-Small-2-24B-AWQ). The community AWQ degenerated on
+            # tool prompts (under-calibrated [TOOL_CALLS] pathway); this rebuild adds
+            # function-calling calibration (code_vision_tools recipe). 3/3 PASS
+            # basic+tool_call+vision on v0.5.12 (2026-05-28).
+            # Uses the checkpoint's EMBEDDED canonical Mistral template (with BOS) —
+            # serving must match the template the model was calibrated with, else the
+            # tool pathway degenerates. Override with DEVSTRAL_CHAT_TEMPLATE="--chat-template <file>".
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Devstral-Small-2-24B-AWQ}"
             QUANT="${QUANT:-awq_marlin}"
             CTX=131072; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
             CUDA_GRAPH="--cuda-graph-max-bs 1"
-            CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
+            CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE-}"
             WARMUP="--skip-server-warmup"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser mistral"
             ;;
@@ -105,11 +113,13 @@ apply_preset() {
             # first image alloc to actual user requests where it will either
             # succeed (text-only requests don't trip pixtral) or surface an
             # actionable error to the caller.
-            MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-Marlin}"
+            # Shares the in-house Devstral-2 rebuild (mattbucci/Devstral-Small-2-24B-AWQ);
+            # native 256K support. Embedded canonical Mistral template (see devstral).
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Devstral-Small-2-24B-AWQ}"
             QUANT="awq_marlin"
             CTX=262144; MEM=0.97; MAX_RUNNING=1; CHUNKED=2048
             EXTRA_ARGS="${EXTRA_ARGS} --disable-cuda-graph --disable-overlap-schedule --disable-radix-cache --tool-call-parser mistral"
-            CHAT_TEMPLATE="--chat-template \$SCRIPT_DIR/devstral_chat_template.jinja"
+            CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE-}"
             WARMUP="--skip-server-warmup"
             ;;
         coder-reap)

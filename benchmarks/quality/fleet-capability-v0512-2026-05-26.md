@@ -18,7 +18,7 @@ not applicable to that model (auto-skipped). Receipts in
 | **coder-30b-ream** | 256K | ✅ | ✅ | n/a | n/a | n/a | OK (text coder) |
 | **coder-reap-25b** | 256K | ✅ | ✅ | n/a | n/a | n/a | OK (text coder) |
 | qwen36-ream | 256K | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | thinking+tool OK; **vision degraded/unstable** |
-| devstral | 131K | ✅ | ❌ | n/a | ✅ | n/a | basic+vision OK; **tool-call not emitted** (prompt echo) |
+| **devstral** (Devstral-2 AWQ rebuild) | 131K | ✅ | ✅ | n/a | ✅ | n/a | **3/3** — in-house Devstral-2-2512 rebuild, tool-calling fixed, shipped to HF |
 | **gemma4-31b** (AWQ rebuild) | 256K | ✅ | ✅ | ✅ | ✅ | ✅ | **5/5** — in-house BF16→AWQ rebuild, shipped to HF |
 | qwen3-ream | — | — | — | — | — | — | **model not on disk** |
 
@@ -33,7 +33,9 @@ not applicable to that model (auto-skipped). Receipts in
 ## What got fixed this pass (cont.)
 - **gemma4-31b** rebuilt in-house from BF16 → GPTQ W4A16 → native AWQ (17.1h CPU calibration on `balanced_thinking_vision`, vision tower + embed_vision ignored → kept FP16). 5/5 at 256K incl. **content-aware vision + video** — replaces the AutoRound mirror whose text-only calibration left vision hallucinating. Shipped to `mattbucci/gemma-4-31B-AWQ`. Loader fix (patches 039 + 040, the top-level `Gemma4Config` head-dim remap for the dense path) was a prerequisite.
 
+## What got fixed this pass (cont.)
+- **devstral** rebuilt in-house: the community AWQ degenerated on the `[AVAILABLE_TOOLS]` context (under-calibrated `[TOOL_CALLS]` pathway). Rebuilt Devstral-Small-2-24B-Instruct-2512 (FP8 base → BF16 dequant → GPTQ W4A16 with the new `code_vision_tools` recipe → AWQ). 3/3 PASS (basic+tool_call+vision). Three serving subtleties were load-bearing: (1) strip the leading `model.` key prefix the VLM `save_pretrained` adds (else SGLang misloads → `<unk>`); (2) ship the official `tokenizer_config.json` (the dequant save dropped `additional_special_tokens`); (3) serve with the checkpoint's embedded canonical Mistral template (with BOS) — must match the calibration template or the tool pathway degenerates. Shipped to `mattbucci/Devstral-Small-2-24B-AWQ`.
+
 ## Remaining gaps (pre-existing, need deeper work)
-- **devstral tool-calling**: the model echoes the prompt (degenerate, finish=length) instead of emitting a `tool_call`. NOT a template gap — the custom `scripts/devstral_chat_template.jinja` *does* render `[AVAILABLE_TOOLS]`/`[TOOL_CALLS]`, and basic + vision pass. Likely a model-behavior / sampling issue on the non-coding weather prompt, or an assistant-turn-open edge in the template under `tools=`. Needs a deeper trace of the rendered prompt vs Mistral's expected `[AVAILABLE_TOOLS]` placement.
 - **qwen36-ream vision**: unstable — sometimes describes the image, sometimes "I can't see it" (degraded VLM alignment from the REAM merge / calibration; keyword-grep masked it). Coding-critical thinking + tool-calling are solid.
 - **qwen3-ream**: `Qwen3-30B-Instruct-2507-REAM-AWQ` is not on disk; preset references a missing checkpoint. (Text-only, non-thinking; documented not viable for codegen.)
