@@ -107,7 +107,7 @@ Full preset list (20 total — `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scri
 
 ### Project hygiene
 - **No hardcoded `/home/letsrtfm/...` paths.** Use `$REPO_DIR` / `$MODELS_DIR` (set in `scripts/common.sh`) or derive from `$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)`. Hardcoded paths break for any other operator or host.
-- **HuggingFace push target: `mattbucci/<NAME>`** (not `letsrtfm/`). Token at `~/.secrets/hf_token_hf`. For uploads ≤25 GB use `hf upload <repo> <dir>`; for 50 GB+ that stall in commit phase, use R9700's `scripts/quantize/upload_repo_per_file.py` (one `HfApi.upload_file()` per file, idempotent on retry). GitHub PAT at `~/.secrets/gh_token` (already embedded in remote URLs).
+- **HuggingFace push target: `mattbucci/<NAME>`** (not `letsrtfm/`). Token at `~/.secrets/hf_token`. For uploads ≤25 GB use `hf upload <repo> <dir>`; for 50 GB+ that stall in commit phase, use R9700's `scripts/quantize/upload_repo_per_file.py` (one `HfApi.upload_file()` per file, idempotent on retry). GitHub PAT at `~/.secrets/gh_token` (already embedded in remote URLs).
 
 ### Known model issues
 - **CT-format MoE at TP=2 crashes in `_load_w2`** with `RuntimeError: start (4) + length (4) exceeds dimension size (4)`. CT ships w2 already at per-rank size; the loader still calls `narrow(shard_dim, shard_size*tp_rank, shard_size)` which overflows. Native AWQ (awq_marlin quant) ships full-global w2, narrow works. Don't repoint qwen36 (TP=2) to CT until patched. TP=1 (qwen36-tp1) is fine. Affects any CT MoE at TP≥2; check qwen35-moe + Coder-30B-REAM when reaching them.

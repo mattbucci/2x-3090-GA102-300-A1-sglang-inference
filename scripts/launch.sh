@@ -15,7 +15,7 @@
 #   qwen35-dense                              Qwen3.5-27B Dense AWQ
 #   qwen36-dense / qwen36-27b                 Qwen3.6-27B Dense AWQ (native)
 #   qwen36-dense-ct                           Qwen3.6-27B Dense compressed-tensors
-#   gemma4-31b                                Gemma 4 31B Dense AutoRound-AWQ
+#   gemma4-31b                                Gemma 4 31B Dense AWQ (thinking+image+video)
 #   qwen3-vl-32b                              Qwen3-VL-32B Dense (VL)
 #
 # MoE (R9700 team is actively recalibrating MoE checkpoints):
@@ -226,50 +226,27 @@ apply_preset() {
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
             ;;
         gemma4-31b)
-            # Gemma 4 31B Dense AWQ AutoRound (head_dim=256). On 3090 sm_86 the
-            # default FlashInfer + FP8 E4M3 KV combo fails twice:
-            #   1. FlashInfer rejects head_dim=256 (NUM_MMA_D_QK=32 invalid in
-            #      both BatchPrefillWithPaged- and BatchPrefillWithRagged-
-            #      KVCacheDispatched), so even --disable-cuda-graph crashes on
-            #      first prefill with "Unsupported max_mma_kv: 0".
-            #   2. Triton attention works around head_dim but rejects FP8 E4M3
-            #      KV on sm_86 (only fp8e4b15 / fp8e5 supported).
-            # Combo --attention-backend triton + KV_DTYPE=auto (FP16) is the
-            # working pair, validated 2026-05-01 via gemma4-31b-revalidate-Apr29
-            # (basic+thinking PASS; vision hallucinates because checkpoint
-            # registers as Gemma4ForCausalLM — separate metadata bug, not flags).
+            # Gemma 4 31B Dense AWQ — in-house BF16->GPTQ->AWQ rebuild
+            # (mattbucci/gemma-4-31B-AWQ). Multimodal: language model quantized
+            # to INT4, vision_tower + embed_vision kept FP16 via
+            # modules_to_not_convert (same layout as the working 26B AWQ). 5/5
+            # capability PASS at 256K — basic + tool + thinking + content-aware
+            # vision + video (2026-05-27). Replaces the AutoRound mirror, whose
+            # vision hallucinated (text-only calibration).
             #
-            # 2026-05-03: repointed to R9700's HF mirror at
-            # mattbucci/gemma-4-31B-it-AutoRound-AWQ. Their HF config carries
-            # architectures=Gemma4ForConditionalGeneration (task #63 metadata
-            # flip shipped 2026-04-29) AND it's native AWQ format (bits=4,
-            # group_size=128) instead of compressed-tensors — SGLang loads it
-            # via awq_marlin on Ampere sm_80+ for ~5x faster cold-load (5.2s
-            # vs 30s for the local CT) and likely faster decode too. Validated
-            # 2026-05-03 at port 23350 / TP=1 / 4K via validate_capabilities.py:
-            # 4/4 PASS (basic + thinking + vision-validator-passes-but-degraded
-            # + video skipped). Same Gemma 4 vision degradation as the local
-            # checkpoint — the format swap doesn't fix the calibration-side
-            # vision quality issue tracked in Known Issues. Override with
-            # MODEL=$MODELS_DIR/gemma-4-31B-it-AWQ-4bit if the older local CT
-            # build is needed for A/B.
-            #
-            # CACHE GOTCHA: if you previously pulled this HF mirror before the
-            # 2026-04-29 metadata flip, your local config.json may still say
-            # Gemma4ForCausalLM. Refresh with `huggingface-cli download
-            # mattbucci/gemma-4-31B-it-AutoRound-AWQ config.json` or curl -L.
-            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/gemma-4-31B-it-AutoRound-AWQ}"
+            # head_dim=256 forces the serving flags below: on 3090 sm_86,
+            # FlashInfer rejects head_dim=256 (NUM_MMA_D_QK=32 invalid → first
+            # prefill crashes "Unsupported max_mma_kv: 0"), so use
+            # --attention-backend triton; triton in turn rejects FP8 E4M3 KV on
+            # sm_86, so KV_DTYPE=auto (FP16); --disable-cuda-graph for the same
+            # head_dim limitation.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/gemma-4-31B-AWQ}"
             REASONING="--reasoning-parser gemma4"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
-            # Default BF16 — Gemma 4 SigLIP vision tower NaNs in FP16 (same
-            # vision base as 26B; FP16 attention softmax overflows past 65504).
-            # If this checkpoint's config has architectures=Gemma4ForCausalLM
-            # (text-only) and the user doesn't run image_url through it, FP16
-            # is technically fine — but BF16 is safe for the multimodal path
-            # that opens up after R9700's task #63 (metadata flip on the HF
-            # mirror) lands. Override DTYPE=float16 if memory-constrained.
+            # BF16 — Gemma 4 SigLIP vision tower NaNs in FP16 (attention softmax
+            # overflows past 65504). Override DTYPE=float16 only for text-only use.
             DTYPE="${_ENV_DTYPE:-bfloat16}"
-            CTX=16384; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
+            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
             ;;

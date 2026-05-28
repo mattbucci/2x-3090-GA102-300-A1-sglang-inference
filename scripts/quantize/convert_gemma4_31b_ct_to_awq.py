@@ -2,7 +2,13 @@
 """Convert Gemma 4 31B Dense from compressed-tensors to native AWQ format.
 
 Converts llmcompressor GPTQ output (compressed-tensors) to AWQ format for
-SGLang's Triton AWQ kernel on RDNA4. Dense model only — skips vision tower.
+SGLang's awq_marlin kernel. Multimodal: the language model is quantized to
+AWQ INT4 while the vision tower (model.vision_tower) and the vision embedding
+projection (model.embed_vision) are kept as FP16 and declared in
+modules_to_not_convert — matching the working gemma-4-26B-AWQ checkpoint
+(vision/embed_vision stored F16, no qweight). The calibration recipe already
+ignored every vision encoder layer + embed_vision, so those weights arrive
+here as plain BF16 .weight tensors (not weight_packed) and pass through to FP16.
 
 Input (compressed-tensors):
   - weight_packed: int32, 8x4-bit values packed sequentially [out, in//8]
@@ -126,11 +132,11 @@ for shard_idx, shard_path in enumerate(shard_files):
         if key in processed:
             continue
 
-        # Skip vision tower weights (text-only inference)
-        if "vision_tower" in key or "embed_vision" in key:
-            total_skipped_vision += 1
-            processed.add(key)
-            continue
+        # Vision tower + embed_vision are NOT quantized (ignored during
+        # calibration). They arrive as plain BF16 .weight tensors and fall
+        # through to the FP16 keep path below, exactly like gemma-4-26B-AWQ.
+        # (They are declared in modules_to_not_convert so the awq loader
+        # leaves them in FP16.)
 
         if key.endswith(".weight_packed"):
             # Quantized weight — convert from CT to AWQ format
@@ -234,7 +240,7 @@ config["quantization_config"] = {
     "quant_method": "awq",
     "version": "gemm",
     "zero_point": True,
-    "modules_to_not_convert": [],
+    "modules_to_not_convert": ["model.vision_tower", "model.embed_vision"],
 }
 
 with open(config_path, "w") as cfg_f:
