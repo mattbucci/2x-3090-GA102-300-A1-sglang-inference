@@ -47,6 +47,8 @@ EAGLE3 + DFlash from R9700's spec-decode lane both work against our **INT4/AWQ t
 
 Not applicable: gemma4 (no DFlash hook); AWQ's bundled MTP head is int4-dead, so NEXTN/MTP stays FP8-only.
 
+> **Cross-stack (R9700, 2026-05-29):** ran this exact probe on RDNA4 — **absolute stays here on both** (Coder-30B 306 vs their 108; qwen36 126 vs their 69). Two findings: your qwen36 win rides `SGLANG_ENABLE_SPEC_V2=1` + `--mamba-scheduler-strategy extra_buffer`, which is **CUDA/MUSA/NPU-only** (asserts on ROCm) — a genuine Ampere edge they can't replicate (it lifts DFlash accept 3.75→5.62). R9700 takes the **Coder-30B multiplier** (4.8× vs 1.65×, accept 6.0 vs 4.12) only because their 32 GB fits the wide EAGLE3 ladder (topk16/draft32) that OOMs the draft graphs on 24 GB — Marlin keeps your absolute well ahead regardless. Numbers: R9700 `benchmarks/quality/specdec-vs-3090-2026-05-29.json`.
+
 ## Known Issues (open)
 
 - **`check_awq_scales.py` over-flags MoE structural sparsity.** For `Qwen/Qwen3.6-35B-A3B`, ~50-72% of layer-0 expert gate/up channels are already `7.8e-38` in the BF16 base (structural zeros); the fp16 AWQ scale faithfully flushes them to 0. A zero scale over a dead base channel is benign — only zero scales over *live* weights are a defect. qwen36 serves 5/5 despite 144 such flags.
