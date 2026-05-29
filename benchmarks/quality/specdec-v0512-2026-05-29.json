@@ -1,0 +1,48 @@
+{
+  "_meta": {
+    "date": "2026-05-29",
+    "stack": "sglang v0.5.12 / cu130 / 2x RTX 3090 (24GB) TP=2",
+    "probe": "POST /v1/chat/completions, prompt='merge_intervals coding task', max_tokens=256, temp=0.3 (after warmup)",
+    "drafts": {
+      "eagle3-coder30b": "lmsys/SGLang-EAGLE3-Qwen3-Coder-30B-A3B-Instruct-SpecForge (361MB, LlamaForCausalLMEagle3)",
+      "qwen36-dflash":    "z-lab/Qwen3.6-35B-A3B-DFlash (905MB, DFlashDraftModel)"
+    },
+    "constraints_24gb": [
+      "preset MEM=0.85 leaves no draft headroom on 24GB; use --mem-fraction-static 0.70 for spec configs",
+      "EAGLE3: R9700's full ladder (topk 16 / draft 32) OOMs the draft cuda graphs on 24GB. Conservative ladder (steps 3/topk 1/draft 4) fits with margin; wider ladder (steps 4/topk 4/draft 8) gives more speedup and still fits.",
+      "DFlash on Qwen3_5MoeForConditionalGeneration: requires SGLANG_ENABLE_SPEC_V2=1 + --mamba-scheduler-strategy extra_buffer (else rejects at boot); also requires target --dtype bfloat16 to match the BF16 draft (else 'Index put dtype mismatch' at scheduler exception); context capped at 32K to fit target+draft on 24GB."
+    ]
+  },
+  "coder-30b-awq": {
+    "target": "/data/models/Qwen3-Coder-30B-A3B-AWQ (quant_method=awq, served via awq_marlin)",
+    "preset": "coder-30b + QUANT=awq_marlin override",
+    "context": 16384,
+    "baseline_tok_s": 185.5,
+    "configs": {
+      "eagle3_conservative": {
+        "extra_args": "--speculative-algorithm EAGLE3 --speculative-draft-model-path /data/models/drafts/eagle3-coder30b --speculative-draft-model-quantization unquant --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-tokens 4 --speculative-attention-mode decode --mem-fraction-static 0.70",
+        "tok_s": 272.4, "speedup_x": 1.47, "accept_len": 3.40, "accept_rate_range": [0.69, 0.80], "coherent": true
+      },
+      "eagle3_wider": {
+        "extra_args": "--speculative-algorithm EAGLE3 --speculative-draft-model-path /data/models/drafts/eagle3-coder30b --speculative-draft-model-quantization unquant --speculative-num-steps 4 --speculative-eagle-topk 4 --speculative-num-draft-tokens 8 --speculative-attention-mode decode --mem-fraction-static 0.70",
+        "tok_s": 306.0, "speedup_x": 1.65, "accept_len": 4.12, "accept_rate_range": [0.42, 0.45], "coherent": true
+      }
+    }
+  },
+  "qwen36-awq": {
+    "target": "/data/models/hf-mattbucci/Qwen3.6-35B-A3B-AWQ (mattbucci/Qwen3.6-35B-A3B-AWQ)",
+    "preset": "qwen36",
+    "baseline_tok_s_at_256k": 31.1,
+    "baseline_tok_s_at_32k": 30.6,
+    "configs": {
+      "dflash_bf16": {
+        "context": 32768,
+        "env": "SGLANG_ENABLE_SPEC_V2=1",
+        "extra_args": "--dtype bfloat16 --speculative-algorithm DFLASH --speculative-draft-model-path /data/models/drafts/qwen36-dflash --speculative-draft-model-quantization unquant --speculative-attention-mode decode --disable-overlap-schedule --mamba-scheduler-strategy extra_buffer --mem-fraction-static 0.70 --context-length 32768",
+        "tok_s": 126.3, "speedup_x": 4.1, "accept_len": 5.62, "accept_rate_range": [0.26, 0.31], "coherent_probe": false,
+        "coherent_note": "probe expects coding keywords; qwen36 is a thinking-mode model and routes content to reasoning_content. Decode throughput is real; same coherent=False as the no-spec baseline at the same context."
+      }
+    }
+  },
+  "headline": "EAGLE3 + DFlash work on our AWQ; DFlash@qwen36 = 4.1× (30.6 -> 126.3 tok/s), EAGLE3@coder-30b = 1.65× (185.5 -> 306.0 tok/s). R9700's full EAGLE3 ladder doesn't fit 24GB; ours captures most of the win at narrower settings."
+}

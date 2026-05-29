@@ -163,7 +163,7 @@ apply_preset() {
             # v0.5.12 — the w2_weight_packed bug is qwen3_5-only). coder-30b-eval
             # is the 256K eval-tuned sibling on the same model.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ-CT}"
-            QUANT="compressed-tensors"
+            QUANT="${QUANT:-compressed-tensors}"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
             ;;

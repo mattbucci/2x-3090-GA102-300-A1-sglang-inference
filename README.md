@@ -30,16 +30,22 @@ Best `(model, scaffold)` pair: `qwen36-ream` × **opencode** = **176/300 = 58.7%
 
 Failure-mode analysis (over-edit signature, per-repo skew, oracle-ensemble ceiling of 49% across opencode∪claw, rollout self-clean), methodology, and per-cell receipts: [`patches/README.md`](patches/README.md) + [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/). Every preset's `--tool-call-parser` matches its chat-template tool format (see Known Issues).
 
-## Speculative decoding (validated on R9700, porting to our AWQ stack)
+## Speculative decoding
 
-R9700's spec-decode lane (2026-05-29) found EAGLE3 + DFlash both work against **INT4/AWQ targets** (the draft stays BF16; target quant is independent). Drafts are external — keep them full precision via `--speculative-draft-model-quantization unquant`, and pass `--speculative-attention-mode decode` (TP2 deadlock fix for `moe_wna16`).
+EAGLE3 + DFlash from R9700's spec-decode lane both work against our **INT4/AWQ targets** (draft stays BF16; target quant is independent). Measured on our 24 GB cards 2026-05-29 — receipt: `benchmarks/quality/specdec-v0512-2026-05-29.json`.
 
-| Target (our AWQ) | Draft | Algo | R9700 result |
-|---|---|---|---|
-| Coder-30B-A3B + REAP/REAM children | `lmsys/SGLang-EAGLE3-Qwen3-Coder-30B-A3B-Instruct-SpecForge` (parent-transfers to pruned children) | EAGLE3 | 97 tok/s (4.4×) @ 256K |
-| Qwen3.6-35B-A3B + REAM | `z-lab/Qwen3.6-35B-A3B-DFlash` | DFLASH | 80 tok/s (3.7×) @ 256K |
+| Target | Algo / Draft | Baseline | With spec | Speedup |
+|---|---|:---:|:---:|:---:|
+| `coder-30b` AWQ-native | EAGLE3, `lmsys/SGLang-EAGLE3-Qwen3-Coder-30B-A3B-Instruct-SpecForge` (steps 4 / topk 4 / draft 8) | 185 tok/s | **306 tok/s** | **1.65×** |
+| `qwen36` AWQ | DFlash, `z-lab/Qwen3.6-35B-A3B-DFlash` (`--dtype bfloat16` + spec-v2) | 31 tok/s | **126 tok/s** | **4.1×** |
 
-Not applicable: gemma4 (no DFlash hook), AWQ's bundled MTP head is int4-dead so NEXTN/MTP is FP8-only. Local validation in progress — see `benchmarks/quality/specdec-*.json`.
+**Constraints on 24 GB cards** (R9700 has 32 GB headroom; ours doesn't):
+- Drop `--mem-fraction-static 0.70` so the target leaves room for the draft + its cuda graphs (preset `MEM=0.85` OOMs the draft).
+- EAGLE3: R9700's wide ladder (topk 16 / draft 32) OOMs the draft graphs here; our wider-but-fits ladder (steps 4 / topk 4 / draft 8) is the sweet spot.
+- DFlash on `Qwen3_5MoeForConditionalGeneration`: must export `SGLANG_ENABLE_SPEC_V2=1`, pass `--mamba-scheduler-strategy extra_buffer`, **and force `--dtype bfloat16`** (the BF16 draft mismatches the FP16 target → `Index put dtype mismatch` at boot). Cap context at 32K to fit.
+- Universal: `--speculative-draft-model-quantization unquant` (draft stays BF16) and `--speculative-attention-mode decode`.
+
+Not applicable: gemma4 (no DFlash hook); AWQ's bundled MTP head is int4-dead, so NEXTN/MTP stays FP8-only.
 
 ## Known Issues (open)
 
