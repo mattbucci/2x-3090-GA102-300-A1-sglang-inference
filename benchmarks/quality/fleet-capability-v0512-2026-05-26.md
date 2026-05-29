@@ -20,7 +20,7 @@ not applicable to that model (auto-skipped). Receipts in
 | **qwen36-ream** (vision-grafted) | 256K | ✅ | ✅ | ✅ | ✅ | ✅ | **5/5** — coding-eval leader (58.7% opencode); vision tower grafted |
 | **devstral** (Devstral-2 AWQ rebuild) | 131K | ✅ | ✅ | n/a | ✅ | n/a | **3/3** — in-house Devstral-2-2512 rebuild, tool-calling fixed, shipped to HF |
 | **gemma4-31b** (AWQ rebuild) | 256K | ✅ | ✅ | ✅ | ✅ | ✅ | **5/5** — in-house BF16→AWQ rebuild, shipped to HF |
-| qwen3-ream | — | — | — | — | — | — | **model not on disk** |
+| **qwen3-ream** (REAM rebuild) | 256K | ✅ | n/a | n/a | n/a | n/a | **basic PASS** — in-house REAM rebuild (96 exp); text-only non-thinking generalist |
 
 ## What got fixed this pass
 - **qwen36** rebuilt from BF16 → native AWQ-Marlin (was CT, broke on v0.5.12). 5/5 incl. tool-calling + vision (after BF16 vision-tower merge). Shipped to `mattbucci/Qwen3.6-35B-A3B-AWQ`.
@@ -36,8 +36,8 @@ not applicable to that model (auto-skipped). Receipts in
 ## What got fixed this pass (cont.)
 - **devstral** rebuilt in-house: the community AWQ degenerated on the `[AVAILABLE_TOOLS]` context (under-calibrated `[TOOL_CALLS]` pathway). Rebuilt Devstral-Small-2-24B-Instruct-2512 (FP8 base → BF16 dequant → GPTQ W4A16 with the new `code_vision_tools` recipe → AWQ). 3/3 PASS (basic+tool_call+vision). Three serving subtleties were load-bearing: (1) strip the leading `model.` key prefix the VLM `save_pretrained` adds (else SGLang misloads → `<unk>`); (2) ship the official `tokenizer_config.json` (the dequant save dropped `additional_special_tokens`); (3) serve with the checkpoint's embedded canonical Mistral template (with BOS) — must match the calibration template or the tool pathway degenerates. Shipped to `mattbucci/Devstral-Small-2-24B-AWQ`.
 
-## What got fixed this pass (cont.)
 - **qwen36-ream** vision fixed by grafting the vision tower: the checkpoint declared `vision_config` but shipped **zero `model.visual.*` weights** (stripped in the REAM/AWQ build) — not "alignment drift". REAM only merges MoE experts, so the Qwen3.6 vision tower from the shipped qwen36 (identical `vision_config`) drops straight in (333 FP16 tensors via `merge_vision_weights.py`, LM untouched). 5/5 PASS — the coding-eval leader now also does content-aware vision + video.
+- **qwen3-ream** rebuilt from scratch (was absent): downloaded Qwen3-30B-A3B-Instruct-2507 → REAM merge 128→96 experts (SamsungSAIL `merge.py`, reap saliency, 16.8h CPU, 23.3B params, logit check healthy) → GPTQ W4A16 (5.5h) → AWQ. basic PASS. Text-only non-thinking instruct generalist (no tool/vision/thinking — confirmed; fastest preset at 107 tok/s @ 256K). Shipped to `mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ`.
 
-## Remaining gaps (pre-existing, need deeper work)
-- **qwen3-ream**: `Qwen3-30B-Instruct-2507-REAM-AWQ` is not on disk; preset references a missing checkpoint. (Text-only, non-thinking; documented not viable for codegen.)
+## Remaining gaps
+- **None.** All v0.5.12 fleet presets pass their applicable capability checks.
