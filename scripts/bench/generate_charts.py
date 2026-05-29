@@ -188,6 +188,70 @@ def make_combined_concurrency_chart(all_data):
     print(f"  {path}")
 
 
+def make_specdec_comparison_chart():
+    """AWQ baseline vs AWQ + spec-decode (single-user decode tok/s) across the
+    spec-validated fleet. Data from benchmarks/specdec-comparison.json.
+
+    Adapted from R9700's `make_fp8_comparison_chart` (commit a668c39, "+draft"
+    series) but stripped to the AWQ + spec-decode bars only — FP8 doesn't
+    accelerate on Ampere sm_86 and the relevant models don't fit at FP8 on 24GB.
+    """
+    path_in = os.path.join(BENCH_DIR, "specdec-comparison.json")
+    if not os.path.exists(path_in):
+        print(f"  (no {path_in} — skipping spec-decode chart)")
+        return
+    with open(path_in) as f:
+        data = json.load(f)
+    models = data["models"]
+    if not models:
+        return
+    x = np.arange(len(models))
+    w = 0.36
+    AWQC, SPECC = "#58a6ff", "#3fb950"
+    xlabels = [f'{m["name"]}\n{m["kind"]}  •  ctx {m["ctx_k"]}K' for m in models]
+
+    fig, ax = plt.subplots(1, 1, figsize=(11, 6))
+
+    seen = set()
+    def _lbl(key, text):
+        if key in seen:
+            return None
+        seen.add(key); return text
+
+    for i, m in enumerate(models):
+        awq = m["awq_toks"]; spec = m["spec_toks"]
+        ax.bar(x[i] - w / 2, awq, w, color=AWQC, zorder=5,
+               label=_lbl("awq", "AWQ int4 (no spec)"))
+        ax.text(x[i] - w / 2, awq + 2.0, f'{awq:.0f}',
+                ha="center", fontsize=9, color=AWQC, fontweight="bold")
+        ax.bar(x[i] + w / 2, spec, w, color=SPECC, zorder=5,
+               label=_lbl("spec", "+ draft (spec-decode)"))
+        ax.text(x[i] + w / 2, spec + 2.0,
+                f'{spec:.0f}\n{m["spec_draft"]}\n{m["speedup_x"]:.2f}×',
+                ha="center", fontsize=8, color=SPECC, fontweight="bold")
+
+    ax.set_xticks(x); ax.set_xticklabels(xlabels, fontsize=9)
+    ax.set_ylabel("tok/s (single user)")
+    ax.set_title("Single-user decode — AWQ vs +draft (spec-decode)",
+                 fontsize=13, fontweight="bold", pad=10)
+    ax.legend(loc="upper left", framealpha=0.5, edgecolor="#30363d",
+              facecolor="#161b22", fontsize=9)
+    ax.grid(True, axis="y", linestyle="--")
+    y_top = max(m["spec_toks"] for m in models) * 1.30
+    ax.set_ylim(bottom=0, top=y_top)
+
+    fig.suptitle(f'{data["title"]}\n{data["subtitle"]}',
+                 fontsize=12, fontweight="bold", y=1.02)
+    if data.get("footnote"):
+        fig.text(0.5, -0.04, data["footnote"], ha="center", fontsize=8,
+                 color="#8b949e", style="italic")
+    fig.tight_layout()
+    out = os.path.join(BENCH_DIR, "specdec_comparison.png")
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  {out}")
+
+
 if __name__ == "__main__":
     print("Generating benchmark charts...\n")
 
@@ -209,5 +273,8 @@ if __name__ == "__main__":
         print("Combined:")
         make_combined_context_chart(all_data)
         make_combined_concurrency_chart(all_data)
+
+    print("Spec-decode:")
+    make_specdec_comparison_chart()
 
     print("\nDone!")

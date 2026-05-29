@@ -1,0 +1,33 @@
+{
+  "title": "Speculative decoding on our AWQ targets",
+  "subtitle": "2x RTX 3090 (24GB), SGLang v0.5.12 / TP=2 — measured 2026-05-29 — drafts: lmsys EAGLE3 + z-lab DFlash, BF16 (--speculative-draft-model-quantization unquant)",
+  "footnote": "FP8 panel omitted: this rig is 2x24GB; FP8 W8A8 doesn't accelerate on Ampere sm_86 and most of the relevant models don't fit at FP8 here. FP8 lives with the R9700 RDNA4 stack.",
+  "models": [
+    {
+      "name": "Qwen3-Coder-30B-A3B",
+      "kind": "MoE / AWQ-native",
+      "preset": "coder-30b (QUANT=awq_marlin)",
+      "ctx_k": 16,
+      "awq_toks": 185.5,
+      "spec_toks": 306.0,
+      "spec_draft": "EAGLE3",
+      "spec_draft_repo": "lmsys/SGLang-EAGLE3-Qwen3-Coder-30B-A3B-Instruct-SpecForge",
+      "spec_ladder": "steps=4 topk=4 draft=8",
+      "accept_len": 4.12,
+      "speedup_x": 1.65
+    },
+    {
+      "name": "Qwen3.6-35B-A3B",
+      "kind": "DeltaNet+MoE / AWQ",
+      "preset": "qwen36 (--dtype bfloat16 + SGLANG_ENABLE_SPEC_V2=1 + --mamba-scheduler-strategy extra_buffer)",
+      "ctx_k": 32,
+      "awq_toks": 30.6,
+      "spec_toks": 126.3,
+      "spec_draft": "DFlash",
+      "spec_draft_repo": "z-lab/Qwen3.6-35B-A3B-DFlash",
+      "spec_ladder": "default DFLASH",
+      "accept_len": 5.62,
+      "speedup_x": 4.1
+    }
+  ]
+}
