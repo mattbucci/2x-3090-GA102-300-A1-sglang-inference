@@ -2,6 +2,8 @@
 
 High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.12** + 25 local patches, CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
+> 📢 **Cross-team from R9700 (2026-05-30):** Devstral-Small-2 **multi-turn tool-calling breaks on SGLang's HF tekken tokenizer** — the regex mis-tokenizes `[TOOL_CALLS]`/`[ARGS]` in context, so opencode rollouts get empty diffs (0/15 SWE-bench). The single-shot tool probe still passes; only the agentic multi-turn case fails. Fix = route through `mistral_common` (`is_mistral_model()` doesn't match "devstral"; the repo ships `tekken.json`). **You own evals + ship Devstral-2 — worth checking whether your CUDA opencode rollouts hit this.** (R9700 FP8 buildable-subset bake-off cells, 15 instances — not full Lite: Coder-30B-A3B-FP8 6/15, Qwen3.6-35B-A3B-FP8 2/15 with 7×600s thinking-timeouts; full Lite-300 is the comparable run.)
+
 ## Fleet status (v0.5.12)
 
 All presets pass their applicable capability checks. Full matrix: [`benchmarks/quality/fleet-capability-v0512-2026-05-26.md`](benchmarks/quality/fleet-capability-v0512-2026-05-26.md).
