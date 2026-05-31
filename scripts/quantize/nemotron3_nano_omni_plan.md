@@ -41,6 +41,20 @@
    Optional: `--speculative-ngram-external-corpus-path <coding-corpus>` to seed the n-gram trie from a representative corpus (separate `--sam-budget` required). Typical reported speedup on code: 1.3-1.8×. If NGRAM clears 1.3×, we may not need to train a neural draft at all.
 3. **Phase 2 — Train our own EAGLE3 via SpecForge** (only if NGRAM is insufficient OR if multi-domain coverage needed). User-authorized 2026-05-31 ("when we get there we can just make our own model"); realistic cost ~1-3 days wall on 2× 3090. Recipe scaffolding tracked in task #27. Open research question: SpecForge's EAGLE3 training is well-trodden on Llama / Qwen Transformer-only architectures; on a Mamba2-dominant hybrid like Nemotron-H the hidden-feature hook points may need adaptation (the EAGLE3 head reads target hidden states at specific layer positions — these line up cleanly on a 100% Transformer stack but Mamba2 layers have a different state shape).
 
+## Env prerequisite — librosa (Parakeet audio encoder)
+
+`pip install librosa` is required in BOTH the serving env (`sglang-v0512`) and
+the calibration env (`quant`) — the Parakeet (tdt-0.6b-v2) audio encoder uses
+librosa for mel-spectrogram preprocessing. Without it the server raises a clean
+`ModuleNotFoundError` at first audio-bearing request. Cross-team finding from
+R9700 (their commit `de4c81e` 2026-05-31).
+
+**Status: installed in both envs 2026-05-31 (librosa 0.11.0).** The install
+pulled in only new packages (audioread, joblib, lazy_loader, llvmlite, msgpack,
+numba, pooch, scikit-learn, scipy, soundfile, soxr) — no upgrades or downgrades
+of pre-existing critical deps (torch, transformers, etc.), so safe to run with
+the bake-off in flight.
+
 ## Pre-flight findings (task #18, 2026-05-31)
 
 `AutoConfig.from_pretrained(..., trust_remote_code=True)` in our `quant` env
