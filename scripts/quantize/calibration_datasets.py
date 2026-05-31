@@ -422,6 +422,23 @@ RECIPE_BALANCED_THINKING_VISION = {
     #            non-thinking ≈ 60% (llava_instruct + ultrachat + thestack_code).
 }
 
+RECIPE_OMNI_THINKING_TOOLS = {
+    # Nemotron-3-Nano-Omni-Reasoning: thinking + vision + video + audio + tool.
+    # The Omni model has every live modality plus an XML tool-call pathway
+    # (<tool_call><function=...>) that needs explicit coverage. Builds on
+    # RECIPE_THINKING_VISION_VIDEO_AUDIO + a hermes_tools slice for the
+    # tool-format tokens (same XML shape the model lists in its system prompt;
+    # served via --tool-call-parser qwen3_coder per LMSYS).
+    "am_thinking":        0.18,   # thinking traces (terminated </think>)
+    "llava_instruct":     0.15,   # image
+    "llava_video_178k":   0.15,   # video
+    "common_voice_audio": 0.10,   # ASR
+    "covost2_audio":      0.10,   # instruction-style speech (translation/QA)
+    "hermes_tools":       0.12,   # function-calling — exposes <tool_call> tokens
+    "numina_math":        0.10,   # math reasoning
+    "ultrachat":          0.10,   # plain chat
+}
+
 RECIPE_BALANCED_THINKING_TEXT = {
     # Text-only counterpart to balanced_thinking_vision — for models without
     # a vision tower (Qwen3.5-27B dense+DeltaNet, Qwen3.5-35B MoE).  Existing
@@ -446,6 +463,7 @@ RECIPES = {
     "code_thinking": RECIPE_CODE_THINKING,
     "balanced_thinking_vision": RECIPE_BALANCED_THINKING_VISION,
     "balanced_thinking_text": RECIPE_BALANCED_THINKING_TEXT,
+    "omni_thinking_tools": RECIPE_OMNI_THINKING_TOOLS,
 }
 
 
