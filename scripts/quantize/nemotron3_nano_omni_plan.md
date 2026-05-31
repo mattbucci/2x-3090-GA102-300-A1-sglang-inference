@@ -41,6 +41,15 @@
    Optional: `--speculative-ngram-external-corpus-path <coding-corpus>` to seed the n-gram trie from a representative corpus (separate `--sam-budget` required). Typical reported speedup on code: 1.3-1.8×. If NGRAM clears 1.3×, we may not need to train a neural draft at all.
 3. **Phase 2 — Train our own EAGLE3 via SpecForge** (only if NGRAM is insufficient OR if multi-domain coverage needed). User-authorized 2026-05-31 ("when we get there we can just make our own model"); realistic cost ~1-3 days wall on 2× 3090. Recipe scaffolding tracked in task #27. Open research question: SpecForge's EAGLE3 training is well-trodden on Llama / Qwen Transformer-only architectures; on a Mamba2-dominant hybrid like Nemotron-H the hidden-feature hook points may need adaptation (the EAGLE3 head reads target hidden states at specific layer positions — these line up cleanly on a 100% Transformer stack but Mamba2 layers have a different state shape).
 
+## R9700 cracked 256K — graft candidates (2026-05-31 commit `5ac9ce1`)
+
+R9700 unblocked full 256K serving of Nemotron-Omni FP8 on their side via two new patches. Their results: 247K-token prefill in ~109s, ~29 tok/s decode at 247K, needle-in-haystack retrieved at 28K. Patches:
+
+- **patch 046 (SSD divergent-ptr buffer-ops):** rewrites the chunk-scan + chunk-state Triton kernels to keep each pointer single-based and select VALUE via `tl.where`, fixing the `fatPtrs.canNarrow` assertion in the AMD canonicalize-pointers pass. **Bit-exact vs upstream** — refactor only. On CUDA, the original code may compile fine (CUDA Triton has no `canonicalize-pointers` pass), but **the cleaner IR is portable**. Graft as a no-cost refactor.
+- **patch 047 (triton attn hybrid v_head_dim):** `TritonAttnBackend` sampled `v_head_dim` from `get_value_buffer(0)`, but layer 0 of Nemotron-H is a Mamba layer with no full-attn KV buffer (attn layers at `[5, 12, 19, 26, 33, 42]`). Hit `ValueError` → fell back to `torch_native` → O(chunk × ctx) attention scores → OOM past ~150K. Fix duck-types via `HybridLinearKVPool.get_v_head_dim()`. **CUDA-applicable**: yes — same SGLang code runs on both stacks. If we serve Nemotron-Omni on `--attention-backend triton`, we hit the same issue. (If we use FlashInfer, may avoid by accident — but FlashInfer's hybrid-MoE path on Ampere is unproven; safer to graft.)
+
+**Action:** graft both as patches 042 + 043 in our stack when task #21 fires. Renumbered per [[reference_cross_team_patch_numbering]] (R9700's 040, 041, 042, 043 already collide with ours).
+
 ## Env prerequisite — librosa (Parakeet audio encoder)
 
 `pip install librosa` is required in BOTH the serving env (`sglang-v0512`) and
