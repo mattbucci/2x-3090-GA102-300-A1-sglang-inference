@@ -91,24 +91,24 @@ Use `temperature >= 0.3` on Qwen3 family models — greedy decode at `temp=0` tr
 
 ## Prerequisites
 
-Reference host (3090 rig as of 2026-05-17 motherboard swap):
+Tested hardware (current rig):
 
 | Component | Spec |
 |-----------|------|
-| GPU | 2× NVIDIA RTX 3090 (24 GB each, 48 GB total) — NVLink bridge present (`nvidia-smi topo -m` reports `NV4` ≈ 56 GB/s aggregate) |
-| CPU | AMD Ryzen 9 7900 (12C/24T, max 5.48 GHz, Zen 4 AM5) |
-| RAM | 2× 32 GB DDR5-6000 (64 GB total; 62 GB usable in OS) |
-| Motherboard | MSI MPG B650I EDGE WIFI (MS-7D73, mini-ITX, AM5) |
-| Storage | 2× Crucial P5 Plus 2 TB NVMe (`nvme0n1` = root, `nvme1n1` = `/data` models) |
-| Chassis fans | Corsair Commander Core XT (controlled via `liquidctl`) |
-| OS / Kernel | EndeavourOS (Arch, rolling) / `linux-zen-p2p` 6.18.0 (NVIDIA P2P-BAR1 patches) |
-| NVIDIA driver | 595.71.05 (`nvidia-open-dkms`) / CUDA toolkit 13.2 |
+| GPU | 2× NVIDIA RTX 3090 (24 GB each, 48 GB total) — NVLink bridge present; `nvidia-smi topo -m` reports `NV4` (~56 GB/s aggregate) |
+| CPU | AMD Ryzen 9 7900 (12C/24T, Zen 4, AM5) |
+| RAM | 64 GB DDR5-6000 (62 GB usable) |
+| Motherboard | MSI MPG B650I EDGE WIFI (mini-ITX, AM5) |
+| Storage | 2× 2 TB NVMe (`nvme0n1` = root, `nvme1n1` = `/data` models + caches) |
+| Chassis fans | Corsair Commander Core XT (via `liquidctl`) |
+| OS / Kernel | Arch (EndeavourOS) / `linux-zen-p2p` 6.18.zen1-1 (consumer-Ampere PCIe-BAR1 P2P patch). The stock `linux-zen` line is on 7.x, but the P2P-BAR1 patch (what gives us `NV4` topo) is still pinned to 6.18 — don't "upgrade" to bare `linux-zen` 7.x or you lose NVLink P2P. |
+| NVIDIA driver / CUDA | `nvidia-open-dkms` 595.71.05 / CUDA 13.2 |
 
 Both 3090s sit at PCIe Gen4 with the NVLink bridge; NCCL selects `P2P/IPC` transport (NVLink + peer-to-peer CUDA IPC) once the kernel/driver combo below is in place.
 
 ### Kernel and driver
 
-- `linux-zen`-family kernel (host runs `linux-zen-p2p` 6.18.0), not stock `linux` — the stock kernel + open NVIDIA module hard-locked the host under sustained TP=2 / 256K load. The zen patchset eliminated the recurrence; the `-p2p` variant re-enables consumer-Ampere PCIe-BAR1 P2P so `nvidia-smi topo -m` reports `NV4` instead of `PHB` on this AM5 platform.
+- `linux-zen`-family kernel (`linux-zen-p2p`), not stock `linux` — the stock kernel + open NVIDIA module hard-locked the host under sustained TP=2 / 256K load. The zen patchset eliminated the recurrence; the `-p2p` variant re-enables consumer-Ampere PCIe-BAR1 P2P so `nvidia-smi topo -m` reports `NV4` instead of `PHB` on this AM5 platform.
 - `nvidia-open-dkms` (not `nvidia-open`) — DKMS rebuilds the module for every kernel with headers installed.
 
 ### Cooling and power profile (load-bearing)
