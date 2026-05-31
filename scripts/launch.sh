@@ -275,6 +275,30 @@ apply_preset() {
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
             ;;
+        gemma4-21b-reap)
+            # Gemma 4 21B REAP AWQ — Cerebras-style expert prune of the 26B
+            # parent (smaller A4B-class MoE). Same Gemma 4 architecture as the
+            # 26B preset above — patch 023's MLP quant detection was designed
+            # to route both the 26B HF mirror AND the 21B-REAP-v3b checkpoint
+            # through the same AWQ path. Reuses every gemma4 serving flag:
+            # bf16 dtype (SigLIP vision tower NaNs in fp16), triton attention
+            # (head_dim=256 FlashInfer-unsupported on sm_86), disable cuda
+            # graph (head_dim limitation), gemma4 reasoning + tool-call
+            # parsers. The 21B-REAP weights are ~10 GB (vs 26B's 13 GB) so
+            # KV headroom is slightly wider at TP=2; same 256K ctx fits
+            # comfortably. Model card on HF: mattbucci/gemma-4-21B-REAP-AWQ
+            # (commit a31a584 v3b, regex-ignore recal post the May-7 v2 audit
+            # disaster). If not yet downloaded locally:
+            #   hf download mattbucci/gemma-4-21B-REAP-AWQ \
+            #     --local-dir /data/models/hf-mattbucci/gemma-4-21B-REAP-AWQ
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/gemma-4-21B-REAP-AWQ}"
+            REASONING="--reasoning-parser gemma4"
+            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            DTYPE="${_ENV_DTYPE:-bfloat16}"
+            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
+            WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
+            ;;
         gemma4-31b)
             # Gemma 4 31B Dense AWQ — in-house BF16->GPTQ->AWQ rebuild
             # (mattbucci/gemma-4-31B-AWQ). Multimodal: language model quantized

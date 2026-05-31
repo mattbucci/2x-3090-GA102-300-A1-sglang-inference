@@ -149,7 +149,7 @@ Verify: `nvidia-smi --query-gpu=power.limit,fan.speed,temperature.gpu --format=c
 | **Qwen3.6-27B Dense AWQ** | Dense + DeltaNet (VL) | **262K** | 21 | `qwen36-dense` | [`mattbucci/Qwen3.6-27B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-27B-AWQ) (R9700 self-cal). |
 | **Devstral-Small-2-24B AWQ** | Dense (VL) | **256K** † | 56 | `devstral` (131K default) / `devstral-long` (262K text-only) | [`mattbucci/Devstral-Small-2-24B-AWQ`](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ). † default preset caps 131K to leave KV headroom for the BF16 vision tower; `devstral-long` text-only path reaches 217K @ 50 tok/s. |
 | **Qwen3-VL-32B Instruct AWQ** | Dense (VL) | **131K** (model-card cap) | 40 | `qwen3-vl-32b` | [`mattbucci/Qwen3-VL-32B-AWQ`](https://huggingface.co/mattbucci/Qwen3-VL-32B-AWQ) (R9700). 68→50→40 tok/s @ 1K/65K/131K. |
-| Gemma 4 21B REAP AWQ | MoE (128 exp) | **131K** | — | (no preset wired) | [`mattbucci/gemma-4-21B-REAP-AWQ`](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ). Serve via `MODEL=<path> ./scripts/launch.sh gemma4`. |
+| Gemma 4 21B REAP AWQ | MoE | **256K** | — | `gemma4-21b-reap` | [`mattbucci/gemma-4-21B-REAP-AWQ`](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ). Cerebras-style expert prune of the 26B parent; same Gemma 4 serving flags. Download required: `hf download mattbucci/gemma-4-21B-REAP-AWQ --local-dir /data/models/hf-mattbucci/gemma-4-21B-REAP-AWQ`. |
 
 Per-model receipts in `benchmarks/quality/*-rebuild-v0512.json` + `qwen36-opencode-v2-resolved-2026-05-31.json`.
 
