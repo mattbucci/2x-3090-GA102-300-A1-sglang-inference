@@ -101,15 +101,31 @@ Tested hardware (current rig):
 | Motherboard | MSI MPG B650I EDGE WIFI (mini-ITX, AM5) |
 | Storage | 2× 2 TB NVMe (`nvme0n1` = root, `nvme1n1` = `/data` models + caches) |
 | Chassis fans | Corsair Commander Core XT (via `liquidctl`) |
-| OS / Kernel | Arch (EndeavourOS) / `linux-zen-p2p` 6.18.zen1-1 (consumer-Ampere PCIe-BAR1 P2P patch). The stock `linux-zen` line is on 7.x, but the P2P-BAR1 patch (what gives us `NV4` topo) is still pinned to 6.18 — don't "upgrade" to bare `linux-zen` 7.x or you lose NVLink P2P. |
+| OS / Kernel | Arch (EndeavourOS) / `linux-zen-p2p` 6.18.zen1-1 (locally-built linux-zen + cosmetic `CONFIG_HSA_AMD_P2P=y`; pinned to 6.18 for stability) |
 | NVIDIA driver / CUDA | `nvidia-open-dkms` 595.71.05 / CUDA 13.2 |
+| NVLink | physical 4-link bridge installed between the two 3090s — `nvidia-smi nvlink --status` shows all 4 links at 14.06 GB/s (~56 GB/s aggregate) |
 
-Both 3090s sit at PCIe Gen4 with the NVLink bridge; NCCL selects `P2P/IPC` transport (NVLink + peer-to-peer CUDA IPC) once the kernel/driver combo below is in place.
+Both 3090s sit at PCIe Gen4 with the NVLink bridge; NCCL selects `P2P/IPC` transport (NVLink + peer-to-peer CUDA IPC) once everything below is in place.
 
-### Kernel and driver
+### Why `NV4` reports — the three load-bearing pieces
 
-- `linux-zen`-family kernel (`linux-zen-p2p`), not stock `linux` — the stock kernel + open NVIDIA module hard-locked the host under sustained TP=2 / 256K load. The zen patchset eliminated the recurrence; the `-p2p` variant re-enables consumer-Ampere PCIe-BAR1 P2P so `nvidia-smi topo -m` reports `NV4` instead of `PHB` on this AM5 platform.
-- `nvidia-open-dkms` (not `nvidia-open`) — DKMS rebuilds the module for every kernel with headers installed.
+1. **Physical NVLink bridge installed** between the two 3090s. This is what produces the four 14.06 GB/s links (`nvidia-smi nvlink --status`). Without the bridge there is no `NV4` regardless of any software change.
+2. **Kernel boot args** in `/etc/kernel/cmdline` give the kernel permission to let P2P traffic traverse ACS-protected PCIe ports on this AM5 chipset:
+   ```
+   amd_iommu=on iommu=pt pcie_acs_override=downstream,multifunction pcie_ports=native pcie_ecrc=on
+   ```
+   Without `pcie_acs_override`, consumer Ampere P2P is blocked at the chipset level and `nvidia-smi topo -m` reports `PHB`. Backup of the pre-NVIDIA cmdline lives at `/etc/kernel/cmdline.bak.preNvidia`.
+3. **`nvidia-open-dkms`** (not `nvidia-open`) — DKMS rebuilds against installed headers every kernel bump. Modern open driver defaults `NVreg_DmaRemapPeerMmio=1`, which is what we want; nothing extra to set.
+
+### Kernel choice
+
+- `linux-zen`-family kernel, not stock `linux` — stock + open NVIDIA module hard-locked the host under sustained TP=2 / 256K load. The zen patchset eliminated the recurrence.
+- Our actual install is `linux-zen-p2p` 6.18, locally built from the upstream Arch `linux-zen` PKGBUILD with one cosmetic change: `CONFIG_HSA_AMD_P2P=y` (an AMD-HSA driver flag we don't use — vestigial from earlier debugging). Stock `linux-zen` would serve the same role; the rename is historical. The rebuild script + rebuild path are in [`scripts/host-setup/rebuild_linux_zen_p2p.sh`](scripts/host-setup/rebuild_linux_zen_p2p.sh).
+- **Pin these in `pacman.conf`** so a routine `pacman -Syu` doesn't silently leapfrog `linux-headers` or `nvidia-open-dkms` and break the DKMS module-for-kernel pairing. Add to `/etc/pacman.conf`:
+  ```
+  IgnorePkg = linux-zen linux-zen-headers linux-zen-p2p linux-zen-p2p-headers linux-headers nvidia-open-dkms nvidia-utils cuda cuda-tools opencl-nvidia
+  ```
+  After that, updating any of those packages is a deliberate `pacman -S <pkg>` opt-in.
 
 ### Cooling and power profile (load-bearing)
 
