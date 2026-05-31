@@ -171,7 +171,14 @@ apply_preset() {
             # is the 256K eval-tuned sibling on the same model.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ-CT}"
             QUANT="${QUANT:-compressed-tensors}"
-            CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
+            # 2026-05-31: CTX bumped 16K -> 262144 (full model max). The prior
+            # 16K + MAX_RUNNING=32 was throughput-tuned for batch decode at
+            # short ctx; AWQ-int4 + 2x24GB easily fits 256K (R9700 runs this
+            # same model class at FP8 / 256K on their 32GB cards — INT4 has
+            # half the weight bytes so headroom is comfortable). Override for
+            # short-ctx batch benchmarks via `CTX=16384 MAX_RUNNING=32 ./launch.sh coder-30b`.
+            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
+            CUDA_GRAPH="--cuda-graph-max-bs 1"
             EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
             # SPEC_DECODE opt-in: EAGLE3 spec-decode (validated 2026-05-29:
             # 1.65x decode, 185.5 -> 306.0 tok/s, accept_len 4.12 on the wider
@@ -180,9 +187,11 @@ apply_preset() {
             # steps=4/topk=4/draft=8 is the sweet spot that fits). EAGLE3 needs
             # native AWQ (awq_marlin), so callers must also set QUANT=awq_marlin
             # (the preset default is compressed-tensors). Same gate as qwen36.
+            # CTX overrides down to 16K under SPEC_DECODE since the draft +
+            # cuda graphs don't fit 256K on 24GB cards.
             if [[ -n "${SPEC_DECODE:-}" ]]; then
                 MEM=0.70
-                # CTX stays at preset default 16384 (already capped for spec)
+                CTX=16384
                 EXTRA_ARGS="$EXTRA_ARGS \
                     --speculative-algorithm EAGLE3 \
                     --speculative-draft-model-path $MODELS_DIR/drafts/eagle3-coder30b \
@@ -255,9 +264,14 @@ apply_preset() {
             REASONING="--reasoning-parser gemma4"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"
-            # Bumped CTX 4096 → 16384: validate_capabilities.check_thinking sends
-            # max_tokens=4096 which overflows 4096 CTX with any prompt.
-            CTX=16384; MAX_RUNNING=1; CHUNKED=4096
+            # 2026-05-31: CTX bumped 16K -> 262144 (model card native max).
+            # Prior 16K was set 2026-05-09 to clear validator thinking probe
+            # (`check_thinking` sends max_tokens=4096); the 16K default became
+            # the de-facto cap but the model has no architectural reason to
+            # stay there. R9700 runs gemma-4-26B at FP8 / 32-64K (torch_native
+            # is their SWA limit) — we have triton + AWQ-int4 (half weight
+            # bytes) so 256K fits comfortably on 2x24GB.
+            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
             ;;
@@ -327,8 +341,13 @@ apply_preset() {
             # back to QuantTrio with MODEL=$MODELS_DIR/Qwen3-VL-32B-Instruct-
             # AWQ-4bit if you want to A/B against the community reference.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-VL-32B-AWQ}"
-            CTX="${_ENV_CTX:-4096}"
-            MEM="${_ENV_MEM:-0.93}"
+            # 2026-05-31: CTX bumped 4K -> 131072 (model card max — 131K is
+            # the architectural limit, not a memory wall), MEM 0.93 -> 0.85
+            # (fleet default). Prior 4K + 0.93 defaults were TP=1-era cold-
+            # launch safety; we're long-since back on TP=2. AWQ-int4 weights
+            # are 10 GB/card at TP=2; KV @ 131K × ~24 KB/tok = ~3 GB → comfortable.
+            CTX="${_ENV_CTX:-131072}"
+            MEM="${_ENV_MEM:-0.85}"
             MAX_RUNNING="${_ENV_MAX_RUNNING:-1}"
             CHUNKED="${_ENV_CHUNKED:-4096}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen25"
@@ -372,7 +391,11 @@ apply_preset() {
             # decode-steps amortize launch overhead. If thinking-mode regresses
             # on Ampere TP=2 once 2nd 3090 returns, try DECODE_STEPS=8.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-27B-AWQ}"
-            CTX=32768; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
+            # 2026-05-31: CTX bumped 32K -> 262144 (model card native max),
+            # MEM 0.80 -> 0.85 (matches fleet default; DeltaNet replication
+            # adds ~3 GB but AWQ-int4 weights are 13.5 GB so headroom is fine
+            # at TP=2). Prior 32K was stale TP=1-era conservative.
+            CTX=262144; MEM=0.85; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
