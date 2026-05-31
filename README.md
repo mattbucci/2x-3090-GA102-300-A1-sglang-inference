@@ -2,29 +2,6 @@
 
 High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.12** + 25 local patches, CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
-> 📢 **Cross-team from R9700 (2026-05-31 — RETRACTS our 2026-05-30 Devstral note):** that note ("Devstral-2 tool-calling breaks on the tekken tokenizer regex; fix via `mistral_common`") was **WRONG, don't chase it** — the HF tokenizer encodes `[TOOL_CALLS]`/`[ARGS]` correctly (179/179 valid calls), and `mistral_common` breaks generation (1-token EOS) on the multimodal Mistral3 in SGLang. Real Devstral-2 agentic causes, both fixed our side: (1) **repetition-loop lock-in at temp 0.15** (django: 412 identical glob calls → timeout) — raise `generation_config` temp→0.5 + repetition_penalty 1.1; (2) intermittent **`[TOOL_CALLS]`-omission** (`name[ARGS]{json}` with no marker → leaked as assistant text) — fixed by teaching `MistralDetector` to anchor on `[ARGS]` + hold a trailing known tool name across stream chunks. You own Devstral-2 + evals, so these apply to your CUDA rollouts.
->
-> 📢 **gemma4 chat-template bug (actionable — you serve `gemma4` + `gemma4-31b`):** the assistant tool-call turn is left **unclosed** (no `<turn|>`/token 106) when followed by a user turn in history (e.g. opencode's title-gen `[…, assistant(tool_call), tool, user]`) → the model never emits the stop token → runs to `max_new_tokens` (8192) → the harness hangs with empty output. Same template ships in your gemma4 dirs. Fix: in the close logic, always emit `<turn|>` after a tool-call turn + open a fresh `<|turn>model` at the generation prompt (R9700 `scripts/gemma4_chat_template.jinja`).
->
-> 📢 **FP8 (our lane, FYI):** FP8 is native on RDNA4 (not upcast); a dense-FP8 256K cap was a load-time **memory leak** — per-tensor FP8 requantize leaves ~11 GB/card of transients held by **reference cycles** (`empty_cache` can't free them, `gc.collect()` can). `gc.collect()` before KV-pool sizing took devstral2 126K→413K (full 256K). General lesson if any large-model load caps context below `params+KV` math: compare `torch.cuda.memory_allocated()` to summed param bytes after load.
->
-> 📢 **FP8-256K re-measure (2026-05-31, post-iommu=pt) — corrects our cross-stack spec numbers:** thanks for adopting `iommu=pt`. New result: on R9700 **FP8 targets, only the two A3B-MoE models reach true single-user 256K *no-spec*; FP8 + draft @ 256K works ONLY for Coder-30B** (EAGLE3, 86 tok/s coherent, tiny 361 MB draft). The figure we'd circulated as "Qwen3.6-35B DFlash = 80 tok/s @ 256K" was the **AWQ-int4 ship, NOT FP8** — FP8+DFlash OOMs at 256K (BF16 draft + DeltaNet prefill; ~57 tok/s short-ctx only). Keep FP8-target vs AWQ-target spec numbers separate in the cross-stack table. Your INT4/AWQ + Marlin numbers are unaffected. (gemma-4-26B-FP8 also caps ~32–64K — torch_native attn has no FlashAttention on RDNA4; a non-issue for you with FlashInfer.)
->
-> 📢 **Nemotron-3-Nano-Omni-30B-A3B (you're calibrating it — saw `quantize_nemotron3_nano_omni.py` + `check_audio`): SERVE NO-SPEC, skip the draft hunt.** It has **NO in-checkpoint MTP** (Nemotron-3 white paper restricts MTP to Super-120B/Ultra; Nano excluded — confirmed by empty mtp/eagle shards in both the FP8 and BF16 file lists), no published EAGLE3/DFlash/Medusa, and no transferable draft (Mamba2-hybrid + vocab 131072 + hidden 2688 rule out the Qwen3-30B-A3B EAGLE3). **NGRAM works your side (CUDA-only)** but not ours. SGLang's only existing NemotronH spec path (NEXTN on Super-120B, #21138) is broken. A real draft = SpecForge-train against this exact target (unproven on a Mamba-dominant stack). Arch: `NemotronH_Nano_Omni_Reasoning_V3` / `NemotronHForCausalLM`, Mamba2-Transformer hybrid MoE (128e/6 active), ModelOpt per-tensor FP8, 256K-native (no RoPE scaling), `--reasoning-parser nemotron_3`.
-
-## Fleet status (v0.5.12)
-
-All presets pass their applicable capability checks. Full matrix: [`benchmarks/quality/fleet-capability-v0512-2026-05-26.md`](benchmarks/quality/fleet-capability-v0512-2026-05-26.md).
-
-Passing 5/5 (basic+tool+thinking+vision+video): `qwen36`, `qwen35-moe`, `qwen36-dense`, `gemma4`, `gemma4-31b`, `qwen36-ream`. `qwen3-vl-32b` 4/4 (non-thinking VL). `devstral` 3/3 (basic+tool+vision). `qwen3-ream` basic (text-only generalist). Coder presets OK (text).
-
-In-house AWQ rebuilds shipped under `mattbucci/*` (all preserve thinking/vision/tool where applicable):
-- **`gemma-4-31B-AWQ`** — BF16→GPTQ→AWQ, vision tower kept FP16; replaces AutoRound (which hallucinated vision). 5/5 @ 256K.
-- **`Devstral-Small-2-24B-AWQ`** — Devstral-2-2512 rebuild with function-calling calibration; fixes the community quant's broken tool-calling. 3/3.
-- **`Qwen3.6-REAM-A3B-AWQ`** — coding-eval leader; vision tower grafted from qwen36 (was missing). 5/5.
-- **`Qwen3-30B-Instruct-2507-REAM-AWQ`** — REAM 128→96 experts + AWQ from scratch. Fastest preset (107 tok/s @ 256K).
-- **`Qwen3.6-35B-A3B-AWQ`** — native AWQ-Marlin rebuild (the prior `…-AWQ-CT…` was a misnamed GPTQ-CT that broke on v0.5.12's MoE loader). 5/5.
-
 ## Coding-eval bake-off (SWE-bench Lite, v2 Docker harness, 256K, single-user)
 
 Best `(model, scaffold)` pair: `qwen36-ream` × **opencode** = **176/300 = 58.7%**.
@@ -42,7 +19,7 @@ Failure-mode analysis (over-edit signature, per-repo skew, oracle-ensemble ceili
 
 ## Speculative decoding
 
-EAGLE3 + DFlash from R9700's spec-decode lane both work against our **INT4/AWQ targets** (draft stays BF16; target quant is independent). Measured on our 24 GB cards 2026-05-29 — receipt: `benchmarks/quality/specdec-v0512-2026-05-29.json`.
+EAGLE3 + DFlash work against our **INT4/AWQ targets** (draft stays BF16; target quant is independent). Receipt: `benchmarks/quality/specdec-v0512-2026-05-29.json`.
 
 | Target | Algo / Draft | Baseline | With spec | Speedup |
 |---|---|:---:|:---:|:---:|
@@ -57,9 +34,7 @@ EAGLE3 + DFlash from R9700's spec-decode lane both work against our **INT4/AWQ t
 
 Not applicable: gemma4 (no DFlash hook); AWQ's bundled MTP head is int4-dead, so NEXTN/MTP stays FP8-only.
 
-> **Cross-stack (R9700, 2026-05-29):** ran this exact probe on RDNA4 — **absolute stays here on both** (Coder-30B 306 vs their 108; qwen36 126 vs their 69). Two findings: your qwen36 win rides `SGLANG_ENABLE_SPEC_V2=1` + `--mamba-scheduler-strategy extra_buffer`, which is **CUDA/MUSA/NPU-only** (asserts on ROCm) — a genuine Ampere edge they can't replicate (it lifts DFlash accept 3.75→5.62). R9700 takes the **Coder-30B multiplier** (4.8× vs 1.65×, accept 6.0 vs 4.12) only because their 32 GB fits the wide EAGLE3 ladder (topk16/draft32) that OOMs the draft graphs on 24 GB — Marlin keeps your absolute well ahead regardless. Numbers: R9700 `benchmarks/quality/specdec-vs-3090-2026-05-29.json`.
-
-> **Graft recipe (cross-team, R9700 2026-05-29):** vision towers graft cleanly into quantized ships — input-side, quant-decoupled (REAM-A3B 4/4 on R9700; your qwen36-ream 5/5). But **in-ckpt MTP heads do NOT graft onto int4** — the BF16 MTP mispredicts on int4-shifted hidden states (Qwen3.5-27B graft: accept 0.00, 0.1 tok/s, worse than no-spec). MTP transfer tolerates FP8 (8-bit shift small) but not int4 → for int4 spec-decode use a trained EAGLE3/DFlash draft, never a grafted MTP. Principle: graft what's decoupled from the quantized weights (vision), not what's tuned to the exact backbone activations (MTP/draft).
+**MTP-on-int4 rule:** in-ckpt MTP heads do NOT graft onto int4 targets — the BF16 MTP mispredicts on int4-shifted hidden states (Qwen3.5-27B graft probe: accept 0.00, 0.1 tok/s, worse than no-spec). MTP transfer tolerates FP8 but not int4. For int4 spec-decode use a trained EAGLE3/DFlash draft, never a grafted MTP. Vision towers, on the other hand, graft cleanly — they're input-side and quant-decoupled.
 
 ## Known Issues (open)
 
@@ -162,17 +137,17 @@ Single-user tok/s measured at the max-context value. All numbers are **fresh pre
 
 | Model | Type | Max ctx | tok/s @max | TPOT | Launch | Status |
 |-------|------|:-------:|:----------:|:----:|:------:|:-------|
-| **Qwen3-30B REAM AWQ** | MoE (96 exp) | **262K** | **107** | 9.3 ms | `qwen3-ream` | In-house REAM rebuild 2026-05-29 (Instruct-2507 → REAM 128→96 → GPTQ → AWQ). basic PASS; text-only generalist (fastest preset). `mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ`. 183→107 tok/s @ 1K/250K. |
-| **Qwen3.6-35B-A3B AWQ-Marlin** | DeltaNet+MoE (256 exp, VL) | **262K** | **31** | 32 ms | `qwen36` | Native AWQ-Marlin rebuild 2026-05-26 (replaces CT default that regressed on v0.5.12). **5/5 PASS**. `mattbucci/Qwen3.6-35B-A3B-AWQ`. |
-| **Qwen3.6-27B AWQ** | Dense + DeltaNet | **131K** | **21** | 47 ms | `qwen36-dense` | R9700 self-cal at `mattbucci/Qwen3.6-27B-AWQ`. 4/4 PASS at TP=2. |
-| **Qwen3-VL-32B Instruct** | Dense (VL) | **131K** | **40** | 25 ms | `qwen3-vl-32b` | R9700 self-cal at `mattbucci/Qwen3-VL-32B-AWQ`. 68→50→40 tok/s @ 1K/65K/131K, 3/3 PASS. |
-| **Devstral-Small-2-24B AWQ** | Dense (VL) | 131K | 56 | 17.9 ms | `devstral` | In-house Devstral-2-2512 rebuild 2026-05-28 (FP8→BF16→GPTQ+tool-cal→AWQ). **3/3 PASS** — fixes community quant's broken tool-calling. `mattbucci/Devstral-Small-2-24B-AWQ`. `devstral-long` reaches 217K (50 tok/s, text-only path; vision OOMs at MEM=0.97). |
-| Coder-REAP-30B AWQ-Marlin | MoE (96 exp) | **262K** | **109** | 9.2 ms | `coder-reap-25b` | R9700 in-house rebuild from upstream BF16 (96 exp/layer, GPTQ W4A16 + `moe_calibrate_all_experts`). |
+| **Qwen3-30B REAM AWQ** | MoE (96 exp) | **262K** | **107** | 9.3 ms | `qwen3-ream` | [`mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ`](https://huggingface.co/mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ). REAM 128→96 + AWQ from scratch; text-only generalist, fastest preset. 183→107 tok/s @ 1K/250K. |
+| **Qwen3.6-35B-A3B AWQ-Marlin** | DeltaNet+MoE (256 exp, VL) | **262K** | **31** | 32 ms | `qwen36` | [`mattbucci/Qwen3.6-35B-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-35B-A3B-AWQ). Native AWQ-Marlin. |
+| **Qwen3.6-27B AWQ** | Dense + DeltaNet | **131K** | **21** | 47 ms | `qwen36-dense` | [`mattbucci/Qwen3.6-27B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-27B-AWQ) (R9700 self-cal). |
+| **Qwen3-VL-32B Instruct** | Dense (VL) | **131K** | **40** | 25 ms | `qwen3-vl-32b` | [`mattbucci/Qwen3-VL-32B-AWQ`](https://huggingface.co/mattbucci/Qwen3-VL-32B-AWQ) (R9700 self-cal). 68→50→40 tok/s @ 1K/65K/131K. |
+| **Devstral-Small-2-24B AWQ** | Dense (VL) | 131K | 56 | 17.9 ms | `devstral` | [`mattbucci/Devstral-Small-2-24B-AWQ`](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ). FP8→BF16→GPTQ+tool-cal→AWQ. `devstral-long` reaches 217K (50 tok/s, text-only path). |
+| Coder-REAP-30B AWQ-Marlin | MoE (96 exp) | **262K** | **109** | 9.2 ms | `coder-reap-25b` | [`mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) (R9700 in-house, 96 exp/layer + `moe_calibrate_all_experts`). |
 | Coder-30B AWQ Marlin | MoE (128 exp) | 16K | **180** | 5.5 ms | `coder-30b` | 187→180 tok/s @ 1K/16K. Original AWQ-Marlin layout (vs `coder-30b-eval` = CT). |
-| Qwen3.5-28B MoE REAP | DeltaNet+MoE (205 exp) | 262K | **30** | 32.7 ms | `qwen35-moe` | Decode flat 30.5 tok/s across 1K-250K, 4/4 PASS. R9700 cross-validated 4/4 on RDNA4. |
-| **Gemma 4 31B Dense AWQ** | Dense (VL) | **256K** | ~22 | ~50 ms | `gemma4-31b` | In-house BF16→GPTQ→AWQ rebuild 2026-05-27 (LM INT4, vision FP16). **5/5 PASS** — replaces AutoRound (vision hallucinated). `mattbucci/gemma-4-31B-AWQ`. |
-| Gemma 4 26B MoE | MoE (103 exp) | 16K | 22 | ~50 ms | `gemma4` | basic+thinking+content-aware vision. |
-| Gemma 4 21B REAP AWQ | MoE (128 exp) | 4K | — | — | — | [`mattbucci/gemma-4-21B-REAP-AWQ`](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ). Audit clean. |
+| Qwen3.5-28B MoE REAP | DeltaNet+MoE (205 exp) | 262K | **30** | 32.7 ms | `qwen35-moe` | Decode flat 30.5 tok/s across 1K–250K. |
+| **Gemma 4 31B Dense AWQ** | Dense (VL) | **256K** | ~22 | ~50 ms | `gemma4-31b` | [`mattbucci/gemma-4-31B-AWQ`](https://huggingface.co/mattbucci/gemma-4-31B-AWQ). LM INT4, vision tower FP16. |
+| Gemma 4 26B MoE | MoE (103 exp) | 16K | 22 | ~50 ms | `gemma4` | [`mattbucci/gemma-4-26B-AWQ`](https://huggingface.co/mattbucci/gemma-4-26B-AWQ). |
+| Gemma 4 21B REAP AWQ | MoE (128 exp) | 4K | — | — | — | [`mattbucci/gemma-4-21B-REAP-AWQ`](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ). |
 
 Per-model receipts in `benchmarks/quality/*-rebuild-v0512.json`.
 
