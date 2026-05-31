@@ -82,14 +82,20 @@ apply_preset() {
             # tool prompts (under-calibrated [TOOL_CALLS] pathway); this rebuild adds
             # function-calling calibration (code_vision_tools recipe). 3/3 PASS
             # basic+tool_call+vision on v0.5.12 (2026-05-28).
-            # Uses the checkpoint's EMBEDDED canonical Mistral template (with BOS) —
+            # Uses the canonical Mistral template (with BOS) from devstral2_chat_template.jinja —
             # serving must match the template the model was calibrated with, else the
-            # tool pathway degenerates. Override with DEVSTRAL_CHAT_TEMPLATE="--chat-template <file>".
+            # tool pathway degenerates. 2026-05-31: switched the DEFAULT from the EMBEDDED
+            # template to scripts/devstral2_chat_template.jinja (R9700 fix) because the
+            # upstream embedded template carries an alternation guard that 400s opencode-
+            # style agentic flows ([user, assistant(tool_call), tool, user] is mis-counted
+            # as user→user and raises "roles must alternate"). The R9700 fix drops the
+            # guard ONLY; the formatting loop is identical. Override with
+            # DEVSTRAL_CHAT_TEMPLATE="--chat-template <file>".
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Devstral-Small-2-24B-AWQ}"
             QUANT="${QUANT:-awq_marlin}"
             CTX=131072; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
             CUDA_GRAPH="--cuda-graph-max-bs 1"
-            CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE-}"
+            CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/devstral2_chat_template.jinja}"
             WARMUP="--skip-server-warmup"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser mistral"
             ;;
@@ -114,12 +120,13 @@ apply_preset() {
             # succeed (text-only requests don't trip pixtral) or surface an
             # actionable error to the caller.
             # Shares the in-house Devstral-2 rebuild (mattbucci/Devstral-Small-2-24B-AWQ);
-            # native 256K support. Embedded canonical Mistral template (see devstral).
+            # native 256K support. Uses scripts/devstral2_chat_template.jinja (see devstral
+            # preset for the alternation-guard fix rationale).
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Devstral-Small-2-24B-AWQ}"
             QUANT="awq_marlin"
             CTX=262144; MEM=0.97; MAX_RUNNING=1; CHUNKED=2048
             EXTRA_ARGS="${EXTRA_ARGS} --disable-cuda-graph --disable-overlap-schedule --disable-radix-cache --tool-call-parser mistral"
-            CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE-}"
+            CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/devstral2_chat_template.jinja}"
             WARMUP="--skip-server-warmup"
             ;;
         coder-reap)
@@ -258,6 +265,13 @@ apply_preset() {
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            # 2026-05-31: ship R9700's gemma4_chat_template.jinja override (two fixes
+            # vs the upstream embedded template: always close the model turn after
+            # tool_call, and open a fresh model turn after tool_response). Without
+            # these, opencode's title-gen pattern [assistant(tool_call), tool, user]
+            # leaves the prior turn unclosed → runaway to max_tokens=8192 → empty diff.
+            # Override with GEMMA4_31B_CHAT_TEMPLATE="--chat-template <file>".
+            CHAT_TEMPLATE="${GEMMA4_31B_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/gemma4_chat_template.jinja}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
             ;;
         qwen3-vl-moe)
