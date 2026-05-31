@@ -173,6 +173,25 @@ apply_preset() {
             QUANT="${QUANT:-compressed-tensors}"
             CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
+            # SPEC_DECODE opt-in: EAGLE3 spec-decode (validated 2026-05-29:
+            # 1.65x decode, 185.5 -> 306.0 tok/s, accept_len 4.12 on the wider
+            # ladder). MEM 0.85 -> 0.70 to fit draft + cuda graphs at TP=2 on
+            # 24GB cards (R9700's full ladder topk16/draft32 OOMs ours; our
+            # steps=4/topk=4/draft=8 is the sweet spot that fits). EAGLE3 needs
+            # native AWQ (awq_marlin), so callers must also set QUANT=awq_marlin
+            # (the preset default is compressed-tensors). Same gate as qwen36.
+            if [[ -n "${SPEC_DECODE:-}" ]]; then
+                MEM=0.70
+                # CTX stays at preset default 16384 (already capped for spec)
+                EXTRA_ARGS="$EXTRA_ARGS \
+                    --speculative-algorithm EAGLE3 \
+                    --speculative-draft-model-path $MODELS_DIR/drafts/eagle3-coder30b \
+                    --speculative-draft-model-quantization unquant \
+                    --speculative-num-steps 4 \
+                    --speculative-eagle-topk 4 \
+                    --speculative-num-draft-tokens 8 \
+                    --speculative-attention-mode decode"
+            fi
             ;;
         coder-30b-eval)
             # SWE-bench eval preset: 256K + single-batch CUDA graph, mirrors
@@ -463,6 +482,28 @@ apply_preset() {
             # Coder-30B/REAP-25B work in claw because their presets already
             # carry this flag. Add it here so qwen36 routes correctly.
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
+            # SPEC_DECODE opt-in: DFlash spec-decode (validated 2026-05-29:
+            # 4.10x decode, 30.6 -> 126.3 tok/s, accept_len 5.62). Context cap
+            # drops 256K -> 32K and MEM 0.85 -> 0.70 to fit draft + cuda graphs.
+            # Requires --dtype bfloat16 (BF16 draft mismatches FP16 target),
+            # SGLANG_ENABLE_SPEC_V2=1 + --mamba-scheduler-strategy extra_buffer
+            # (DFlash on Qwen3_5MoeForConditionalGeneration boot-rejects without
+            # these). Gate via the swebench bench (evals/swebench/bench_swebench_instance_time.py)
+            # before enabling for a multi-day re-sweep; gate is median wall
+            # speedup >= 1.5x AND no resolved-count regression.
+            if [[ -n "${SPEC_DECODE:-}" ]]; then
+                MEM=0.70
+                CTX=32768
+                DTYPE="bfloat16"
+                export SGLANG_ENABLE_SPEC_V2=1
+                EXTRA_ARGS="$EXTRA_ARGS \
+                    --speculative-algorithm DFLASH \
+                    --speculative-draft-model-path $MODELS_DIR/drafts/qwen36-dflash \
+                    --speculative-draft-model-quantization unquant \
+                    --speculative-attention-mode decode \
+                    --disable-overlap-schedule \
+                    --mamba-scheduler-strategy extra_buffer"
+            fi
             ;;
         qwen36-ream)
             # Qwen3.6-REAM-A3B-AWQ — Qwen3.6 base with Samsung SAIL REAM
