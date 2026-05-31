@@ -168,10 +168,30 @@ NOT `sglang-v0512`. Pattern: `conda activate quant + python -u` per the
    via `hf download nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16 --local-dir ...`
    (detached if it takes >30 min).
 
-3. **Validate base** serves cleanly first on SGLang at TP=2 ctx=32K:
-   `MEM=0.80 CTX=32768 ./scripts/launch.sh nemotron3-omni` (new preset). Smoke
-   with a single text + image + audio probe before quantizing. (Catching arch
-   issues at BF16 saves a 12-20h calibration mistake.)
+3. **Validate base** serves cleanly first on SGLang at TP=2. Smoke with a
+   single text + image + audio probe before quantizing. (Catching arch issues
+   at BF16 saves a 12-20h calibration mistake.) **Context sweep specifically
+   targets the AMD-compiler-bug zone:** R9700 (commit `3901e6c`, 2026-05-31)
+   hit a Triton-AMD `TritonAMDGPUCanonicalizePointers` compiler-pass assertion
+   when the SSD chunk-scan kernel runs over >100 chunks — caps RDNA4 at ~8K
+   tokens, not 64-128K as initially reported. **The pass is HIP-only; the
+   Triton-NVIDIA compiler runs a different lowering pipeline**, so we expect
+   no equivalent failure — but we MUST confirm. Sweep:
+   ```
+   CTX=8192   ./scripts/launch.sh nemotron3-omni-bf16-smoke   # R9700's known-good ceiling
+   CTX=32768                                                  # 4x the AMD cap
+   CTX=65536
+   CTX=131072
+   CTX=262144                                                 # full model max
+   ```
+   At each step, smoke text+image+audio probes. If 256K passes cleanly, we
+   serve at 256K. If any step crashes, locate the boundary and document the
+   cap (our equivalent of R9700's task #11).
+
+   Also: R9700 flagged `bench_serving --dataset-name random` is broken for
+   this Omni model (injects a phantom image + ~236-tok prompt regardless of
+   `--random-input`). Bench with real long-text prompts, not the synthetic
+   random dataset.
 
 4. **Calibrate** via a new `scripts/quantize/quantize_nemotron3_nano_omni.py`,
    modeled on `quantize_devstral2_code_vision_tools.py` (Mistral3 with image
