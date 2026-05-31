@@ -18,17 +18,28 @@
 | SGLang v0.5.12 | ✅ supported day-0 — `nemotron_h.py`, `nano_nemotron_vl.py`, `nemotron_h_mtp.py`; dispatch at `server_args.py:2280` | Serve side is solved |
 | Launch flags | `--reasoning-parser nano_v3 --tool-call-parser qwen3_coder --trust-remote-code` | New preset in launch.sh |
 
-## What does NOT exist yet (research scope, not graft-and-go)
+## What does NOT exist yet (and our spec-decode strategy)
 
 | Asset | Status | Implication |
 |---|---|---|
 | AWQ INT4 of the Omni-Reasoning variant | ❌ none on HF (stelterlab's AWQ is the non-Omni text-only Nano) | **We'd be first to ship.** |
-| MTP head | ❌ Nemotron-3 Nano family doesn't ship MTP (only Super + Ultra do per whitepaper) | Native MTP path unusable for this model |
-| Published EAGLE3 draft | ❌ none | Spec-decode requires training one ourselves |
-| Published DFlash draft | ❌ none (would conceptually work since arch is Mamba2-hybrid like our DFlash'd qwen36) | Same as EAGLE3 — needs training |
+| In-checkpoint MTP head | ❌ Nemotron-3 Nano family doesn't ship MTP — confirmed by R9700 finding empty mtp/eagle shards in BOTH FP8 and BF16 file lists. NVIDIA whitepaper restricts MTP to Super-120B / Ultra | Native MTP path unusable; #21138 NEXTN path is also broken |
+| Published EAGLE3 draft | ❌ none | Requires training |
+| Published DFlash draft | ❌ none (conceptually possible — Mamba2-hybrid like our DFlash'd qwen36) | Requires training |
+| Cross-target draft transfer (e.g. reuse qwen36 DFlash) | ❌ ruled out by R9700 — Mamba2-hybrid + vocab 131072 + hidden 2688 mismatch with Qwen3-30B-A3B | Not viable |
+| **NGRAM (`--speculative-algorithm NGRAM`)** | ✅ **in our SGLang v0.5.12 + CUDA-only** (server_args.py:600-608; R9700 explicitly noted this works our side) | **Free win on code workloads — try this BEFORE training a neural draft** |
 
-**Spec-decode realistic outcome: ship the AWQ first, file a follow-on task to assess
-EAGLE3-training cost. Don't promise a spec model we can't grab.**
+**Spec-decode strategy (refined per R9700 cross-team banner 2026-05-31):**
+
+1. **Phase 0 — Ship AWQ no-spec.** Baseline expected ~30 tok/s based on similar A3B-MoE models. The receipt becomes the "before" number for any spec improvement.
+2. **Phase 1 — Try NGRAM (zero training cost).** N-gram speculative decoding works by predicting next-token candidates from the prompt's own vocabulary; wins are largest on coding/agentic workloads where prompt + output share vocabulary. CLI:
+   ```
+   --speculative-algorithm NGRAM \
+   --speculative-num-draft-tokens 12 \
+   --speculative-ngram-max-bfs-breadth 10
+   ```
+   Optional: `--speculative-ngram-external-corpus-path <coding-corpus>` to seed the n-gram trie from a representative corpus (separate `--sam-budget` required). Typical reported speedup on code: 1.3-1.8×. If NGRAM clears 1.3×, we may not need to train a neural draft at all.
+3. **Phase 2 — Train our own EAGLE3 via SpecForge** (only if NGRAM is insufficient OR if multi-domain coverage needed). User-authorized 2026-05-31 ("when we get there we can just make our own model"); realistic cost ~1-3 days wall on 2× 3090. Recipe scaffolding tracked in task #27. Open research question: SpecForge's EAGLE3 training is well-trodden on Llama / Qwen Transformer-only architectures; on a Mamba2-dominant hybrid like Nemotron-H the hidden-feature hook points may need adaptation (the EAGLE3 head reads target hidden states at specific layer positions — these line up cleanly on a 100% Transformer stack but Mamba2 layers have a different state shape).
 
 ## Pre-flight findings (task #18, 2026-05-31)
 
