@@ -26,3 +26,9 @@ build/
 # GPTQ calibration temp files
 gptqmodel_offload/
 gptq_log_*.log
+
+# Auto-generated daily bake-off snapshot reports (aggregate_bakeoff.py emits
+# evals/swebench/bake-off-YYYY-MM-DD.md). They're regenerable from the run dirs
+# under evals/swebench/runs/; keeping them out of source control prevents a
+# monthly accumulation of historical dated files.
+evals/swebench/bake-off-2026-*.md
