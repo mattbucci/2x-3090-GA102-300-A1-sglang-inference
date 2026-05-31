@@ -97,7 +97,18 @@ apply_preset() {
             CUDA_GRAPH="--cuda-graph-max-bs 1"
             CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/devstral2_chat_template.jinja}"
             WARMUP="--skip-server-warmup"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser mistral"
+            # 2026-05-31: --sampling-defaults model. The model's recommended
+            # temperature 0.15 locks Devstral-2 into in-context repetition
+            # loops on agentic tool-calling (django-10914: 412 identical glob
+            # calls -> timeout-empty; locks in by ~4 repeats, no penalty
+            # escapes it). generation_config.json now ships temperature=0.5
+            # + repetition_penalty=1.1 (R9700 commit ca22ed8 + HF c0451ce).
+            # --sampling-defaults model makes SGLang fill these in when the
+            # caller (opencode etc.) omits them — opencode does omit, so this
+            # is load-bearing for SWE-bench cycles. Verified empirically:
+            # devstral baseline-opencode 2/4 EMPTY at 1300-1400s near-timeout
+            # before this fix landed.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser mistral --sampling-defaults model"
             ;;
         devstral-32k)
             MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-Marlin}"
@@ -125,7 +136,8 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Devstral-Small-2-24B-AWQ}"
             QUANT="awq_marlin"
             CTX=262144; MEM=0.97; MAX_RUNNING=1; CHUNKED=2048
-            EXTRA_ARGS="${EXTRA_ARGS} --disable-cuda-graph --disable-overlap-schedule --disable-radix-cache --tool-call-parser mistral"
+            # See devstral preset for --sampling-defaults model rationale.
+            EXTRA_ARGS="${EXTRA_ARGS} --disable-cuda-graph --disable-overlap-schedule --disable-radix-cache --tool-call-parser mistral --sampling-defaults model"
             CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/devstral2_chat_template.jinja}"
             WARMUP="--skip-server-warmup"
             ;;
