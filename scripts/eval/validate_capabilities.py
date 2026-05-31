@@ -400,6 +400,92 @@ def check_video(base_url: str, model: str) -> tuple[bool, str]:
     return passed, f"saw={hits}  response={sample!r}"
 
 
+def _make_test_audio() -> bytes:
+    """1-second WAV: 440 Hz → 880 Hz two-tone sine, 16 kHz mono PCM 16-bit.
+
+    A pure tone gives a 'speech' transcriber nothing to transcribe — the
+    target model should describe it as a tone / beep / signal / pitch, not
+    invent text. Two-tone (A4 → A5) lets the model say something more
+    discriminating than 'I hear a tone' if it processes the audio at all.
+    Stdlib only (wave + struct + math); 16 kHz matches Parakeet's sampling
+    rate. Zero deps so the probe runs on a minimal env.
+    """
+    import math
+    import struct
+    import wave
+
+    sample_rate = 16000  # Hz; matches Parakeet (Nemotron-3-Nano-Omni audio tower)
+    duration = 1.0       # seconds
+    amp = 0.5
+    n_samples = int(sample_rate * duration)
+    half = n_samples // 2
+
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        for i in range(n_samples):
+            freq = 440.0 if i < half else 880.0  # A4 then A5
+            sample = int(amp * 32767 * math.sin(2 * math.pi * freq * i / sample_rate))
+            wf.writeframes(struct.pack("<h", sample))
+    return buf.getvalue()
+
+
+def check_audio(base_url: str, model: str) -> tuple[bool, str]:
+    """Send a synthetic 1s two-tone WAV and verify the model received audio.
+
+    Pass: response mentions at least one of {tone, beep, sound, audio, sine,
+    frequency, hz, hertz, music, note, signal, ring, whistle, hum, buzz,
+    pitch, chime} (case-insensitive). The probe is a correctness gate, not a
+    quality test — we want to know audio isn't silently dropped on the floor.
+
+    API shape: OpenAI-style `input_audio` (base64 + format), per the documented
+    multimodal Chat Completions spec. If the target server uses an `audio_url`
+    pattern instead (mirroring its `image_url` / `video_url` parts), this will
+    need a per-server override — but the OpenAI-compat layer in SGLang's recent
+    builds accepts the `input_audio` shape for Nemotron-3-Nano-Omni.
+
+    Multimodal capability matrix (sources: model cards, M4 cross-team note):
+      - Nemotron-3-Nano-Omni: yes (Parakeet tdt-0.6b-v2 encoder, 16 kHz mel)
+      - Gemma 4: yes (native, all variants — but our gemma4 preset doesn't
+        currently exercise audio; leave AUDIO_CAPABLE_MODELS conservative)
+      - Qwen3.5 / Qwen3.6 / Devstral / Coder: no audio path
+    """
+    audio_bytes = _make_test_audio()
+    b64 = base64.b64encode(audio_bytes).decode("ascii")
+    payload = {
+        "model": model,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "input_audio",
+                 "input_audio": {"data": b64, "format": "wav"}},
+                {"type": "text", "text": "What do you hear in this audio? One short sentence."},
+            ],
+        }],
+        "max_tokens": 200,
+        "temperature": 0.7,
+        "top_p": 0.95,
+    }
+    try:
+        r = _http_post(f"{base_url}/v1/chat/completions", payload, timeout=180)
+    except Exception as e:
+        return False, f"request failed: {e!r}"
+
+    msg = r["choices"][0]["message"]
+    content = (msg.get("content") or "").lower()
+    reasoning = (msg.get("reasoning_content") or "").lower()
+    haystack = content + " " + reasoning
+    expected = ["tone", "beep", "sound", "audio", "sine", "frequency",
+                "hz", "hertz", "music", "note", "signal", "ring",
+                "whistle", "hum", "buzz", "pitch", "chime"]
+    hits = [w for w in expected if w in haystack]
+    passed = len(hits) >= 1
+    sample = content[:120] if content else f"(reasoning){reasoning[:120]}"
+    return passed, f"saw={hits}  response={sample!r}"
+
+
 def check_vision(base_url: str, model: str) -> tuple[bool, str]:
     """Send a synthetic image (red circle) and verify the model sees it.
 
@@ -500,6 +586,18 @@ IMAGE_ONLY_MODELS = frozenset({
 })
 
 
+# Models with an audio encoder. **Opt-IN** (inverse of the vision sets above
+# which are opt-out) because audio is rare — most of our presets don't have
+# any audio path, so running the audio probe against them gives a meaningless
+# FAIL. Override with --force-audio to run anyway.
+AUDIO_CAPABLE_MODELS = frozenset({
+    "nemotron3-omni",     # NemotronH_Nano_Omni_Reasoning_V3 (Parakeet tdt-0.6b-v2 encoder)
+    # Gemma 4 ships audio support upstream, but our gemma4 / gemma4-31b
+    # presets don't currently exercise the audio path. Add here when we
+    # validate a gemma4 audio cell end-to-end.
+})
+
+
 # Models whose base is not trained to emit tool calls — the SGLang parser is
 # wired correctly but the model never produces a tool-call to parse, so the
 # probe FAILs for a model reason, not a serving bug. Auto-skip (override with
@@ -525,6 +623,14 @@ def main() -> int:
     p.add_argument("--skip-vision", action="store_true")
     p.add_argument("--skip-video", action="store_true",
                    help="skip the video roundtrip (Devstral has no video; Qwen/Gemma do)")
+    p.add_argument("--skip-audio", action="store_true",
+                   help="skip the audio roundtrip (auto-skipped unless model is in "
+                        "AUDIO_CAPABLE_MODELS; override that auto-skip with --force-audio)")
+    p.add_argument("--force-audio", action="store_true",
+                   help="Run the audio probe even on presets NOT in AUDIO_CAPABLE_MODELS "
+                        "(default: only run audio for known audio-capable presets like "
+                        "nemotron3-omni; running it against a text-only/vision-only model "
+                        "gives a meaningless FAIL).")
     p.add_argument("--force-thinking", action="store_true",
                    help="Run the thinking probe even on presets in NON_THINKING_MODELS "
                         "(default: auto-skip thinking for known non-thinking models).")
@@ -601,6 +707,16 @@ def main() -> int:
     if auto_skip_tools:
         args.skip_tools = True
 
+    # Audio is opt-IN: most presets have no audio path. Skip unless the model
+    # is explicitly known to have an audio encoder, or --force-audio is set.
+    auto_skip_audio = (
+        not args.skip_audio
+        and not args.force_audio
+        and model not in AUDIO_CAPABLE_MODELS
+    )
+    if auto_skip_audio:
+        args.skip_audio = True
+
     print(f"=== Capability validator — {base}  model={model} ===")
     if auto_skip_thinking:
         print(f"  (auto-skipping thinking — '{model}' is in NON_THINKING_MODELS; "
@@ -641,6 +757,11 @@ def main() -> int:
         ok, msg = check_video(base, model)
         results.append(("video", ok, msg))
         print(f"  [{'PASS' if ok else 'FAIL'}] video     {msg}")
+
+    if not args.skip_audio:
+        ok, msg = check_audio(base, model)
+        results.append(("audio", ok, msg))
+        print(f"  [{'PASS' if ok else 'FAIL'}] audio     {msg}")
 
     elapsed = time.time() - t0
     print(f"--- {sum(ok for _, ok, _ in results)}/{len(results)} passed in {elapsed:.1f}s ---")
