@@ -107,14 +107,17 @@ Tested hardware (current rig):
 
 Both 3090s sit at PCIe Gen4 with the NVLink bridge; NCCL selects `P2P/IPC` transport (NVLink + peer-to-peer CUDA IPC) once everything below is in place.
 
-### Why `NV4` reports — the three load-bearing pieces
+### Why `NV4` reports — the load-bearing pieces
 
 1. **Physical NVLink bridge installed** between the two 3090s. This is what produces the four 14.06 GB/s links (`nvidia-smi nvlink --status`). Without the bridge there is no `NV4` regardless of any software change.
-2. **Kernel boot args** in `/etc/kernel/cmdline` give the kernel permission to let P2P traffic traverse ACS-protected PCIe ports on this AM5 chipset:
+2. **Two separate kernel boot args** in `/etc/kernel/cmdline` — both load-bearing for different failure modes:
    ```
    amd_iommu=on iommu=pt pcie_acs_override=downstream,multifunction pcie_ports=native pcie_ecrc=on
    ```
-   Without `pcie_acs_override`, consumer Ampere P2P is blocked at the chipset level and `nvidia-smi topo -m` reports `PHB`. Backup of the pre-NVIDIA cmdline lives at `/etc/kernel/cmdline.bak.preNvidia`.
+   - **`pcie_acs_override=downstream,multifunction`** — gives P2P traffic permission to traverse ACS-protected PCIe ports on this AM5 chipset. Without it, consumer-Ampere P2P is blocked at the chipset level and `nvidia-smi topo -m` reports `PHB`. Affects the routing decision.
+   - **`iommu=pt`** — IOMMU passthrough mode (vs lazy DMA-translation default). Short-context TP=2 works either way; the wedge appears at long context. R9700 (sister stack, same mechanism on NCCL/RCCL) measured the failure cleanly: without `iommu=pt`, **131K-token decode collapses to 0.68 tok/s** with the NCCL log filling with channel-renegotiation churn (`178278 NCCL log lines`); with it, decode is healthy **16.83 tok/s** (`4 log lines`). NCCL prints `Missing iommu=pt … can lead to instability or hang` as the proximate warning. Affects how the kernel actually services the resulting DMAs.
+
+   Backup of the pre-NVIDIA cmdline lives at `/etc/kernel/cmdline.bak.preNvidia`. Verify both args are live: `grep -oE "iommu=pt|pcie_acs_override=\S+" /proc/cmdline`.
 3. **`nvidia-open-dkms`** (not `nvidia-open`) — DKMS rebuilds against installed headers every kernel bump. Modern open driver defaults `NVreg_DmaRemapPeerMmio=1`, which is what we want; nothing extra to set.
 
 ### Kernel choice
