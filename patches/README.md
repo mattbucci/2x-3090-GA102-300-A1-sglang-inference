@@ -2,18 +2,9 @@
 
 This file collects the details of **what was fixed and why** — per-patch narratives, root-cause notes, and cross-team learnings. The top-level `README.md` keeps only current state; once an issue is closed with a patch, the narrative lives here.
 
-Patches apply in numeric order against SGLang **v0.5.12** (rebased from v0.5.11 on 2026-05-26 — see the v0.5.12-rebase note below). `scripts/setup.sh` applies every `*.patch` in this directory idempotently. **23 patches** ship currently (`ls patches/*.patch | wc -l`):
+Patches apply in numeric order against SGLang **v0.5.12**. `scripts/setup.sh` applies every `*.patch` in this directory idempotently. **26 patches** ship currently (`ls patches/*.patch | wc -l`).
 
-- **13 v0.5.11-targeted patches** from the 2026-05-07 v0.5.10→v0.5.11 rebase (commit `1655e46`).
-- **002, 028, 029** added post-rebase (cross-team port + Gemma4 mm per-expert + Qwen3.5 CT shared_expert_gate).
-- **031, 034, 035, 036** added post-rebase for v0.5.11 Qwen3.5/3.6 + sampler-Inf surface (deltanet AWQ loader, sampler ±Inf detection, MoeForCausalLM EntryClass + HF layer_types fallback).
-- **039, 040 (2026-05-26) — gemma4-31b dense loader.** The dense `Gemma4ForCausalLM` (gemma4-31b AutoRound-AWQ) crashed on v0.5.12. **039**: `getattr(config, "num_experts", 0) or 0` in `gemma4_causal.load_weights` (dense Gemma4 omits `num_experts`). **040**: SGLang's Gemma4 global/swa head-dim remap only touched `config.text_config` (multimodal path); the dense path reads the top-level `Gemma4Config`, so full-attention layers were built at head_dim=256 not `global_head_dim=512` → `512→256` q/k_norm + k/v load crash. 040 remaps both objects (idempotent via a `swa_head_dim` guard, so the 26B MoE is unchanged — re-verified 5/5). gemma4-31b now boots TP=2/256K + basic/tool/thinking PASS (vision is a separate pre-existing AutoRound degradation).
-- **030 (v0.5.10 backport of 028) DELETED 2026-05-09** with the env upgrade — patch 028 now applies natively. Historical narrative kept below.
-- **v0.5.11 → v0.5.12 rebase (2026-05-26):** 17 patches applied clean; **005, 011, 021, 028 re-ported** + **037 added**. 005: dropped the obsolete flashinfer-version hunk (0.5.12 pins `flashinfer 0.6.11.post1` and adds `SGLANG_SKIP_SGL_KERNEL_VERSION_CHECK`); kept the Ampere fp8 + batch-invariant bf16 fixes. 011: CUDA fp32-softmax casts only (decode all sites + extend p/v accum + q/k dot); HIP-only hunks dropped (R9700's domain). 021: gelu dispatch relocated into 0.5.12's new `clamp_limit` else-branch + `activation` arg added to the `register_custom_op`-wrapped `fused_marlin_moe` signature (it infers `str` schema args). 028: re-cast as a regex+suffix extension to 0.5.12's *native* `per_expert_match` so AWQ `qweight/qzeros/scales` per-expert keys bind to the fused `w13/w2` params — upstream only handled dense/FP8 `weight/weight_scale`, so AWQ experts silently went unloaded → garbage (caught by the correctness gate). 037: drops the new mandatory gRPC Rust ext from `python/pyproject.toml` (needs `protoc`; we serve over HTTP, `grpc._core` has zero imports). All 22 verified applying clean to a fresh v0.5.12 tree; build validated on coder-30b-eval (silu MoE) + gemma4 (gelu MoE) before landing. **038 added (follow-up):** defensive `getattr(config, "norm_topk_prob", True)` in the reused qwen2_moe block — `Qwen3_5MoeTextConfig` omits `norm_topk_prob`; validated on qwen36-ream. **0.5.12 correctness gate: 8/9 coherent** (coder-30b-eval, gemma4, devstral, qwen36-dense, coder-reap-25b, coder-30b-ream, qwen36-ream, **qwen35-moe**); qwen36 (CT) deferred on a loader bug.
-  - **qwen35-moe RESOLVED 2026-05-26.** Not "missing checkpoint" — the `hf-mattbucci/Qwen3.5-28B-A3B-REAP-AWQ` symlink pointed at a stale HF-cache snapshot hash (`2cf434c886eb…`, never written) while the real 16 GB download sits at `2cf434c8b1e8…`. Repointed the symlink → boots + **4/4 PASS (basic + thinking + vision + video)** on v0.5.12. The per-expert AWQ format (`experts.N.{gate,up,down}_proj.{qweight,qzeros,scales}`) binds cleanly through patch 028; **no fuse-convert needed** (R9700's KeyError was their separate per-expert/marlin path).
-  - **qwen36 (CT) root cause:** `KeyError: model.layers.0.mlp.experts.w2_weight_packed` in `qwen3_5.py` load_weights. Patch 028 extends 0.5.12's `per_expert_match` for AWQ suffixes (`qweight/qzeros/scales`) but **not** compressed-tensors' `weight_packed/weight_scale/weight_shape`, so CT per-expert MoE keys never map to the fused `w2_weight_packed` param. Rather than add a CT-suffix branch, **qwen36 is being rebuilt from scratch as AWQ-Marlin** (the rest of the fleet's path) — drops the fragile CT MoE loader dependency entirely. See README Current Focus.
-
-Patches dropped during the v0.5.11 rebase as upstreamed: 001, 002 (original — the new 002 is unrelated cross-team), 006, 008, 009, 014, 015, 016, 019, 020, 022 — historical narratives below kept for context but those `.patch` files no longer ship.
+Numbering gaps (001, 006, 008, 009, 014, 015, 016, 019, 020, 022, 030, 032, 033) reflect patches dropped during prior upstream rebases — narratives kept below for context but the `.patch` files no longer ship.
 
 ---
 
@@ -263,119 +254,6 @@ The original v0.5.10-source pad-token-only generation bug that 030 was added to 
 
 ---
 
-## Open investigations
-
-### Gemma 4 MoE `<pad>` collapse on 3090 — RESOLVED 2026-05-03 via patch 023
-Months-long investigation into the `<pad>` garbage from Gemma 4 26B MoE (post-patches 020/021/022 boot was clean but decode emitted `<pad><pad>...`). Resolved by [patch 023](#023-gemma4-moe-mlp-no-quant-config-2026-05-03-13-loc): the dense MLP weights ship as plain BF16 in MoE-block layers but were being fed into AWQ qweight slots, producing NaN+inf at the very first matmul of layer 0.
-
-**Investigation arc summary (full per-step in commit history):**
-1. Triton-precision DISPROVED — `--attention-backend torch_native` produced the same `<pad>` output (commit cf182c5 era).
-2. Logit-shaping / sampler DISPROVED — top-N candidates were all vocab-low special tokens (`<pad>`, `<unused1>`, `<unused0>`, `<mask>`), the canonical signature of lm_head seeing zero/uniform hidden states.
-3. Tied-embed wiring DISPROVED — both 21B-REAP (gemma4_mm.py) and 26B (gemma4_causal.py) paths produce the same failure; embed_tokens tensor is healthy.
-4. Embed-class hypothesis DISPROVED — Gemma 4 31B Dense uses the same `Gemma4TextScaledWordEmbedding` lm_head wiring and PASSES.
-5. Real differentiator: MoE. 31B Dense (no MoE) PASS; 26B / 21B-REAP MoE FAIL.
-6. **Forward-hook trace via `SGLANG_GEMMA4_TRACE=1`** (commit 38cd3ae): layer 0 routes correctly, MoE output is healthy abs_max=104; **NaN appears at layer 1's entry**.
-7. Per-checkpoint probe in `Gemma4DecoderLayer.forward` (`SGLANG_GEMMA4_TRACE=1` extended): NaN first appears at `05_mlp_out` — the **dense MLP path**, not the MoE branch.
-8. Inside `Gemma3MLP.forward` probe: `01_gate_up_proj` produces 15078 NaN + 3267 inf out of 84480 outputs from a clean BF16 input (abs_max=43.5).
-9. Safetensors comparison: `mlp.gate_proj.weight` ships as **plain BF16** (no `weight_packed/scale/zero`), but the constructor was passing `quant_config` to `MergedColumnParallelLinear` — AWQ loader fed plain BF16 into qweight slot.
-
-**Resolution:** patch 023 — `Gemma4DecoderLayer` now passes `quant_config=None` to `Gemma4MLP` when `enable_moe_block=True` (parallel dense+MoE Gemma 4). Dense-only Gemma 4 (e.g. 31B) still gets `quant_config` since its MLP is fully AWQ-packed. **Patch 024 (same day) unblocked the multimodal route** with the analogous fix on the mm towers (vision_tower / embed_vision / audio_tower / embed_audio), and the launch.sh `gemma4` / `gemma4-31b` presets now default to BF16 (FP16 NaN's the SigLIP vision tower in attention softmax). Combined with a config-arch flip to `Gemma4ForConditionalGeneration` for checkpoints stuck on `Gemma4ForCausalLM`, the triple-fix delivers **basic + thinking VERIFIED** on both 26B MoE and 31B Dense. **Vision passes the validator's keyword grep but the actual responses are degraded** ("scattered red pixels" vs "red circle") — separately tracked as an open Known Issue, not a patch-023/024 regression.
-
-Validation timeline at TP=1 (basic + thinking-only — vision row is keyword-grep, see Known Issue):
-- `gemma4-26b-moe-mlp-quant-fix-May03` — patch 023 only, basic + thinking PASS, vision still arch-blocked (Gemma4ForCausalLM route).
-- `gemma4-26b-vision-bf16-fix-May03` — patches 023+024 + BF16 + arch flip, 2K ctx, vision tower loads cleanly.
-- `gemma4-26b-preset-default-May03` — preset default after baking BF16 in, 2K ctx.
-- `gemma4-26b-ctx16k-May03` — same combo at 16K ctx (preset default).
-- `gemma4-31b-arch-flip-bf16-May03` — same triple-fix on Dense, 2K ctx.
-- `gemma4-31b-ctx16k-May03` — Dense at 16K ctx; KV pool is tight (1947 tokens
-  remaining at TP=1 / mem-fraction 0.92), so per-request input cap is ~1.9K.
-- `gemma4-thinking-probe-May03` — `/tmp/gemma4_thinking_probe.py` with `skip_special_tokens=False`: structured `<\|channel>thought` markers + correct multi-step arithmetic + clean `finish=stop`. Confirmed thinking is genuinely working, not validator-keyword-match.
-
-Trace artifacts (committed in `benchmarks/quality/gemma4-trace-{00,15}.json`) document the pre-fix NaN-onset pattern.
-
----
-
-## Shipped model history
-
-Narratives for models that are now working. Current-state entries live in the top-level `README.md`.
-
-### Qwen3.5-28B-A3B-REAP AWQ thinking+vision — shipped 2026-05-02
-Recal of `cerebras/Qwen3.5-28B-A3B-REAP` (from local BF16 base). Replaces the broken-thinking Apr-14 version at canonical [`mattbucci/Qwen3.5-28B-A3B-REAP-AWQ`](https://huggingface.co/mattbucci/Qwen3.5-28B-A3B-REAP-AWQ) (commit `2cf434c8`). Pipeline:
-1. R9700's `balanced_thinking_vision` recipe (40/60 thinking/non-thinking) ported into `scripts/quantize/calibration_datasets.py`. 256 samples × 2048 tokens. Final mix: 30% am_thinking + 25% llava_instruct (vision) + 35% ultrachat (padded for thestack_code which is HF-gated) + 10% numina_math, 256/256 thinking-tagged.
-2. **First recal attempt killed at +6 min** after monitor caught a `liuhaotian/LLaVA-Instruct-150K` `DatasetGenerationError` mid-load — the dataset ships multiple JSON files with diverging schemas, default `load_dataset()` concat fails. The script's pad-from-ultrachat fallback was masking it: vision-source = 0 samples, ultrachat ballooned to 60% — would have produced a vision-broken model after 18+h. Fix: `data_files` field on the `Mix` dataclass + pin `llava_instruct` to `data_files="llava_instruct_150k.json"` (canonical 158K-row file). Commit `489db4f`, ported to R9700 commit `054a10d`.
-3. Restarted recal: 18.22h CPU GPTQ at ~32 min/layer steady-state; 92 GiB system swapped 49 GiB once BF16 base + Hessian buffers + intermediate activations exceeded RAM, slowing each step but not stopping progress. ETA was originally 10-13h per CLAUDE.md, revised to ~22h after watching the actual pace; finished at the upper bound.
-4. CT save → CT→AWQ conversion via `convert_moe_ct_to_awq.py --group-size 128` (~2 min): 24850 quantized + 696 passthrough tensors, 17.1 GB output.
-5. **Two manual fixups required post-conversion** (worth knowing for future recals of `Qwen3_5MoeForConditionalGeneration` BF16 bases):
-   - `config.json` had `architectures: ["Qwen3_5MoeForCausalLM"]` from the recal script's text-only override, but the saved weight keys still had `model.language_model.*` prefix because `AutoModelForImageTextToText` loaded the BF16 base as multimodal. Reverted `architectures` to `Qwen3_5MoeForConditionalGeneration` + `model_type` to `qwen3_5_moe` to match the weight layout.
-   - `convert_moe_ct_to_awq.py` doesn't carry `preprocessor_config.json` or `video_preprocessor_config.json` forward; copied both from the BF16 base directory.
-6. Validator: 3/3 PASS at TP=1 / 8K via `qwen35-moe` preset — basic finish=stop, thinking 3145 tok finish=stop (was BROKEN — emitted "The user is asking..." instead of `<think>...</think>` on the prior REAP-AWQ), vision saw red+circle+round.
-7. **Surprise vision-tensor finding:** Cerebras's REAP variant retained 333 visual tensors in the BF16 base (vs `atbender/Qwen3.6-VL-REAP-26B-A3B` BF16 which fully strips its vision tower). All 333 made it through GPTQ→CT→AWQ as passthrough — vision is functional end-to-end. Vision-tower preservation is decided at the BF16-REAP-base layer, before any AWQ calibration. R9700 captured the same finding cross-team in their commit `2484aab`.
-8. HF upload via plain `hf upload` stalled at 99% / 16.9 GB for 5h with 0 bytes/s before kill+restart resumed via xet content-store dedup in ~3 min. Confirms R9700's xet-stall pattern (their Coder-Next-REAM saw 12h stalls).
-
-`qwen35-moe` preset's MODEL default repointed to the recal output. Validator's `TEXT_ONLY_MODELS` no longer lists `qwen35-moe` (now multimodal-capable).
-
-### Qwen3.6-35B-A3B AWQ-native thinking+vision — shipped 2026-04-24
-First successful Qwen3_5MoeForConditionalGeneration load on 3090. Path:
-1. Downloaded R9700's `mattbucci/Qwen3.6-35B-A3B-AWQ-thinking-vision` CT upload (20 GB).
-2. Attempted direct load → four class-of-bug discoveries: dict-wrap vision_config at model init, dict-wrap text_config, transformers 5.x dataclass replacement of subclass init, model_type kwarg overwriting class attr. All fixed in patch 019.
-3. With patch 019: server boots clean but generation emits `_4_4_4_4…` on fp8_e4m3 KV / infinite `"15*17 = 15*17 = …"` loops on bf16 KV.
-4. Root cause isolated via safetensors inspection: `shared_expert_gate.weight_packed` has shape `(1, H)` — output dim 1 can't be AWQ-packed (requires divisibility by 8), and the NVIDIA CT loader doesn't fall back to BF16 for unpackable shapes the way R9700's `convert_moe_ct_to_awq.py` does. So every token's shared-expert gate was reading garbage from INT4 weights clamped to ~15 distinct values.
-5. Ported R9700's `convert_moe_ct_to_awq.py` verbatim; ran it on the CT checkpoint → 30970 INT4 expert weights + 40 BF16 `shared_expert_gate` fallbacks + 696 passthroughs, 20 GB output.
-6. Launched converted native AWQ through patch 019: validator **4/4 PASS** (basic/thinking/vision/video-skipped), **~33 tok/s short-context** (vs R9700's 21.6 on ROCm — +55% from awq_marlin kernel).
-
-Bench curve on 2x 3090, flashinfer attention, bf16 KV: 33.4 short / 21.8 @32K / 5.8 @160K / 2.6 @250K tok/s. Long-context drop is steeper than R9700's flat 20 tok/s @131K ROCm curve — verified by A/B: matching R9700's CHUNKED/DECODE_STEPS/MAMBA_CACHE tuning didn't move the needle, and swapping to `--attention-backend triton` was *worse* on Ampere (3.4 tok/s @131K). Conclusion: R9700's flat long-ctx curve is ROCm-triton-kernel-specific, not portable; Ampere decode on this model is bounded by flashinfer's hybrid-attention path past ~80K.
-
-Detailed bench artifact: `benchmarks/qwen3.6-35b-a3b/awq-native-thinking-vision.json`.
-
-### Qwen3.6-27B Dense AWQ thinking+vision — shipped 2026-04-23 (v3)
-Dense VL, 64 layers, 262K native, `Qwen3_5ForConditionalGeneration`. Three calibration attempts:
-- **v1 (9.5h):** copied Qwen3-VL script, all `linear_attn` projections INT4 → `!!!!!` garbage everywhere.
-- **v2 (7.6h):** added `re:.*linear_attn\..*` to GPTQ ignore (all DeltaNet BF16) → still `!!!!!` garbage.
-- **v3 (7h):** ignore ONLY `in_proj_a$` + `in_proj_b$` → 4/4 PASS.
-
-Root cause: SGLang's `Qwen3_5GatedDeltaNet` loader merges `in_proj_qkv + in_proj_z → in_proj_qkvz` (passes outer `quant_config` → expects INT4) and `in_proj_b + in_proj_a → in_proj_ba` (hardcoded `quant_config=None` per `qwen3_5.py:186` → expects BF16). So the loader demands: `in_proj_qkv/z/out_proj` INT4, `in_proj_a/b` BF16, `conv1d` BF16 (it's `nn.Conv1d`, GPTQ doesn't touch it). Cross-validated against R9700's shipped `mattbucci/Qwen3.6-27B-AWQ-thinking-vision` — throughput identical within noise across 1K/8K/32K/131K contexts; quality trade varies with calibration recipe (R9700 used `thinking_vision_video`, we used `thinking_vision`).
-
-Bench on 2x 3090: 30.4 @1K / 30.1 @8K / 29.7 @32K / 21.1 @131K tok/s. DeltaNet Triton kernels cap short-ctx around 30 tok/s (vs Qwen3-VL-32B Dense's 69 tok/s on flashinfer).
-
-### Qwen3-VL-32B Dense AWQ thinking+vision — shipped 2026-04-21
-First successful vision-preserving self-calibration. Recipe: `thinking_vision`, 256 samples × 1024 tokens, 13.5h CPU. Vision tower held in BF16 via `ignore=[re:.*visual\..*, re:.*vision_tower.*]`. Validator 4/4 PASS: basic `(reasoning)paris`, thinking 108 tok cleanly terminated, vision `saw=['red','circle','round']` on red-circle probe. Needed patch 018 (R9700 backport) to wrap the dict `vision_config` at processor init.
-
-### Gemma 4 31B Dense AWQ — unblocked 2026-04-23
-`QUANT=compressed-tensors EXTRA_ARGS="--attention-backend torch_native --disable-cuda-graph --disable-piecewise-cuda-graph" ./scripts/launch.sh gemma4-31b`. 11.2 GB/GPU, 48K max tokens at 16K context. Validator 3/4: basic+thinking PASS, vision generates (`"the image shows a single cuneiform character"`) — hallucinated, not the plumbing failure the 21B REAP has. Short-ctx bench 28 tok/s, TPOT 35 ms @ 1K. Model config says `compressed-tensors` despite the AWQ directory name.
-
-### Qwen3.5-28B REAP thinking recalibration — cancelled 2026-04-19 (v3 SHIPPED 2026-05-02)
-v1 died at layer 13/41 on harness restart (lost 7h 45min — this is where the `setsid` detach rule came from). v2 killed at layer 1/41 because R9700 shipped a working thinking-preserving Qwen3.5-27B-AWQ v2 (`mattbucci/Qwen3.5-27B-AWQ-4bit-calibrated`, basic FAIL→PASS) and Qwen3.6-35B-A3B GPTQ passes the thinking validator on both rigs — the regression this was fixing was superseded by switching long-ctx thinking workloads to `qwen36` or `qwen3-ream`. **Re-opened and shipped 2026-05-02 as v3** with R9700's `balanced_thinking_vision` recipe — see "Qwen3.5-28B-A3B-REAP AWQ thinking+vision" entry above for the v3 pipeline + 3/3 PASS validation.
-
-### Coder-REAP-25B-A3B AWQ — shipped 2026-04-25
-Cerebras's REAP prune of Coder-30B (103 routed experts vs 128). First boot hung at CUDA-graph capture; `--disable-piecewise-cuda-graph` cleared it. Validator basic PASS, code probes (Fibonacci, lambda) compile clean. R9700's HF upload `mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ` serves directly — no calibration burn. Preset `coder-reap-25b` in `scripts/launch.sh`. Currently being benched on SWE-bench Lite as the first SWE-bench eval candidate.
-
-### Qwen3-VL-30B MoE AWQ self-calibration — closed 2026-04-25 (loader bug, not calibration)
-Three calibration attempts (10.9h v1 + 1.5h v2 smoke + 1.3h v3 smoke) all produced identical multilingual garbage (`各项工作` repetition). v3 used the EXACT pattern R9700 ships successfully for Qwen3MoE / Coder-30B-A3B (`SequentialQwen3VLMoeTextExperts` registered for `Qwen3VLMoeTextExperts`, parent `Qwen3VLMoeTextSparseMoeBlock.forward` untouched). Same failure → calibration is fine; **SGLang's `Qwen3VLMoeForConditionalGeneration` loader is broken on both CT and AWQ output**. The community vLLM AWQ for this class produces the same garbage — broken layer is on load/serve side. To unblock: trace `load_weights` for missing weight or shape mismatch, or wait for upstream SGLang fix. Vendored llmcompressor pattern at `components/llmcompressor/` (commit `30845208`) is REUSABLE for any future Qwen3MoE/Qwen3VLMoe calibration on this stack.
-
-### Calibration ignore-list audit — closed 2026-04-25
-After R9700 flagged a `shared_experts` plural typo, swept all our self-calibrated checkpoints. Findings:
-- Qwen3-VL-32B-CT (117 entries): vision blocks preserved ✓
-- Qwen3.6-27B-CT (207 entries): vision blocks preserved ✓
-- gemma-4-26B-A4B-it-AWQ-4bit (312 entries): per-layer `mlp.gate_proj` + `router.proj` + vision tower preserved ✓
-- gemma-4-21b-REAP-AWQ-thinking-vision (0 entries): empty `ignore=[]`, everything went INT4. Re-cal v2 with explicit ignore list completed 2026-04-25; output still broken (clippable_linear shim suspected, see Gemma 4 entry in main README).
-
-### R9700 cross-team thread — Qwen3.6-35B-A3B AWQ-native upload + audit fixes (2026-04-24/25)
-- R9700 published `mattbucci/Qwen3.6-35B-A3B-AWQ-native-thinking-vision` (19 GB, 10 files) so 3090 users skip the CT→AWQ conversion. R9700 numbers: 21.6 tok/s short / 20.6 @131K flat (ROCm triton moe_wna16). Our 33 short / 2.6 @250K curve on Ampere is +55% short / 8x worse @250K — flashinfer asymmetry, not quant.
-- HF upload lesson: plain `hf upload <repo> <dir>` completed the 19 GB push in ~1 minute after `hf upload-large-folder` stalled 11h at `committed: 0/9` (XET worker deadlock). Plain upload for ≤25 GB; large-folder only past 50 GB.
-- R9700 fixed: `convert_moe_ct_to_awq.py` now copies `quantization_config.ignore` through (one-line); patched 4 affected HF configs in place.
-- R9700 corrected the "native AWQ required for NVIDIA" framing to "required for NVIDIA on SGLang" (vLLM/autoawq/TGI handle CT correctly). Both CT model cards now ship a per-stack recommendation table.
-- R9700 fixed `gemma-4-31B-it-AutoRound-AWQ` arch field to `Gemma4ForConditionalGeneration` so the multimodal loader engages.
-- R9700 confirmed `mattbucci/gemma-4-26B-AWQ` serves clean text + thinking on RDNA4 → strongly implicates our `clippable_linear` shim as the bug for Gemma 4 generation on 3090 (vision crashes for separate SWA reasons there). Two diagnostic suggestions: (a) `git grep -n soft_cap` in upstream Gemma 4 model code to find the actual clip op, then check whether our shim path bypasses it; (b) A/B with `EXTRA_ARGS="--attention-backend torch_native"` to rule out attention-kernel involvement.
-- R9700 advice on the 35B long-ctx regression: patch 011 (FP32 online-softmax accumulation) might port via `--attention-backend triton` + the patch — same bug class hit RDNA4 and Blackwell; flashinfer probably already does FP32 internally so this is an A/B worth running.
-
-### R9700 cross-team thread — Gemma 4 confirmation + harness port + 35B-v2 config-class fix (2026-04-25/26)
-
-- **R9700 confirmed Gemma 4 26B AWQ serves CLEAN on RDNA4** — ran `validate_capabilities.py` against `mattbucci/gemma-4-26B-AWQ`: basic PASS, thinking 441 tok terminated cleanly, vision correctly described "red round" blocks. Same weights, same chat template, opposite outcome from 3090 → the gap is our `clippable_linear.py` no-op alias. R9700 doesn't ship a shim at all; they run SGLang's stock Gemma 4 model code. (Their video probe hit a separate `flatten_batch is True, bsz must be 1` SGLang assertion — unrelated bsz-handling bug in their video input path; doesn't affect the text/thinking/vision conclusion.)
-- **R9700 ported the SWE-bench harness** — mirrored our `evals/swebench/{run_rollouts,score_local}.py` verbatim (their commit `ba3d457`); platform-agnostic since it talks opencode → local SGLang. Coder-REAP-25B is the natural overlap model for the first head-to-head once 3090 publishes a scored result.
-- **R9700 correction on Qwen3.6-35B v2 recalibration "loader broken" note** — it was actually a config-class downgrade, not a loader bug. llmcompressor saves multimodal MoE checkpoints with `architectures=Qwen3_5MoeForCausalLM` (text-only) and strips `text_config` + `vision_config` + `{vision,image,video}_token_id`. The SGLang loader's `language_model.` strip is calibrated for the multimodal wrapper class — text-only class registers params under `layers.X...` (no `model.` prefix) so the post-strip lookup misses. Fix is a one-shot config.json patch (no source changes): rewrite `architectures` to `Qwen3_5MoeForConditionalGeneration` + `model_type` to `qwen3_5_moe` + copy missing config fields from a sibling v1. After patch v2 boots cleanly. So if anyone recalibrates a 35B with a corrected `re:.*shared_expert\..*` ignore, ship without waiting on a loader change. R9700 v2 then hits HSAIL 0x1016 on first inference (same exception class as their open #18, Coder-Next + Gemma4-31B long-decode) — likely the BF16 shared_expert path tripping a RDNA4-Triton miscompile. v1 stays their production until #18 lands or v2 is recalibrated with shared_expert quantized.
-
----
-
 ## Cross-team findings (3090 ⟷ R9700)
 
 The sister RDNA4 project runs the same SGLang v0.5.11 stack (both rebased 2026-05-07). Findings that produced patches or changed how we ship are here; day-to-day sync happens in the two READMEs.
@@ -434,16 +312,13 @@ MoE kernel configs generated for RTX 3090 (Triton 3.5.1): `E=128,N=768` (Coder-3
 
 ## Gemma 4 notes (Ampere sm_86)
 
-Blocked by FlashInfer on `head_dim=512`. Partial unblock (text path boots) via patches 015 + 016 + `SGLANG_FORCE_CT_MOE_TRITON=1` + `--attention-backend torch_native`. Historical fix list:
+Reusable rules for Gemma 4 on this rig:
 
-1. **FP16 overflow at layer 2** (hidden_size=5376). Fix: `--dtype bfloat16` + patch 006.
-2. **CT→AWQ conversion quality poor** — cosine similarity 0.845 on q_proj. Community CT quants generate garbage; self-calibrate.
-3. **Missing chat template** — embed jinja into `tokenizer_config.json`.
-4. **`num_experts` is None for Dense** — fix: `getattr(config, "num_experts", 0) or 0`.
-5. **MLP down_proj shape mismatch** — patch 015 fixes the CT WNA16 dequant layout.
-6. **MoE gelu activation** — patch 016 routes to Triton runner which supports gelu.
-
-**Still open:** generation emits `<pad>` tokens — weight-layout or kernel mismatch in the CUDA Triton MoE path, or AWQ calibration that dropped the gelu activation profile. See top-level README Known Issues.
+- **Use BF16, not FP16.** FP16 overflows at layer 2 (hidden_size=5376); BF16 + patch 006 handles activations. The SigLIP vision tower NaNs in FP16 attention softmax above 65504 — BF16 is mandatory for vision.
+- **head_dim=512 is FlashInfer-unsupported on sm_86.** Route through `--attention-backend triton` or `--attention-backend torch_native`; both work, triton is faster.
+- **Self-calibrate, don't ship community CT quants.** Cosine similarity vs BF16 base was 0.845 on q_proj for community CT — produces garbage.
+- **Embed chat template into `tokenizer_config.json`.** Community Gemma 4 weights ship with no template.
+- **MoE+dense parallel block:** `Gemma4DecoderLayer` MUST pass `quant_config=None` to the dense `Gemma4MLP` when `enable_moe_block=True` (patches 023/024). Dense weights ship plain BF16 in MoE-block layers; feeding them into AWQ qweight slots produces NaN at the first matmul. Vision tower + image/audio projectors also stay BF16 via `modules_to_not_convert`.
 
 ## FlashInfer head_dim support
 
