@@ -134,23 +134,28 @@ Verify: `nvidia-smi --query-gpu=power.limit,fan.speed,temperature.gpu --format=c
 
 ## Model Support
 
-Single-user tok/s measured at the max-context value. All numbers are **fresh prefill** (radix cache disabled) unless noted.
+**Max ctx** = what the AWQ ship + 2× 24 GB actually serves end-to-end (validator + bake-off receipts). Most models reach **256K** at AWQ-int4 on this rig; the model-card cap is the limit only where noted. Single-user tok/s measured at the listed context; **fresh prefill** (radix cache disabled).
 
-| Model | Type | Max ctx | tok/s @max | TPOT | Launch | Status |
-|-------|------|:-------:|:----------:|:----:|:------:|:-------|
-| **Qwen3-30B REAM AWQ** | MoE (96 exp) | **262K** | **107** | 9.3 ms | `qwen3-ream` | [`mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ`](https://huggingface.co/mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ). REAM 128→96 + AWQ from scratch; text-only generalist, fastest preset. 183→107 tok/s @ 1K/250K. |
-| **Qwen3.6-35B-A3B AWQ-Marlin** | DeltaNet+MoE (256 exp, VL) | **262K** | **31** | 32 ms | `qwen36` | [`mattbucci/Qwen3.6-35B-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-35B-A3B-AWQ). Native AWQ-Marlin. |
-| **Qwen3.6-27B AWQ** | Dense + DeltaNet | **131K** | **21** | 47 ms | `qwen36-dense` | [`mattbucci/Qwen3.6-27B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-27B-AWQ) (R9700 self-cal). |
-| **Qwen3-VL-32B Instruct** | Dense (VL) | **131K** | **40** | 25 ms | `qwen3-vl-32b` | [`mattbucci/Qwen3-VL-32B-AWQ`](https://huggingface.co/mattbucci/Qwen3-VL-32B-AWQ) (R9700 self-cal). 68→50→40 tok/s @ 1K/65K/131K. |
-| **Devstral-Small-2-24B AWQ** | Dense (VL) | 131K | 56 | 17.9 ms | `devstral` | [`mattbucci/Devstral-Small-2-24B-AWQ`](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ). FP8→BF16→GPTQ+tool-cal→AWQ. `devstral-long` reaches 217K (50 tok/s, text-only path). |
-| Coder-REAP-30B AWQ-Marlin | MoE (96 exp) | **262K** | **109** | 9.2 ms | `coder-reap-25b` | [`mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) (R9700 in-house, 96 exp/layer + `moe_calibrate_all_experts`). |
-| Coder-30B AWQ Marlin | MoE (128 exp) | 16K | **180** | 5.5 ms | `coder-30b` | 187→180 tok/s @ 1K/16K. Original AWQ-Marlin layout (vs `coder-30b-eval` = CT). |
-| Qwen3.5-28B MoE REAP | DeltaNet+MoE (205 exp) | 262K | **30** | 32.7 ms | `qwen35-moe` | Decode flat 30.5 tok/s across 1K–250K. |
-| **Gemma 4 31B Dense AWQ** | Dense (VL) | **256K** | ~22 | ~50 ms | `gemma4-31b` | [`mattbucci/gemma-4-31B-AWQ`](https://huggingface.co/mattbucci/gemma-4-31B-AWQ). LM INT4, vision tower FP16. |
-| Gemma 4 26B MoE | MoE (103 exp) | 16K | 22 | ~50 ms | `gemma4` | [`mattbucci/gemma-4-26B-AWQ`](https://huggingface.co/mattbucci/gemma-4-26B-AWQ). |
-| Gemma 4 21B REAP AWQ | MoE (128 exp) | 4K | — | — | — | [`mattbucci/gemma-4-21B-REAP-AWQ`](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ). |
+A few presets default to a *lower* CTX in `launch.sh` for short-context throughput tuning — they're noted with †. Override per-call: `CTX=262144 ./scripts/launch.sh <preset>`.
 
-Per-model receipts in `benchmarks/quality/*-rebuild-v0512.json`.
+| Model | Type | Max ctx | tok/s | Launch | HF + notes |
+|-------|------|:-------:|:----:|:------:|:-------|
+| **Qwen3.6-35B-A3B AWQ-Marlin** | DeltaNet+MoE A3B (256 exp, VL) | **262K** | 31 | `qwen36` | [`mattbucci/Qwen3.6-35B-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-35B-A3B-AWQ). Bake-off top tier (177/300 = 59.0% × opencode). |
+| **Qwen3.6-REAM-A3B AWQ** | DeltaNet+MoE A3B (192 exp, VL) | **262K** | ~74 | `qwen36-ream` | [`mattbucci/Qwen3.6-REAM-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-REAM-A3B-AWQ). Vision tower grafted. Bake-off 176/300 = 58.7% × opencode. |
+| **Qwen3-30B-Instruct-2507 REAM AWQ** | MoE A3B (96 exp) | **262K** | **107** | `qwen3-ream` | [`mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ`](https://huggingface.co/mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ). REAM 128→96; text-only generalist; fastest preset (183→107 tok/s @ 1K/250K). |
+| **Qwen3.5-28B MoE REAP** | DeltaNet+MoE A3B (205 exp, VL) | **262K** | 30 | `qwen35-moe` | Flat 30.5 tok/s across 1K–250K. |
+| **Qwen3-Coder-30B-A3B AWQ** | MoE A3B (128 exp) | **262K** | 180 @16K, ~30 @256K | `coder-30b-eval` (256K) or `coder-30b` (16K †, throughput-tuned) | [`mattbucci/Qwen3-Coder-30B-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-AWQ). Two presets, same model: `-eval` for 256K eval, `coder-30b` peaks 187 tok/s @ 1K for batch decode. |
+| Coder-REAP-30B AWQ-Marlin | MoE A3B (96 exp) | **262K** | 109 | `coder-reap-25b` | [`mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) (R9700 in-house). |
+| **Gemma 4 31B Dense AWQ** | Dense (VL) | **256K** | ~22 | `gemma4-31b` | [`mattbucci/gemma-4-31B-AWQ`](https://huggingface.co/mattbucci/gemma-4-31B-AWQ). LM INT4, vision tower FP16. |
+| **Gemma 4 26B MoE AWQ** | MoE A4B (103 exp, VL) | **256K** | 22 @16K | `gemma4` (16K †, throughput-tuned) | [`mattbucci/gemma-4-26B-AWQ`](https://huggingface.co/mattbucci/gemma-4-26B-AWQ). Override `CTX=262144` for long-context. |
+| **Qwen3.6-27B Dense AWQ** | Dense + DeltaNet (VL) | **262K** | 21 | `qwen36-dense` (32K †, cold-launch safety) | [`mattbucci/Qwen3.6-27B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-27B-AWQ) (R9700 self-cal). |
+| **Devstral-Small-2-24B AWQ** | Dense (VL) | **256K** ‡ | 56 | `devstral` (131K default) / `devstral-long` (262K text-only) | [`mattbucci/Devstral-Small-2-24B-AWQ`](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ). ‡ default preset caps 131K to leave KV headroom for the BF16 vision tower; `devstral-long` text-only path reaches 217K @ 50 tok/s. |
+| **Qwen3-VL-32B Instruct AWQ** | Dense (VL) | **131K** (model-card cap) | 40 | `qwen3-vl-32b` (4K †, cold-launch safety) | [`mattbucci/Qwen3-VL-32B-AWQ`](https://huggingface.co/mattbucci/Qwen3-VL-32B-AWQ) (R9700). 68→50→40 tok/s @ 1K/65K/131K. Override `CTX=131072` for full ctx. |
+| Gemma 4 21B REAP AWQ | MoE (128 exp) | **131K** | — | (no preset wired) | [`mattbucci/gemma-4-21B-REAP-AWQ`](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ). Serve via `MODEL=<path> ./scripts/launch.sh gemma4`. |
+
+† **preset CTX default is intentionally short** for throughput tuning. Override with `CTX=262144` (or the model's max) when you need long context. The preset's listed tok/s number is at the default ctx — long-ctx tok/s drops per the VRAM table below.
+
+Per-model receipts in `benchmarks/quality/*-rebuild-v0512.json` + `qwen36-opencode-v2-resolved-2026-05-31.json`.
 
 ### VRAM context limits (KV dtype varies, TP=2, 48 GB total)
 
