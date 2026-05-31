@@ -4,10 +4,11 @@ High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGL
 
 ## Coding-eval bake-off (SWE-bench Lite, v2 Docker harness, 256K, single-user)
 
-Best `(model, scaffold)` pair: `qwen36-ream` × **opencode** = **176/300 = 58.7%**.
+Top tier: `qwen36` (AWQ-Marlin rebuild) and `qwen36-ream` both reach **~59%** on opencode — the new ship matches the prior leader.
 
 | Preset | opencode | claw-code | little-coder |
 |--------|:--------:|:---------:|:------------:|
+| `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **177/300 = 59.0%** | (sweeping) | (sweeping) |
 | `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **176/300 = 58.7%** | 20/123 = 16.3% † | 0/10 = 0.0% † |
 | `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | 129/300 = 43.0% | 107/300 = 35.7% | 74/300 = 24.7% |
 | `coder-reap-25b` (Cerebras Qwen3-Coder-REAP-25B-A3B-AWQ) | 125/300 = 41.7% | 122/300 = 40.7% | 101/300 = 33.7% |
