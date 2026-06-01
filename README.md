@@ -242,17 +242,32 @@ Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimod
 | Gemma 4 31B Dense AWQ | 7.7 GB | ~25 KB (SWA) | 256K |
 | Qwen3-VL-32B Dense AWQ | 10.0 GB | 24 KB | 131K (model-card cap) |
 
-## Benchmarks
+## Quality Evals
 
-Per-model long-context sweeps in `benchmarks/<model>/`. Quality (MMLU / HumanEval / LAB-Bench / Needle measured on the prior v0.5.11 ships — re-running on v0.5.12 ships is queued):
+Run with `scripts/eval/eval_quality.py` (or `eval_comprehensive.py` for the full sweep): MMLU (1 question per subject × 57 subjects), HumanEval pass@1 (30 problems), [LAB-Bench](https://github.com/Future-House/LAB-Bench) (7 subbenchmarks × full sets, ~1786 questions total), Needle-in-Haystack (1K → 65K). All numbers measured on v0.5.11 ships — re-runs on the current v0.5.12 ships are **queued** (see task #38).
 
-| Model | MMLU | HumanEval | LAB-Bench | Needle |
-|-------|:----:|:---------:|:---------:|:------:|
-| `coder-30b` | **91.2%** | 96.7% | 33.3% | ✓ to 4K |
-| `qwen3-vl-32b` | **91.2%** | 83.3% | **39.8%** | ✓ to 4K |
-| `coder-reap-25b` | 77.2% | 96.7% | (n/a) | ✓ to 65K |
+| Model | MMLU | HumanEval | LAB-Bench | Needle | Source |
+|-------|:----:|:---------:|:---------:|:------:|:------:|
+| Qwen3-VL-32B AWQ | **91.2%** | 83.3% | **39.8%** | 100% | `Qwen3-VL-32B-v0511.json` |
+| Qwen3-Coder-30B-A3B AWQ | **91.2%** | **96.7%** | 33.3% | 100% | `Coder-30B-v0511.json` |
+| Gemma 4 21B REAP AWQ | 80.7% | 0.0% † | — | — | `Gemma4-21B-REAP-v0511.json` |
+| Qwen3-Coder-REAP-25B-A3B AWQ | 77.2% | **96.7%** | 30.5% | 100% | `Coder-REAP-25B-v0511.json` |
+| Qwen3.6-35B-A3B AWQ-CT | 73.7% | 80.0% | — | — | `Qwen3.6-35B-A3B-CT-v0511.json` |
+| Qwen3.5-28B-A3B-REAP AWQ | 69.6% | 80.0% | 15.9% ‡ | 100% | `REAP-28B.json` |
+| Qwen3.6-REAM-A3B AWQ | — | — | — | — | TODO v0.5.12 |
+| Qwen3-30B-Instruct-2507 REAM AWQ | — | — | — | — | TODO v0.5.12 |
+| Qwen3.6-35B-A3B AWQ-Marlin (current bake-off top) | — | — | — | — | TODO v0.5.12 |
+| Qwen3.6-27B Dense AWQ | — | — | — | — | TODO v0.5.12 |
+| Devstral-Small-2-24B AWQ | — | — | — | — | TODO v0.5.12 |
+| Gemma 4 31B Dense AWQ | — | — | — | — | TODO v0.5.12 |
+| Gemma 4 26B MoE AWQ | — | — | — | — | TODO v0.5.12 |
 
-Methodology: MMLU (1 q/subject × 57), HumanEval pass@1 (30), [LAB-Bench](https://github.com/Future-House/LAB-Bench) (7×50), needle (1K→65K). v0.5.11-era receipts at `benchmarks/quality/*-v0511.json`; current v0.5.12 ship receipts at `benchmarks/quality/*-rebuild-v0512.json` + the bake-off cells under `benchmarks/quality/bakeoff-*.json`. SWE-bench Lite rates in the bake-off table at top. **TODO:** re-run on v0.5.12 + add RULER, LongBench Pro, LiveCodeBench.
+† **Gemma 4 21B REAP HumanEval 0%** is a known calibration artifact — the v3b ship serves cleanly per the audit but the REAP prune lost coding capability. Use `gemma4-31b` (the in-house dense AWQ rebuild) for code workloads.
+‡ **Qwen3.5-28B-A3B-REAP LAB-Bench 15.9%** is on a partial 333-question subset (the eval timed out on the full 1786). Other rows are the full LAB-Bench (1786 questions).
+
+**SWE-bench Lite** scores live in the [bake-off table at top](#coding-eval-bake-off-swe-bench-lite-v2-docker-harness-256k-single-user) — that's the end-to-end agentic eval (opencode/claw-code/little-coder scaffolds × v2 Docker harness), not part of this static-eval table.
+
+**Every new AWQ ship MUST pass `scripts/eval/validate_capabilities.py`** (basic + thinking + image + video + audio + tool, per applicable modalities) before entering this table. Validator + receipts live in `scripts/eval/` and `benchmarks/quality/`. **TODO:** re-run the full table on v0.5.12 ships + add RULER, LongBench Pro, LiveCodeBench when scripted.
 
 ## Setup
 
