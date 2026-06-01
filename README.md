@@ -120,7 +120,7 @@ The `SPEC_DECODE=1` opt-in remains wired for short-prompt uses. For our 256K age
 
 ## Known Issues (open)
 
-- **`check_awq_scales.py` over-flags MoE structural sparsity.** The audit treats every all-zero scale as a defect, but Qwen3.6-35B-A3B (and similar MoE bases) already have ~50-72% of layer-0 expert gate/up channels at `7.8e-38` in the BF16 base — the AWQ fp16 scale faithfully flushes those to 0. Zero scales over **dead** base channels are benign; only zero scales over **live** weights are a defect. qwen36 serves 5/5 despite 144 such flags. The script needs a "skip dead base channel" comparator pass to be precise.
+None currently open. Resolved items live in `git log` + [`patches/README.md`](patches/README.md). One caveat carried forward: `check_awq_scales.py` reads native-AWQ format — CT-format checkpoints crash its tensor reader (use a native-AWQ mirror or HF Range-fetch mode for CT audits).
 
 ## Quick Start
 
@@ -365,7 +365,10 @@ Self-calibrated models use the `quant` conda env:
 conda activate quant
 CUDA_VISIBLE_DEVICES="" python -u scripts/quantize/quantize_qwen36_27b_thinking_vision.py   # 27B template
 python scripts/quantize/convert_moe_ct_to_awq.py <ct_src> <awq_dst>                          # MoE CT→native AWQ
+python scripts/eval/check_awq_scales.py <awq_dst> --base <bf16_base_dir>                      # ship gate: 0 = clean
 ```
+
+`check_awq_scales.py --base` runs the **dead-channel comparator**: MoE bases (Qwen3.6-35B-A3B etc.) ship 50-72% of some layer-0 expert gate/up channels at `~7.8e-38` (bf16 denormal); AWQ's fp16 group scale faithfully flushes those to 0. A zero scale over a **dead** base block is benign and downgraded; a zero scale over a **live** base block stays a `DEFECT` (the v2 dequant-to-zero → NaN signature). On qwen36 the comparator reclassifies all 144 structural-sparsity flags → 0 residual, while still catching any injected live-block zero. Without `--base` the audit stays conservative (flags every majority-zero scale).
 
 `scripts/quantize/calibration_datasets.py` builds capability-preserving recipes (`thinking_vision` / `code_vision` / `code_vision_tools` / `balanced_thinking_vision` …) from AM-Thinking-v1, NuminaMath-CoT, LLaVA-Instruct, Hermes-function-calling, UltraChat, python-instruct. REAM/REAP expert compression in [`REAM.md`](scripts/quantize/REAM.md). See [rules-for-agents.md](rules-for-agents.md). Launch detached calibrations with `conda activate <env>` + `python -u` (not `conda run`, which buffers all output).
 
