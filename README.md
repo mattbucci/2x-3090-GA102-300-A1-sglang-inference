@@ -66,13 +66,7 @@ The `SPEC_DECODE=1` opt-in remains wired for short-prompt uses. For our 256K age
 
 ## Known Issues (open)
 
-- **`check_awq_scales.py` over-flags MoE structural sparsity.** For `Qwen/Qwen3.6-35B-A3B`, ~50-72% of layer-0 expert gate/up channels are already `7.8e-38` in the BF16 base (structural zeros); the fp16 AWQ scale faithfully flushes them to 0. A zero scale over a dead base channel is benign — only zero scales over *live* weights are a defect. qwen36 serves 5/5 despite 144 such flags.
-- **`gemma-4-21b-REAP-AWQ-thinking-vision-v2` — DO NOT USE** (164 all-zero scale tensors from an empty `ignore` list). Shipping checkpoint is [`mattbucci/gemma-4-21B-REAP-AWQ`](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ) (v3b, regex `ignore`).
-- **Qwen3-VL-30B MoE AWQ — SGLang loader broken.** `Qwen3VLMoeForConditionalGeneration` gibberish across 4 sources → upstream weight-mapping bug. Non-coder, low priority. Narrative in [`patches/README.md`](patches/README.md).
-- **Qwen3.5-27B DeltaNet stuck at 32K** — DeltaNet TP replication forces 19 GB/GPU. Use `qwen3-ream` for long-context DeltaNet workloads.
-- **60B+ models don't fit** — Coder-Next-REAM (35 GB), GLM-4.5-Air-REAP (43 GB) exceed 48 GB at MoE-AWQ.
-- **Per-preset piecewise CUDA graph disables** — `coder-reap-25b` (cold-launch detokenizer hang), `qwen35-moe`/`qwen36` (DeltaNet+MoE+mamba_cache), `gemma4`/`gemma4-31b` (head_dim=256 + Ampere FP8 → triton-attn forced). Reasons in `launch.sh`.
-- **Tool-call parser is per-preset and load-bearing.** SGLang only emits structured `tool_calls` when `--tool-call-parser <fmt>` matches the model's chat-template format. Mapping: Qwen3-Coder + Qwen3.5/3.6 (incl. VL-REAP/dense/MoE/REAM) → `qwen3_coder`; Qwen3-VL non-coder + Qwen3-30B-Instruct REAM → `qwen25`; Devstral → `mistral`; Gemma 4 → `gemma4`.
+- **`check_awq_scales.py` over-flags MoE structural sparsity.** The audit treats every all-zero scale as a defect, but Qwen3.6-35B-A3B (and similar MoE bases) already have ~50-72% of layer-0 expert gate/up channels at `7.8e-38` in the BF16 base — the AWQ fp16 scale faithfully flushes those to 0. Zero scales over **dead** base channels are benign; only zero scales over **live** weights are a defect. qwen36 serves 5/5 despite 144 such flags. The script needs a "skip dead base channel" comparator pass to be precise.
 
 ## Quick Start
 
