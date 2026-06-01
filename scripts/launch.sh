@@ -93,7 +93,19 @@ apply_preset() {
             # DEVSTRAL_CHAT_TEMPLATE="--chat-template <file>".
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Devstral-Small-2-24B-AWQ}"
             QUANT="${QUANT:-awq_marlin}"
-            CTX=131072; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
+            # 2026-05-31: CTX bumped 131K -> 262144 (full native max). Prior 131K
+            # was a conservative cap citing "BF16 vision tower eats KV"; VRAM
+            # math doesn't actually require that at FP8 KV defaults:
+            #   AWQ weights      ~7 GB/card
+            #   FP8 KV @ 256K    ~5 GB/card  (40 KB/tok at fp8_e4m3, halved vs BF16)
+            #   vision tower     ~2.5 GB total (Pixtral, kept FP16)
+            #   cuda graphs      ~1 GB/card
+            #   = ~15.5 GB/card, MEM=0.85 budget is 20.4 GB → ~5 GB headroom.
+            # The old devstral-long preset (MEM=0.97 + everything-disabled,
+            # 217K text-only) is now redundant and was removed in the same
+            # commit; if you need to override down, use CTX=131072 env or
+            # use coder-30b/etc. presets that already have shorter caps.
+            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
             CUDA_GRAPH="--cuda-graph-max-bs 1"
             CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/devstral2_chat_template.jinja}"
             WARMUP="--skip-server-warmup"
@@ -117,29 +129,17 @@ apply_preset() {
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser mistral"
             ;;
         devstral-long)
-            # Single-user long-context preset: pushes KV ceiling from 131K (default)
-            # to ~217K tokens at MEM=0.97 + no CUDA graph/overlap/radix cache.
-            # Decode plateaus ~56 tok/s past 131K. Not for multi-user.
-            #
-            # 2026-05-09: --skip-server-warmup baked in. Devstral 24B is registered
-            # as Mistral3ForConditionalGeneration (Pixtral path) so SGLang warmup
-            # sends an image-bearing test request through the pixtral image
-            # processor; at MEM=0.97 there's <1 GB free per GPU and the image
-            # preprocess `torch.stack(images_list, dim=0)` OOMs on warmup,
-            # killing the server before /health=200. Skipping warmup defers the
-            # first image alloc to actual user requests where it will either
-            # succeed (text-only requests don't trip pixtral) or surface an
-            # actionable error to the caller.
-            # Shares the in-house Devstral-2 rebuild (mattbucci/Devstral-Small-2-24B-AWQ);
-            # native 256K support. Uses scripts/devstral2_chat_template.jinja (see devstral
-            # preset for the alternation-guard fix rationale).
+            # Deprecated 2026-05-31: the default `devstral` preset now serves at
+            # full 262144 ctx (FP8 KV math fits 256K + vision tower + graphs at
+            # MEM=0.85). This alias forwards to the same config + flags for
+            # backward compat; please use `devstral` going forward.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Devstral-Small-2-24B-AWQ}"
-            QUANT="awq_marlin"
-            CTX=262144; MEM=0.97; MAX_RUNNING=1; CHUNKED=2048
-            # See devstral preset for --sampling-defaults model rationale.
-            EXTRA_ARGS="${EXTRA_ARGS} --disable-cuda-graph --disable-overlap-schedule --disable-radix-cache --tool-call-parser mistral --sampling-defaults model"
+            QUANT="${QUANT:-awq_marlin}"
+            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
+            CUDA_GRAPH="--cuda-graph-max-bs 1"
             CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/devstral2_chat_template.jinja}"
             WARMUP="--skip-server-warmup"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser mistral --sampling-defaults model"
             ;;
         coder-reap)
             # Coder-REAP-25B-A3B-W4A16. On TP=1 / 24 GB the piecewise CUDA

@@ -81,7 +81,7 @@ The `SPEC_DECODE=1` opt-in remains wired for short-prompt uses. For our 256K age
 ./scripts/launch.sh coder-reap-25b          # Coder-REAP-25B MoE AWQ-Marlin — 256K @ 109 tok/s
 ./scripts/launch.sh qwen3-vl-32b            # Qwen3-VL-32B Dense — 131K @ TP=2
 ./scripts/launch.sh gemma4-31b              # Gemma 4 31B Dense AWQ (thinking+image+video, 256K)
-./scripts/launch.sh devstral                # Devstral-Small-2-24B (tool+vision); devstral-long for 217K
+./scripts/launch.sh devstral                # Devstral-Small-2-24B AWQ (tool+vision, 262K)
 
 python scripts/eval/validate_capabilities.py --port 23334    # auto-skips thinking/vision/video per preset
 ./scripts/eval/test_capabilities_all.sh                       # sweep across all AWQ presets
@@ -168,7 +168,7 @@ Verify: `nvidia-smi --query-gpu=power.limit,fan.speed,temperature.gpu --format=c
 | **Gemma 4 31B Dense AWQ** | Dense (VL) | **256K** | ~22 | `gemma4-31b` | [`mattbucci/gemma-4-31B-AWQ`](https://huggingface.co/mattbucci/gemma-4-31B-AWQ). LM INT4, vision tower FP16. |
 | **Gemma 4 26B MoE AWQ** | MoE A4B (103 exp, VL) | **256K** | 22 | `gemma4` | [`mattbucci/gemma-4-26B-AWQ`](https://huggingface.co/mattbucci/gemma-4-26B-AWQ). |
 | **Qwen3.6-27B Dense AWQ** | Dense + DeltaNet (VL) | **262K** | 21 | `qwen36-dense` | [`mattbucci/Qwen3.6-27B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-27B-AWQ) (R9700 self-cal). |
-| **Devstral-Small-2-24B AWQ** | Dense (VL) | **256K** † | 56 | `devstral` (131K default) / `devstral-long` (262K text-only) | [`mattbucci/Devstral-Small-2-24B-AWQ`](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ). † default preset caps 131K to leave KV headroom for the BF16 vision tower; `devstral-long` text-only path reaches 217K @ 50 tok/s. |
+| **Devstral-Small-2-24B AWQ** | Dense (VL) | **262K** | 56 | `devstral` | [`mattbucci/Devstral-Small-2-24B-AWQ`](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ). The canonical Devstral; built from [`mistralai/Devstral-Small-2-24B-Instruct-2512`](https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512). FP8→BF16→GPTQ+tool-cal→AWQ. |
 | **Qwen3-VL-32B Instruct AWQ** | Dense (VL) | **131K** (model-card cap) | 40 | `qwen3-vl-32b` | [`mattbucci/Qwen3-VL-32B-AWQ`](https://huggingface.co/mattbucci/Qwen3-VL-32B-AWQ) (R9700). 68→50→40 tok/s @ 1K/65K/131K. |
 | Gemma 4 21B REAP AWQ | MoE | **256K** | — | `gemma4-21b-reap` | [`mattbucci/gemma-4-21B-REAP-AWQ`](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ). Cerebras-style expert prune of the 26B parent; same Gemma 4 serving flags. Download required: `hf download mattbucci/gemma-4-21B-REAP-AWQ --local-dir /data/models/hf-mattbucci/gemma-4-21B-REAP-AWQ`. |
 
@@ -191,7 +191,7 @@ Every `mattbucci/*-AWQ` row below is built end-to-end from the linked upstream B
 | Qwen3-Coder-30B-A3B-REAP AWQ | [mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) | [Qwen/Qwen3-Coder-30B-A3B-Instruct](https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct) (in-house `scripts/quantize/run_reap.py`, 128→96 experts) |
 | Qwen3-Coder-Next-REAM AWQ | [mattbucci/Qwen3-Coder-Next-REAM-AWQ](https://huggingface.co/mattbucci/Qwen3-Coder-Next-REAM-AWQ) | [Qwen/Qwen3-Coder-Next-80B-A3B](https://huggingface.co/Qwen/Qwen3-Coder-Next-80B-A3B) (Samsung SAIL `merge.py`, 512→384 experts, ~60B effective; doesn't fit at AWQ on 24 GB cards — listed for R9700 / future bigger-card use) |
 | Qwen3-VL-32B Dense AWQ | [mattbucci/Qwen3-VL-32B-AWQ](https://huggingface.co/mattbucci/Qwen3-VL-32B-AWQ) | [Qwen/Qwen3-VL-32B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-32B-Instruct) (R9700 self-cal, `balanced_thinking_vision` recipe) |
-| Devstral-Small-2-24B AWQ | [mattbucci/Devstral-Small-2-24B-AWQ](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ) | [mistralai/Devstral-Small-2-24B-Instruct-2512](https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512) (FP8→BF16→GPTQ+tool-cal→AWQ; `code_vision_tools` recipe) |
+| Devstral-Small-2-24B AWQ ★ canonical Devstral | [mattbucci/Devstral-Small-2-24B-AWQ](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ) | [mistralai/Devstral-Small-2-24B-Instruct-2512](https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512) (FP8→BF16→GPTQ+tool-cal→AWQ; `code_vision_tools` recipe; full 262K context on `devstral` preset) |
 | Gemma 4 26B A4B MoE AWQ | [mattbucci/gemma-4-26B-AWQ](https://huggingface.co/mattbucci/gemma-4-26B-AWQ) | [google/gemma-4-26b-a4b-it](https://huggingface.co/google/gemma-4-26b-a4b-it) |
 | Gemma 4 31B Dense AWQ | [mattbucci/gemma-4-31B-AWQ](https://huggingface.co/mattbucci/gemma-4-31B-AWQ) (in-house BF16→GPTQ→AWQ, vision tower FP16) | [google/gemma-4-31b-it](https://huggingface.co/google/gemma-4-31b-it) |
 | ⚠ Qwen3-Coder-REAP-25B-A3B AWQ (3rd-party-base, legacy) | [mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ](https://huggingface.co/mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ) | **Upstream:** [Qwen/Qwen3-Coder-30B-A3B-Instruct](https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct). **Shipped from 3rd-party pre-pruned BF16:** [cerebras/Qwen3-Coder-REAP-25B-A3B](https://huggingface.co/cerebras/Qwen3-Coder-REAP-25B-A3B). Superseded by `Qwen3-Coder-30B-A3B-REAP-AWQ` (in-house) above — kept live for backward compat. |
@@ -237,7 +237,7 @@ Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimod
 | Qwen3-Coder-30B-A3B AWQ | 8.0 GB | 36 KB | 262K |
 | Qwen3-Coder-30B-A3B-REAP AWQ | 6.5 GB | 72 KB | 262K |
 | Qwen3.6-27B Dense AWQ | 13.5 GB | 24 KB | 262K |
-| Devstral-Small-2-24B AWQ | 7.0 GB | 80 KB | 131K default / **217K** via `devstral-long` (text-only) |
+| Devstral-Small-2-24B AWQ | 7.0 GB | ~40 KB (fp8 KV) | 262K |
 | Gemma 4 26B A4B MoE AWQ | 6.5 GB | ~12 KB (SWA) | 262K |
 | Gemma 4 31B Dense AWQ | 7.7 GB | ~25 KB (SWA) | 256K |
 | Qwen3-VL-32B Dense AWQ | 10.0 GB | 24 KB | 131K (model-card cap) |
