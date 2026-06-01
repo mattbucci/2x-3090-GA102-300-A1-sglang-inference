@@ -53,7 +53,7 @@ NVIDIA Mamba2-Transformer hybrid MoE + AVLM (audio+video+vision+language) + thin
 
 Detailed matrix + rebuild paths in the [MoE coverage matrix](#moe-coverage-matrix--calibration-backlog) below. Six missing-variant builds, prioritized:
 
-1. **`Qwen3.6-35B-A3B-REAP-AWQ`** — REAP of bake-off top scorer (177/300 = 59.0%); 128→96e via `run_reap.py` on upstream BF16.
+1. **`Qwen3.6-35B-A3B-REAP-AWQ`** — REAP of bake-off top scorer (177/300 = 59.0%); 256→192e via `run_reap.py` on upstream BF16. ⚠ **Tooling-blocked:** `run_reap.py`'s unfuse patch is `Qwen3MoeExperts`-only — Qwen3.6's fused `Qwen3_5MoeExperts` must be unfused first (see [Tooling](#tooling)). Also memory-marginal here (62 GB BF16 → CPU offload on 48 GB VRAM); R9700's 64 GB may be the better host for the prune step.
 2. **`gemma-4-26B-A4B-REAM-AWQ`** — REAM of multimodal MoE. Blocked on tooling task below (Samsung SAIL needs Gemma 4 port).
 3. **`Qwen3.6-VL-30B-A3B`** native + REAM + in-house REAP — rebuild VL trio with vision tensors retained (current REAP-26B is atbender pre-pruned, vision-broken). ⚠ pre-flight: SGLang's `Qwen3VLMoeForConditionalGeneration` loader was previously broken in v0.5.11 (no upstream fix found in v0.5.12 grep); smoke a community AWQ first before sinking calibration time.
 4. **`Qwen3-30B-Instruct-2507`** native + REAP — REAM exists (`qwen3-ream`, fastest preset at 107 tok/s); complete the trio.
@@ -65,7 +65,7 @@ Detailed matrix + rebuild paths in the [MoE coverage matrix](#moe-coverage-matri
 Both are prerequisites for the MoE backlog. Detailed plan: [`scripts/quantize/ream_gemma4_port_plan.md`](scripts/quantize/ream_gemma4_port_plan.md).
 
 1. **Port Samsung SAIL REAM merge to Gemma 4 arch** — current `run_ream_qwen3moe.sh` + the upstream `merge.py` are Qwen3-family-only (5 hardcoded assumptions identified). Port unblocks the gemma-4-26B REAM build. Est. 40-60 h dev.
-2. **Adapt `run_reap.py` for Gemma 4 + Nemotron-H expert layouts** — currently Qwen3-only. Gemma 4 has parallel dense+MoE + different expert keys; Nemotron-H has Mamba2-hybrid layer pattern (only the 23 MLP/MoE layers are pruneable per `hybrid_override_pattern`). Saliency math is arch-agnostic; the per-expert iteration loop changes.
+2. **Extend `run_reap.py` to fused-expert + non-Qwen3Moe layouts** — `run_reap.py` + `patches/qwen3moe_unfused_experts.py` are in-repo (ported from R9700; the Coder-30B-A3B-REAP ship used exactly this path). Today the unfuse patch targets `Qwen3MoeExperts` only, so it prunes plain `Qwen3MoeForCausalLM` and **no-ops on everything else**. Needs: (a) the same unfuse for **`Qwen3_5MoeExperts`** — Qwen3.5/3.6 store experts fused as `gate_up_proj`/`down_proj` 3-D tensors; this is the blocker for the #1 REAP backlog item; (b) Gemma 4 parallel dense+MoE + different expert keys; (c) Nemotron-H Mamba2-hybrid (only the 23 MLP/MoE layers pruneable per `hybrid_override_pattern`). The saliency tracker + `prune_model` are arch-agnostic once `.mlp.gate` + per-expert `.mlp.experts.{i}.down_proj` modules exist — the unfuse patch is what creates them.
 
 ### Re-eval the fleet at v0.5.12
 
@@ -271,7 +271,7 @@ Each MoE base should ship in three flavors: **native** (no expert compression), 
 
 **Calibration backlog (prioritized):**
 
-1. **`Qwen3.6-35B-A3B-REAP-AWQ`** — REAP of the bake-off top scorer (177/300 = 59% × opencode). `run_reap.py` from upstream Qwen3.6-35B-A3B BF16 (128→96e); AWQ recal with the `thinking_vision_video` recipe.
+1. **`Qwen3.6-35B-A3B-REAP-AWQ`** — REAP of the bake-off top scorer (177/300 = 59% × opencode). `run_reap.py` from upstream Qwen3.6-35B-A3B BF16 (256→192e, matching the REAM expert count); AWQ recal with the `thinking_vision_video` recipe. ⚠ Tooling-blocked: the unfuse patch is `Qwen3MoeExperts`-only — extend it to the fused `Qwen3_5MoeExperts` first, then verify the routed-expert prune leaves the shared expert + vision tower intact (`save_pretrained` keeps all non-MoE tensors).
 2. **`gemma-4-26B-A4B-REAM-AWQ`** — REAM of our multimodal MoE. Samsung SAIL `merge.py` needs porting to Gemma 4 arch (currently only Qwen3 family is wired); AWQ recal must preserve vision tower BF16.
 3. **`Qwen3.6-VL-30B-A3B-AWQ`** (native) + **`-REAM-AWQ`** + **in-house `-REAP-AWQ`** — multimodal A3B base. Current REAP (`Qwen3.6-VL-REAP-26B-A3B-AWQ`) was calibrated on atbender's pre-pruned BF16 which stripped the vision tower → vision broken. Need all three flavors from the upstream BF16 with vision tensors retained.
 4. **`Qwen3-30B-Instruct-2507-AWQ`** (native) + **`-REAP-AWQ`** — text generalist. REAM exists (the fastest preset, 107 tok/s); native + REAP complete the trio.
@@ -363,6 +363,8 @@ Self-calibrated models use the `quant` conda env:
 
 ```bash
 conda activate quant
+REAP_ENV=quant ./scripts/quantize/run_reap.sh --model <bf16> --save-path <reap_bf16> --keep-experts N  # MoE expert prune (Qwen3Moe today)
+./scripts/quantize/run_ream_qwen3moe.sh <bf16> <ream_bf16>                                    # MoE expert merge (Samsung SAIL)
 CUDA_VISIBLE_DEVICES="" python -u scripts/quantize/quantize_qwen36_27b_thinking_vision.py   # 27B template
 python scripts/quantize/convert_moe_ct_to_awq.py <ct_src> <awq_dst>                          # MoE CT→native AWQ
 python scripts/eval/check_awq_scales.py <awq_dst> --base <bf16_base_dir>                      # ship gate: 0 = clean
