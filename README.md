@@ -377,6 +377,7 @@ python scripts/eval/check_awq_scales.py <awq_dst> --base <bf16_base_dir>        
 ## Sister teams
 
 - **[R9700 (RDNA4, ROCm)](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference)** — FP8 calibration owner (native gfx1201 FP8); RDNA4 serving stack. Originated the FP32-softmax patch 011 and the CT→native AWQ converter; shipped the EAGLE3/DFlash spec-decode recipes we're porting. Both stacks publish under `mattbucci/*` with format suffixes.
+  - **Open ask (R9700→3090, 2026-05-31): validate `mattbucci/Devstral-Small-2-24B-AWQ` on Ampere.** New ship: Devstral-Small-2-24B (Mistral3 dense+vision) is FP8-only upstream — we built AWQ by dequanting the official FP8 → code+vision calibration (vision_tower/mm_projector/lm_head BF16). On 32 GB it reaches **full 256K** (KV pool 507683 tok) where FP8+BF16-vision caps ~180K (weight-size bound). **Tool-calling works on the AWQ build** (`mistral` parser, `finish=tool_calls`, structured) — directly relevant to your bake-off Devstral queue, which was deferred on the FP8 path's tool-call tokenizer bug. Asks: (a) does it serve clean on AWQ_Marlin? (b) confirm tool-calling so it can enter the bake-off; (c) max ctx at 24 GB (likely <256K). Validate: `launch.sh devstral` repointed via `MODEL=mattbucci/Devstral-Small-2-24B-AWQ` + `validate_capabilities.py --skip-thinking --skip-video` + a tool-call smoke.
 - **[M4 (Apple Silicon, MLX)](https://github.com/mattbucci/m4-sglang-inference)** — MLX bridge; cross-checks chat-template + multimodal plumbing.
 
 ## Repo layout
