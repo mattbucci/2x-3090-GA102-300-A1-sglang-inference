@@ -26,9 +26,16 @@ implementation:
   * per-layer pruning (matches the Cerebras paper)
   * router renormalization is implicit (softmax over surviving rows)
 
-Reusable across Qwen3MoE / Qwen3_5MoE / Gemma4MoE / Nemotron-3 — the hook
-selectors only require `.mlp.gate` and `.mlp.experts.<i>.down_proj` paths,
-which all common HF MoE archs use.
+Arch coverage:
+  * Qwen3Moe (Coder-30B-A3B etc.) — shipped Coder-30B-A3B-REAP path. ✅
+  * Qwen3_5Moe (Qwen3.5/3.6, incl. Qwen3.6-35B-A3B) — ✅ via the companion
+    `patches/qwen3_5moe_unfused_experts.py` (fused-3-D experts) + the custom
+    `Qwen3_5MoeTopKRouter` tuple-output handling in the saliency hook below.
+    Miniature-validated by `test_qwen3_5moe_unfuse.py`; on-box run pending.
+  * Gemma4Moe / Nemotron-3 — NOT yet: their experts/router layouts still need
+    an unfuse patch + (Nemotron-H) Mamba2-hybrid layer skipping.
+The saliency hook selectors require `.mlp.gate` (any router type) and per-expert
+`.mlp.experts.<i>.down_proj` Linears — the unfuse patches create the latter.
 
 Usage (text-only):
     conda activate vllm   # (or any env with transformers + accelerate + datasets)
@@ -59,13 +66,37 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 # can't be hook-instrumented per-expert.
 _REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _PATCH_DIR = os.path.join(_REPO_DIR, "patches")
-if os.path.isfile(os.path.join(_PATCH_DIR, "qwen3moe_unfused_experts.py")):
+if os.path.isdir(_PATCH_DIR):
     sys.path.insert(0, _PATCH_DIR)
+    # Qwen3Moe (Coder-30B etc.) — ships unfused per-expert weights on disk.
     try:
         import qwen3moe_unfused_experts  # noqa: F401
-        print("[run_reap] Qwen3MoeExperts → Qwen3MoeExpertsUnfused (per-expert ModuleList)")
+        print("[run_reap] Qwen3MoeExperts → unfused per-expert ModuleList")
     except ImportError as e:
-        print(f"[run_reap] WARNING: failed to apply unfused patch: {e}")
+        print(f"[run_reap] note: qwen3moe unfuse patch not applied: {e}")
+    # Qwen3_5Moe (Qwen3.5/3.6, incl. Qwen3.6-35B-A3B) — ships FUSED 3-D experts;
+    # this patch adds the load-split + save-fuse bridging hooks.
+    try:
+        import qwen3_5moe_unfused_experts  # noqa: F401
+        print("[run_reap] Qwen3_5MoeExperts → unfused per-expert ModuleList (fused-ckpt bridged)")
+    except ImportError as e:
+        print(f"[run_reap] note: qwen3_5moe unfuse patch not applied: {e}")
+
+
+def _gate_num_experts(mod):
+    """Return the expert count of an MoE router/gate module, or None if `mod`
+    isn't one. Handles both the plain `nn.Linear` gate (Qwen3Moe) and custom
+    routers like `Qwen3_5MoeTopKRouter` (a raw `weight [num_experts, hidden]`
+    Parameter that returns a (logits, scores, indices) tuple)."""
+    if isinstance(mod, torch.nn.Linear):
+        return mod.out_features
+    ne = getattr(mod, "num_experts", None)
+    if ne is not None:
+        return int(ne)
+    w = getattr(mod, "weight", None)
+    if w is not None and w.dim() == 2:
+        return int(w.shape[0])
+    return None
 
 
 class REAPSaliencyTracker:
@@ -94,12 +125,13 @@ class REAPSaliencyTracker:
         n_routers = 0
         n_experts_hooked = 0
         for name, mod in model.named_modules():
-            if name.endswith(".mlp.gate") and isinstance(mod, torch.nn.Linear):
+            n_exp_gate = _gate_num_experts(mod) if name.endswith(".mlp.gate") else None
+            if n_exp_gate is not None:
                 try:
                     layer_idx = int(name.split(".layers.")[1].split(".")[0])
                 except (IndexError, ValueError):
                     continue
-                self.saliency[layer_idx] = torch.zeros(mod.out_features, dtype=torch.float64)
+                self.saliency[layer_idx] = torch.zeros(n_exp_gate, dtype=torch.float64)
                 h = mod.register_forward_hook(self._make_router_hook(layer_idx))
                 self.hooks.append(h)
                 n_routers += 1
@@ -120,11 +152,21 @@ class REAPSaliencyTracker:
     def _make_router_hook(self, layer_idx: int):
         def hook(module, inp, out):
             with torch.no_grad():
-                logits = out.detach().float()
-                if logits.dim() > 2:
-                    logits = logits.reshape(-1, logits.shape[-1])  # flatten batch + seq
-                probs = logits.softmax(dim=-1)
-                topk_probs, topk_idx = probs.topk(self.top_k, dim=-1)
+                if isinstance(out, (tuple, list)):
+                    # Qwen3_5MoeTopKRouter: (router_logits, router_scores, router_indices)
+                    # — already top-k'd; use the scores/indices directly.
+                    topk_probs = out[1].detach().float()
+                    topk_idx = out[2].detach()
+                    if topk_probs.dim() > 2:
+                        topk_probs = topk_probs.reshape(-1, topk_probs.shape[-1])
+                        topk_idx = topk_idx.reshape(-1, topk_idx.shape[-1])
+                else:
+                    # Plain nn.Linear gate (Qwen3Moe): raw logits over all experts.
+                    logits = out.detach().float()
+                    if logits.dim() > 2:
+                        logits = logits.reshape(-1, logits.shape[-1])  # flatten batch + seq
+                    probs = logits.softmax(dim=-1)
+                    topk_probs, topk_idx = probs.topk(self.top_k, dim=-1)
                 # Cache on CPU so expert hooks can read it without GPU sync overhead per call
                 self._routing_cache[layer_idx] = (topk_probs.cpu(), topk_idx.cpu())
         return hook
@@ -205,8 +247,15 @@ def _discover_mlp_modules(model: torch.nn.Module) -> dict[int, torch.nn.Module]:
 def prune_model(model: torch.nn.Module, survivors_per_layer: dict[int, list[int]]) -> None:
     """In-place: drop pruned experts and slice router gate weight rows to surviving set.
 
-    Assumes Qwen3MoE-style ModuleList[Qwen3MoeMLP] for experts (the unfused-experts
-    monkey-patch ensures this) and an `mlp.gate` Linear of shape [num_experts, hidden].
+    Two gate flavors:
+      * Qwen3Moe — `mlp.gate` is an `nn.Linear [num_experts, hidden]`; replace it
+        with a sliced Linear and rebuild experts as a plain ModuleList (the
+        original, proven Coder-30B-A3B-REAP path, unchanged).
+      * Qwen3_5Moe — `mlp.gate` is a `Qwen3_5MoeTopKRouter` (raw `weight`
+        Parameter + `num_experts`); slice the Parameter in place and prune the
+        experts by in-place deletion so the `Qwen3_5MoeExpertsUnfused` instance
+        (and its fuse-on-save hook) survives → the pruned model saves as a
+        standard fused Qwen3_5Moe checkpoint.
     """
     mlp_by_layer = _discover_mlp_modules(model)
     missing = sorted(set(survivors_per_layer) - set(mlp_by_layer))
@@ -217,20 +266,33 @@ def prune_model(model: torch.nn.Module, survivors_per_layer: dict[int, list[int]
         )
     for layer_idx, keep in survivors_per_layer.items():
         layer_mlp = mlp_by_layer[layer_idx]
-        # Slice the gate Linear weight (rows = experts)
         gate = layer_mlp.gate
         keep_t = torch.tensor(keep, dtype=torch.long, device=gate.weight.device)
-        new_gate = torch.nn.Linear(gate.in_features, len(keep), bias=(gate.bias is not None),
-                                   device=gate.weight.device, dtype=gate.weight.dtype)
-        with torch.no_grad():
-            new_gate.weight.copy_(gate.weight.index_select(0, keep_t))
-            if gate.bias is not None:
-                new_gate.bias.copy_(gate.bias.index_select(0, keep_t))
-        layer_mlp.gate = new_gate
-        # Filter the experts ModuleList
-        old_experts = layer_mlp.experts
-        new_experts = torch.nn.ModuleList([old_experts[i] for i in keep])
-        layer_mlp.experts = new_experts
+        if isinstance(gate, torch.nn.Linear):
+            new_gate = torch.nn.Linear(gate.in_features, len(keep), bias=(gate.bias is not None),
+                                       device=gate.weight.device, dtype=gate.weight.dtype)
+            with torch.no_grad():
+                new_gate.weight.copy_(gate.weight.index_select(0, keep_t))
+                if gate.bias is not None:
+                    new_gate.bias.copy_(gate.bias.index_select(0, keep_t))
+            layer_mlp.gate = new_gate
+            old_experts = layer_mlp.experts
+            layer_mlp.experts = torch.nn.ModuleList([old_experts[i] for i in keep])
+        else:
+            # Custom router (Qwen3_5MoeTopKRouter): slice the raw weight Parameter.
+            with torch.no_grad():
+                new_w = gate.weight.data.index_select(0, keep_t).clone()
+            gate.weight = torch.nn.Parameter(new_w, requires_grad=gate.weight.requires_grad)
+            if hasattr(gate, "num_experts"):
+                gate.num_experts = len(keep)
+            # Prune experts IN PLACE (preserve the unfused instance + its hooks).
+            experts = layer_mlp.experts
+            keep_set = set(keep)
+            for i in reversed(range(len(experts))):
+                if i not in keep_set:
+                    del experts[i]
+            if hasattr(experts, "num_experts"):
+                experts.num_experts = len(keep)
 
 
 def main():

@@ -153,33 +153,7 @@ def _patched_init_weights(self, module):
 modeling_qwen3_moe.Qwen3MoePreTrainedModel._init_weights = _patched_init_weights
 
 
-# ===========================================================================
-# Extension recipe — Qwen3_5MoeExperts (Qwen3.5 / Qwen3.6, incl. Qwen3.6-35B-A3B)
-# ===========================================================================
-# This patch only covers PLAIN Qwen3Moe (the shipped Coder-30B-A3B-REAP path).
-# The #1 REAP backlog item (Qwen3.6-35B-A3B-REAP) uses the *fused*
-# `transformers.models.qwen3_5_moe.modeling_qwen3_5_moe.Qwen3_5MoeExperts`, so
-# run_reap.py's `.mlp.experts.{E}.down_proj` hooks find nothing and the prune
-# no-ops. To extend (verified against transformers 5.5.4 source, not yet run):
-#
-#   1. Mirror Qwen3MoeMLP/Qwen3MoeExpertsUnfused for qwen3_5_moe. The fused
-#      params are `gate_up_proj [E, 2*moe_intermediate, hidden]` and
-#      `down_proj [E, hidden, moe_intermediate]`; the per-expert forward is
-#          gate, up = linear(x, gate_up_proj[e]).chunk(2, dim=-1)
-#          out = linear(act_fn(gate) * up, down_proj[e])
-#      so each unfused expert needs a `gate_up_proj` (or split gate/up) Linear
-#      AND a `down_proj` Linear — the latter is what the saliency hook reads.
-#   2. The block calls `experts(hidden_states, top_k_index, top_k_weights)`
-#      (3 positional args — different from Qwen3Moe), so the ModuleList's
-#      forward signature must match that, not Qwen3Moe's (hidden, idx, w).
-#   3. Patch `modeling_qwen3_5_moe.Qwen3_5MoeExperts` + its
-#      `Qwen3_5MoePreTrainedModel._init_weights` the same way as above.
-#   4. OPEN, must validate on-box (needs the 62 GB BF16 + a GPU run): confirm
-#      the pruned model SAVES and RELOADS — Qwen3_5Moe's loader/`save_pretrained`
-#      round-trips fused 3D params; an unfused save may need re-fusing before
-#      save_pretrained, OR a weight-name remap on reload. The Qwen3Moe path
-#      round-trips cleanly (Coder-30B-REAP shipped), but Qwen3_5Moe is unproven.
-#   5. `model.visual.*` + `mlp.shared_expert.*` are not in the experts
-#      ModuleList, so they survive untouched (save_pretrained writes them).
-#      Re-validate vision + thinking with validate_capabilities.py post-prune.
-# ===========================================================================
+# Qwen3.5/3.6 (fused Qwen3_5MoeExperts) are handled by the companion
+# `qwen3_5moe_unfused_experts.py`, which adds load-split + save-fuse hooks for
+# the fused 3-D checkpoint and is auto-imported by run_reap.py alongside this
+# one. Gemma4 / Nemotron-H still need their own unfuse patches.
