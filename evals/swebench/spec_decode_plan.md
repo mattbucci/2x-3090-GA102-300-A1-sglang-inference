@@ -1,4 +1,23 @@
-# Spec-decode wiring plan for SWE-bench bake-off (next iteration)
+# Spec-decode wiring plan for SWE-bench bake-off (CLOSED — not viable at 256K on 24GB)
+
+**Final status (2026-05-31):** CLOSED. Per user constraint, only 256K context is acceptable for this rig. Spec-decode + 256K + AWQ-int4 30B-class target simultaneously **does not fit on 24GB cards** (R9700's 32GB cards fit it; ours don't). The actual VRAM accounting:
+
+- coder-30b AWQ-Marlin weights @ TP=2: ~15 GB total (~7.5 GB/card)
+- EAGLE3 draft (BF16) + cuda graphs: ~3-5 GB headroom per card
+- 256K KV at qwen3-coder's 36 KB/tok: ~9 GB
+- Per-card budget: 7.5 + 4 + 4.5 (KV/2) = ~16 GB → fits at 256K **no-spec**
+- Adding spec: 7.5 + 4 + 4.5 + 0.4 (draft) + ~5 (draft cuda graphs) = ~21 GB → OOM region on 24 GB MEM=0.85 (~20.4 GB/card target)
+
+R9700 (32 GB) has ~8 GB more headroom; that's exactly what spec-decode needs at full context. Our 24 GB hardware doesn't have it. Closing the spec-decode lane for SWE-bench-class workloads.
+
+**What remains preserved:** the `SPEC_DECODE=1` env opt-in wiring in `launch.sh` (commit 2ad2e53) stays in place for future **short-prompt** uses (chat bots, synthetic decode benchmarks where prompts are <16K). Just not for SWE-bench.
+
+**One remaining viable path: Nemotron-3-Nano-Omni** specifically — A3B MoE with smaller active params + Mamba2-hybrid KV makes the spec-decode budget different. R9700 already serves the FP8 variant at full 256K (no spec yet). Tasks #27 (train EAGLE3) and #28 (NGRAM) for that specific model remain open, gated on the AWQ ship landing.
+
+---
+
+# Original plan (historical)
+
 
 **Status:** PROPOSED — wait for the current v0.5.12 bake-off (started 2026-05-30
 01:36, qwen36 cycle in flight) to finish before executing any of this. We are at
