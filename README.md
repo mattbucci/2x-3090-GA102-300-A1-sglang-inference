@@ -204,17 +204,21 @@ Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimod
 
 | Model | Wt/GPU | KV/token | Max context |
 |-------|:------:|:--------:|:-----------:|
-| Qwen3-30B REAM AWQ | 6.2 GB | 36 KB | 262K |
-| Qwen3.5-28B MoE REAP CT | 8.1 GB | 5 KB | 262K |
-| Qwen3.6-35B-A3B AWQ-native | 9.87 GB | ~8 KB hybrid | 262K |
-| Coder-30B AWQ | 8.0 GB | 36 KB | 262K |
-| Devstral-24B AWQ (long preset) | 7.0 GB | 80 KB | **217K** (3090 ceiling for 24B dense @ TP=2) |
-| Coder-REAP-25B W4A16 | 6.5 GB | 72 KB | 131K |
-| Qwen3.5-27B AWQ | 19.0 GB | 24 KB | 32K (weights replicated for DeltaNet TP) |
+| Qwen3-30B-Instruct-2507 REAM AWQ | 6.2 GB | 36 KB | 262K |
+| Qwen3.5-28B-A3B REAP AWQ | 8.1 GB | 5 KB | 262K |
+| Qwen3.6-35B-A3B AWQ-Marlin | 9.87 GB | ~8 KB hybrid | 262K |
+| Qwen3.6-REAM-A3B AWQ | 7.4 GB | ~8 KB hybrid | 262K |
+| Qwen3-Coder-30B-A3B AWQ | 8.0 GB | 36 KB | 262K |
+| Qwen3-Coder-30B-A3B-REAP AWQ | 6.5 GB | 72 KB | 262K |
+| Qwen3.6-27B Dense AWQ | 13.5 GB | 24 KB | 262K |
+| Devstral-Small-2-24B AWQ | 7.0 GB | 80 KB | 131K default / **217K** via `devstral-long` (text-only) |
+| Gemma 4 26B A4B MoE AWQ | 6.5 GB | ~12 KB (SWA) | 262K |
+| Gemma 4 31B Dense AWQ | 7.7 GB | ~25 KB (SWA) | 256K |
+| Qwen3-VL-32B Dense AWQ | 10.0 GB | 24 KB | 131K (model-card cap) |
 
 ## Benchmarks
 
-Per-model long-context sweeps in `benchmarks/<model>/`. Quality:
+Per-model long-context sweeps in `benchmarks/<model>/`. Quality (MMLU / HumanEval / LAB-Bench / Needle measured on the prior v0.5.11 ships — re-running on v0.5.12 ships is queued):
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle |
 |-------|:----:|:---------:|:---------:|:------:|
@@ -222,7 +226,7 @@ Per-model long-context sweeps in `benchmarks/<model>/`. Quality:
 | `qwen3-vl-32b` | **91.2%** | 83.3% | **39.8%** | ✓ to 4K |
 | `coder-reap-25b` | 77.2% | 96.7% | (n/a) | ✓ to 65K |
 
-Methodology: MMLU (1 q/subject × 57), HumanEval pass@1 (30), [LAB-Bench](https://github.com/Future-House/LAB-Bench) (7×50), needle (1K→65K). Receipts in `benchmarks/quality/*-v0511.json`. SWE-bench Lite rates in the bake-off table above. **TODO:** RULER, LongBench Pro, LiveCodeBench.
+Methodology: MMLU (1 q/subject × 57), HumanEval pass@1 (30), [LAB-Bench](https://github.com/Future-House/LAB-Bench) (7×50), needle (1K→65K). v0.5.11-era receipts at `benchmarks/quality/*-v0511.json`; current v0.5.12 ship receipts at `benchmarks/quality/*-rebuild-v0512.json` + the bake-off cells under `benchmarks/quality/bakeoff-*.json`. SWE-bench Lite rates in the bake-off table at top. **TODO:** re-run on v0.5.12 + add RULER, LongBench Pro, LiveCodeBench.
 
 ## Setup
 
@@ -236,7 +240,7 @@ cd python && pip install -e .
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.12 + 25 local patches |
+| SGLang | v0.5.12 + 26 local patches |
 | PyTorch | 2.11.0 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
 | transformers | 5.6.0 (v0.5.12 pin) |
@@ -247,13 +251,14 @@ The serving tree lives at `/data/sglang-rebase-v0512` (env `sglang-v0512`); laun
 
 ## Patches
 
-25 patches (`ls patches/*.patch | wc -l`) targeting SGLang v0.5.12. Notable:
+26 patches (`ls patches/*.patch | wc -l`) targeting SGLang v0.5.12. Notable:
 - **002** Qwen3-Next AWQ weight_loader fix (port from R9700)
 - **028** Gemma 4 MM per-expert AWQ loader (cross-stack with R9700)
 - **030** fused_moe_triton presharded-w2 detection (CT MoE at TP≥2)
 - **031** Qwen3.5/3.6 DeltaNet AWQ weight_loader
 - **034** sampler ±Inf detection (port from R9700)
 - **039/040** Gemma4 dense loader — `num_experts` fallback + top-level `Gemma4Config` head-dim remap (gemma4-31b)
+- **041** Devstral `[TOOL_CALLS]`-omission recovery in `MistralDetector` (grafted from R9700; fixes opencode-rolled tool-call leakage when model drops the leading marker)
 
 Per-patch narratives + closed-item history in [`patches/README.md`](patches/README.md).
 
