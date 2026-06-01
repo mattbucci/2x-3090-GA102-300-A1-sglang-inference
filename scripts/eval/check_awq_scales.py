@@ -141,13 +141,20 @@ def _check_qweight_tensor(name: str, arr: np.ndarray) -> list[str]:
 # Conservative by construction. It only DOWNGRADES a flag when it can both
 # (a) confidently map the AWQ tensor to a base weight block (validated by exact
 # shape match) and (b) confirm deadness. Any name it can't map or any shape
-# that doesn't validate is left flagged. DEAD_THRESH (1e-30) sits far below
-# any real trained weight block (live block max_abs >> 1e-10) and far above
-# the denormal dead values (~1e-38), so a live block can never be misread as
-# dead -> no false negatives can be introduced.
+# that doesn't validate is left flagged.
+#
+# DEAD_THRESH (1e-15) sits in the wide gap between dead and live base blocks.
+# Dead channels come in (at least) two magnitudes — Qwen3.6 ships bf16
+# denormals (~1e-38), while the Coder-30B REAP/REAM bases carry near-zero
+# channels at ~1e-26 (one expert, ~52% of its gate/up). Both are >=24 orders
+# of magnitude below live trained weights (block max_abs ~1e-2..1e-1, min
+# ~1e-3). A v2-disaster zeroes a LIVE block (~1e-2), which stays far above
+# 1e-15 -> still flagged DEFECT. So 1e-15 introduces no false negatives (no
+# real defect has a sub-1e-15 base block) while correctly treating both
+# dead-channel magnitudes as benign.
 # ---------------------------------------------------------------------------
 
-DEAD_THRESH = 1e-30
+DEAD_THRESH = 1e-15
 
 
 def _load_base_ctx(base_path: Path):
@@ -179,58 +186,65 @@ def _base_handle(base_ctx, shard):
     return cache[shard]
 
 
-def _base_target(scale_name: str):
-    """Map an AWQ scale tensor name -> (base_tensor_name, kind, expert_idx).
+def _base_targets(scale_name: str):
+    """Map an AWQ scale tensor name -> a list of candidate
+    (base_tensor_name, kind, expert_idx) mappings, tried in order.
 
     kind: 'gate'|'up' (fused gate_up_proj, gate=rows[0:O], up=rows[O:2O]),
-          'down' (per-expert down_proj), or 'weight' (plain dense Linear).
-    Returns None when the layout isn't recognised (caller stays conservative).
+          'down' (per-expert down_proj fused as [E,...]), or 'weight' (plain
+          2-D [out, in] tensor — a dense Linear OR an unfused per-expert weight).
+    Routed experts get TWO candidates so both base layouts resolve:
+      * fused base (Qwen3.5/3.6): one `experts.gate_up_proj`/`down_proj` 3-D param;
+      * unfused base (Qwen3Moe/Coder): per-expert `experts.{e}.{proj}.weight`.
+    Returns [] when the name isn't recognised (caller stays conservative).
     """
     if scale_name.endswith(".scales"):
         base = scale_name[: -len(".scales")]
     elif scale_name.endswith(".weight_scale"):
         base = scale_name[: -len(".weight_scale")]
     else:
-        return None
+        return []
     m = re.match(r"(.*\.experts)\.(\d+)\.(gate_proj|up_proj|down_proj)$", base)
     if m:
         prefix, e, proj = m.group(1), int(m.group(2)), m.group(3)
+        cands = []
         if proj == "down_proj":
-            return (f"{prefix}.down_proj", "down", e)
-        return (f"{prefix}.gate_up_proj", "gate" if proj == "gate_proj" else "up", e)
+            cands.append((f"{prefix}.down_proj", "down", e))
+        else:
+            cands.append((f"{prefix}.gate_up_proj", "gate" if proj == "gate_proj" else "up", e))
+        cands.append((f"{base}.weight", "weight", None))  # unfused per-expert fallback
+        return cands
     # plain dense Linear: base stores <module>.weight as [out, in]
-    return (f"{base}.weight", "weight", None)
+    return [(f"{base}.weight", "weight", None)]
 
 
 def _base_block_maxabs(scale_name, G, O, group_size, base_ctx):
     """Return a [G, O] float32 grid of base-weight per-(group, out) block
-    max-abs, aligned to the AWQ scale tensor, or None if the tensor can't be
-    confidently mapped + shape-validated."""
-    tgt = _base_target(scale_name)
-    if tgt is None:
-        return None
-    bname, kind, e = tgt
+    max-abs, aligned to the AWQ scale tensor, or None if no candidate mapping
+    is present + shape-validated (caller stays conservative)."""
     _, weight_map, _ = base_ctx
-    if bname not in weight_map:
-        return None
-    try:
-        h = _base_handle(base_ctx, weight_map[bname])
-        sl = h.get_slice(bname)
-        sub = sl[e] if e is not None else sl[:]   # partial read: just this expert
-        sub = sub.float().cpu().numpy()
-    except Exception:
-        return None
-    if sub.ndim != 2:
-        return None
-    if kind == "gate":
-        W = sub[0:O, :]
-    elif kind == "up":
-        W = sub[O:2 * O, :]
-    else:  # 'down' or 'weight'
-        W = sub
-    if W.shape[0] != O or W.shape[1] != G * group_size:
-        return None  # shape mismatch -> mapping unsure -> stay conservative
-    return np.abs(W).reshape(O, G, group_size).max(axis=2).T.astype(np.float32)  # [G, O]
+    for bname, kind, e in _base_targets(scale_name):
+        if bname not in weight_map:
+            continue
+        try:
+            h = _base_handle(base_ctx, weight_map[bname])
+            sl = h.get_slice(bname)
+            sub = sl[e] if e is not None else sl[:]   # partial read: just this expert
+            sub = sub.float().cpu().numpy()
+        except Exception:
+            continue
+        if sub.ndim != 2:
+            continue
+        if kind == "gate":
+            W = sub[0:O, :]
+        elif kind == "up":
+            W = sub[O:2 * O, :]
+        else:  # 'down' or 'weight'
+            W = sub
+        if W.shape[0] != O or W.shape[1] != G * group_size:
+            continue  # shape mismatch -> try next candidate
+        return np.abs(W).reshape(O, G, group_size).max(axis=2).T.astype(np.float32)  # [G, O]
+    return None
 
 
 def _reclassify_scale_with_base(scale_name, t_fp32, issues, group_size, base_ctx):
