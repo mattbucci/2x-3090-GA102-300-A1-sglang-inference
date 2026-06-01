@@ -61,7 +61,7 @@ Both are prerequisites for the MoE backlog. Detailed plan: [`scripts/quantize/re
 After the bake-off + opencode-baseline finish, re-run the static benchmarks on the v0.5.12 ships (current data is v0.5.11-era):
 
 - **Long-context tok/s sweeps** at the new 256K preset defaults — current `benchmarks/{model}/results.json` files top out at 16-32K (throughput-tuned-era data). The chart's unified 256K x-axis (commit `773a01f`) shows empty trailing space until refresh.
-- **Quality table** — 7 currently-shipped models are `TODO v0.5.12` in the [Quality Evals](#quality-evals) section: `qwen36-ream`, `qwen3-ream`, `qwen36`, `qwen36-dense`, `devstral`, `gemma4-31b`, `gemma4`. Use `scripts/eval/eval_quality.py` (MMLU 57 + HumanEval 30 + LAB-Bench full + Needle 1K-65K). Receipts to `benchmarks/quality/*-v0512.json`.
+- **Quality table** — 7 currently-shipped models are `TODO v0.5.12` in the [Quality Evals](#quality-evals) section: `qwen36-ream`, `qwen3-ream`, `qwen36`, `qwen36-dense`, `devstral`, `gemma4-31b`, `gemma4`. Use `scripts/eval/eval_quality.py` (MMLU 57 + HumanEval 30 + LAB-Bench full + Needle 1K→250K — reaches our 256K target). Receipts to `benchmarks/quality/*-v0512.json`. Retrieval must be checked at the 256K target (a future refinement: vary needle *depth*, not just the single mid-context placement, to catch lost-in-the-middle at 256K).
 
 Both pieces are sequential under Rule 1 (no concurrent serving + eval).
 
@@ -289,7 +289,7 @@ Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimod
 
 **Fleet integrity (2026-05-31): all shipped AWQ models are scale-integrity clean** — a fleet-wide `check_awq_scales.py --base` audit found zero real zero-over-live (v2-disaster) defects; every flag resolved to benign MoE dead-channel structural sparsity (the flagship qwen36 passes the full scales+qweight audit, 0/61940). Capability-wise, the v0.5.12 ships are validated and **thinking + image + video are intact** (qwen36 / qwen36-ream / gemma4-31b 5/5, qwen35-moe 4/4, devstral 3/3 image-only, qwen3-ream 1/1 text-only). The remaining gap is the *static* eval suite below. Full per-model verdict + capability receipts: [`benchmarks/quality/fleet-integrity-audit-2026-05-31.json`](benchmarks/quality/fleet-integrity-audit-2026-05-31.json).
 
-Run with `scripts/eval/eval_quality.py` (or `eval_comprehensive.py` for the full sweep): MMLU (1 question per subject × 57 subjects), HumanEval pass@1 (30 problems), [LAB-Bench](https://github.com/Future-House/LAB-Bench) (7 subbenchmarks × full sets, ~1786 questions total), Needle-in-Haystack (1K → 65K). All numbers measured on v0.5.11 ships — re-runs on the current v0.5.12 ships are **queued** (see task #38).
+Run with `scripts/eval/eval_quality.py` (or `eval_comprehensive.py` for the full sweep): MMLU (1 question per subject × 57 subjects), HumanEval pass@1 (30 problems), [LAB-Bench](https://github.com/Future-House/LAB-Bench) (7 subbenchmarks × full sets, ~1786 questions total), Needle-in-Haystack (**1K → 250K** — the default ladder now reaches our 256K target, not 65K; timeout scales with context). All numbers measured on v0.5.11 ships — re-runs on the current v0.5.12 ships are **queued** (see task #38). The v0.5.12 re-run must verify retrieval at the 256K target (current v0.5.11 Needle data only went to 65K).
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle | Source |
 |-------|:----:|:---------:|:---------:|:------:|:------:|

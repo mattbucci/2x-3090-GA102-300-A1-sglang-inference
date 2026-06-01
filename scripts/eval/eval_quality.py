@@ -125,8 +125,13 @@ def humaneval_eval(url, n_samples=20, max_workers=4):
     return {"name": "HumanEval", "passed": passed, "total": total, "pass_rate": pass_rate}
 
 
-def needle_in_haystack(url, context_lengths=[1024, 4096, 16384, 65536]):
-    """Simple needle-in-a-haystack test at various context lengths."""
+def needle_in_haystack(url, context_lengths=[1024, 16384, 65536, 131072, 250000]):
+    """Simple needle-in-a-haystack test at various context lengths.
+
+    Default ladder runs out to ~250K — this rig targets single-user 256K, so the
+    retrieval check must reach the target, not stop at 65K. (ctx is ~tokens; the
+    haystack is sliced to ~ctx*4 chars ≈ ctx tokens.)
+    """
     filler = "The quick brown fox jumps over the lazy dog. " * 100
     needle = "The secret password is: BANANA42."
     results = []
@@ -139,12 +144,14 @@ def needle_in_haystack(url, context_lengths=[1024, 4096, 16384, 65536]):
         prompt = haystack[:ctx * 4] + "\n\nWhat is the secret password mentioned above? Answer with just the password."
 
         try:
+            # Timeout scales with context: a fresh 256K prefill takes minutes, so a
+            # flat 120s would false-fail the long end. ~ctx/150 + 120s floor.
             r = requests.post(url, json={
                 "model": "default",
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": 20,
                 "temperature": 0,
-            }, timeout=120).json()
+            }, timeout=max(120, ctx // 150)).json()
             content = r["choices"][0]["message"]["content"]
             found = "BANANA42" in content
             results.append({"context": ctx, "found": found})
@@ -161,8 +168,8 @@ def main():
     parser.add_argument("--mmlu-samples", type=int, default=100)
     parser.add_argument("--humaneval-samples", type=int, default=20)
     parser.add_argument("--needle", action="store_true", help="Run needle-in-haystack")
-    parser.add_argument("--needle-lengths", type=str, default="1024,4096,16384,65536",
-                        help="Comma-separated context lengths for needle test")
+    parser.add_argument("--needle-lengths", type=str, default="1024,16384,65536,131072,250000",
+                        help="Comma-separated context lengths for needle test (default reaches the 256K target)")
     args = parser.parse_args()
 
     chat_url = f"http://localhost:{args.port}/v1/chat/completions"

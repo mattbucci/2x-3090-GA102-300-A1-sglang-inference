@@ -31,6 +31,13 @@
     "devstral": "3/3 (basic, tool, vision — image-only model)",
     "qwen3-ream": "1/1 (basic — text-only generalist)"
   },
+  "context_256k_state": {
+    "target": "single-user 256K context (the rig's north-star; multi-user secondary)",
+    "serves_full_256k": "all shipped presets serve 262K / model-card max EXCEPT Qwen3-VL-32B-AWQ (131K model-card cap — a constraint, not a defect)",
+    "vram_fit": "verified by the VRAM context-limits table in README; AWQ-int4 + REAP/REAM keep 256K KV inside 48 GB",
+    "measurement_gap": "fresh v0.5.12 long-context tok/s sweeps + 256K Needle retrieval are NOT yet measured (v0.5.11 tok/s data tops at 16-32K; v0.5.11 Needle topped at 65K). Both GPU-gated behind the bake-off sweep.",
+    "eval_fix_2026-06-01": "eval_quality.py Needle default extended 1K-65K -> 1K-250K with context-scaled timeout so the quality eval verifies retrieval AT the 256K target; bench_long_context.py already reaches 262144. Future: vary needle depth (not just mid-context) at 256K."
+  },
   "known_quality_issues": [
     "Qwen3.6-VL-REAP-26B-A3B-AWQ: vision broken (3rd-party atbender pre-prune). Rebuild from upstream BF16 planned.",
     "Gemma 4 21B REAP: HumanEval 0% (REAP prune lost coding capability) — use gemma4-31b for code.",
