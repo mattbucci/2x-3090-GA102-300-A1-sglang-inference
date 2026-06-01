@@ -1,6 +1,6 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
-High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.12** + 25 local patches, CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
+High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.12** + 26 local patches, CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 ## Direction
 
@@ -24,18 +24,7 @@ What we **don't** ship: random community quants. Every `mattbucci/*-AWQ` is cali
 
 ## Roadmap
 
-What's queued, grouped by theme. Gated on the running opencode-baseline sweep finishing + Rule 1 (no concurrent calibration + serving).
-
-### Resume after restart
-
-The opencode-baseline sweep was in flight at restart-time. Resume with:
-
-```bash
-setsid bash -c './evals/swebench/run_opencode_baseline.sh' \
-    > /tmp/run-model-cycle-logs/queue-opencode-baseline.log 2>&1 & disown
-```
-
-`run_opencode_baseline.sh` runs `SCAFFOLDS=opencode` across `QUEUE="devstral gemma4-31b qwen3-ream coder-30b coder-30b-eval coder-reap-25b qwen36-ream"`. Predictions persist on disk; `--skip-existing` picks up where the sweep stopped. Note: `swebench-bakeoff.service` (systemd) auto-starts the *default* full-cycle queue, NOT our opencode-only sweep — disable the unit (`sudo systemctl stop swebench-bakeoff`) before re-launching our baseline if both fire on boot. The qwen36-opencode cell is already done (177/300 = 59.0%); devstral is mid-cycle.
+What's queued, grouped by theme. Calibration work is gated on the bake-off sweep finishing + Rule 1 (no concurrent calibration + serving). The bake-off methodology + resume mechanics live in [`CLAUDE.md`](CLAUDE.md) and [`evals/swebench/`](evals/swebench/).
 
 ### Nemotron-3-Nano-Omni AWQ build chain
 

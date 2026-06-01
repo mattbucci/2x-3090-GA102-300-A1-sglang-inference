@@ -13,7 +13,7 @@ SGLang for 2x NVIDIA RTX 3090 (GA102-300-A1, 48GB total VRAM).
 
 ## Key Commands
 ```bash
-scripts/setup.sh                       # Full setup (clones SGLang v0.5.12, applies 22 patches)
+scripts/setup.sh                       # Full setup (clones SGLang v0.5.12, applies all patches/*.patch — 26)
 scripts/launch.sh devstral             # Devstral 24B AWQ (Dense, Mistral)
 scripts/launch.sh coder-30b-eval       # Qwen3-Coder-30B-A3B AWQ CT (256K, bakeoff lead 40.3% opencode)
 scripts/launch.sh coder-reap-25b       # Qwen3-Coder-REAP-25B-A3B AWQ (256K, 33% claw)
@@ -24,7 +24,7 @@ scripts/launch.sh qwen3-ream           # Qwen3-30B Instruct REAM AWQ (96 experts
 scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ (thinking+image+video+audio)
 scripts/launch.sh gemma4-31b           # Gemma 4 31B Dense AWQ
 ```
-Full preset list (20 total — `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scripts/launch.sh`); every preset carries an explicit `--tool-call-parser` matching its chat-template's tool format (qwen3_coder / qwen25 / mistral / gemma4 — see Critical Rules below).
+Full preset list: `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scripts/launch.sh` (21 currently). Every preset carries an explicit `--tool-call-parser` matching its chat-template's tool format (qwen3_coder / qwen25 / mistral / gemma4 — see Critical Rules below).
 
 ## Critical Rules
 - **SGLang only** — uses AWQ_Marlin kernels (sm_80+), patches may be needed for tuning
@@ -78,7 +78,7 @@ Full preset list (20 total — `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scri
 ## Operational Lessons (consolidated from working memory)
 
 ### Hardware quirks
-- **Kernel BUG reboots every ~9-17h.** Sustained docker rollout I/O hangs the box (kernel-level lock; journal stops writing mid-`docker run swebench-rollout-...`). User hard-resets when noticed. Predictions on disk survive; last 5-15 unflushed pagecache writes are lost. To resume: relaunch wrapper via setsid + relaunch `run_all_cycles.sh WAIT_FOR_PID=<new-pid>`. systemd unit `swebench-bakeoff.service` (tracked at `systemd/`) auto-resumes on boot. Forensic recipe: `journalctl --boot=-1 --no-pager | tail -1`. Durable fix needs sudo (kernel upgrade or storage-driver swap); don't try to "prevent" from inside the agent.
+- **Kernel BUG reboots every ~9-17h.** Sustained docker rollout I/O hangs the box (kernel-level lock; journal stops writing mid-`docker run swebench-rollout-...`). User hard-resets when noticed. Predictions on disk survive; last 5-15 unflushed pagecache writes are lost. To resume: relaunch wrapper via setsid + relaunch `run_all_cycles.sh WAIT_FOR_PID=<new-pid>`. systemd unit `swebench-bakeoff.service` (tracked at `systemd/`) auto-resumes on boot — **but it starts the *default* full-cycle queue, NOT an opencode-only baseline sweep**; if a baseline run is the intended one, `sudo systemctl stop swebench-bakeoff` before relaunching `evals/swebench/run_opencode_baseline.sh` (predictions persist; `--skip-existing` resumes mid-queue). Forensic recipe: `journalctl --boot=-1 --no-pager | tail -1`. Durable fix needs sudo (kernel upgrade or storage-driver swap); don't try to "prevent" from inside the agent.
 - **Rule 1 — no concurrent calibration + eval.** GPTQ calibration (15+ cores, ~60 GB RAM hessians) + SGLang server (90% VRAM) + opencode-driven traffic exceeds host headroom. Crashed the box 2026-04-25 on Qwen3.5-28B.
 - **Rule 2 — no concurrent rollout + score.** Both spin per-instance docker containers. Concurrent VFS pressure triggers the kernel BUG (above). `run_model_cycle.sh` sequences them; don't bypass.
 - **Cooling profile is load-bearing.** 260 W power cap + `gpu-fan-curve.service` keeps DDR5 below ALARM HIGH and prevents thermal-Python-heap corruption (separate failure from Rule 1/2). Don't disable.

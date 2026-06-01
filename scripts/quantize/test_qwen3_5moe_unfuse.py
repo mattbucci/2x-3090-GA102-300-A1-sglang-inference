@@ -10,6 +10,7 @@ model load, no transformers MoE-integration wrapper. Checks the unfused patch:
 
 Run in the `quant` env (transformers + torch). Exit 0 = all pass.
 """
+import os
 import sys
 from types import SimpleNamespace
 
@@ -49,7 +50,6 @@ out_ref = reference_forward(fused_sd["gate_up_proj"], fused_sd["down_proj"],
                             hidden, top_k_index, top_k_weights)
 
 # --- apply the patch, build unfused, load the fused checkpoint via split hook ---
-import os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "patches"))
 import qwen3_5moe_unfused_experts as P  # noqa: E402  (patches transformers in place)
 
