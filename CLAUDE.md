@@ -60,8 +60,8 @@ Full preset list (20 total — `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scri
 ## Current Hardware State (2026-05-13)
 - **Both 3090s online.** TP=2 / 256K is the matrix-standard configuration. No TP=1 fallback presets exist — every preset in launch.sh is tuned for TP=2 / 256K. Default `--tp 2 --context-length 262144 --max-running 1`. Cooling profile (260W power cap + gpu-fan-curve.service) is load-bearing for sustained bake-off runs.
 
-## Workflow (RECONFIRMED 2026-05-09)
-- **Work autonomously. Never stop to ask for confirmation.** User checks in periodically by reading the README and will interrupt with new ideas or redirects. Max effort is the default.
+## Workflow (RECONFIRMED 2026-05-31)
+- **Work autonomously. Never stop to ask for confirmation.** User checks in periodically by reading the README + everything we report, and will interrupt our flow with better ways to frame a problem or new ideas to try — fold those in immediately and keep iterating. Max effort is the default.
 - **Multi-hour calibrations are pre-authorized.** Downloading 50-70 GB BF16 bases + running 10-13h GPTQ calibrations does NOT need user check-in. Detach via `setsid` pattern and keep working on other fronts.
 - **Note the next step in the README before starting it** — user can interject if they see a better path. Commit + push as progress is made (small self-contained commits, not one giant batch). Every commit should stand on its own.
 - **Keep README.md clean.** It is the single source of truth. Once a ship supersedes a debugging narrative, trim the narrative. Reader should see current status + known issues + next step without scrolling.
