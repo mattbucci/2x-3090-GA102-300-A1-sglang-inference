@@ -2,7 +2,10 @@
 """Generate context-length vs performance charts for each model.
 
 Reads benchmark data from benchmarks/{model}/results.json and produces PNG charts.
-All context charts share a unified 32K x-axis (48GB VRAM limits context).
+All context charts share a unified **256K x-axis** for direct comparison — every
+preset in our fleet now serves at 256K (or model-card max) per the 2026-05-31
+preset cleanup. Existing results.json files were measured at the prior 16-32K
+throughput-tuned defaults; re-benchmark sweeps at 256K are queued.
 """
 import os
 import json
@@ -37,9 +40,10 @@ MODELS = {
     "qwen35-27b-awq":      {"label": "Qwen3.5-27B AWQ",         "color": "#f0883e"},
 }
 
-# Unified x-axis: 128 to 32K (limited by 48GB VRAM)
-UNIFIED_XLIM = (96, 40_000)
-UNIFIED_XTICKS = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+# Unified x-axis: 128 to 256K (matches R9700's chart format for cross-stack comparison).
+# Our presets serve at 256K natively; benchmark data sweeps will be re-run at this range.
+UNIFIED_XLIM = (96, 300_000)
+UNIFIED_XTICKS = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144]
 
 # Standard concurrency levels for bar charts
 STD_CONC = [1, 2, 4, 8, 16, 32]
