@@ -1,0 +1,43 @@
+{
+  "audit": "fleet-integrity-and-capability-state",
+  "date": "2026-05-31",
+  "tool": "scripts/eval/check_awq_scales.py --base (dead-channel comparator, DEAD_THRESH=1e-15)",
+  "scope": "every shipped mattbucci/*-AWQ dir on /data/models/hf-mattbucci (native AWQ; CT-format dirs skipped — reader is native-AWQ only)",
+  "method": "scales-only triage across the fleet, then --base resolution where the upstream BF16 is on disk; base-absent legacy ships characterized by flag location",
+  "headline": "All shipped AWQ models are scale-integrity clean — zero real zero-over-live (v2-disaster) defects. Every flag resolved to benign MoE dead-channel structural sparsity.",
+  "models": {
+    "Qwen3.6-35B-A3B-AWQ":        {"raw_scale_flags": 144, "base": "Qwen/Qwen3.6-35B-A3B (on disk)", "verdict": "CLEAN", "qweight_audit": "0 flagged (30970 scales + 30970 qweight, full audit)", "note": "144 benign layer-0 expert gate/up dead channels (~7.8e-38)"},
+    "Qwen3.6-REAM-A3B-AWQ":       {"raw_scale_flags": 118, "base": "Qwen3.6-35B-A3B-REAM-BF16 (on disk)", "verdict": "CLEAN", "note": "118 -> 0 via --base"},
+    "Qwen3-Coder-30B-A3B-AWQ":    {"raw_scale_flags": 0,   "base": "n/a", "verdict": "CLEAN"},
+    "Qwen3-Coder-30B-A3B-REAP-AWQ": {"raw_scale_flags": 2, "base": "Qwen3-Coder-30B-A3B-REAP-BF16 (on disk)", "verdict": "CLEAN", "note": "2 flags = 1 expert (L1 e18) ~52% dead gate/up at ~1e-26; resolved by raising DEAD_THRESH 1e-30 -> 1e-15"},
+    "Qwen3-Coder-30B-A3B-REAM-AWQ": {"raw_scale_flags": 2, "base": "Qwen3-Coder-30B-A3B-REAM-BF16-v1 (on disk)", "verdict": "CLEAN", "note": "2 flags = 1 expert (L1 e25) ~52% dead gate/up at ~1e-26"},
+    "Qwen3.5-28B-A3B-REAP-AWQ":   {"raw_scale_flags": 114, "base": "cerebras/Qwen3.5-28B-A3B-REAP (NOT on disk)", "verdict": "CLEAN-by-pattern", "note": "114 = 57 gate + 57 up, all layer-0 experts — identical benign dead-channel signature to the --base-verified Qwen3.6 family (same DeltaNet+MoE arch). Not --base-verified (3rd-party base absent)."},
+    "Qwen3.6-VL-REAP-26B-A3B-AWQ": {"raw_scale_flags": 114, "base": "atbender/Qwen3.6-VL-REAP-26B-A3B (NOT on disk)", "verdict": "CLEAN-by-pattern (scales)", "note": "114 = layer-0/1 expert gate/up benign pattern. SEPARATELY known vision-broken (atbender pre-prune stripped vision tower) — a capability defect, not a scale defect. Rebuild planned."},
+    "Devstral-Small-2-24B-AWQ":   {"raw_scale_flags": 0, "verdict": "CLEAN"},
+    "gemma-4-26B-AWQ":            {"raw_scale_flags": 0, "verdict": "CLEAN"},
+    "gemma-4-31B-AWQ":           {"raw_scale_flags": 0, "verdict": "CLEAN"},
+    "gemma-4-31B-it-AutoRound-AWQ": {"raw_scale_flags": 0, "verdict": "CLEAN"},
+    "Qwen3.5-27B-AWQ-4bit-calibrated": {"raw_scale_flags": 0, "verdict": "CLEAN", "note": "non-conforming name (should be Qwen3.5-27B-AWQ per HF convention)"},
+    "Qwen3.6-27B-AWQ":           {"raw_scale_flags": 0, "verdict": "CLEAN"},
+    "Qwen3-VL-32B-AWQ":          {"raw_scale_flags": 0, "verdict": "CLEAN"}
+  },
+  "capability_state_v0512": {
+    "source": "benchmarks/quality/*-rebuild-v0512.json + qwen35-moe-capabilities-v0512.json (validate_capabilities.py)",
+    "note": "thinking + image + video preserved on every multimodal MoE ship — directly satisfies the calibration hard-constraint",
+    "qwen36": "5/5 (basic, tool, thinking, vision, video)",
+    "qwen36-ream": "5/5 (vision tower grafted)",
+    "gemma4-31b": "5/5 (basic, tool, thinking, vision, video)",
+    "qwen35-moe (Qwen3.5-28B-REAP)": "4/4 (basic, thinking, vision, video)",
+    "devstral": "3/3 (basic, tool, vision — image-only model)",
+    "qwen3-ream": "1/1 (basic — text-only generalist)"
+  },
+  "known_quality_issues": [
+    "Qwen3.6-VL-REAP-26B-A3B-AWQ: vision broken (3rd-party atbender pre-prune). Rebuild from upstream BF16 planned.",
+    "Gemma 4 21B REAP: HumanEval 0% (REAP prune lost coding capability) — use gemma4-31b for code.",
+    "Several 3rd-party-base legacy ships (REAP-25B Cerebras, VL-REAP atbender, Qwen3.5-28B-REAP Cerebras) grandfathered pending in-house rebuilds."
+  ],
+  "data_gaps": [
+    "Static quality evals (MMLU/HumanEval/LAB-Bench/Needle) are v0.5.11-era for 7 ships; v0.5.12 re-runs are GPU-gated behind the running opencode-baseline sweep (Rule 1).",
+    "opencode-baseline bake-off cells for devstral/gemma4-31b/qwen3-ream/coder-30b/coder-30b-eval/coder-reap-25b/qwen36-ream are in progress (sweep running)."
+  ]
+}

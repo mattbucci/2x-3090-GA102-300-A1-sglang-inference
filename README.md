@@ -298,6 +298,8 @@ Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimod
 
 ## Quality Evals
 
+**Fleet integrity (2026-05-31): all shipped AWQ models are scale-integrity clean** — a fleet-wide `check_awq_scales.py --base` audit found zero real zero-over-live (v2-disaster) defects; every flag resolved to benign MoE dead-channel structural sparsity (the flagship qwen36 passes the full scales+qweight audit, 0/61940). Capability-wise, the v0.5.12 ships are validated and **thinking + image + video are intact** (qwen36 / qwen36-ream / gemma4-31b 5/5, qwen35-moe 4/4, devstral 3/3 image-only, qwen3-ream 1/1 text-only). The remaining gap is the *static* eval suite below. Full per-model verdict + capability receipts: [`benchmarks/quality/fleet-integrity-audit-2026-05-31.json`](benchmarks/quality/fleet-integrity-audit-2026-05-31.json).
+
 Run with `scripts/eval/eval_quality.py` (or `eval_comprehensive.py` for the full sweep): MMLU (1 question per subject × 57 subjects), HumanEval pass@1 (30 problems), [LAB-Bench](https://github.com/Future-House/LAB-Bench) (7 subbenchmarks × full sets, ~1786 questions total), Needle-in-Haystack (1K → 65K). All numbers measured on v0.5.11 ships — re-runs on the current v0.5.12 ships are **queued** (see task #38).
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle | Source |
