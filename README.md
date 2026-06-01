@@ -17,7 +17,7 @@ This rules out three alternative optimization axes other 3090 stacks chase:
 **Active work** (full task queue in `git log` + the task tracker):
 
 1. **MoE coverage matrix gaps** — every MoE base should ship in native + REAP + REAM AWQ flavors. Audit + 6 missing-variant ships are tracked in the [MoE coverage matrix](#moe-coverage-matrix--calibration-backlog) below.
-2. **Nemotron-3-Nano-Omni AWQ build** — first Mamba2-hybrid + AVLM (audio+video+vision+language) in our catalog; in calibration. R9700 already has the FP8 variant at 256K.
+2. **Nemotron-3-Nano-Omni AWQ build** — first Mamba2-hybrid + AVLM (audio+video+vision+language) in our catalog. Calibration is **prepped** (62 GB BF16 base + 267-LOC script on disk, pre-flight done) but **queued behind the running sweep** — Rule 1 bars a concurrent calibration. R9700 already has the FP8 variant at 256K.
 3. **Coding-eval bake-off** — opencode-baseline sweep across the fleet to confirm every preset produces non-empty diffs. Live receipts under `benchmarks/quality/`.
 
 What we **don't** ship: random community quants. Every `mattbucci/*-AWQ` is calibrated end-to-end from the upstream BF16 base via our own GPTQ → CT → AWQ-Marlin pipeline. When a model needs MoE expert pruning, we run REAP/REAM ourselves (`scripts/quantize/run_reap.py`, `scripts/quantize/run_ream_qwen3moe.sh`) on the upstream weights — no atbender / Cerebras / unsloth ships used as bases. Pre-quantized 3rd-party AWQ uploads are reference points only.
@@ -267,7 +267,7 @@ Each MoE base should ship in three flavors: **native** (no expert compression), 
 | Qwen3.6-VL-30B-A3B (multimodal A3B) | ❌ | ⚠ atbender pre-pruned, vision broken | ❌ |
 | Gemma 4 26B A4B (103e MoE+VL) | ✅ | ✅ (21B-REAP, Cerebras) | ❌ |
 | Qwen3-Coder-Next-80B-A3B (512e) | — too big @ AWQ | — | ✅ ~60B effective |
-| Nemotron-3-Nano-Omni-30B-A3B (128e, AVLM) | 🔄 in calibration | ❌ | ❌ |
+| Nemotron-3-Nano-Omni-30B-A3B (128e, AVLM) | ⏳ prepped, queued (Rule 1) | ❌ | ❌ |
 
 **Calibration backlog (prioritized):**
 
