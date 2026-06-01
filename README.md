@@ -22,6 +22,60 @@ This rules out three alternative optimization axes other 3090 stacks chase:
 
 What we **don't** ship: random community quants. Every `mattbucci/*-AWQ` is calibrated end-to-end from the upstream BF16 base via our own GPTQ → CT → AWQ-Marlin pipeline. When a model needs MoE expert pruning, we run REAP/REAM ourselves (`scripts/quantize/run_reap.py`, `scripts/quantize/run_ream_qwen3moe.sh`) on the upstream weights — no atbender / Cerebras / unsloth ships used as bases. Pre-quantized 3rd-party AWQ uploads are reference points only.
 
+## Roadmap
+
+What's queued, grouped by theme. Gated on the running opencode-baseline sweep finishing + Rule 1 (no concurrent calibration + serving).
+
+### Resume after restart
+
+The opencode-baseline sweep was in flight at restart-time. Resume with:
+
+```bash
+setsid bash -c './evals/swebench/run_opencode_baseline.sh' \
+    > /tmp/run-model-cycle-logs/queue-opencode-baseline.log 2>&1 & disown
+```
+
+`run_opencode_baseline.sh` runs `SCAFFOLDS=opencode` across `QUEUE="devstral gemma4-31b qwen3-ream coder-30b coder-30b-eval coder-reap-25b qwen36-ream"`. Predictions persist on disk; `--skip-existing` picks up where the sweep stopped. Note: `swebench-bakeoff.service` (systemd) auto-starts the *default* full-cycle queue, NOT our opencode-only sweep — disable the unit (`sudo systemctl stop swebench-bakeoff`) before re-launching our baseline if both fire on boot. The qwen36-opencode cell is already done (177/300 = 59.0%); devstral is mid-cycle.
+
+### Nemotron-3-Nano-Omni AWQ build chain
+
+NVIDIA Mamba2-Transformer hybrid MoE + AVLM (audio+video+vision+language) + thinking. Plan: [`scripts/quantize/nemotron3_nano_omni_plan.md`](scripts/quantize/nemotron3_nano_omni_plan.md). BF16 base + calibration script already on disk (62 GB + 267 LOC); pre-flight done.
+
+1. **Smoke** BF16 base on SGLang TP=2 — context sweep `8K → 32K → 64K → 128K → 256K` to verify Triton-NVIDIA doesn't hit the AMD-only `TritonAMDGPUCanonicalizePointers` compiler bug R9700 hit at ~13K. Single text + image + audio probe at each ctx.
+2. **Calibrate** GPTQ W4A16 via `scripts/quantize/quantize_nemotron3_nano_omni.py` (~12-20 h CPU, detached). Pre-flight ignore list already derived from `hybrid_override_pattern` (56% of layers stay BF16: 23 Mamba + 6 Attention; the other 23 MLP/MoE go INT4).
+3. **Convert** CT → AWQ-Marlin + `check_awq_scales.py` audit (non-zero exit = do NOT ship).
+4. **Validate** 6-modality probe (basic + thinking + image + video + audio + tool) via `validate_capabilities.py` (audio probe added in commit `ab7ab2c`).
+5. **Ship** to `mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ` + wire `nemotron3-omni` preset in `launch.sh` (`--reasoning-parser nemotron_3 --tool-call-parser qwen3_coder --trust-remote-code`).
+6. **NGRAM** spec-decode trial — CUDA-only, no training needed; if it clears 1.3× decode speedup on a coding probe, ship and skip EAGLE3 training. Plan: [`scripts/quantize/nemotron3_nano_omni_plan.md`](scripts/quantize/nemotron3_nano_omni_plan.md) Phase 1.
+7. **EAGLE3 draft training** — only if NGRAM is insufficient. SpecForge offline-mode against our shipped AWQ; user-authorized 2026-05-31 ("we can just make our own model"). ~1-3 day GPU job. Plan: [`scripts/specforge/eagle3_training_plan.md`](scripts/specforge/eagle3_training_plan.md). Note: EAGLE3 on Mamba2-hybrid is unproven — three hook-point options documented in the plan.
+
+### MoE coverage gaps (every base needs native + REAP + REAM)
+
+Detailed matrix + rebuild paths in the [MoE coverage matrix](#moe-coverage-matrix--calibration-backlog) below. Six missing-variant builds, prioritized:
+
+1. **`Qwen3.6-35B-A3B-REAP-AWQ`** — REAP of bake-off top scorer (177/300 = 59.0%); 128→96e via `run_reap.py` on upstream BF16.
+2. **`gemma-4-26B-A4B-REAM-AWQ`** — REAM of multimodal MoE. Blocked on tooling task below (Samsung SAIL needs Gemma 4 port).
+3. **`Qwen3.6-VL-30B-A3B`** native + REAM + in-house REAP — rebuild VL trio with vision tensors retained (current REAP-26B is atbender pre-pruned, vision-broken). ⚠ pre-flight: SGLang's `Qwen3VLMoeForConditionalGeneration` loader was previously broken in v0.5.11 (no upstream fix found in v0.5.12 grep); smoke a community AWQ first before sinking calibration time.
+4. **`Qwen3-30B-Instruct-2507`** native + REAP — REAM exists (`qwen3-ream`, fastest preset at 107 tok/s); complete the trio.
+5. **`Qwen3.5-28B-A3B`** native + REAM — older DeltaNet+VL gen; only Cerebras REAP currently ships.
+6. **`Nemotron-3-Nano-Omni`** REAP + REAM — gated on native ship + EAGLE3 above.
+
+### Tooling
+
+Both are prerequisites for the MoE backlog. Detailed plan: [`scripts/quantize/ream_gemma4_port_plan.md`](scripts/quantize/ream_gemma4_port_plan.md).
+
+1. **Port Samsung SAIL REAM merge to Gemma 4 arch** — current `run_ream_qwen3moe.sh` + the upstream `merge.py` are Qwen3-family-only (5 hardcoded assumptions identified). Port unblocks the gemma-4-26B REAM build. Est. 40-60 h dev.
+2. **Adapt `run_reap.py` for Gemma 4 + Nemotron-H expert layouts** — currently Qwen3-only. Gemma 4 has parallel dense+MoE + different expert keys; Nemotron-H has Mamba2-hybrid layer pattern (only the 23 MLP/MoE layers are pruneable per `hybrid_override_pattern`). Saliency math is arch-agnostic; the per-expert iteration loop changes.
+
+### Re-eval the fleet at v0.5.12
+
+After the bake-off + opencode-baseline finish, re-run the static benchmarks on the v0.5.12 ships (current data is v0.5.11-era):
+
+- **Long-context tok/s sweeps** at the new 256K preset defaults — current `benchmarks/{model}/results.json` files top out at 16-32K (throughput-tuned-era data). The chart's unified 256K x-axis (commit `773a01f`) shows empty trailing space until refresh.
+- **Quality table** — 7 currently-shipped models are `TODO v0.5.12` in the [Quality Evals](#quality-evals) section: `qwen36-ream`, `qwen3-ream`, `qwen36`, `qwen36-dense`, `devstral`, `gemma4-31b`, `gemma4`. Use `scripts/eval/eval_quality.py` (MMLU 57 + HumanEval 30 + LAB-Bench full + Needle 1K-65K). Receipts to `benchmarks/quality/*-v0512.json`.
+
+Both pieces are sequential under Rule 1 (no concurrent serving + eval).
+
 ## Coding-eval bake-off (SWE-bench Lite, v2 Docker harness, 256K, single-user)
 
 Top tier: `qwen36` (AWQ-Marlin rebuild) and `qwen36-ream` both reach **~59%** on opencode — the new ship matches the prior leader.
