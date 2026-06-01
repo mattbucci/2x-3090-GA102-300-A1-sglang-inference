@@ -33,6 +33,34 @@ These are projections; the actual wall-time gain must be measured (see
 
 ---
 
+## ⚠ Reality check: prompt-size distribution makes spec-decode largely useless for SWE-bench at the documented caps
+
+**Measured 2026-05-31 against the finished qwen36-opencode-v2 cycle (300 instances).** Peak prompt size per instance (max `tokens.input` across all opencode `step_finish` events) shows agentic SWE-bench Lite traffic is HEAVILY long-context:
+
+| Quantile | Peak prompt tokens |
+|---|---|
+| median | **41K** |
+| p75 | 63K |
+| p90 | 82K |
+| p95 | 103K |
+| p99 | 133K |
+| max | 230K |
+
+| Cap | % instances exceeding |
+|---|---:|
+| EAGLE3 (16K) | **97.3%** |
+| DFlash (32K) | **65.3%** |
+| 64K | 22.3% |
+| 96K | ~5% |
+| 128K | <2% |
+
+**Implication.** Running spec-decode at the documented caps would lose almost the entire workload. The original spec-decode plan implicitly assumed prompts fit in the cap; that assumption is wrong for SWE-bench agentic traffic. Two paths forward, both depend on task **#17 (dynamic spec→no-spec fallback)** which is now **mandatory not optional**:
+
+1. **Dynamic per-instance fallback.** Inspect each instance's prompt token count and serve with spec at <16K, no-spec at >16K. Cost: per-instance server restart OR a two-server pattern OR a single SGLang process that can toggle. Highest-leverage path.
+2. **Wider spec config.** Drop MEM=0.70 → 0.65 and see if EAGLE3 fits at 32K or 64K. May not fit on 24 GB cards; R9700's full ladder (topk=16/draft=32) OOMs at 16K here, so 64K spec is very unlikely.
+
+Receipt: [`benchmarks/quality/qwen36-opencode-v2-prompt-length-distribution.json`](../../benchmarks/quality/qwen36-opencode-v2-prompt-length-distribution.json). Task #12 done.
+
 ## VRAM / context cost on 24 GB cards
 
 Both spec configs we validated cap the served context lower than the baseline:
