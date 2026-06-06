@@ -230,7 +230,31 @@ def _patch_accumulate_hessian() -> None:
 
     _wrapped._nemotron_ndim_patched = True  # type: ignore[attr-defined]
     _gq.accumulate_hessian = _wrapped
-    print("  patched llmcompressor.modifiers.gptq.gptq_quantize.accumulate_hessian "
+    # CRITICAL: gptq.base.py does `from .gptq_quantize import accumulate_hessian`
+    # which copies the function reference into base's namespace AT IMPORT TIME.
+    # Re-binding gq.accumulate_hessian does NOT update base's binding — that's
+    # what burned v16. Patch every module that imported the name directly.
+    patched_modules = ["llmcompressor.modifiers.gptq.gptq_quantize"]
+    try:
+        import llmcompressor.modifiers.gptq.base as _base
+        if hasattr(_base, "accumulate_hessian"):
+            _base.accumulate_hessian = _wrapped
+            patched_modules.append("llmcompressor.modifiers.gptq.base")
+    except Exception as e:  # noqa: BLE001
+        print(f"  WARN: could not patch base.accumulate_hessian: {e}")
+    # Defensive: scan every loaded module and rebind any direct reference too,
+    # so future llmcompressor refactors that add a third importer don't bite.
+    import sys
+    for mod_name, mod in list(sys.modules.items()):
+        if mod_name in patched_modules or not mod_name.startswith("llmcompressor"):
+            continue
+        try:
+            if getattr(mod, "accumulate_hessian", None) is _orig:
+                mod.accumulate_hessian = _wrapped
+                patched_modules.append(mod_name)
+        except Exception:  # noqa: BLE001
+            pass
+    print(f"  patched accumulate_hessian in: {patched_modules} "
           "(handle any N-dim Linear input, not just 2D/3D)")
 
 
