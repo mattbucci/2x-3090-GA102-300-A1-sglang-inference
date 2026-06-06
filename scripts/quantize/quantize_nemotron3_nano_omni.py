@@ -412,9 +412,30 @@ print(f"  Ignore patterns ({len(IGNORE_PATTERNS)}):")
 for p in IGNORE_PATTERNS:
     print(f"    {p}")
 
+# Nemotron-3-Nano-Omni's intermediate_size = moe_intermediate_size = 1856.
+# Every down_proj is [hidden=2688, in=1856]. group_size=128 (the W4A16 preset
+# default) FAILS — 1856 / 128 = 14.5.
+#
+# v8 added `bypass_divisibility_checks=True` thinking that solved it. It only
+# bypasses GPTQ's accumulation-time check. The OBSERVER pipeline runs a
+# separate strict `value.unflatten(-1, (-1, group_size))` that raises
+# `RuntimeError: ... don't multiply up to the size of dim 1 (1856)` AFTER all
+# 1024 calibration samples are accumulated for a subgraph (v17 lost ~3.5 h
+# of Hessian collection this way before the observe step crashed).
+#
+# Fix: use group_size=64. Both 1856/64=29 and 2688/64=42 divide cleanly, so
+# the observer's unflatten succeeds and every down_proj stays INT4. Cost is
+# ~0.5 GB in extra fp16 scales on a ~20 GB checkpoint. Marlin INT4 kernels
+# support both gs=64 and gs=128, so SGLang serving is unaffected.
+#
+# `bypass_divisibility_checks` kept defensively in case a still-unseen layer
+# has a column count not divisible by 64 either.
+from compressed_tensors.quantization import preset_name_to_scheme as _preset
+_w4a16_g64 = _preset("W4A16", targets=["Linear"])
+_w4a16_g64.weights.group_size = 64
+
 recipe = GPTQModifier(
-    targets="Linear",
-    scheme="W4A16",
+    config_groups={"W4A16_g64": _w4a16_g64},
     ignore=IGNORE_PATTERNS,
     # MoE: ensure every expert sees calibration mass; without this, rare
     # experts get garbage scales (proven across our REAM / REAP / 128-expert
@@ -423,13 +444,6 @@ recipe = GPTQModifier(
     # onto the `oneshot()` call below, where it defaults to True — so all-experts
     # coverage is preserved without an explicit knob.
     offload_hessians=True,
-    # Nemotron-3-Nano-Omni expert MLPs have down_proj columns=1856 (not divisible
-    # by group_size=128). Without this flag llmcompressor raises ValueError before
-    # GPTQ starts. SGLang ≥v0.5.11's AWQ-Marlin loader handles non-divisible
-    # dimensions via a torch-dequant fallback (rules-for-agents.md → AWQ checkpoint
-    # format), so the served model still runs — just dequants those Linears in
-    # software instead of the Marlin INT4 fast path. Better than excluding ~33%
-    # of expert weight (the down_projs) from INT4 entirely.
     bypass_divisibility_checks=True,
 )
 
