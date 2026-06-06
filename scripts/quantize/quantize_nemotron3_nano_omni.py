@@ -202,6 +202,14 @@ recipe = GPTQModifier(
     # onto the `oneshot()` call below, where it defaults to True — so all-experts
     # coverage is preserved without an explicit knob.
     offload_hessians=True,
+    # Nemotron-3-Nano-Omni expert MLPs have down_proj columns=1856 (not divisible
+    # by group_size=128). Without this flag llmcompressor raises ValueError before
+    # GPTQ starts. SGLang ≥v0.5.11's AWQ-Marlin loader handles non-divisible
+    # dimensions via a torch-dequant fallback (rules-for-agents.md → AWQ checkpoint
+    # format), so the served model still runs — just dequants those Linears in
+    # software instead of the Marlin INT4 fast path. Better than excluding ~33%
+    # of expert weight (the down_projs) from INT4 entirely.
+    bypass_divisibility_checks=True,
 )
 
 t0 = time.time()
