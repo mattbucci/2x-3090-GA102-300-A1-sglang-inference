@@ -314,18 +314,18 @@ Run with `scripts/eval/eval_quality.py` (or `eval_and_chart.py` / the full-fleet
 | Qwen3-Coder-REAP-25B-A3B AWQ | 77.2% | **96.7%** | 30.5% | 100% | `Coder-REAP-25B-v0511.json` |
 | Qwen3.6-35B-A3B AWQ-CT | 73.7% | 80.0% | — | — | `Qwen3.6-35B-A3B-CT-v0511.json` |
 | Qwen3.5-28B-A3B-REAP AWQ | 69.6% | 80.0% | 15.9% ‡ | 100% | `REAP-28B.json` |
-| Qwen3.6-REAM-A3B AWQ | 90.0% | 86.7% ◊ | 25.0% | **✓ 250K** | `qwen36-ream.json` |
-| Qwen3-30B-Instruct-2507 REAM AWQ | 93.3% | 46.7% ◊ | 33.3% | **✓ 250K** | `qwen3-ream.json` |
-| Qwen3.6-35B-A3B AWQ-Marlin (current bake-off top) | 90.0% | 80.0% ◊ | 23.8% | **✓ 250K** | `qwen36.json` |
-| Qwen3.6-27B Dense AWQ | 93.3% | **100.0%** ◊ | 25.0% | **✓ 250K** | `qwen36-dense.json` |
-| Devstral-Small-2-24B AWQ | 83.3% | 73.3% ◊ | 36.9% | ✓131K ✗250K | `devstral.json` |
-| Gemma 4 31B Dense AWQ | **96.7%** | **100.0%** § | 39.3% | ✓16K ✗65K | `gemma4-31b.json` |
-| Gemma 4 26B MoE AWQ | 80.0% | **100.0%** § | 38.1% | ✓131K ✗250K | `gemma4.json` |
+| Qwen3.6-REAM-A3B AWQ | 90.0% | **100.0%** | 25.0% | **✓ 250K** | `qwen36-ream.json` |
+| Qwen3-30B-Instruct-2507 REAM AWQ | 93.3% | 20.0% ◊ | 33.3% | **✓ 250K** | `qwen3-ream.json` |
+| Qwen3.6-35B-A3B AWQ-Marlin (current bake-off top) | 90.0% | 93.3% | 23.8% | **✓ 250K** | `qwen36.json` |
+| Qwen3.6-27B Dense AWQ | 93.3% | **100.0%** | 25.0% | **✓ 250K** | `qwen36-dense.json` |
+| Devstral-Small-2-24B AWQ | 83.3% | 66.7% | 36.9% | ✓131K ✗250K | `devstral.json` |
+| Gemma 4 31B Dense AWQ | **96.7%** | **100.0%** | 39.3% | ✓16K ✗65K | `gemma4-31b.json` |
+| Gemma 4 26B MoE AWQ | 80.0% | **100.0%** | 38.1% | ✓131K ✗250K | `gemma4.json` |
 
 † **Gemma 4 21B REAP HumanEval 0%** is a known calibration artifact — the v3b ship serves cleanly per the audit but the REAP prune lost coding capability. Use `gemma4-31b` (the in-house dense AWQ rebuild) for code workloads.
 ‡ **Qwen3.5-28B-A3B-REAP LAB-Bench 15.9%** is on a partial 333-question subset (the eval timed out on the full 1786). Most rows are the full LAB-Bench (1786); the v0.5.12 rows use 12-per-subbench (84).
-§ **Gemma HumanEval** — raw `/completions` zeroed both Gemma ships (chat-template breaks bare completion); the chat-format HumanEval (commit `40003aa`) **fixes it to 100%** (15/15) — real codegen, confirmed.
-◊ **Thinking-model HumanEval uses raw `/completions`** (valid: qwen36 80%, dense 100%, qwen36-ream 87%). The chat-format HE that fixed Gemma *truncates* thinking models — they spend the token budget thinking, then run out before emitting the code (qwen36 dropped 80→13% on chat). A unified no-think HE path is **#19**; until then thinking models keep their raw numbers and Gemma/non-thinking use chat.
+**HumanEval methodology (unified 2026-06-06, commit `a06450e`):** chat endpoint + `chat_template_kwargs:{enable_thinking:false}`, one method fleet-wide. The path here: raw `/completions` zeroed Gemma (its template breaks bare completion); plain chat-HE then *truncated* thinking models (they burned the budget on CoT — qwen36 80→13%); **no-think chat fixes both** (qwen36 13→93%, qwen36-ream/dense 100%, Gemma 0→100%).
+◊ **qwen3-ream HumanEval 20%** — a non-coder text generalist on a code task (raw completion flattered it to 47%; the consistent no-think chat number is 20%). Use the Coder / qwen36 ships for code.
 
 ![Quality comparison — MMLU / HumanEval / LAB-Bench / Needle across INT4 AWQ ships on 2x RTX 3090](benchmarks/quality/quality_comparison.png)
 
