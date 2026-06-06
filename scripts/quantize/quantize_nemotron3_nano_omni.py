@@ -198,7 +198,9 @@ recipe = GPTQModifier(
     # MoE: ensure every expert sees calibration mass; without this, rare
     # experts get garbage scales (proven across our REAM / REAP / 128-expert
     # MoE ships). Cost: ~3x calibration time vs default routing-only.
-    moe_calibrate_all_experts=True,
+    # llmcompressor >=0.11 moved `moe_calibrate_all_experts` from GPTQModifier
+    # onto the `oneshot()` call below, where it defaults to True — so all-experts
+    # coverage is preserved without an explicit knob.
     offload_hessians=True,
 )
 
