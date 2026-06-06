@@ -213,20 +213,25 @@ recipe = GPTQModifier(
 )
 
 t0 = time.time()
+# Target the inner NemotronHForCausalLM, NOT the multimodal wrapper:
+#  - The wrapper's `forward(pixel_values, image_flags=None, ...)` unconditionally
+#    runs `image_flags.squeeze(-1)`, which AttributeErrors on every text-only
+#    calibration row (~7/8 of the mix). Both `independent` and `sequential`
+#    pipelines AST-trace the entry point and trip on it.
+#  - We only need INT4 on the language-model MLP/MoE Linears anyway: vision
+#    (CRADIO), audio (Parakeet), routers, embeddings, lm_head are all already
+#    in IGNORE_PATTERNS and stay BF16.
+#  - The wrapper module remains attached on `model` so the saved checkpoint
+#    still ships the encoders + Omni assembly; oneshot just writes the
+#    quantized weights inside `language_model.*`.
+# This matches the script's pre-flight note about a `target_module="llm"` hint.
 oneshot(
-    model=model,
+    model=model.language_model,
     dataset=dataset,
     recipe=recipe,
     max_seq_length=MAX_SEQUENCE_LENGTH,
     num_calibration_samples=NUM_CALIBRATION_SAMPLES,
     processor=tokenizer,
-    # The default `independent` pipeline AST-traces the wrapper forward, and
-    # Nemotron-3-Nano-Omni's forward calls `image_flags.squeeze(-1)`
-    # unconditionally even though `image_flags` defaults to None — every
-    # text-only calibration row (glaive / ultrachat / numina / hermes) crashes
-    # the trace. The `sequential` pipeline processes each decoder layer
-    # in turn without re-tracing the wrapper, sidestepping the None-squeeze.
-    pipeline="sequential",
 )
 elapsed = time.time() - t0
 print(f"\nGPTQ complete in {elapsed/3600:.1f}h ({elapsed:.0f}s)")
