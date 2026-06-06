@@ -298,6 +298,8 @@ Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimod
 
 ‡‡ **"Max context" is the REAL KV-pool capacity** (`max_total_num_tokens` from the serve log), not the declared `--context-length`. Corrected 2026-06-06 — the heavy-**VL** models are KV-bound: dense/large weights + the **FP16 vision tower** eat the budget, leaving far less than 262K (gemma4-31b ~24K, gemma4-26b ~118K, devstral ~172K in shipped multimodal config). Measured by the fixed needle + 256K tool-use probe (#16/#17). The A3B-MoE models are genuinely 256K+: qwen36 996K / qwen36-ream 2.4M / qwen36-dense 657K / qwen3-ream 578K KV (fleet serve logs); the Coder-A3B-MoE presets clear 256K by the same light-KV arch (~900K). A non-multimodal or higher-mem-fraction Gemma/Devstral variant would reach further, but the shipped VL preset is what these rows describe.
 
+![Single-user decode tok/s vs context length — all AWQ presets, unified 256K x-axis (2026-06-06 v0.5.12 sweep)](benchmarks/all_models_context.png)
+
 ## Quality Evals
 
 **Fleet integrity (2026-05-31): all shipped AWQ models are scale-integrity clean** — a fleet-wide `check_awq_scales.py --base` audit found zero real zero-over-live (v2-disaster) defects; every flag resolved to benign MoE dead-channel structural sparsity (the flagship qwen36 passes the full scales+qweight audit, 0/61940). Capability-wise, the v0.5.12 ships are validated and **thinking + image + video are intact** (qwen36 / qwen36-ream / gemma4-31b 5/5, qwen35-moe 4/4, devstral 3/3 image-only, qwen3-ream 1/1 text-only). The remaining gap is the *static* eval suite below. Full per-model verdict + capability receipts: [`benchmarks/quality/fleet-integrity-audit-2026-05-31.json`](benchmarks/quality/fleet-integrity-audit-2026-05-31.json).
@@ -324,6 +326,8 @@ Run with `scripts/eval/eval_quality.py` (or `eval_and_chart.py` / the full-fleet
 ‡ **Qwen3.5-28B-A3B-REAP LAB-Bench 15.9%** is on a partial 333-question subset (the eval timed out on the full 1786). Most rows are the full LAB-Bench (1786); the v0.5.12 rows use 12-per-subbench (84).
 § **Gemma HumanEval** — raw `/completions` zeroed both Gemma ships (chat-template breaks bare completion); the chat-format HumanEval (commit `40003aa`) **fixes it to 100%** (15/15) — real codegen, confirmed.
 ◊ **Thinking-model HumanEval uses raw `/completions`** (valid: qwen36 80%, dense 100%, qwen36-ream 87%). The chat-format HE that fixed Gemma *truncates* thinking models — they spend the token budget thinking, then run out before emitting the code (qwen36 dropped 80→13% on chat). A unified no-think HE path is **#19**; until then thinking models keep their raw numbers and Gemma/non-thinking use chat.
+
+![Quality comparison — MMLU / HumanEval / LAB-Bench / Needle across INT4 AWQ ships on 2x RTX 3090](benchmarks/quality/quality_comparison.png)
 
 **256K tool-use probe (new, 2026-06-06)** — `scripts/eval/probe_256k_tooluse.py`. Passive needle retrieval is necessary but not sufficient for *agentic* 256K; this probe plants a needle deep in filler and measures whether the model emits a **valid, correctly-argumented tool call** with the planted value, bucketed by TRUE `prompt_tokens`. It's the agentic 256K signal SWE-bench Lite (tops ~128K) never reaches:
 
