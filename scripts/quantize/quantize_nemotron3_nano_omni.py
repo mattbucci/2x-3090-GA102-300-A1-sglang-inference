@@ -220,6 +220,13 @@ oneshot(
     max_seq_length=MAX_SEQUENCE_LENGTH,
     num_calibration_samples=NUM_CALIBRATION_SAMPLES,
     processor=tokenizer,
+    # The default `independent` pipeline AST-traces the wrapper forward, and
+    # Nemotron-3-Nano-Omni's forward calls `image_flags.squeeze(-1)`
+    # unconditionally even though `image_flags` defaults to None — every
+    # text-only calibration row (glaive / ultrachat / numina / hermes) crashes
+    # the trace. The `sequential` pipeline processes each decoder layer
+    # in turn without re-tracing the wrapper, sidestepping the None-squeeze.
+    pipeline="sequential",
 )
 elapsed = time.time() - t0
 print(f"\nGPTQ complete in {elapsed/3600:.1f}h ({elapsed:.0f}s)")
