@@ -173,18 +173,26 @@ def _llava_video_178k(row: dict) -> list[dict]:
 
 
 def _covost2_audio(row: dict) -> list[dict]:
-    """google/covost2: speech translation / transcription instruction.
+    """Audio transcription instruction (renders with `<|audio|>` placeholder).
 
-    Schema: `sentence` (source transcript), `translation` (en target).
-    Renders as a transcribe-or-translate prompt with `<|audio|>` placeholder.
-    Audio-instruction style is closer to what Gemma 4's audio encoder needs
-    than plain Common Voice transcripts.
+    Source: `facebook/voxpopuli` (en) — European-parliament speech with `raw_text` /
+    `normalized_text` transcripts. Replaces `google/covost2` which was removed
+    from the Hub on 2026-06-06. The encoder-pathway calibration surface (the
+    `<|audio|>` token + an assistant transcript reply) is what matters for
+    Gemma 4 / Nemotron-Omni audio quality; translation-target labels weren't
+    load-bearing because the text-side is already calibrated by glaive + ultrachat.
+    Audio bytes are dropped at calibration text-render time.
     """
-    src = row.get("sentence") or row.get("text") or ""
-    tgt = row.get("translation") or src
+    text = (
+        row.get("raw_text")
+        or row.get("normalized_text")
+        or row.get("sentence")
+        or row.get("text")
+        or ""
+    )
     return [
-        {"role": "user", "content": "<|audio|> Transcribe and translate this clip to English."},
-        {"role": "assistant", "content": tgt or src},
+        {"role": "user", "content": "<|audio|> Transcribe the speech in this clip."},
+        {"role": "assistant", "content": text},
     ]
 
 
@@ -265,9 +273,14 @@ def _hermes_tools_extract(row: dict):
 
 MIXES: dict[str, Mix] = {
     "am_thinking": Mix(
-        "am_thinking", "a-m-team/AM-Thinking-v1-Distilled",
-        split="train", weight=0.0, format_fn=_am_thinking,
-        streaming=True,  # Full download errors on DatasetGenerationError; streaming works.
+        # Source redirected 2026-06-06: AM-Thinking-v1-Distilled's schema
+        # drifted (nested `info` struct that `datasets` cannot cast to
+        # `Json(decode=True)`) — eager AND streaming loads both error out.
+        # Glaive carries the same `<think>…</think>` traces and is the
+        # documented fallback in rules-for-agents.md. Registry key kept so
+        # the 7 recipes referencing `am_thinking` keep working.
+        "am_thinking", "glaiveai/reasoning-v1-20m",
+        split="train", weight=0.0, format_fn=_glaive_reasoning, streaming=True,
     ),
     "glaive_reasoning": Mix(
         "glaive_reasoning", "glaiveai/reasoning-v1-20m",
@@ -309,14 +322,21 @@ MIXES: dict[str, Mix] = {
         config="0_30_s_academic_v0_1",
     ),
     "common_voice_audio": Mix(
-        "common_voice_audio", "mozilla-foundation/common_voice_17_0",
-        split="train", weight=0.0, format_fn=_common_voice_audio, streaming=True,
-        config="en",
+        # Source redirected 2026-06-06: mozilla-foundation/common_voice_17_0 is
+        # now gated (HF 401) and the @11dc8835 revision is empty. LibriSpeech
+        # ASR `clean/train.100` is open, well-known, and has a `text` field
+        # the existing `_common_voice_audio` formatter (sentence|text) handles.
+        "common_voice_audio", "openslr/librispeech_asr",
+        split="train.100", weight=0.0, format_fn=_common_voice_audio, streaming=True,
+        config="clean",
     ),
     "covost2_audio": Mix(
-        "covost2_audio", "google/covost2",
+        # Source redirected 2026-06-06: google/covost2 was removed from the
+        # Hub. VoxPopuli (en) covers the same audio-instruction surface —
+        # raw_text/normalized_text transcripts; `_covost2_audio` reads either.
+        "covost2_audio", "facebook/voxpopuli",
         split="train", weight=0.0, format_fn=_covost2_audio, streaming=True,
-        config="en_de",
+        config="en",
     ),
     "hermes_tools": Mix(
         "hermes_tools", "NousResearch/hermes-function-calling-v1",
