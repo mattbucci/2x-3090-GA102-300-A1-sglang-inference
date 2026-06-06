@@ -1,6 +1,6 @@
 {
   "tag": "qwen36",
-  "timestamp": "2026-06-06 01:19",
+  "timestamp": "2026-06-06 14:18",
   "max_context": 262144,
   "thinking": {
     "results": [
@@ -55,11 +55,6 @@
     "total": 30,
     "accuracy": 0.9
   },
-  "humaneval": {
-    "passed": 12,
-    "total": 15,
-    "pass_rate": 0.8
-  },
   "labbench": {
     "LitQA2": {
       "correct": 3,
@@ -102,26 +97,88 @@
       "accuracy": 0.23809523809523808
     }
   },
+  "humaneval": {
+    "passed": 12,
+    "total": 15,
+    "pass_rate": 0.8,
+    "method": "completions(raw)",
+    "note": "chat-HE truncates thinking models (think-budget); raw retained pending #19"
+  },
   "needle": {
     "results": [
       {
         "context": 1024,
+        "depth": 0.1,
+        "found": true
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
         "found": true
       },
       {
         "context": 16384,
+        "depth": 0.1,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "depth": 0.5,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "depth": 0.9,
         "found": true
       },
       {
         "context": 65536,
+        "depth": 0.1,
+        "found": true
+      },
+      {
+        "context": 65536,
+        "depth": 0.5,
+        "found": true
+      },
+      {
+        "context": 65536,
+        "depth": 0.9,
         "found": true
       },
       {
         "context": 131072,
+        "depth": 0.1,
+        "found": true
+      },
+      {
+        "context": 131072,
+        "depth": 0.5,
+        "found": true
+      },
+      {
+        "context": 131072,
+        "depth": 0.9,
         "found": true
       },
       {
         "context": 250000,
+        "depth": 0.1,
+        "found": true
+      },
+      {
+        "context": 250000,
+        "depth": 0.5,
+        "found": true
+      },
+      {
+        "context": 250000,
+        "depth": 0.9,
         "found": true
       }
     ],

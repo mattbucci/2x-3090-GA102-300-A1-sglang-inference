@@ -1,6 +1,6 @@
 {
   "tag": "gemma4-31b",
-  "timestamp": "2026-06-06 04:48",
+  "timestamp": "2026-06-06 15:13",
   "max_context": 262144,
   "thinking": {
     "results": [
@@ -55,11 +55,6 @@
     "total": 30,
     "accuracy": 0.9666666666666667
   },
-  "humaneval": {
-    "passed": 0,
-    "total": 15,
-    "pass_rate": 0.0
-  },
   "labbench": {
     "LitQA2": {
       "correct": 5,
@@ -102,29 +97,90 @@
       "accuracy": 0.39285714285714285
     }
   },
+  "humaneval": {
+    "passed": 15,
+    "total": 15,
+    "pass_rate": 1.0,
+    "method": "chat"
+  },
   "needle": {
     "results": [
       {
         "context": 1024,
+        "depth": 0.1,
+        "found": true
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
         "found": true
       },
       {
         "context": 16384,
+        "depth": 0.1,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "depth": 0.5,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "depth": 0.9,
         "found": true
       },
       {
         "context": 65536,
-        "found": true
+        "depth": 0.1,
+        "found": false
+      },
+      {
+        "context": 65536,
+        "depth": 0.5,
+        "found": false
+      },
+      {
+        "context": 65536,
+        "depth": 0.9,
+        "found": false
       },
       {
         "context": 131072,
-        "found": true
+        "depth": 0.1,
+        "found": false
+      },
+      {
+        "context": 131072,
+        "depth": 0.5,
+        "found": false
+      },
+      {
+        "context": 131072,
+        "depth": 0.9,
+        "found": false
       },
       {
         "context": 250000,
-        "found": true
+        "depth": 0.1,
+        "found": false
+      },
+      {
+        "context": 250000,
+        "depth": 0.5,
+        "found": false
+      },
+      {
+        "context": 250000,
+        "depth": 0.9,
+        "found": false
       }
     ],
-    "score": 1.0
+    "score": 0.4
   }
 }
