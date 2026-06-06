@@ -115,6 +115,8 @@ for ENTRY in "${FLEET[@]}"; do
     > "$LOG/quality.log" 2>&1
   log "    quality rc=$? -> benchmarks/quality/$PRESET.json"
 
+  if [ "${QUALITY_ONLY:-0}" = "1" ]; then log "  QUALITY_ONLY=1: skip tok/s + probe"; stop_server; log "=== $PRESET done ==="; continue; fi
+
   log "  long-context tok/s sweep -> benchmarks/$SLUG/results.json"
   mkdir -p "$REPO/benchmarks/$SLUG"
   python "$REPO/scripts/bench/bench_long_context.py" --port $PORT \
