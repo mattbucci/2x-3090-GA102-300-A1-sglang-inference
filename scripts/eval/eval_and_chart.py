@@ -33,6 +33,19 @@ from datasets import load_dataset
 RESULTS_DIR = Path("benchmarks/quality")
 
 
+def _answer_text(msg):
+    """Combine content + reasoning_content. With a `--reasoning-parser` active,
+    a model that emits its answer inside the thinking stream (or never closes
+    </think>) puts everything in reasoning_content and leaves content empty —
+    so an MC answer letter must be looked for in BOTH fields, else the whole
+    reasoning-parser fleet scores ~0 (observed on qwen3-ream)."""
+    c = msg.get("content") or ""
+    rc = msg.get("reasoning_content") or ""
+    # reasoning FIRST so the FINAL answer (in content) is the LAST letter the
+    # `matches[-1]` extraction picks; falls back to reasoning when content empty.
+    return (rc + "\n" + c) if rc else c
+
+
 def get_max_tokens(base_url, default=4096):
     """Query model server for max context length."""
     try:
@@ -57,7 +70,7 @@ def thinking_format_eval(url, max_tokens=1024):
             r = requests.post(url, json={"model": "default", "messages": [
                 {"role": "user", "content": prompt}
             ], "max_tokens": max_tokens, "temperature": 0}, timeout=120).json()
-            content = r["choices"][0]["message"]["content"] or ""
+            content = _answer_text(r["choices"][0]["message"])
             comp_tokens = r["usage"]["completion_tokens"]
             finish = r["choices"][0]["finish_reason"]
             has_think_open = "<think>" in content
@@ -110,7 +123,7 @@ def mmlu_eval(url, n_samples=200, max_workers=8, max_tokens=4096):
             r = requests.post(url, json={"model": "default", "messages": [
                 {"role": "user", "content": prompt}
             ], "max_tokens": max_tokens, "temperature": 0}, timeout=300).json()
-            content = r["choices"][0]["message"]["content"] or ""
+            content = _answer_text(r["choices"][0]["message"])
             # Strip thinking tags and free-form reasoning preambles
             content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
             matches = re.findall(r"\b[ABCD]\b", content)
@@ -184,7 +197,7 @@ def labbench_eval(url, bench_name, n_samples=50, max_workers=1, max_tokens=4096)
             r = requests.post(url, json={"model": "default", "messages": [
                 {"role": "user", "content": prompt}
             ], "max_tokens": max_tokens, "temperature": 0}, timeout=300).json()
-            content = r["choices"][0]["message"]["content"] or ""
+            content = _answer_text(r["choices"][0]["message"])
             content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
             matches = re.findall(r"\b[A-Z]\b", content)
             return (matches[-1] if matches else "") == correct_letter
@@ -229,7 +242,7 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], max_tokens=4096):
             r = requests.post(url, json={"model": "default", "messages": [
                 {"role": "user", "content": prompt}
             ], "max_tokens": needle_budget, "temperature": 0}, timeout=600).json()
-            content = r["choices"][0]["message"]["content"] or ""
+            content = _answer_text(r["choices"][0]["message"])
             found = "BANANA42" in content
         except Exception:
             found = False
@@ -237,19 +250,19 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], max_tokens=4096):
     return {"results": results, "score": sum(r["found"] for r in results) / len(results)}
 
 
-def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50, needle_lengths=[1024, 4096, 16384, 65536], workers=1):
+def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50, needle_lengths=[1024, 4096, 16384, 65536], workers=1, mc_budget_arg=0):
     """Run all benchmarks and save results."""
     url = f"http://localhost:{port}/v1/chat/completions"
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     max_ctx = get_max_tokens(url)
-    # MC reasoning budget: 1024 tokens. Models that use <think> tags stop naturally
-    # at ~100-500 tokens. Models without tags (Qwen3.5 REAP) spiral on hard questions
-    # and hit the cap — but the regex still finds answer letters in the reasoning.
-    # Qwen3 official guidance: 8K thinking budget, but that's for <think>-tagged models
-    # where thinking tokens are separate. For untagged models, 1024 total prevents
-    # 4-minute runaway generations per question while still capturing the answer.
-    mc_budget = min(1024, max_ctx - 512)
+    # MC reasoning budget. Default 1024 suits no-<think> models. THINKING models need
+    # enough budget to CLOSE </think> and emit the letter — at 1024 a hard question
+    # truncates mid-think (finish=length, no post-think answer) and scores wrong, which
+    # is the quant-overthinking artifact, NOT a knowledge gap (see arXiv 2606.00206).
+    # Pass --mc-budget for thinking models (e.g. 2560); the truncation_rate in the
+    # thinking-format check tells you whether even that was enough.
+    mc_budget = min(mc_budget_arg, max_ctx - 512) if mc_budget_arg else min(1024, max_ctx - 512)
     print(f"{'=' * 50}")
     print(f"Quality Eval: {tag} (workers={workers}, max_context={max_ctx})")
     print(f"{'=' * 50}")
@@ -444,11 +457,13 @@ if __name__ == "__main__":
     parser.add_argument("--labbench-samples", type=int, default=50, help="Samples per LAB-Bench benchmark")
     parser.add_argument("--needle-lengths", type=str, default="1024,4096,16384,65536")
     parser.add_argument("--workers", type=int, default=1, help="Concurrent requests (1 for single-user models)")
+    parser.add_argument("--mc-budget", type=int, default=0,
+                        help="Max tokens for MMLU/HumanEval/LAB-Bench answers (0=auto 1024; thinking models want ~2560)")
     args = parser.parse_args()
 
     if args.run:
         lengths = [int(x) for x in args.needle_lengths.split(",")]
-        run_eval(args.port, args.tag, args.mmlu_samples, args.humaneval_samples, args.labbench_samples, lengths, args.workers)
+        run_eval(args.port, args.tag, args.mmlu_samples, args.humaneval_samples, args.labbench_samples, lengths, args.workers, args.mc_budget)
 
     if args.chart:
         generate_charts()

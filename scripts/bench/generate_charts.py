@@ -34,10 +34,16 @@ plt.rcParams.update({
 })
 
 MODELS = {
-    "devstral-24b-awq":    {"label": "Devstral-24B AWQ",        "color": "#58a6ff"},
-    "coder-30b-awq":       {"label": "Coder-30B AWQ (MoE)",     "color": "#3fb950"},
-    "gemma4-26b-awq":      {"label": "Gemma 4 26B AWQ (MoE)",   "color": "#d2a8ff"},
-    "qwen35-27b-awq":      {"label": "Qwen3.5-27B AWQ",         "color": "#f0883e"},
+    # slug = benchmarks/<slug>/results.json. Keep in sync with run_v0512_fleet_eval.sh.
+    "qwen3.6-35b-a3b":     {"label": "Qwen3.6-35B-A3B AWQ (MoE, think)", "color": "#58a6ff"},
+    "qwen3.6-ream":        {"label": "Qwen3.6-REAM-A3B AWQ (MoE, think)", "color": "#79c0ff"},
+    "qwen3.6-27b":         {"label": "Qwen3.6-27B AWQ (dense, think)",    "color": "#1f6feb"},
+    "qwen3-30b-ream":      {"label": "Qwen3-30B-REAM AWQ (MoE)",          "color": "#3fb950"},
+    "devstral-24b-awq":    {"label": "Devstral-24B AWQ (dense)",          "color": "#56d364"},
+    "gemma4-31b":          {"label": "Gemma 4 31B AWQ (dense, think)",    "color": "#d2a8ff"},
+    "gemma4-26b-awq":      {"label": "Gemma 4 26B AWQ (MoE, think)",      "color": "#bc8cff"},
+    "coder-30b-awq":       {"label": "Coder-30B AWQ (MoE)",              "color": "#f0883e"},
+    "qwen35-27b-awq":      {"label": "Qwen3.5-27B AWQ",                  "color": "#e3b341"},
 }
 
 # Unified x-axis: 128 to 256K (matches R9700's chart format for cross-stack comparison).
@@ -104,7 +110,10 @@ def make_context_chart(model_key, meta, results, out_dir):
 
 def make_concurrency_chart(model_key, meta, results, out_dir):
     """Total throughput vs concurrency."""
-    sweep = results["throughput_sweep"]
+    sweep = results.get("throughput_sweep") or []
+    if not sweep:
+        print(f"  SKIP concurrency chart (single-user-only data)")
+        return
     measured = {p["concurrency"]: p["tok_per_sec"] for p in sweep}
 
     conc_levels = sorted(set(STD_CONC) & set(measured.keys()))
@@ -170,12 +179,20 @@ def make_combined_concurrency_chart(all_data):
     """All models on one concurrency chart."""
     fig, ax = plt.subplots(figsize=(8, 4.5))
 
+    plotted = 0
     for key, (meta, results) in all_data.items():
-        sweep = results["throughput_sweep"]
+        sweep = results.get("throughput_sweep") or []
+        if not sweep:
+            continue
         conc = [p["concurrency"] for p in sweep]
         toks = [p["tok_per_sec"] for p in sweep]
         ax.plot(conc, toks, "o-", color=meta["color"], linewidth=2, markersize=5,
                 label=meta["label"], zorder=5)
+        plotted += 1
+    if plotted == 0:
+        plt.close(fig)
+        print("  SKIP combined concurrency chart (single-user-only fleet)")
+        return
 
     ax.set_xlabel("Concurrent Requests")
     ax.set_ylabel("Total tok/s")
