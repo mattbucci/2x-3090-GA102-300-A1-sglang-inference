@@ -86,6 +86,16 @@ wait_ready() {
 PRESETS_RUN="${PRESETS:-$(printf '%s\n' "${FLEET[@]}" | cut -d'|' -f1 | tr '\n' ' ')}"
 log "fleet: $PRESETS_RUN"
 
+# FRESH=1 clears prior quality JSONs so a fresh run doesn't RESUME from a
+# stale/different-config cache (eval_and_chart.py resumes if the file exists).
+# Leave FRESH unset to RESUME a crashed fleet (completed presets skip instantly).
+if [ "${FRESH:-0}" = "1" ]; then
+  for P in $PRESETS_RUN; do
+    rm -f "benchmarks/quality/$P.json" "benchmarks/quality/tooluse256k-$P-v0512.json"
+  done
+  log "FRESH=1: cleared prior quality + probe JSONs for $PRESETS_RUN"
+fi
+
 for ENTRY in "${FLEET[@]}"; do
   IFS='|' read -r PRESET SLUG THINK MODELDIR <<< "$ENTRY"
   case " $PRESETS_RUN " in *" $PRESET "*) ;; *) continue ;; esac
