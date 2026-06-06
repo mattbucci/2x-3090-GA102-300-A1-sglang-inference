@@ -42,33 +42,85 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""  # CPU calibration — keep both 3090s f
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
-def _patch_nemotron_cache_typo() -> None:
+def _patch_nemotron_typo_on_disk() -> None:
     """Patch a typo in NVIDIA's published modeling.py: it calls
     `create_causal_mask(input_embeds=...)` (singular), but the transformers 5
     signature is `inputs_embeds=` (plural). The kwarg is rejected as unknown
     and every forward call dies before the GPTQ Hessian phase.
 
-    Must run *before* any AutoModel.from_pretrained(...trust_remote_code=True)
-    so the patch lands on disk before transformers imports the dynamic module.
-    Idempotent — re-runs do nothing once the typo is fixed.
+    Transformers 5 may create a fresh hash dir under
+    ~/.cache/huggingface/modules/transformers_modules/Nemotron*/ on every
+    from_pretrained call, so the file patch alone is racy. We patch:
+
+      1. The BASE_MODEL source dir (the file transformers *copies from* when
+         populating a new cache hash dir) — this fixes future hashes.
+      2. Every existing modeling*.py under the cache (any depth) — fixes
+         already-resolved hashes that an in-flight loader may still read.
+
+    The runtime monkey-patch in `_patch_create_causal_mask` is the real safety
+    net; this on-disk pass is best-effort.
+    Idempotent — the replace is a no-op once the typo is gone.
     """
     import glob
-    root = os.path.expanduser(
-        "~/.cache/huggingface/modules/transformers_modules"
-    )
-    for path in glob.glob(f"{root}/Nemotron*/*/modeling*.py"):
-        with open(path) as fh:
-            src = fh.read()
-        if "input_embeds=" in src and "inputs_embeds=" not in src.replace(
-            "input_embeds=", ""
-        ):
+    roots = [
+        os.path.expanduser("~/.cache/huggingface/modules/transformers_modules"),
+        os.environ.get("BASE_MODEL", ""),
+    ]
+    candidates = []
+    for root in roots:
+        if not root or not os.path.isdir(root):
+            continue
+        # any depth — cache top-level + hash subdirs + BASE_MODEL root
+        for dirpath, _, files in os.walk(root):
+            for fn in files:
+                if fn.startswith("modeling") and fn.endswith(".py"):
+                    candidates.append(os.path.join(dirpath, fn))
+    for path in candidates:
+        try:
+            with open(path) as fh:
+                src = fh.read()
+        except OSError:
+            continue
+        if "input_embeds=" in src:
             patched = src.replace("input_embeds=", "inputs_embeds=")
             with open(path, "w") as fh:
                 fh.write(patched)
-            print(f"  patched {os.path.basename(path)} (input_embeds → inputs_embeds)")
+            print(f"  patched {path} (input_embeds → inputs_embeds)")
 
 
-_patch_nemotron_cache_typo()
+def _patch_create_causal_mask() -> None:
+    """Wrap transformers.masking_utils.create_causal_mask so the typo'd
+    `input_embeds=` kwarg is silently remapped to `inputs_embeds=`. This is
+    the real fix — it works regardless of which cache hash dir NVIDIA's
+    autowrapped modeling.py ends up importing from, because the import resolves
+    against the in-process function object.
+
+    Must run before any module that imports `create_causal_mask` (i.e. before
+    from_pretrained triggers NVIDIA's modeling_nemotron_h.py to load).
+    Idempotent — re-wrapping is a no-op after the first call.
+    """
+    try:
+        import transformers.masking_utils as _mu
+    except Exception as e:  # noqa: BLE001
+        print(f"  WARN: could not import transformers.masking_utils: {e}")
+        return
+    if getattr(_mu.create_causal_mask, "_nemotron_typo_wrapped", False):
+        return
+    _orig = _mu.create_causal_mask
+
+    def _wrapped(*args, **kwargs):
+        if "input_embeds" in kwargs and "inputs_embeds" not in kwargs:
+            kwargs["inputs_embeds"] = kwargs.pop("input_embeds")
+        return _orig(*args, **kwargs)
+
+    _wrapped._nemotron_typo_wrapped = True  # type: ignore[attr-defined]
+    _mu.create_causal_mask = _wrapped
+    print("  wrapped transformers.masking_utils.create_causal_mask "
+          "(input_embeds → inputs_embeds remap)")
+
+
+_patch_nemotron_typo_on_disk()
+_patch_create_causal_mask()
 
 from calibration_datasets import (
     build_calibration_dataset,
