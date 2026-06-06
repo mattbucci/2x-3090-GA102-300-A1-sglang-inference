@@ -112,14 +112,18 @@ def _patch_create_causal_mask() -> None:
 
     def _wrapped(*args, **kwargs):
         # NVIDIA's modeling_nemotron_h.py was written against transformers
-        # ~4.5x and passes two kwargs the transformers 5 signature does not
-        # accept:
+        # ~4.5x. Three differences against transformers 5 must be papered over
+        # before the live signature will accept the call:
         #   - `input_embeds=` (typo of `inputs_embeds=`) — remap
-        #   - `cache_position=` (removed; transformers 5 derives this from
-        #     past_key_values + position_ids) — drop
-        # Generalize: remap the known typo, then drop anything else still
-        # not in the live signature. Logs each drop once so we notice if a
-        # future transformers version drops something we actually need.
+        #   - `cache_position=` (docstring says "Deprecated and unused" in
+        #     transformers 5, was removed from the signature) — drop
+        #   - `past_key_values=None` — declared `Cache | None` in the type
+        #     hint, but the body calls `.get_seq_length()` without a None
+        #     guard. Substitute an empty DynamicCache so the seq length is
+        #     reported as 0 (semantically identical to "no cache").
+        # Generalize the unknown-kwarg case: drop anything else not in the
+        # live signature, logging once so we notice if a future transformers
+        # version drops something we actually need.
         if "input_embeds" in kwargs and "inputs_embeds" not in kwargs:
             kwargs["inputs_embeds"] = kwargs.pop("input_embeds")
         for k in [k for k in list(kwargs) if k not in _accepted]:
@@ -127,6 +131,12 @@ def _patch_create_causal_mask() -> None:
                 print(f"  [create_causal_mask wrapper] dropping unknown kwarg '{k}'")
                 _wrapped._logged_drops.add(k)
             kwargs.pop(k)
+        if "past_key_values" in kwargs and kwargs["past_key_values"] is None:
+            try:
+                from transformers.cache_utils import DynamicCache
+                kwargs["past_key_values"] = DynamicCache()
+            except Exception:  # noqa: BLE001
+                pass
         return _orig(*args, **kwargs)
 
     _wrapped._nemotron_typo_wrapped = True  # type: ignore[attr-defined]
