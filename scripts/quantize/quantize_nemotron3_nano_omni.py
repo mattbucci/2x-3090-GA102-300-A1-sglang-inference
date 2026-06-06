@@ -177,6 +177,10 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="cpu",
     torch_dtype=torch.bfloat16,
     trust_remote_code=True,
+    # Force eager attention on CPU calibration — transformers 5 otherwise picks
+    # flash_attention_2 from the config and raises ImportError because flash-attn
+    # is a CUDA-only kernel and the quant env is CPU-only (CUDA_VISIBLE_DEVICES="").
+    attn_implementation="eager",
 )
 print(f"Model loaded in {time.time() - t0:.0f}s ({type(model).__name__})")
 print(f"  Parameter count: {sum(p.numel() for p in model.parameters()) / 1e9:.2f}B")
