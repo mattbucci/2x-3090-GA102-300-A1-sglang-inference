@@ -64,7 +64,7 @@ Ran via `scripts/eval/run_v0512_fleet_eval.sh` (serve@256K → quality → tok/s
 - **Quality table** — all 7 v0.5.12 rows filled (MMLU 80–97%, needle ✓ through 250K fleet-wide).
 - **256K tool-use probe** — qwen36/qwen36-ream emit correct tool calls retrieving to **253K**.
 
-Open refinements: vary needle *depth* (not just mid-context) to catch lost-in-the-middle; move HumanEval to a chat-formatted prompt (raw `/completions` zeros Gemma); fix the Gemma long-context tool-call format degradation the probe surfaced.
+Open refinements: ✅ needle-*depth* variation + ✅ chat-format HumanEval landed (commit `40003aa`); **re-run the fixed needle fleet-wide (#17)** since the prior numbers were filler-capped. Gemma's low 256K-probe score is NOT tool-call garbling — it's a **KV-pool context limit** (gemma4-31b serves ~24K, gemma4-26b ~118K in shipped multimodal config; the dense weights + FP16 vision tower starve KV); **audit the Model-Support/VRAM "262K" rows against real `max_total_num_tokens` (#18)** — several overstate the reachable context.
 
 ## Coding-eval bake-off (SWE-bench Lite, v2 Docker harness, 256K, single-user)
 
@@ -300,7 +300,7 @@ Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimod
 
 **Fleet integrity (2026-05-31): all shipped AWQ models are scale-integrity clean** — a fleet-wide `check_awq_scales.py --base` audit found zero real zero-over-live (v2-disaster) defects; every flag resolved to benign MoE dead-channel structural sparsity (the flagship qwen36 passes the full scales+qweight audit, 0/61940). Capability-wise, the v0.5.12 ships are validated and **thinking + image + video are intact** (qwen36 / qwen36-ream / gemma4-31b 5/5, qwen35-moe 4/4, devstral 3/3 image-only, qwen3-ream 1/1 text-only). The remaining gap is the *static* eval suite below. Full per-model verdict + capability receipts: [`benchmarks/quality/fleet-integrity-audit-2026-05-31.json`](benchmarks/quality/fleet-integrity-audit-2026-05-31.json).
 
-Run with `scripts/eval/eval_quality.py` (or `eval_and_chart.py` / the full-fleet `run_v0512_fleet_eval.sh` orchestrator): MMLU, HumanEval pass@1, [LAB-Bench](https://github.com/Future-House/LAB-Bench) (7 subbenchmarks), Needle-in-Haystack (**1K → 250K** — reaches our 256K target; timeout scales with context). The **bottom 7 rows are the v0.5.12 re-eval (2026-06-06)** at lighter samples than the v0.5.11 rows above (MMLU 30 / HumanEval 15 / LAB-Bench 12-per-subbench), so treat ±a few points as sampling noise. The headline that *isn't* noise: **every v0.5.12 ship retrieves the needle through 250K — the first time we've verified retrieval AT the 256K target** (v0.5.11 Needle topped out at 65K). v0.5.11 rows used larger samples (MMLU 57 / HE 30 / LAB full ~1786). Thinking-model MMLU/LAB read sensibly because the eval reads `reasoning_content` (the reasoning-parser routes answers there) and gives thinking models budget to close `</think>` before answering.
+Run with `scripts/eval/eval_quality.py` (or `eval_and_chart.py` / the full-fleet `run_v0512_fleet_eval.sh` orchestrator): MMLU, HumanEval pass@1, [LAB-Bench](https://github.com/Future-House/LAB-Bench) (7 subbenchmarks), Needle-in-Haystack (**1K → 250K** — reaches our 256K target; timeout scales with context). The **bottom 7 rows are the v0.5.12 re-eval (2026-06-06)** at lighter samples than the v0.5.11 rows above (MMLU 30 / HumanEval 15 / LAB-Bench 12-per-subbench), so treat ±a few points as sampling noise. **⚠ Correction (2026-06-06): the v0.5.12 Needle column is being re-run** (#17) — the old needle test capped its filler at ~4.5K chars, so every "250K" prompt was really **~2.3K tokens** and never tested long context (which is why even 24K-limited Gemma "passed"; fixed in commit `40003aa` to repeat the filler + vary depth). **The reliable long-context signal is the 256K tool-use probe below** (correct filler): qwen36 / qwen36-ream emit correct tool calls to **253K**. Per-model retrieval is bounded by the real KV pool (`max_total_num_tokens` from the serve log): qwen36-family **657K–2.4M** and qwen3-ream **578K** clear 256K, but **devstral ~172K, gemma4-26b ~118K, gemma4-31b ~24K do NOT** reach 256K in their shipped multimodal config (dense weights + FP16 vision tower eat the KV budget — the Model-Support/VRAM "262K" rows overstate this and need an audit, #18). v0.5.11 rows used larger samples (MMLU 57 / HE 30 / LAB full ~1786). Thinking-model MMLU/LAB read sensibly because the eval reads `reasoning_content` (the reasoning-parser routes answers there) and gives thinking models budget to close `</think>` before answering.
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle | Source |
 |-------|:----:|:---------:|:---------:|:------:|:------:|
@@ -310,17 +310,18 @@ Run with `scripts/eval/eval_quality.py` (or `eval_and_chart.py` / the full-fleet
 | Qwen3-Coder-REAP-25B-A3B AWQ | 77.2% | **96.7%** | 30.5% | 100% | `Coder-REAP-25B-v0511.json` |
 | Qwen3.6-35B-A3B AWQ-CT | 73.7% | 80.0% | — | — | `Qwen3.6-35B-A3B-CT-v0511.json` |
 | Qwen3.5-28B-A3B-REAP AWQ | 69.6% | 80.0% | 15.9% ‡ | 100% | `REAP-28B.json` |
-| Qwen3.6-REAM-A3B AWQ | 90.0% | 86.7% | 25.0% | **✓ 250K** | `qwen36-ream.json` |
-| Qwen3-30B-Instruct-2507 REAM AWQ | 93.3% | 46.7% | 33.3% | **✓ 250K** | `qwen3-ream.json` |
-| Qwen3.6-35B-A3B AWQ-Marlin (current bake-off top) | 90.0% | 80.0% | 23.8% | **✓ 250K** | `qwen36.json` |
-| Qwen3.6-27B Dense AWQ | 93.3% | **100.0%** | 25.0% | **✓ 250K** | `qwen36-dense.json` |
-| Devstral-Small-2-24B AWQ | 83.3% | 73.3% | 36.9% | **✓ 250K** | `devstral.json` |
-| Gemma 4 31B Dense AWQ | **96.7%** | 0.0% § | 39.3% | **✓ 250K** | `gemma4-31b.json` |
-| Gemma 4 26B MoE AWQ | 80.0% | 0.0% § | 38.1% | **✓ 250K** | `gemma4.json` |
+| Qwen3.6-REAM-A3B AWQ | 90.0% | 86.7% | 25.0% | re-run ¶ | `qwen36-ream.json` |
+| Qwen3-30B-Instruct-2507 REAM AWQ | 93.3% | 46.7% | 33.3% | re-run ¶ | `qwen3-ream.json` |
+| Qwen3.6-35B-A3B AWQ-Marlin (current bake-off top) | 90.0% | 80.0% | 23.8% | re-run ¶ | `qwen36.json` |
+| Qwen3.6-27B Dense AWQ | 93.3% | **100.0%** | 25.0% | re-run ¶ | `qwen36-dense.json` |
+| Devstral-Small-2-24B AWQ | 83.3% | 73.3% | 36.9% | re-run ¶ | `devstral.json` |
+| Gemma 4 31B Dense AWQ | **96.7%** | 0.0% § | 39.3% | re-run ¶ | `gemma4-31b.json` |
+| Gemma 4 26B MoE AWQ | 80.0% | 0.0% § | 38.1% | re-run ¶ | `gemma4.json` |
 
 † **Gemma 4 21B REAP HumanEval 0%** is a known calibration artifact — the v3b ship serves cleanly per the audit but the REAP prune lost coding capability. Use `gemma4-31b` (the in-house dense AWQ rebuild) for code workloads.
 ‡ **Qwen3.5-28B-A3B-REAP LAB-Bench 15.9%** is on a partial 333-question subset (the eval timed out on the full 1786). Most rows are the full LAB-Bench (1786); the v0.5.12 rows use 12-per-subbench (84).
-§ **Gemma 4 HumanEval 0%** is an eval-harness artifact, NOT a capability loss: HumanEval drives the raw `/completions` endpoint, and Gemma's chat-template wrapping breaks raw completion (Qwen/Devstral complete fine — qwen36-dense 100%). Gemma codegen works via chat; fix = move HumanEval to a chat-formatted prompt (tracked).
+§ **Gemma 4 HumanEval 0%** was an eval-harness artifact, NOT a capability loss: HumanEval drove the raw `/completions` endpoint and Gemma's chat-template wrapping broke raw completion (Qwen/Devstral completed fine — qwen36-dense 100%). **Fixed** in commit `40003aa` (HumanEval now uses the chat endpoint with robust code extraction); Gemma's real HumanEval lands on the #17 re-run.
+¶ **Needle "re-run"** — the v0.5.12 needle numbers were invalidated by a filler-cap bug (every length was really ~2.3K tokens; see the ⚠ note above). Fixed test (repeat filler to ctx·4 chars + vary depth 0.1/0.5/0.9) re-runs in #17. Until then the 256K tool-use probe below is the trustworthy long-context evidence.
 
 **256K tool-use probe (new, 2026-06-06)** — `scripts/eval/probe_256k_tooluse.py`. Passive needle retrieval is necessary but not sufficient for *agentic* 256K; this probe plants a needle deep in filler and measures whether the model emits a **valid, correctly-argumented tool call** with the planted value, bucketed by TRUE `prompt_tokens`. It's the agentic 256K signal SWE-bench Lite (tops ~128K) never reaches:
 
