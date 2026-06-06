@@ -106,17 +106,34 @@ def _patch_create_causal_mask() -> None:
         return
     if getattr(_mu.create_causal_mask, "_nemotron_typo_wrapped", False):
         return
+    import inspect
     _orig = _mu.create_causal_mask
+    _accepted = set(inspect.signature(_orig).parameters.keys())
 
     def _wrapped(*args, **kwargs):
+        # NVIDIA's modeling_nemotron_h.py was written against transformers
+        # ~4.5x and passes two kwargs the transformers 5 signature does not
+        # accept:
+        #   - `input_embeds=` (typo of `inputs_embeds=`) — remap
+        #   - `cache_position=` (removed; transformers 5 derives this from
+        #     past_key_values + position_ids) — drop
+        # Generalize: remap the known typo, then drop anything else still
+        # not in the live signature. Logs each drop once so we notice if a
+        # future transformers version drops something we actually need.
         if "input_embeds" in kwargs and "inputs_embeds" not in kwargs:
             kwargs["inputs_embeds"] = kwargs.pop("input_embeds")
+        for k in [k for k in list(kwargs) if k not in _accepted]:
+            if k not in _wrapped._logged_drops:
+                print(f"  [create_causal_mask wrapper] dropping unknown kwarg '{k}'")
+                _wrapped._logged_drops.add(k)
+            kwargs.pop(k)
         return _orig(*args, **kwargs)
 
     _wrapped._nemotron_typo_wrapped = True  # type: ignore[attr-defined]
+    _wrapped._logged_drops = set()  # type: ignore[attr-defined]
     _mu.create_causal_mask = _wrapped
-    print("  wrapped transformers.masking_utils.create_causal_mask "
-          "(input_embeds → inputs_embeds remap)")
+    print(f"  wrapped transformers.masking_utils.create_causal_mask "
+          f"(accepted: {sorted(_accepted)})")
 
 
 _patch_nemotron_typo_on_disk()
