@@ -157,6 +157,10 @@ def humaneval_eval(url, n_samples=30, max_workers=4, max_tokens=4096):
                 "content": ("Complete this Python function. Reply with ONLY the full function "
                             "(signature + body) in a single ```python code block.\n\n```python\n"
                             + prompt + "\n```")}],
+                # No-think for code: thinking models otherwise spend the budget on CoT and
+                # truncate before emitting the function (qwen36 80%->13% on chat-HE). Disabling
+                # thinking lets them complete code directly; no-op for non-thinking models.
+                "chat_template_kwargs": {"enable_thinking": False},
                 "max_tokens": min(max_tokens, 4096), "temperature": 0}, timeout=120).json()
             content = _answer_text(r["choices"][0]["message"])
             blocks = re.findall(r"```(?:python)?\s*\n(.*?)```", content, re.DOTALL)
