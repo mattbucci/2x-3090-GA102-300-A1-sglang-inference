@@ -41,6 +41,35 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""  # CPU calibration — keep both 3090s f
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+
+def _patch_nemotron_cache_typo() -> None:
+    """Patch a typo in NVIDIA's published modeling.py: it calls
+    `create_causal_mask(input_embeds=...)` (singular), but the transformers 5
+    signature is `inputs_embeds=` (plural). The kwarg is rejected as unknown
+    and every forward call dies before the GPTQ Hessian phase.
+
+    Must run *before* any AutoModel.from_pretrained(...trust_remote_code=True)
+    so the patch lands on disk before transformers imports the dynamic module.
+    Idempotent — re-runs do nothing once the typo is fixed.
+    """
+    import glob
+    root = os.path.expanduser(
+        "~/.cache/huggingface/modules/transformers_modules"
+    )
+    for path in glob.glob(f"{root}/Nemotron*/*/modeling*.py"):
+        with open(path) as fh:
+            src = fh.read()
+        if "input_embeds=" in src and "inputs_embeds=" not in src.replace(
+            "input_embeds=", ""
+        ):
+            patched = src.replace("input_embeds=", "inputs_embeds=")
+            with open(path, "w") as fh:
+                fh.write(patched)
+            print(f"  patched {os.path.basename(path)} (input_embeds → inputs_embeds)")
+
+
+_patch_nemotron_cache_typo()
+
 from calibration_datasets import (
     build_calibration_dataset,
     rows_to_text,
