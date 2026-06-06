@@ -25,9 +25,16 @@ export SGLANG_DIR="${SGLANG_DIR:-/data/sglang-rebase-v0512}"
 # unbound vars ($PS1 etc.) which, under `set -u`, is a FATAL exit. The wrong python
 # also breaks deps (Pixtral vision processor import -> vision presets crash at boot).
 export PATH="/home/letsrtfm/miniforge3/envs/$ENV_NAME/bin:$PATH"
+# tvm_ffi JIT-compiles some kernels on cold cache and needs CUDA_HOME; the minimal
+# systemd-unit env lacks it (nvcc lives at /opt/cuda) -> server crashes at boot.
+export CUDA_HOME="${CUDA_HOME:-/opt/cuda}"
+export CUDA_PATH="${CUDA_PATH:-/opt/cuda}"
 # common.sh / activate_conda are set-u-safe and set LD_LIBRARY_PATH + PYTHONPATH.
 source "$REPO/scripts/common.sh" 2>/dev/null || true
 activate_conda 2>/dev/null || true
+# Run from the repo root — eval_and_chart.py writes to the RELATIVE path
+# benchmarks/quality; under a systemd unit the CWD is not the repo (-> PermissionError).
+cd "$REPO" || exit 1
 
 # preset | benchmark-slug | think? | model-path (relative to MODELS_DIR, for bench tokenizer)
 FLEET=(
