@@ -1,0 +1,130 @@
+{
+  "tag": "qwen36-ream",
+  "timestamp": "2026-06-06 02:37",
+  "max_context": 262144,
+  "thinking": {
+    "results": [
+      {
+        "name": "simple_mc",
+        "tokens": 188,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "reasoning",
+        "tokens": 963,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "knowledge",
+        "tokens": 225,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "code",
+        "tokens": 168,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "hard_mc",
+        "tokens": 3000,
+        "finish": "length",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": true
+      }
+    ],
+    "think_tags_rate": 0.0,
+    "clean_answer_rate": 1.0,
+    "truncation_rate": 0.2,
+    "avg_tokens": 908.8
+  },
+  "mmlu": {
+    "correct": 27,
+    "total": 30,
+    "accuracy": 0.9
+  },
+  "humaneval": {
+    "passed": 13,
+    "total": 15,
+    "pass_rate": 0.8666666666666667
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 5,
+      "total": 12,
+      "accuracy": 0.4166666666666667
+    },
+    "DbQA": {
+      "correct": 1,
+      "total": 12,
+      "accuracy": 0.08333333333333333
+    },
+    "SuppQA": {
+      "correct": 4,
+      "total": 12,
+      "accuracy": 0.3333333333333333
+    },
+    "TableQA": {
+      "correct": 3,
+      "total": 12,
+      "accuracy": 0.25
+    },
+    "ProtocolQA": {
+      "correct": 5,
+      "total": 12,
+      "accuracy": 0.4166666666666667
+    },
+    "SeqQA": {
+      "correct": 2,
+      "total": 12,
+      "accuracy": 0.16666666666666666
+    },
+    "CloningScenarios": {
+      "correct": 1,
+      "total": 12,
+      "accuracy": 0.08333333333333333
+    },
+    "_overall": {
+      "correct": 21,
+      "total": 84,
+      "accuracy": 0.25
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": true
+      },
+      {
+        "context": 16384,
+        "found": true
+      },
+      {
+        "context": 65536,
+        "found": true
+      },
+      {
+        "context": 131072,
+        "found": true
+      },
+      {
+        "context": 250000,
+        "found": true
+      }
+    ],
+    "score": 1.0
+  }
+}

@@ -56,14 +56,15 @@ Both are prerequisites for the MoE backlog. Detailed plan: [`scripts/quantize/re
 1. **Port Samsung SAIL REAM merge to Gemma 4 arch** — current `run_ream_qwen3moe.sh` + the upstream `merge.py` are Qwen3-family-only (5 hardcoded assumptions identified). Port unblocks the gemma-4-26B REAM build. Est. 40-60 h dev.
 2. **Extend `run_reap.py` to remaining MoE layouts.** `run_reap.py` + the unfuse patches are in-repo (`run_reap.py` ported from R9700; the Coder-30B-A3B-REAP ship used the Qwen3Moe path). Coverage: (a) **`Qwen3_5MoeExperts`** (Qwen3.5/3.6 fused 3-D experts + `Qwen3_5MoeTopKRouter`) — ✅ done: `patches/qwen3_5moe_unfused_experts.py` (load-split + save-fuse hooks) + tuple-router handling in the saliency hook, miniature-validated 7/7 by `test_qwen3_5moe_unfuse.py`; (b) Gemma 4 parallel dense+MoE + different expert keys — ❌ TODO; (c) Nemotron-H Mamba2-hybrid (only the 23 MLP/MoE layers pruneable per `hybrid_override_pattern`) — ❌ TODO. The saliency tracker + `prune_model` are arch-agnostic once `.mlp.gate` + per-expert `.mlp.experts.{i}.down_proj` modules exist — the unfuse patches create them.
 
-### Re-eval the fleet at v0.5.12
+### Re-eval the fleet at v0.5.12 — ✅ DONE (2026-06-06)
 
-After the bake-off + opencode-baseline finish, re-run the static benchmarks on the v0.5.12 ships (current data is v0.5.11-era):
+Ran via `scripts/eval/run_v0512_fleet_eval.sh` (serve@256K → quality → tok/s-to-262K → 256K tool-use probe → stop, per preset). Results folded into [Quality Evals](#quality-evals):
 
-- **Long-context tok/s sweeps** at the new 256K preset defaults — current `benchmarks/{model}/results.json` files top out at 16-32K (throughput-tuned-era data). The chart's unified 256K x-axis (commit `773a01f`) shows empty trailing space until refresh.
-- **Quality table** — 7 currently-shipped models are `TODO v0.5.12` in the [Quality Evals](#quality-evals) section: `qwen36-ream`, `qwen3-ream`, `qwen36`, `qwen36-dense`, `devstral`, `gemma4-31b`, `gemma4`. Use `scripts/eval/eval_quality.py` (MMLU 57 + HumanEval 30 + LAB-Bench full + Needle 1K→250K — reaches our 256K target). Receipts to `benchmarks/quality/*-v0512.json`. Retrieval must be checked at the 256K target (a future refinement: vary needle *depth*, not just the single mid-context placement, to catch lost-in-the-middle at 256K).
+- **Long-context tok/s sweeps** — refreshed to the full 1K→262K range (`benchmarks/{slug}/results.json`, charts regenerated). Single-user decode @256K: qwen3-ream **103**, gemma4-26b **76** (near-flat), gemma4-31b 67, devstral 57, qwen3.6-27b 54, qwen36/qwen36-ream **31** (DeltaNet+MoE, flat from short ctx).
+- **Quality table** — all 7 v0.5.12 rows filled (MMLU 80–97%, needle ✓ through 250K fleet-wide).
+- **256K tool-use probe** — qwen36/qwen36-ream emit correct tool calls retrieving to **253K**.
 
-Both pieces are sequential under Rule 1 (no concurrent serving + eval).
+Open refinements: vary needle *depth* (not just mid-context) to catch lost-in-the-middle; move HumanEval to a chat-formatted prompt (raw `/completions` zeros Gemma); fix the Gemma long-context tool-call format degradation the probe surfaced.
 
 ## Coding-eval bake-off (SWE-bench Lite, v2 Docker harness, 256K, single-user)
 
@@ -299,7 +300,7 @@ Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimod
 
 **Fleet integrity (2026-05-31): all shipped AWQ models are scale-integrity clean** — a fleet-wide `check_awq_scales.py --base` audit found zero real zero-over-live (v2-disaster) defects; every flag resolved to benign MoE dead-channel structural sparsity (the flagship qwen36 passes the full scales+qweight audit, 0/61940). Capability-wise, the v0.5.12 ships are validated and **thinking + image + video are intact** (qwen36 / qwen36-ream / gemma4-31b 5/5, qwen35-moe 4/4, devstral 3/3 image-only, qwen3-ream 1/1 text-only). The remaining gap is the *static* eval suite below. Full per-model verdict + capability receipts: [`benchmarks/quality/fleet-integrity-audit-2026-05-31.json`](benchmarks/quality/fleet-integrity-audit-2026-05-31.json).
 
-Run with `scripts/eval/eval_quality.py` (or `eval_comprehensive.py` for the full sweep): MMLU (1 question per subject × 57 subjects), HumanEval pass@1 (30 problems), [LAB-Bench](https://github.com/Future-House/LAB-Bench) (7 subbenchmarks × full sets, ~1786 questions total), Needle-in-Haystack (**1K → 250K** — the default ladder now reaches our 256K target, not 65K; timeout scales with context). All numbers measured on v0.5.11 ships — re-runs on the current v0.5.12 ships are **queued** (see task #38). The v0.5.12 re-run must verify retrieval at the 256K target (current v0.5.11 Needle data only went to 65K).
+Run with `scripts/eval/eval_quality.py` (or `eval_and_chart.py` / the full-fleet `run_v0512_fleet_eval.sh` orchestrator): MMLU, HumanEval pass@1, [LAB-Bench](https://github.com/Future-House/LAB-Bench) (7 subbenchmarks), Needle-in-Haystack (**1K → 250K** — reaches our 256K target; timeout scales with context). The **bottom 7 rows are the v0.5.12 re-eval (2026-06-06)** at lighter samples than the v0.5.11 rows above (MMLU 30 / HumanEval 15 / LAB-Bench 12-per-subbench), so treat ±a few points as sampling noise. The headline that *isn't* noise: **every v0.5.12 ship retrieves the needle through 250K — the first time we've verified retrieval AT the 256K target** (v0.5.11 Needle topped out at 65K). v0.5.11 rows used larger samples (MMLU 57 / HE 30 / LAB full ~1786). Thinking-model MMLU/LAB read sensibly because the eval reads `reasoning_content` (the reasoning-parser routes answers there) and gives thinking models budget to close `</think>` before answering.
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle | Source |
 |-------|:----:|:---------:|:---------:|:------:|:------:|
@@ -309,16 +310,31 @@ Run with `scripts/eval/eval_quality.py` (or `eval_comprehensive.py` for the full
 | Qwen3-Coder-REAP-25B-A3B AWQ | 77.2% | **96.7%** | 30.5% | 100% | `Coder-REAP-25B-v0511.json` |
 | Qwen3.6-35B-A3B AWQ-CT | 73.7% | 80.0% | — | — | `Qwen3.6-35B-A3B-CT-v0511.json` |
 | Qwen3.5-28B-A3B-REAP AWQ | 69.6% | 80.0% | 15.9% ‡ | 100% | `REAP-28B.json` |
-| Qwen3.6-REAM-A3B AWQ | — | — | — | — | TODO v0.5.12 |
-| Qwen3-30B-Instruct-2507 REAM AWQ | — | — | — | — | TODO v0.5.12 |
-| Qwen3.6-35B-A3B AWQ-Marlin (current bake-off top) | — | — | — | — | TODO v0.5.12 |
-| Qwen3.6-27B Dense AWQ | — | — | — | — | TODO v0.5.12 |
-| Devstral-Small-2-24B AWQ | — | — | — | — | TODO v0.5.12 |
-| Gemma 4 31B Dense AWQ | — | — | — | — | TODO v0.5.12 |
-| Gemma 4 26B MoE AWQ | — | — | — | — | TODO v0.5.12 |
+| Qwen3.6-REAM-A3B AWQ | 90.0% | 86.7% | 25.0% | **✓ 250K** | `qwen36-ream.json` |
+| Qwen3-30B-Instruct-2507 REAM AWQ | 93.3% | 46.7% | 33.3% | **✓ 250K** | `qwen3-ream.json` |
+| Qwen3.6-35B-A3B AWQ-Marlin (current bake-off top) | 90.0% | 80.0% | 23.8% | **✓ 250K** | `qwen36.json` |
+| Qwen3.6-27B Dense AWQ | 93.3% | **100.0%** | 25.0% | **✓ 250K** | `qwen36-dense.json` |
+| Devstral-Small-2-24B AWQ | 83.3% | 73.3% | 36.9% | **✓ 250K** | `devstral.json` |
+| Gemma 4 31B Dense AWQ | **96.7%** | 0.0% § | 39.3% | **✓ 250K** | `gemma4-31b.json` |
+| Gemma 4 26B MoE AWQ | 80.0% | 0.0% § | 38.1% | **✓ 250K** | `gemma4.json` |
 
 † **Gemma 4 21B REAP HumanEval 0%** is a known calibration artifact — the v3b ship serves cleanly per the audit but the REAP prune lost coding capability. Use `gemma4-31b` (the in-house dense AWQ rebuild) for code workloads.
-‡ **Qwen3.5-28B-A3B-REAP LAB-Bench 15.9%** is on a partial 333-question subset (the eval timed out on the full 1786). Other rows are the full LAB-Bench (1786 questions).
+‡ **Qwen3.5-28B-A3B-REAP LAB-Bench 15.9%** is on a partial 333-question subset (the eval timed out on the full 1786). Most rows are the full LAB-Bench (1786); the v0.5.12 rows use 12-per-subbench (84).
+§ **Gemma 4 HumanEval 0%** is an eval-harness artifact, NOT a capability loss: HumanEval drives the raw `/completions` endpoint, and Gemma's chat-template wrapping breaks raw completion (Qwen/Devstral complete fine — qwen36-dense 100%). Gemma codegen works via chat; fix = move HumanEval to a chat-formatted prompt (tracked).
+
+**256K tool-use probe (new, 2026-06-06)** — `scripts/eval/probe_256k_tooluse.py`. Passive needle retrieval is necessary but not sufficient for *agentic* 256K; this probe plants a needle deep in filler and measures whether the model emits a **valid, correctly-argumented tool call** with the planted value, bucketed by TRUE `prompt_tokens`. It's the agentic 256K signal SWE-bench Lite (tops ~128K) never reaches:
+
+| Preset | valid tool call | correct args | max ctx still correct |
+|---|:---:|:---:|:---:|
+| `qwen36` (MoE-thinking) | **1.0** | **1.0** | **253K** |
+| `qwen36-ream` (MoE-thinking) | **1.0** | **1.0** | **253K** |
+| `qwen36-dense` (dense-thinking) | 0.8 | 0.8 | 227K |
+| `devstral` (dense, tool) | 0.6 | 0.6 | 151K |
+| `gemma4` (MoE) | 0.4 | 0.4 | 76K |
+| `gemma4-31b` (dense) | 0.2 | 0.2 | 19K |
+| `qwen3-ream` (text generalist) | 0.0 | 0.0 | — (non-tool-trained, expected) |
+
+**`qwen36` / `qwen36-ream` emit the right tool call retrieving from ~253K tokens** — direct, measured evidence the flagship MoE-thinking ships do real agentic work at the 256K target. Gemma's long-context tool-call format degrades early (a real gap to chase). Receipts: `benchmarks/quality/tooluse256k-*-v0512.json`.
 
 **SWE-bench Lite** scores live in the [bake-off table at top](#coding-eval-bake-off-swe-bench-lite-v2-docker-harness-256k-single-user) — that's the end-to-end agentic eval (opencode/claw-code/little-coder scaffolds × v2 Docker harness), not part of this static-eval table.
 

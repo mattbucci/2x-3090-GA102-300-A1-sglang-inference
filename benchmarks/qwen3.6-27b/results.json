@@ -1,0 +1,80 @@
+{
+  "model": "qwen36-dense",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-06-06 04:34:28",
+  "output_tokens": 100,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "throughput": 4.81,
+      "ttft_ms": 66.79,
+      "tpot_ms": 14.66,
+      "tok_per_sec": 68.2
+    },
+    {
+      "context": 2048,
+      "throughput": 4.81,
+      "ttft_ms": 516.0,
+      "tpot_ms": 15.02,
+      "tok_per_sec": 66.6
+    },
+    {
+      "context": 4096,
+      "throughput": 4.81,
+      "ttft_ms": 514.19,
+      "tpot_ms": 15.0,
+      "tok_per_sec": 66.7
+    },
+    {
+      "context": 8192,
+      "throughput": 4.81,
+      "ttft_ms": 2139.26,
+      "tpot_ms": 15.08,
+      "tok_per_sec": 66.3
+    },
+    {
+      "context": 16384,
+      "throughput": 2.77,
+      "ttft_ms": 4506.09,
+      "tpot_ms": 15.53,
+      "tok_per_sec": 64.4
+    },
+    {
+      "context": 32768,
+      "throughput": 2.42,
+      "ttft_ms": 5185.51,
+      "tpot_ms": 15.89,
+      "tok_per_sec": 62.9
+    },
+    {
+      "context": 65536,
+      "throughput": 1.93,
+      "ttft_ms": 6521.98,
+      "tpot_ms": 16.76,
+      "tok_per_sec": 59.7
+    },
+    {
+      "context": 131072,
+      "throughput": 1.37,
+      "ttft_ms": 9240.98,
+      "tpot_ms": 18.49,
+      "tok_per_sec": 54.1
+    },
+    {
+      "context": 196608,
+      "throughput": 1.38,
+      "ttft_ms": 9217.33,
+      "tpot_ms": 18.47,
+      "tok_per_sec": 54.1
+    },
+    {
+      "context": 262144,
+      "throughput": 1.38,
+      "ttft_ms": 9189.26,
+      "tpot_ms": 18.43,
+      "tok_per_sec": 54.3
+    }
+  ]
+}
