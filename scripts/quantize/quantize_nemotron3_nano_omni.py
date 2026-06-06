@@ -75,17 +75,44 @@ def _patch_nemotron_typo_on_disk() -> None:
             for fn in files:
                 if fn.startswith("modeling") and fn.endswith(".py"):
                     candidates.append(os.path.join(dirpath, fn))
+    # Substitutions to apply:
+    #   1. input_embeds=  →  inputs_embeds=  (NVIDIA typo, see docstring)
+    #   2. `if use_cache and past_key_values is None:` →
+    #      `if past_key_values is None:`
+    #      Rationale: llmcompressor's autowrap traces NemotronHModel.forward.
+    #      During the trace, past_key_values is a torch.fx proxy wrapping
+    #      None. The downstream `_preprocess_mask_arguments` has the right
+    #      None-guard (`if past_key_values is not None:`), but the proxy
+    #      itself is not literally None — the guard passes, then
+    #      `past_key_values.get_seq_length()` triggers __getattr__ on a
+    #      proxy with `_metadata=None`, which fails with
+    #      `AttributeError: 'NoneType' object has no attribute
+    #      'get_seq_length'`. Forcing a real NemotronHHybridDynamicCache to
+    #      always be constructed when None means the proxy wraps a real
+    #      Cache object — metadata exists, get_seq_length resolves, mask
+    #      computed normally. use_cache=False at runtime still applies
+    #      (the cache is dropped at the return, line 1229).
+    subs = [
+        ("input_embeds=", "inputs_embeds="),
+        (
+            "if use_cache and past_key_values is None:",
+            "if past_key_values is None:  # patched: always create cache for autowrap trace",
+        ),
+    ]
     for path in candidates:
         try:
             with open(path) as fh:
                 src = fh.read()
         except OSError:
             continue
-        if "input_embeds=" in src:
-            patched = src.replace("input_embeds=", "inputs_embeds=")
+        new = src
+        for old, repl in subs:
+            new = new.replace(old, repl)
+        if new != src:
             with open(path, "w") as fh:
-                fh.write(patched)
-            print(f"  patched {path} (input_embeds → inputs_embeds)")
+                fh.write(new)
+            applied = [old for old, repl in subs if old in src]
+            print(f"  patched {path} ({', '.join(applied)})")
 
 
 def _patch_create_causal_mask() -> None:
