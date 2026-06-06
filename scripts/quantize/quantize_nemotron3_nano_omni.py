@@ -173,8 +173,70 @@ def _patch_create_causal_mask() -> None:
           f"(accepted: {sorted(_accepted)})")
 
 
+def _patch_accumulate_hessian() -> None:
+    """llmcompressor 0.11.0's accumulate_hessian only handles 2D/3D Linear
+    inputs (line 16: `if len(inp.shape) == 3: inp = inp.reshape(...)`). The
+    NemotronH MoE block's shared_experts.up_proj sees a 4D input during the
+    sequential pipeline trace — likely because autowrap inflates batched
+    inputs across the routing dimension. `.t()` on 4D raises
+    `t() expects a tensor with <= 2 dimensions`.
+
+    Semantically the right thing is to flatten any N-dim Linear input to
+    `[prod(leading_dims), in_features]` before the transpose — the GPTQ
+    Hessian is `inp @ inp.t()` and is invariant to the leading dim shape.
+    Patch the `== 3` check to `> 2`.
+
+    Idempotent: re-runs are no-ops because the wrapper replaces the function
+    object once and the marker attribute is checked.
+    """
+    try:
+        import llmcompressor.modifiers.gptq.gptq_quantize as _gq
+        import transformers as _tx
+    except Exception as e:  # noqa: BLE001
+        print(f"  WARN: could not import llmcompressor.modifiers.gptq.gptq_quantize: {e}")
+        return
+    if getattr(_gq.accumulate_hessian, "_nemotron_ndim_patched", False):
+        return
+    import math
+    import torch
+    _orig = _gq.accumulate_hessian
+    _GPTQ_PRECISION = _gq.GPTQ_PRECISION
+
+    def _wrapped(inp, module, H, num_samples):
+        inp = inp.to(device=H.device)
+        if len(inp.shape) == 2:
+            inp = inp.unsqueeze(0)
+        num_added = inp.shape[0]
+        if isinstance(module, (torch.nn.Linear, _tx.Conv1D)):
+            # FIX: original was `if len(inp.shape) == 3:` — broken for 4D MoE inputs
+            if len(inp.shape) > 2:
+                inp = inp.reshape((-1, inp.shape[-1]))
+            inp = inp.t()
+        elif isinstance(module, torch.nn.Conv2d):
+            unfold = torch.nn.Unfold(
+                module.kernel_size,
+                dilation=module.dilation,
+                padding=module.padding,
+                stride=module.stride,
+            )
+            inp = unfold(inp)
+            inp = inp.permute([1, 0, 2])
+            inp = inp.flatten(1)
+        num_samples += num_added
+        inp = inp.to(dtype=_GPTQ_PRECISION)
+        inp = math.sqrt(2) * inp
+        H += inp.matmul(inp.t())
+        return H, num_samples
+
+    _wrapped._nemotron_ndim_patched = True  # type: ignore[attr-defined]
+    _gq.accumulate_hessian = _wrapped
+    print("  patched llmcompressor.modifiers.gptq.gptq_quantize.accumulate_hessian "
+          "(handle any N-dim Linear input, not just 2D/3D)")
+
+
 _patch_nemotron_typo_on_disk()
 _patch_create_causal_mask()
+_patch_accumulate_hessian()
 
 from calibration_datasets import (
     build_calibration_dataset,
