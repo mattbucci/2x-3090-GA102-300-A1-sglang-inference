@@ -53,13 +53,14 @@ TASK = ("\n\nNow use the lookup_record tool to fetch the record. Use exactly the
         "specified in the CRITICAL INSTRUCTION above. Call the tool — do not answer in prose.")
 
 
-def build_prompt(approx_tokens: int) -> str:
-    """~approx_tokens of filler with the needle planted at the midpoint."""
+def build_prompt(approx_tokens: int, depth: float = 0.5) -> str:
+    """~approx_tokens of filler with the needle instruction planted at `depth` (0..1
+    through the filler) — vary depth to probe lost-in-the-middle tool-calling."""
     target_chars = int(approx_tokens * 3.8)  # rough chars/token for this filler
-    half = target_chars // 2
-    n = (half // len(FILLER_UNIT)) + 1
-    block = (FILLER_UNIT * n)[:half]
-    return block + NEEDLE + block + TASK
+    n = (target_chars // len(FILLER_UNIT)) + 1
+    body = (FILLER_UNIT * n)[:target_chars]
+    pos = int(len(body) * depth)
+    return body[:pos] + NEEDLE + body[pos:] + TASK
 
 
 def extract_toolcall(msg: dict):
@@ -78,8 +79,8 @@ def extract_toolcall(msg: dict):
     return True, args
 
 
-def probe_one(url, approx_tokens, max_tokens=2048, timeout=900):
-    prompt = build_prompt(approx_tokens)
+def probe_one(url, approx_tokens, max_tokens=2048, timeout=900, depth=0.5):
+    prompt = build_prompt(approx_tokens, depth)
     t0 = time.time()
     try:
         r = requests.post(url, json={
@@ -116,6 +117,8 @@ def main():
     ap.add_argument("--lengths", default="16384,65536,131072,196608,256000",
                     help="comma-separated approx token context lengths")
     ap.add_argument("--max-tokens", type=int, default=2048)
+    ap.add_argument("--depth", type=float, default=0.5,
+                    help="needle depth 0..1 through the filler (sweep externally for lost-in-the-middle)")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -125,7 +128,7 @@ def main():
     print(f"{'approx':>8} {'actual':>8} {'finish':>12} {'valid':>6} {'correct':>8} {'id':>10} {'s':>5}")
     results = []
     for L in lengths:
-        res = probe_one(url, L, max_tokens=args.max_tokens)
+        res = probe_one(url, L, max_tokens=args.max_tokens, depth=args.depth)
         results.append(res)
         if "error" in res:
             print(f"{L:>8} {'—':>8} {'ERROR':>12} {res['error']}")

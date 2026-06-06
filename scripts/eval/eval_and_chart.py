@@ -138,21 +138,33 @@ def mmlu_eval(url, n_samples=200, max_workers=8, max_tokens=4096):
 
 
 def humaneval_eval(url, n_samples=30, max_workers=4, max_tokens=4096):
-    """HumanEval code generation pass@1."""
+    """HumanEval pass@1 via the CHAT endpoint.
+
+    The raw /completions endpoint zeros chat/instruct models whose chat template
+    wraps the prompt (Gemma read 0% — an artifact, not a capability loss). Ask via
+    chat for the full function in a code block; extraction is robust to thinking and
+    to the model returning either the whole function (redefines entry_point -> use
+    whole) or just a body (-> prepend the prompt). Takes the LAST code block so a
+    thinking model's scratch code blocks don't shadow the final answer.
+    """
     ds = list(load_dataset("openai/openai_humaneval", split="test"))[:n_samples]
     passed = total = 0
 
     def eval_one(item):
+        prompt, test, entry = item["prompt"], item["test"], item["entry_point"]
         try:
-            r = requests.post(url.replace("/chat/completions", "/completions"), json={
-                "prompt": item["prompt"], "max_tokens": min(max_tokens, 4096), "temperature": 0,
-                "stop": ["\ndef ", "\nclass ", "\n#", "\nif __name__"],
-            }, timeout=60).json()
-            comp = re.sub(r"<think>.*?</think>", "", r["choices"][0]["text"], flags=re.DOTALL)
-            comp = re.sub(r"<think>.*", "", comp, flags=re.DOTALL)
+            r = requests.post(url, json={"model": "default", "messages": [{"role": "user",
+                "content": ("Complete this Python function. Reply with ONLY the full function "
+                            "(signature + body) in a single ```python code block.\n\n```python\n"
+                            + prompt + "\n```")}],
+                "max_tokens": min(max_tokens, 4096), "temperature": 0}, timeout=120).json()
+            content = _answer_text(r["choices"][0]["message"])
+            blocks = re.findall(r"```(?:python)?\s*\n(.*?)```", content, re.DOTALL)
+            code = blocks[-1] if blocks else content
+            full = code if re.search(rf"def\s+{re.escape(entry)}\b", code) else prompt + code
             g = {}
-            exec(item["prompt"] + comp + "\n" + item["test"], g)
-            g["check"](g[item["entry_point"]])
+            exec(full + "\n" + test, g)
+            g["check"](g[entry])
             return True
         except Exception:
             return False
@@ -227,27 +239,34 @@ def labbench_suite(url, n_samples=50, max_workers=1, max_tokens=4096):
     return results
 
 
-def needle_eval(url, lengths=[1024, 4096, 16384, 65536], max_tokens=4096):
-    """Needle-in-a-haystack at various context lengths."""
+def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9), max_tokens=4096):
+    """Needle-in-a-haystack at various context lengths AND depths.
+
+    Varying the needle DEPTH (fraction through the filler) catches lost-in-the-
+    middle — a model can ace start/end placement yet miss the middle at long
+    context, which a single mid-placement test hides. score = found-rate across
+    all (ctx, depth) cells. Set depths=(0.5,) for the cheaper single-placement test.
+    """
     filler = "The quick brown fox jumps over the lazy dog. " * 100
     needle = "The secret password is: BANANA42."
     # Needle answers are short — cap at 512 regardless of model context
     needle_budget = min(max_tokens, 512)
     results = []
     for ctx in lengths:
-        mid = ctx * 2
-        haystack = filler[:mid] + "\n" + needle + "\n" + filler[:mid]
-        prompt = haystack[:ctx * 4] + "\n\nWhat is the secret password? Answer with just the password."
-        try:
-            r = requests.post(url, json={"model": "default", "messages": [
-                {"role": "user", "content": prompt}
-            ], "max_tokens": needle_budget, "temperature": 0}, timeout=600).json()
-            content = _answer_text(r["choices"][0]["message"])
-            found = "BANANA42" in content
-        except Exception:
-            found = False
-        results.append({"context": ctx, "found": found})
-    return {"results": results, "score": sum(r["found"] for r in results) / len(results)}
+        body = (filler * (ctx * 4 // len(filler) + 1))[:ctx * 4]  # ~ctx tokens of filler
+        for depth in depths:
+            pos = int(len(body) * depth)
+            prompt = (body[:pos] + "\n" + needle + "\n" + body[pos:]
+                      + "\n\nWhat is the secret password? Answer with just the password.")
+            try:
+                r = requests.post(url, json={"model": "default", "messages": [
+                    {"role": "user", "content": prompt}
+                ], "max_tokens": needle_budget, "temperature": 0}, timeout=max(600, ctx // 150)).json()
+                found = "BANANA42" in (_answer_text(r["choices"][0]["message"]) or "")
+            except Exception:
+                found = False
+            results.append({"context": ctx, "depth": depth, "found": found})
+    return {"results": results, "score": sum(r["found"] for r in results) / len(results) if results else 0}
 
 
 def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50, needle_lengths=[1024, 4096, 16384, 65536], workers=1, mc_budget_arg=0):
@@ -327,7 +346,8 @@ def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50, needle_lengths=[1024
         print(f"\nNeedle ({needle_lengths})...")
         results["needle"] = needle_eval(url, needle_lengths, max_tokens=mc_budget)
         for r in results["needle"]["results"]:
-            print(f"  {r['context']:>6d}: {'✓' if r['found'] else '✗'}")
+            print(f"  {r['context']:>7d} @{r.get('depth', 0.5):.0%}: {'✓' if r['found'] else '✗'}")
+        print(f"  needle score: {results['needle']['score']:.1%}")
         save()
     else:
         print(f"\nNeedle: {results['needle']['score']:.1%} (cached)")
@@ -347,13 +367,20 @@ def generate_charts():
         print("pip install matplotlib for charts")
         return
 
-    # Load all results
+    # Load only real quality receipts. benchmarks/quality/ also holds bakeoff-*.json
+    # (key "preset"), tooluse256k-*.json (has "tag" but no quality metric), audit +
+    # context-reliability jsons — a bare r["tag"] over all of them crashed this chart.
     results = []
     for f in sorted(RESULTS_DIR.glob("*.json")):
-        results.append(json.load(open(f)))
+        try:
+            d = json.load(open(f))
+        except Exception:
+            continue
+        if "tag" in d and any(k in d for k in ("mmlu", "humaneval", "labbench", "needle")):
+            results.append(d)
 
     if not results:
-        print("No results found. Run evals first.")
+        print("No quality results found. Run evals first.")
         return
 
     tags = [r["tag"] for r in results]
@@ -391,7 +418,8 @@ def generate_charts():
         axes = [axes]
     fig.suptitle("Quality Comparison (INT4 AWQ, 2x RTX 3090)", fontsize=14, fontweight="bold")
 
-    colors = ["#2196F3", "#4CAF50", "#FF9800", "#9C27B0", "#F44336"][:len(tags)]
+    _palette = ["#2196F3", "#4CAF50", "#FF9800", "#9C27B0", "#F44336", "#00BCD4", "#8BC34A", "#FFC107", "#E91E63", "#3F51B5"]
+    colors = [_palette[i % len(_palette)] for i in range(len(tags))]
 
     for ax, (title, data) in zip(axes, benchmarks):
         vals = [v * 100 if v is not None else 0 for v in data]
