@@ -406,6 +406,64 @@ model = AutoModelForCausalLM.from_pretrained(
 print(f"Model loaded in {time.time() - t0:.0f}s ({type(model).__name__})")
 print(f"  Parameter count: {sum(p.numel() for p in model.parameters()) / 1e9:.2f}B")
 
+
+def _patch_nemotronh_block_forward() -> None:
+    """Wrap NemotronHBlock.forward to handle 4D hidden_states.
+
+    v18 cleared every Hessian-collection wall, then died at the boundary
+    between subgraph 3 (layer 1 MoE — completed cleanly, all 128 experts
+    quantized) and subgraph 4 (layer 2 Mamba). The Mamba mixer's first
+    line in `torch_forward` does
+
+        batch_size, seq_len, _ = input_states.shape
+
+    which raises `ValueError: too many values to unpack (expected 3)` on
+    a 4D input. The 4D arrives from llmcompressor's sequential pipeline:
+    the IntermediatesCache between subgraphs apparently stores activations
+    with an extra leading dim and emits them stacked on the next subgraph's
+    first batch. (Subgraph 3's MoE block ran 1024 forward calls without
+    seeing 4D — only the first call into subgraph 4 hits it.)
+
+    Patch at the NemotronHBlock level so the fix applies once for all
+    three mixer types (Mamba, Attention, MoE). Flatten 4D→3D on entry,
+    unflatten on exit so downstream blocks see consistent 3D again. If
+    input is already 3D the wrapper is a no-op.
+
+    Must run AFTER from_pretrained — the dynamic module is only loaded
+    into sys.modules then.
+    """
+    import sys
+    patched = 0
+    for mod_name, mod in list(sys.modules.items()):
+        if "modeling_nemotron_h" not in mod_name:
+            continue
+        cls = getattr(mod, "NemotronHBlock", None)
+        if cls is None:
+            continue
+        if getattr(cls.forward, "_nemotron_ndim_patched", False):
+            continue
+        _orig = cls.forward
+
+        def _wrapped(self, hidden_states, *args, **kwargs):
+            orig_ndim = hidden_states.ndim
+            orig_lead = hidden_states.shape[:-2] if orig_ndim > 3 else None
+            if orig_ndim > 3:
+                hidden_states = hidden_states.reshape(-1, *hidden_states.shape[-2:])
+            out = _orig(self, hidden_states, *args, **kwargs)
+            if orig_lead is not None:
+                out = out.reshape(*orig_lead, *out.shape[-2:])
+            return out
+
+        _wrapped._nemotron_ndim_patched = True  # type: ignore[attr-defined]
+        cls.forward = _wrapped
+        patched += 1
+        print(f"  patched {cls.__module__}.NemotronHBlock.forward (flatten >3D → 3D)")
+    if patched == 0:
+        print("  WARN: NemotronHBlock not found in sys.modules — block forward NOT patched")
+
+
+_patch_nemotronh_block_forward()
+
 # --- 4. GPTQ W4A16 calibration ---
 print("\n[4/5] Running GPTQ calibration...")
 print(f"  Ignore patterns ({len(IGNORE_PATTERNS)}):")
