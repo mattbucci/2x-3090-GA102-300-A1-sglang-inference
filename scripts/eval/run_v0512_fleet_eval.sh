@@ -12,6 +12,9 @@
 #
 # Env overrides: PRESETS, MMLU_N, HE_N, LAB_N, NEEDLE_LENGTHS, TOOLUSE_LENGTHS,
 #   MC_BUDGET_THINK, WORKERS, SERVER_TIMEOUT.
+#   SWEEP_ONLY=1  -> skip quality eval, run decode tok/s sweep + 256K tool-use
+#                   probe only (regenerates clean benchmarks/<slug>/results.json).
+#   QUALITY_ONLY=1 -> the inverse: quality eval only, skip sweep + probe.
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -108,12 +111,16 @@ for ENTRY in "${FLEET[@]}"; do
   launch_server "$PRESET" "$LOG"
   wait_ready "$LOG" || { stop_server; log "  SKIP $PRESET (boot failed)"; continue; }
 
-  log "  quality eval (mmlu=$MMLU_N he=$HE_N lab=$LAB_N needle=$NEEDLE_LENGTHS)"
-  python "$REPO/scripts/eval/eval_and_chart.py" --run --port $PORT --tag "$PRESET" \
-    --mmlu-samples "$MMLU_N" --humaneval-samples "$HE_N" --labbench-samples "$LAB_N" \
-    --needle-lengths "$NEEDLE_LENGTHS" --mc-budget "$MCB" --workers "$WORKERS" \
-    > "$LOG/quality.log" 2>&1
-  log "    quality rc=$? -> benchmarks/quality/$PRESET.json"
+  if [ "${SWEEP_ONLY:-0}" = "1" ]; then
+    log "  SWEEP_ONLY=1: skip quality eval (decode tok/s sweep + 256K probe only)"
+  else
+    log "  quality eval (mmlu=$MMLU_N he=$HE_N lab=$LAB_N needle=$NEEDLE_LENGTHS)"
+    python "$REPO/scripts/eval/eval_and_chart.py" --run --port $PORT --tag "$PRESET" \
+      --mmlu-samples "$MMLU_N" --humaneval-samples "$HE_N" --labbench-samples "$LAB_N" \
+      --needle-lengths "$NEEDLE_LENGTHS" --mc-budget "$MCB" --workers "$WORKERS" \
+      > "$LOG/quality.log" 2>&1
+    log "    quality rc=$? -> benchmarks/quality/$PRESET.json"
+  fi
 
   if [ "${QUALITY_ONLY:-0}" = "1" ]; then log "  QUALITY_ONLY=1: skip tok/s + probe"; stop_server; log "=== $PRESET done ==="; continue; fi
 
