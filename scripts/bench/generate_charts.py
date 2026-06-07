@@ -54,6 +54,37 @@ UNIFIED_XTICKS = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 13
 # Standard concurrency levels for bar charts
 STD_CONC = [1, 2, 4, 8, 16, 32]
 
+# Real KV-pool caps — max_total_num_tokens from the serve logs (2026-06). The
+# long-context bench declared contexts up to 262144 for EVERY model regardless
+# of its KV pool, so any sweep point beyond the pool is an artifact: the prompt
+# can't fit, never decodes at that length, and the recorded tok/s is garbage
+# (gemma4-26b "read" 75.5 tok/s @262144 vs 34.5 @1K — faster at 256K than at 1K
+# is physically impossible; gemma4-31b "156.7 @32768"). Truncate every sweep at
+# its real pool so the charts show honest long-context decode, not the cap
+# overflow. Models absent here are uncapped (A3B-MoE pools are 0.6–2.4M tokens).
+KV_CAP = {
+    "qwen3.6-35b-a3b":   996_000,    # A3B MoE — true 256K (flat decode)
+    "qwen3.6-ream":    2_400_000,    # A3B MoE — true 256K
+    "qwen3.6-27b":       657_000,    # DeltaNet-hybrid dense — true 256K
+    "qwen3-30b-ream":    578_000,    # MoE — true 256K
+    "devstral-24b-awq":  172_000,    # dense + FP16 Pixtral tower caps it
+    "gemma4-26b-awq":    118_000,    # FP16 default (fp8_e5m2 reaches 262K, retrieval)
+    "gemma4-31b":         24_000,    # dense full-attn KV ~344 KB/tok — hard wall
+}
+
+
+def reaches_256k(model_key):
+    return KV_CAP.get(model_key, 10 ** 12) >= 262_144
+
+
+def honest_sweep(model_key, results):
+    """context_sweep filtered to points the model's real KV pool can actually
+    hold, with a valid tok/s — drops the over-cap bench artifacts (see KV_CAP)."""
+    cap = KV_CAP.get(model_key, 10 ** 12)
+    return [p for p in (results.get("context_sweep") or [])
+            if "error" not in p and (p.get("tok_per_sec") or 0) > 0
+            and p.get("context", 0) <= cap]
+
 
 def fmt_ctx(x, _):
     if x >= 1024:
@@ -69,7 +100,7 @@ def load_results(model_key):
 
 def make_context_chart(model_key, meta, results, out_dir):
     """Single-user tok/s vs context length."""
-    sweep = [p for p in results["context_sweep"] if "error" not in p and p.get("tok_per_sec", 0) > 0]
+    sweep = honest_sweep(model_key, results)
     if not sweep:
         print(f"  SKIP context chart (no valid data)")
         return
@@ -149,7 +180,9 @@ def make_combined_context_chart(all_data):
     fig, ax = plt.subplots(figsize=(8, 4.5))
 
     for key, (meta, results) in all_data.items():
-        sweep = results["context_sweep"]
+        sweep = honest_sweep(key, results)
+        if not sweep:
+            continue
         ctx = [p["context"] for p in sweep]
         toks = [p["tok_per_sec"] for p in sweep]
         ax.plot(ctx, toks, "o-", color=meta["color"], linewidth=2, markersize=5,
@@ -273,6 +306,64 @@ def make_specdec_comparison_chart():
     print(f"  {out}")
 
 
+def make_decode_bar_chart(all_data):
+    """Per-model single-user decode tok/s — peak (short ctx) vs deep (256K where
+    the KV pool reaches it, else the model's real max ctx). The deep bar is
+    hatched for models whose KV pool caps below 256K, so gemma/devstral show
+    their honest sub-256K limit instead of the over-cap bench artifacts. Fleet
+    counterpart to R9700's per-model decode bar chart."""
+    from matplotlib.patches import Patch
+    rows = []
+    for key, (meta, results) in all_data.items():
+        # fresh v0512 fleet only — stale April sweeps stop at 16K (an old short
+        # sweep, not a KV limit), which would read as a fake cap.
+        if not str(results.get("timestamp", "")).startswith(("2026-05", "2026-06")):
+            continue
+        sweep = honest_sweep(key, results)
+        if len(sweep) < 2:
+            continue
+        peak = max(sweep, key=lambda p: p["tok_per_sec"])
+        deep = sweep[-1]
+        rows.append({"meta": meta, "peak": peak["tok_per_sec"], "deep": deep["tok_per_sec"],
+                     "deep_ctx": deep["context"], "reaches": reaches_256k(key)})
+    if not rows:
+        print("  SKIP decode bar chart (no fresh fleet data)")
+        return
+    rows.sort(key=lambda r: r["peak"], reverse=True)
+
+    x = np.arange(len(rows)); w = 0.38
+    fig, ax = plt.subplots(figsize=(11, 5.5))
+    for i, r in enumerate(rows):
+        c = r["meta"]["color"]
+        ax.bar(x[i] - w / 2, r["peak"], w, color=c, alpha=0.42, zorder=5)
+        ax.text(x[i] - w / 2, r["peak"] + 1.5, f'{r["peak"]:.0f}', ha="center",
+                fontsize=9, color=c, fontweight="bold")
+        hatch = None if r["reaches"] else "////"
+        ax.bar(x[i] + w / 2, r["deep"], w, color=c, alpha=0.95, zorder=5,
+               hatch=hatch, edgecolor="#0d1117", linewidth=0.6)
+        ctx_lbl = "256K" if r["reaches"] else f'{r["deep_ctx"] // 1024}K'
+        ax.text(x[i] + w / 2, r["deep"] + 1.5, f'{r["deep"]:.0f}\n@{ctx_lbl}',
+                ha="center", fontsize=8, color=c, fontweight="bold")
+    labels = [r["meta"]["label"].replace(" AWQ ", "\n").replace(" AWQ", "") for r in rows]
+    ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=8)
+    ax.set_ylabel("tok/s (single user, M=1)")
+    ax.set_title("Single-user decode — peak vs 256K (or real KV cap)",
+                 fontsize=13, fontweight="bold", pad=10)
+    ax.legend(handles=[
+        Patch(facecolor="#8b949e", alpha=0.42, label="peak (short ctx)"),
+        Patch(facecolor="#8b949e", alpha=0.95, label="at true 256K KV pool"),
+        Patch(facecolor="#8b949e", alpha=0.95, hatch="////", edgecolor="#0d1117",
+              label="at KV cap (< 256K)"),
+    ], loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22", fontsize=9)
+    ax.grid(True, axis="y", linestyle="--")
+    ax.set_ylim(bottom=0, top=max(r["peak"] for r in rows) * 1.18)
+    fig.tight_layout()
+    out = os.path.join(BENCH_DIR, "all_models_decode.png")
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  {out}")
+
+
 if __name__ == "__main__":
     print("Generating benchmark charts...\n")
 
@@ -294,6 +385,7 @@ if __name__ == "__main__":
         print("Combined:")
         make_combined_context_chart(all_data)
         make_combined_concurrency_chart(all_data)
+        make_decode_bar_chart(all_data)
 
     print("Spec-decode:")
     make_specdec_comparison_chart()

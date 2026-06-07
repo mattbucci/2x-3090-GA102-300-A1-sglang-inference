@@ -60,7 +60,7 @@ Both are prerequisites for the MoE backlog. Detailed plan: [`scripts/quantize/re
 
 Ran via `scripts/eval/run_v0512_fleet_eval.sh` (serve@256K → quality → tok/s-to-262K → 256K tool-use probe → stop, per preset). Results folded into [Quality Evals](#quality-evals):
 
-- **Long-context tok/s sweeps** — refreshed to the full 1K→262K range (`benchmarks/{slug}/results.json`, charts regenerated). Single-user decode @256K: qwen3-ream **103**, gemma4-26b **76** (near-flat), gemma4-31b 67, devstral 57, qwen3.6-27b 54, qwen36/qwen36-ream **31** (DeltaNet+MoE, flat from short ctx).
+- **Long-context tok/s sweeps** — refreshed to the full 1K→262K range (`benchmarks/{slug}/results.json`, charts regenerated), now **capped at each model's real KV pool** — the bench had logged over-cap artifacts (gemma4-26b "75 tok/s @262K" vs 34 @1K is impossible: the prompt never fit). Honest single-user decode — **at true 256K:** qwen3-30b-ream **103**, qwen3.6-27b **54**, qwen36/qwen36-ream **31** (DeltaNet+MoE, flat from short ctx); **at their sub-256K KV cap:** devstral **56 @128K**, gemma4-31b **34 @16K**, gemma4-26b **33 @64K** (FP16 default). See the per-model decode bar chart in [Model Support](#vram-context-limits-kv-dtype-varies-tp2-48-gb-total).
 - **Quality table** — all 7 v0.5.12 rows filled (MMLU 80–97%, needle ✓ through 250K fleet-wide).
 - **256K tool-use probe** — qwen36/qwen36-ream emit correct tool calls retrieving to **253K**.
 
@@ -299,6 +299,10 @@ Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimod
 ‡‡ **"Max context" is the REAL KV-pool capacity** (`max_total_num_tokens` from the serve log), not the declared `--context-length`. Corrected 2026-06-06 — the heavy-**VL** models are KV-bound: dense/large weights + the **FP16 vision tower** eat the budget, leaving far less than 262K (gemma4-31b ~24K, gemma4-26b ~118K, devstral ~172K in shipped multimodal config). Measured by the fixed needle + 256K tool-use probe (#16/#17). The A3B-MoE models are genuinely 256K+: qwen36 996K / qwen36-ream 2.4M / qwen36-dense 657K / qwen3-ream 578K KV (fleet serve logs); the Coder-A3B-MoE presets clear 256K by the same light-KV arch (~900K). A non-multimodal or higher-mem-fraction Gemma/Devstral variant would reach further, but the shipped VL preset is what these rows describe.
 
 ![Single-user decode tok/s vs context length — all AWQ presets, unified 256K x-axis (2026-06-06 v0.5.12 sweep)](benchmarks/all_models_context.png)
+
+![Per-model single-user decode tok/s — peak (short ctx) vs 256K, or the model's real KV cap where it doesn't reach 256K](benchmarks/all_models_decode.png)
+
+Per-model single-user decode (M=1), **honestly capped at each model's real KV pool**. Solid right-hand bars are decode at *true* 256K (qwen3-30b-ream **103**, qwen3.6-27b **54**, qwen36 / qwen36-ream **31** flat); hatched bars are models whose KV pool stops short of 256K, shown at their deepest reliable length (devstral **56 @128K**, gemma4-31b **34 @16K**, gemma4-26b **33 @64K** in the FP16-default config). Both charts drop the long-context bench's over-KV-cap points — those were artifacts (a prompt that can't fit the KV pool never decodes at that length, so the recorded tok/s was garbage: gemma4-26b "read" 75 tok/s @262K vs 34 @1K, faster at 256K than at 1K, which is impossible). Caps are the measured `max_total_num_tokens` (see the ‡‡ note above).
 
 ## Quality Evals
 
