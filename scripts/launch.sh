@@ -343,6 +343,36 @@ apply_preset() {
             CHAT_TEMPLATE="${GEMMA4_31B_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/gemma4_chat_template.jinja}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
             ;;
+        gemma4-12b)
+            # Gemma 4 12B unified omni (Gemma4UnifiedForConditionalGeneration) —
+            # serving-side bringup (patch 043 grafts the upstream gemma4_unified
+            # loader onto our v0.5.12 tree). Most KV-efficient Gemma: MQA on the 8
+            # global layers (num_global_key_value_heads=1) + 5:1 sliding:full (48
+            # layers, window 1024) + attention_k_eq_v → ~8 KB/token, so 256K fits
+            # trivially. UNLIKE 26B/31B it has NO heavy SigLIP vision tower — raw
+            # pixel/audio patches go straight into LM space via lightweight
+            # embedders, so BF16 weights are only ~24 GB and fit 2x24GB at TP=2
+            # WITHOUT quantization (this preset validates the loader at BF16; an
+            # AWQ int4 build comes later on the separate calib device).
+            #
+            # head_dim=256 / global_head_dim=512 → same Ampere attn constraints as
+            # 26B/31B: FlashInfer rejects head_dim>256, so --attention-backend
+            # triton; triton rejects FP8 E4M3 KV on sm_86, so KV_DTYPE=auto (FP16);
+            # --disable-cuda-graph for the same head_dim limitation.
+            #
+            # BF16 default points at the HF cache snapshot; override MODEL= for an
+            # AWQ mirror once built. chat_template ships embedded in
+            # tokenizer_config.json (no standalone .jinja). reasoning/tool parsers
+            # reuse gemma4 — VERIFY after first boot (unified may differ).
+            MODEL="${MODEL:-$MODELS_DIR/hf-google/gemma-4-12B}"
+            [ -d "$MODEL" ] || MODEL="/data/cache/huggingface/hub/models--google--gemma-4-12B/snapshots/56820d7d8cbe8e47975a53325439ed272e91cff2"
+            REASONING="--reasoning-parser gemma4"
+            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            DTYPE="${_ENV_DTYPE:-bfloat16}"
+            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
+            WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
+            ;;
         qwen3-vl-moe)
             # Repointed 2026-05-07 from missing $MODELS_DIR/Qwen3-VL-30B-A3B-
             # Instruct-AWQ-4bit (path didn't exist locally — silent broken
