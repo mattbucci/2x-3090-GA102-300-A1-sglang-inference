@@ -351,7 +351,7 @@ index 000000000..7b3c05486
 +
 +__all__ = ["Gemma4UnifiedAudioConfig", "Gemma4UnifiedConfig", "Gemma4UnifiedTextConfig", "Gemma4UnifiedVisionConfig"]
 diff --git a/python/sglang/srt/utils/hf_transformers/common.py b/python/sglang/srt/utils/hf_transformers/common.py
-index 777acf2a4..facce553e 100644
+index 777acf2a4..b6c070ad6 100644
 --- a/python/sglang/srt/utils/hf_transformers/common.py
 +++ b/python/sglang/srt/utils/hf_transformers/common.py
 @@ -37,6 +37,7 @@ from sglang.srt.configs import (
@@ -370,3 +370,19 @@ index 777acf2a4..facce553e 100644
          Qwen3_5Config,
          Qwen3_5MoeConfig,
          InternS2PreviewConfig,
+@@ -142,6 +144,15 @@ for name, cls in _CONFIG_REGISTRY.items():
+         if "already registered" not in err and "already used" not in err:
+             logger.warning("Failed to register config %s: %s", name, e)
+ 
++# gemma4_unified ships a tx-5.10 processor stack our tx 5.6 lacks; register the
++# vendored Processor/ImageProcessor/AudioFeatureExtractor (patch 046) so
++# AutoProcessor.from_pretrained builds the full processor, not a bare tokenizer.
++from sglang.srt.configs.gemma4_unified_register import (
++    register_gemma4_unified_processors,
++)
++
++register_gemma4_unified_processors()
++
+ 
+ # ---------------------------------------------------------------------------
+ # Download / path helpers

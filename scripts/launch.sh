@@ -360,12 +360,15 @@ apply_preset() {
             # triton; triton rejects FP8 E4M3 KV on sm_86, so KV_DTYPE=auto (FP16);
             # --disable-cuda-graph for the same head_dim limitation.
             #
-            # BF16 default points at the HF cache snapshot; override MODEL= for an
-            # AWQ mirror once built. chat_template ships embedded in
-            # tokenizer_config.json (no standalone .jinja). reasoning/tool parsers
-            # reuse gemma4 — VERIFY after first boot (unified may differ).
-            MODEL="${MODEL:-$MODELS_DIR/hf-google/gemma-4-12B}"
-            [ -d "$MODEL" ] || MODEL="/data/cache/huggingface/hub/models--google--gemma-4-12B/snapshots/56820d7d8cbe8e47975a53325439ed272e91cff2"
+            # Serves the -it (instruction-tuned) checkpoint — the deployable one;
+            # the base is a raw next-token model. gemma4_unified is a tx-5.10 arch:
+            # patches 042/044/045/046 back-port the loader + config + full processor
+            # stack (Processor/Image/Audio/Video) so our tx-5.6 env serves it without
+            # a fleet-wide transformers bump. reasoning/tool parsers reuse gemma4
+            # (chat_template ships in tokenizer_config.json). Override MODEL= for an
+            # AWQ int4 mirror once built on the calib device.
+            MODEL="${MODEL:-$MODELS_DIR/hf-google/gemma-4-12B-it}"
+            [ -d "$MODEL" ] || MODEL="/data/cache/huggingface/hub/models--google--gemma-4-12B-it/snapshots/5926caa4ec0cac5cbfadaf4077420520de1d5205"
             REASONING="--reasoning-parser gemma4"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"
