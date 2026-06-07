@@ -366,11 +366,17 @@ apply_preset() {
             # stack (Processor/Image/Audio/Video) so our tx-5.6 env serves it without
             # a fleet-wide transformers bump. reasoning/tool parsers reuse gemma4
             # (chat_template ships in tokenizer_config.json). Override MODEL= for an
-            # AWQ int4 mirror once built on the calib device.
-            MODEL="${MODEL:-$MODELS_DIR/hf-google/gemma-4-12B-it}"
-            [ -d "$MODEL" ] || MODEL="/data/cache/huggingface/hub/models--google--gemma-4-12B-it/snapshots/5926caa4ec0cac5cbfadaf4077420520de1d5205"
+            # Defaults to the in-house int4 AWQ (RTN-from-QAT, /data/models/gemma-4-12B-it-AWQ):
+            # weights 5.4 GB/rank vs 24 GB BF16, KV cap 102K vs 47K @TP=2, text 4096 quality
+            # == BF16. Override MODEL=$MODELS_DIR/hf-google/gemma-4-12B-it for the BF16 -it.
+            # NOTE (2026-06-07): vision serving crashes for BOTH BF16 + AWQ — a gemma4_unified
+            # image-token-expansion gap in SGLang's base Gemma4SGLangProcessor (256 patch
+            # embeddings vs 1 placeholder). Text + reasoning + tool-call work; vision/audio WIP.
+            MODEL="${MODEL:-/data/models/gemma-4-12B-it-AWQ}"
+            [ -d "$MODEL" ] || MODEL="$MODELS_DIR/hf-google/gemma-4-12B-it"
             REASONING="--reasoning-parser gemma4"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            # AWQ weights are int4; BF16 only for the vision-tower numerics (n/a here, no tower).
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
