@@ -68,6 +68,22 @@ def server_model(base_url):
     return r.json()["data"][0]["id"]
 
 
+def server_max_tokens(base_url):
+    """Real KV-pool capacity (max_total_num_tokens) from the live server, so we
+    never bench a context the pool can't hold. An over-cap prompt is rejected /
+    never decodes at that length, and bench_serving then logs an artifact tok/s
+    (gemma4-26b "75 tok/s @262K" vs 34 @1K). Returns None if unavailable."""
+    for ep in ("/server_info", "/get_server_info"):   # /server_info current; other deprecated
+        try:
+            j = requests.get(f"{base_url}{ep}", timeout=5).json()
+            v = j.get("max_total_num_tokens")
+            if isinstance(v, int) and v > 0:
+                return v
+        except Exception:
+            continue
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=23334)
@@ -92,10 +108,23 @@ def main():
         sys.exit(1)
 
     model = server_model(base)
-    contexts = args.contexts or [c for c in DEFAULT_CONTEXTS if c <= args.max_context]
+    requested = args.contexts or [c for c in DEFAULT_CONTEXTS if c <= args.max_context]
+    max_kv = server_max_tokens(base)
+    if max_kv:
+        usable = max_kv - args.output_tokens - 256   # headroom: output + scaffolding
+        contexts = [c for c in requested if c <= usable]
+        dropped = [c for c in requested if c > usable]
+        if dropped:
+            print(f"NOTE: KV pool max_total_num_tokens={max_kv}; capping input sweep "
+                  f"at {usable} usable tokens. Dropping over-cap contexts {dropped} "
+                  f"(they can't fit the pool and would log artifact tok/s).")
+    else:
+        contexts = requested
+        print("WARN: couldn't read max_total_num_tokens (no /get_server_info); "
+              "benching the full requested range — distrust any non-falling tok/s.")
 
     print(f"=== {args.name} ({model}) ===")
-    print(f"Contexts: {contexts}  (output tokens: {args.output_tokens})\n")
+    print(f"Contexts: {contexts}  (output tokens: {args.output_tokens}, KV pool: {max_kv})\n")
 
     print("Warmup (3x 128-in 10-out)...")
     for _ in range(3):
@@ -119,6 +148,7 @@ def main():
         "benchmark_tool": "sglang.bench_serving",
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "output_tokens": args.output_tokens,
+        "max_total_num_tokens": max_kv,
         "context_sweep": results,
     }
     out_path = args.output or f"benchmarks/{args.name.replace(' ', '_').lower()}_long_context.json"
