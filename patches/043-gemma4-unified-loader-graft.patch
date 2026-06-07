@@ -1,9 +1,9 @@
 diff --git a/python/sglang/srt/models/gemma4_unified.py b/python/sglang/srt/models/gemma4_unified.py
 new file mode 100644
-index 000000000..117717b75
+index 000000000..844e40fe1
 --- /dev/null
 +++ b/python/sglang/srt/models/gemma4_unified.py
-@@ -0,0 +1,488 @@
+@@ -0,0 +1,491 @@
 +# GRAFTED from sgl-project/sglang main (2026-06-07) onto v0.5.12 rebase. Unified wrapper over our gemma4_causal/gemma4_mm. Serving-side bringup for google/gemma-4-12B. -MB
 +# Copyright 2026 SGLang Team
 +# Licensed under the Apache License, Version 2.0 (the "License");
@@ -405,8 +405,11 @@ index 000000000..117717b75
 +                non_persistent_buffers.add(full)
 +
 +        text_tie = getattr(self.config.text_config, "tie_word_embeddings", True)
-+        start_layer = self.language_model.start_layer
-+        end_layer = self.language_model.end_layer
++        # Our v0.5.12 Gemma4TextModel predates main's start_layer/end_layer PP
++        # attributes; default to the full layer range (PP=1, our TP=2 default).
++        _num_text_layers = self.config.text_config.num_hidden_layers
++        start_layer = getattr(self.language_model, "start_layer", 0)
++        end_layer = getattr(self.language_model, "end_layer", _num_text_layers)
 +
 +        loaded_params: Set[str] = set()
 +
