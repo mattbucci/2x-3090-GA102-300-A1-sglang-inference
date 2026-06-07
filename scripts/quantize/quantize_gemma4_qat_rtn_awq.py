@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Gemma 4 *unified* 12B AWQ-Marlin W4A16 from the QAT-unquantized base — RTN pack.
+"""Gemma 4 DENSE (12B unified / 31B) AWQ-Marlin W4A16 from the QAT-unquantized base — RTN pack.
+
+Set SRC=<qat-unquantized dir> OUT=<awq dir>. Dense Gemma only — the 26B MoE aborts
+(experts need the packed moe_wna16 layout). Vision tower / audio tower / mm embedders
+stay BF16 (KEEP_BF16_HINTS). Proven near-lossless on the 12B (MLP cos=1.0, HumanEval 95).
 
 The base `google/gemma-4-12B-it-qat-q4_0-unquantized` is QAT-trained (weights already
 sit on a 4-bit grid), so a data-free RTN re-quantization to AWQ group-128 is
@@ -52,7 +56,14 @@ pseudo = AwqQuantizer.pseudo_quantize_tensor.__get__(_q, _Q)
 
 # Which tensors to quantize: text-decoder projections only.
 PROJ_RE = re.compile(r"language_model\.layers\.\d+\.(self_attn\.(q|k|v|o)_proj|mlp\.(gate|up|down)_proj)\.weight$")
-KEEP_BF16_HINTS = ("vision_embedder", "embed_vision", "embed_audio")
+# Keep BF16: every multimodal tower/embedder across the Gemma 4 family —
+#   12B unified (encoder-free): vision_embedder / embed_vision / embed_audio
+#   26B/31B (gemma4): vision_tower (SigLIP) / multi_modal_projector / audio_tower
+# plus all norms + embed_tokens/lm_head (excluded by PROJ_RE, which only matches *_proj).
+KEEP_BF16_HINTS = (
+    "vision_embedder", "embed_vision", "embed_audio",
+    "vision_tower", "multi_modal_projector", "audio_tower",
+)
 
 def is_quant_target(key: str) -> bool:
     if any(h in key for h in KEEP_BF16_HINTS):
@@ -87,6 +98,15 @@ def get(key):
     return handles[s].get_tensor(key)
 
 all_keys = list(wmap.keys())
+# MoE guard: this packer handles DENSE Gemma (12B unified, 31B dense) only. The 26B
+# MoE keeps its experts in `...mlp.experts.*` (fused 3-D or per-expert), which PROJ_RE
+# does NOT match -> they'd silently stay BF16 (huge + the loader expects packed AWQ).
+# Quantizing MoE experts needs the awq_marlin/moe_wna16 packed layout (separate recipe).
+if any(".experts." in k or ".mlp.experts" in k for k in all_keys):
+    raise SystemExit(
+        "ERROR: this checkpoint has MoE experts (mlp.experts.*). The dense RTN packer "
+        "would leave them BF16. Use the MoE-aware expert packer for the 26B."
+    )
 n_q = n_keep = 0
 not_convert = set()
 out_tensors = OrderedDict()
