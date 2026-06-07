@@ -1,0 +1,56 @@
+# patch 047 — route Gemma4 *unified* (12B, Gemma4UnifiedForConditionalGeneration)
+# through the hybrid-SWA KV pool path so TP>1 serving works.
+#
+# The 12B has mixed per-layer-type KV: sliding (head_dim=256, kv=8) vs global/full
+# (head_dim=512, kv=1). Its arch name differs from the 26B/31B
+# (Gemma4ForConditionalGeneration), so it was excluded from three arch lists and
+# fell back to a uniform MHA pool. At TP=2 that pool's single (head_dim=512) row_dim
+# can't store the sliding layers' 4*256=1024-wide k, so the JIT store_cache kernel
+# fails: 'Size mismatch for shape#0(batch_size): expected 2 but got 1' on the first
+# prefill. Fix = add the unified arch to is_hybrid_swa_model (use SWAKVPool),
+# get_hybrid_layer_ids (sliding/full split from layer_types), and is_hybrid_swa_compress
+# (mixin then passes swa_head_num/swa_head_dim to the SWA sub-pool). Verified: BF16
+# boots at TP=2, prefill+decode pass, reasoning/tool/thinking OK, SWAKVPool sizes
+# swa=37916 / full=47395. -MB 2026-06-07
+#
+diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
+index 111145ef6..21ea68acb 100644
+--- a/python/sglang/srt/configs/model_config.py
++++ b/python/sglang/srt/configs/model_config.py
+@@ -517,6 +523,16 @@ class ModelConfig:
+             "MiMoV2MTP",
+             "Gemma4ForCausalLM",
+             "Gemma4ForConditionalGeneration",
++            # Gemma4 *unified* (12B) has the SAME mixed per-layer-type KV layout as
++            # the 26B/31B: sliding layers (swa_head_dim=256, swa_num_kv=8) differ
++            # from global/full layers (head_dim=512, num_global_kv=1). The SWAKVPool
++            # must be told the SWA head config explicitly (swa_head_num/swa_head_dim),
++            # which model_runner_kv_cache_mixin only passes when this flag is set.
++            # Without it the sliding sub-pool inherits the full layers' (1,512) and
++            # the JIT store_cache kernel sees k rows of 4*256=1024 viewed as row_dim
++            # 1*512=512 -> "batch_size expected 2 but got 1" on the first prefill.
++            # The 12B's arch name differs from the 26B's, so it was silently excluded. -MB
++            "Gemma4UnifiedForConditionalGeneration",
+         ]
+ 
+     def _detect_attention_sinks(self) -> bool:
+@@ -1670,6 +1686,11 @@ def is_hybrid_swa_model(model_architectures: List[str]):
+         "Step3p5MTP",
+         "Gemma4ForCausalLM",
+         "Gemma4ForConditionalGeneration",
++        # Gemma4 unified (12B) is also a hybrid-SWA model (5:1 sliding:full); its
++        # arch name differs from the 26B/31B so it was silently excluded -> it fell
++        # back to a uniform MHA pool whose single (head_dim=512) can't store the
++        # sliding layers' 4*256=1024-wide k -> store_cache "batch_size 2 vs 1". -MB
++        "Gemma4UnifiedForConditionalGeneration",
+         "LagunaForCausalLM",
+     }
+     return any(arch in hybrid_swa_archs for arch in model_architectures)
+@@ -1724,6 +1745,7 @@ def get_hybrid_layer_ids(
+     elif (
+         "Gemma4ForCausalLM" in model_architectures
+         or "Gemma4ForConditionalGeneration" in model_architectures
++        or "Gemma4UnifiedForConditionalGeneration" in model_architectures
+     ):
+         layer_types = getattr(hf_text_config, "layer_types", [])
+         swa_attention_layer_ids = [
