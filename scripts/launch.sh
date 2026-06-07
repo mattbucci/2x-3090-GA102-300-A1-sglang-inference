@@ -369,9 +369,8 @@ apply_preset() {
             # Defaults to the in-house int4 AWQ (RTN-from-QAT, /data/models/gemma-4-12B-it-AWQ):
             # weights 5.4 GB/rank vs 24 GB BF16, KV cap 102K vs 47K @TP=2, text 4096 quality
             # == BF16. Override MODEL=$MODELS_DIR/hf-google/gemma-4-12B-it for the BF16 -it.
-            # NOTE (2026-06-07): vision serving crashes for BOTH BF16 + AWQ — a gemma4_unified
-            # image-token-expansion gap in SGLang's base Gemma4SGLangProcessor (256 patch
-            # embeddings vs 1 placeholder). Text + reasoning + tool-call work; vision/audio WIP.
+            # Full omni: text + reasoning + tool-call + vision (patch 048 added the unified
+            # processor's __call__ image-token expansion — answers "Red" to a red image).
             MODEL="${MODEL:-/data/models/gemma-4-12B-it-AWQ}"
             [ -d "$MODEL" ] || MODEL="$MODELS_DIR/hf-google/gemma-4-12B-it"
             REASONING="--reasoning-parser gemma4"
