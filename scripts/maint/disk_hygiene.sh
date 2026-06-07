@@ -18,6 +18,15 @@
 #   scripts/maint/disk_hygiene.sh gc-docker --all  # prune ALL unused images
 #   scripts/maint/disk_hygiene.sh gc-bases         # DRY-RUN: list re-downloadable bases
 #   scripts/maint/disk_hygiene.sh gc-bases --apply # delete HF-verified public bases
+#   scripts/maint/disk_hygiene.sh gc-orphans        # DRY-RUN: superseded in-house quant dirs
+#   scripts/maint/disk_hygiene.sh gc-orphans --apply
+#
+# gc-orphans GC's dead in-house quant experiments: a model dir is KEPT when it is
+# (a) a symlink target under hf-mattbucci/ or top-level (i.e. served), (b) named in
+# launch.sh, (c) a *-BF16* compression output / base (REAP/REAM/Nemotron — expensive,
+# possible build inputs), or (d) Qwen3-Coder-Next* / drafts. Everything else is a
+# superseded quant attempt that never shipped -> pruned. NOTE: unlike gc-bases these
+# are NOT re-downloadable from HF; run the dry-run and eyeball before --apply.
 set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MODELS_DIR="${MODELS_DIR:-/data/models}"
@@ -85,9 +94,36 @@ gc_bases() {
   done
 }
 
+gc_orphans() {
+  local apply=0; [ "$FLAG" = "--apply" ] && apply=1
+  declare -A KEEP
+  # served = symlink targets under hf-mattbucci/ and top-level /data/models
+  for l in "$MODELS_DIR"/hf-mattbucci/* "$MODELS_DIR"/*; do
+    [ -L "$l" ] || continue
+    local t; t=$(readlink -f "$l")
+    case "$t" in "$MODELS_DIR"/*) KEEP["$(basename "$t")"]=1;; esac
+  done
+  local LAUNCH; LAUNCH=$(cat "$REPO/scripts/launch.sh" 2>/dev/null)
+  echo "scanning $MODELS_DIR (prune = in-house quant dirs that are not served / not *-BF16)"
+  local total=0
+  for path in "$MODELS_DIR"/*/; do
+    local d; d=$(basename "$path")
+    [ -L "${path%/}" ] && continue
+    if [ -n "${KEEP[$d]:-}" ] || [[ "$d" == *-BF16* ]] || [[ "$d" == Qwen3-Coder-Next* ]] \
+       || [ "$d" = drafts ] || [ "$d" = hf-mattbucci ] || [[ "$LAUNCH" == *"$d"* ]]; then
+      continue
+    fi
+    local sz; sz=$(du -sb "$path" 2>/dev/null | cut -f1); total=$((total + sz))
+    if [ "$apply" = 1 ]; then rm -rf "$path"; echo "  DELETED $(numfmt --to=iec "$sz")  $d"
+    else echo "  prune   $(numfmt --to=iec "$sz")  $d  (dry-run; --apply to delete)"; fi
+  done
+  echo "  ---- orphan total: $(numfmt --to=iec "$total")  ($([ "$apply" = 1 ] && echo DELETED || echo dry-run))"
+}
+
 case "$CMD" in
-  report)    report;;
-  gc-docker) gc_docker;;
-  gc-bases)  gc_bases;;
-  *) echo "usage: $0 {report|gc-docker [--all]|gc-bases [--apply]}"; exit 1;;
+  report)     report;;
+  gc-docker)  gc_docker;;
+  gc-bases)   gc_bases;;
+  gc-orphans) gc_orphans;;
+  *) echo "usage: $0 {report|gc-docker [--all]|gc-bases [--apply]|gc-orphans [--apply]}"; exit 1;;
 esac
