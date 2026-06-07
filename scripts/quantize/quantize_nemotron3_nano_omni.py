@@ -449,6 +449,20 @@ def _patch_nemotronh_block_forward() -> None:
             orig_lead = hidden_states.shape[:-2] if orig_ndim > 3 else None
             if orig_ndim > 3:
                 hidden_states = hidden_states.reshape(-1, *hidden_states.shape[-2:])
+            # FORCE past_key_values=None — llmcompressor's sequential
+            # pipeline reuses the same cache object across every forward in
+            # a subgraph's Calibrating/Propagating loop. Mamba's ssm_state
+            # and Attention's K/V both append to it in-place, so by the
+            # second forward attention sees K of length 2×S while
+            # attention_mask covers only S → shape mismatch in dim 3.
+            # Each calibration sample is independent: no cache should leak.
+            # By NemotronHBlock.forward's signature, past_key_values is the
+            # first positional arg after hidden_states; handle both
+            # positional and keyword call shapes.
+            if "past_key_values" in kwargs:
+                kwargs["past_key_values"] = None
+            elif len(args) >= 1:
+                args = (None,) + args[1:]
             out = _orig(self, hidden_states, *args, **kwargs)
             if orig_lead is not None:
                 out = out.reshape(*orig_lead, *out.shape[-2:])
