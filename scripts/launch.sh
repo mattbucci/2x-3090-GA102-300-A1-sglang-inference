@@ -685,6 +685,26 @@ SERVED_NAME="${SERVED_NAME:-$PRESET}"
 [[ -n "$MAMBA_CACHE" ]] && CMD+=($MAMBA_CACHE)
 [[ -n "$CHAT_TEMPLATE" ]] && CMD+=($CHAT_TEMPLATE)
 [[ -n "$REASONING" ]] && CMD+=($REASONING)
+# Thinking serving defaults (adopted 2026-06-07, cross-team with R9700). A
+# non-empty REASONING (--reasoning-parser) marks a thinking model; for those:
+#  * --sampling-defaults model — use the checkpoint's own recommended sampling
+#    (Qwen3.6 ships temp 1.0 / top_p 0.95 / top_k 20) instead of SGLang's
+#    generic temp 1.0 / top_p 1.0 / top_k -1 (untruncated tail). The model's
+#    top_p/top_k truncation curbs the int4 overthinking / degenerate-repeat
+#    failure mode (arXiv:2606.00206) and avoids the temp=0 "</think> Paris
+#    </think> Paris…" greedy-decode loop R9700 documented. No token cap, so
+#    deep single-user 256K reasoning (qwen36 family, 100% to 255K) is untouched.
+#    Only added if the preset/caller didn't already set --sampling-defaults.
+#  * STRICT_THINK=1 (opt-in) — --enable-strict-thinking, letting a per-request
+#    custom_params.thinking_budget bound the think-loop. ONLY for agentic
+#    multi-turn tool-use where int4 thinking spirals without committing the
+#    edit (R9700: budget≈300 turned 0→1 applied edits). Deliberately NOT a
+#    default: a ~300-token cap would gut our 256K deep-reasoning win. Leave
+#    OFF for reasoning / 256K decode workloads.
+if [[ -n "$REASONING" ]]; then
+    [[ "${EXTRA_ARGS:-}" != *--sampling-defaults* ]] && CMD+=(--sampling-defaults model)
+    [[ -n "${STRICT_THINK:-}" ]] && CMD+=(--enable-strict-thinking)
+fi
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
 [[ -n "$OVERLAP" ]] && CMD+=($OVERLAP)
 [[ -n "$CUDA_GRAPH" ]] && CMD+=($CUDA_GRAPH)
