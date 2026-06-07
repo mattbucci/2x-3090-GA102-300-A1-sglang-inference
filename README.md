@@ -34,6 +34,13 @@ Single-user decode (M=1), honestly capped at each model's real KV pool (`max_tot
 
 What's queued, grouped by theme. Calibration work is gated on the bake-off sweep finishing + Rule 1 (no concurrent calibration + serving). The bake-off methodology + resume mechanics live in [`CLAUDE.md`](CLAUDE.md) and [`evals/swebench/`](evals/swebench/).
 
+### New-arch bringup — two 256K candidates
+
+Both archs now have **upstream SGLang loaders grafted onto our v0.5.12 tree** (patches 042/043) — no from-scratch port was needed. Each passed GPU-free validation (import + AST constructor-drift check, zero kwarg drift on core primitives).
+
+1. **`google/gemma-4-12B`** (`Gemma4UnifiedForConditionalGeneration`) — the most KV-efficient Gemma: global-MQA + 5:1 sliding:full + `attention_k_eq_v` ≈ 8 KB/token, and **no heavy SigLIP tower** (raw patches → lightweight embedders), so BF16 is only ~24 GB and fits TP=2 **without quantization**. This is the first Gemma that should actually serve 256K on 48 GB (the 26B/31B are KV-walled by their FP16 vision towers). Preset `gemma4-12b` boots at BF16; boot-validation (KV-pool-reaches-256K + coherent reasoning/text at 256K) in progress. AWQ int4 build follows on the calib device; `preprocessor_config.json` absent upstream → image-modality wiring needs a follow-up check.
+2. **`CohereLabs/BLS-Mini-Code-1.0`** (`Cohere2MoeForCausalLM`) — 128-expert fine-grained MoE thinking+agentic coder, 500K native, ~26 KB/token (7 GB KV @256K). Loader grafts clean but ~30B BF16 (61 GB) exceeds 48 GB, so it needs an **AWQ int4 build first** (calib device; preserve thinking+tool+vision, eos 255001, Cohere Command chat template) before it can boot.
+
 ### Nemotron-3-Nano-Omni AWQ build chain
 
 NVIDIA Mamba2-Transformer hybrid MoE + AVLM (audio+video+vision+language) + thinking. Plan: [`scripts/quantize/nemotron3_nano_omni_plan.md`](scripts/quantize/nemotron3_nano_omni_plan.md). BF16 base + calibration script already on disk (62 GB + 267 LOC); pre-flight done.
