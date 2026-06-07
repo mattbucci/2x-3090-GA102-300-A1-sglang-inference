@@ -1,0 +1,120 @@
+diff --git a/python/sglang/srt/multimodal/processors/gemma4_unified.py b/python/sglang/srt/multimodal/processors/gemma4_unified.py
+new file mode 100644
+index 000000000..b6e5b11db
+--- /dev/null
++++ b/python/sglang/srt/multimodal/processors/gemma4_unified.py
+@@ -0,0 +1,35 @@
++# GRAFTED from sgl-project/sglang main (2026-06-07). Thin subclass of our
++# existing Gemma4SGLangProcessor, registered for the unified arch. -MB
++# Copyright 2026 SGLang Team
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ==============================================================================
++
++from sglang.srt.models.gemma4_unified import Gemma4UnifiedForConditionalGeneration
++from sglang.srt.multimodal.processors.gemma4 import Gemma4SGLangProcessor
++
++
++class Gemma4UnifiedSGLangProcessor(Gemma4SGLangProcessor):
++    """Multimodal processor for the encoder-free unified Gemma4 (image/video/audio).
++
++    Identical to :class:`Gemma4SGLangProcessor` except for audio padding: the
++    unified model has no SSCP conformer, so the waveform is simply chunked into
++    fixed ``audio_samples_per_token`` (640) frames.  Padding the waveform up to a
++    multiple of that frame size keeps ``ceil(num_samples / spt)`` consistent with
++    the number of valid frames the feature extractor emits.
++    """
++
++    models = [Gemma4UnifiedForConditionalGeneration]
++
++    def _get_audio_pad_multiple(self) -> int:
++        fe = getattr(self._processor, "feature_extractor", None)
++        return getattr(fe, "audio_samples_per_token", 640)
+diff --git a/python/sglang/srt/utils/hf_transformers/config.py b/python/sglang/srt/utils/hf_transformers/config.py
+index a46c4a45d..5c0607e74 100644
+--- a/python/sglang/srt/utils/hf_transformers/config.py
++++ b/python/sglang/srt/utils/hf_transformers/config.py
+@@ -133,30 +133,53 @@ class HfModelConfigParser(ModelConfigParserBase):
+         if config.model_type == "multi_modality":
+             _set_architectures(config, "MultiModalityCausalLM")
+ 
+-        if config.model_type in ("gemma4", "gemma4_assistant"):
++        if config.model_type in ("gemma4", "gemma4_assistant", "gemma4_unified"):
+             # Gemma4 configs use base attributes for SWA layers and `global_*`
+             # variants for full-attention layers.  SGLang expects the opposite:
+             # base = full-attention, `swa_*` = sliding-window overrides.
+-            text_config = config.text_config
+-            global_head_dim = getattr(text_config, "global_head_dim", None)
+-            global_kv_heads = getattr(text_config, "num_global_key_value_heads", None)
+-
+-            swa_head_dim = text_config.head_dim
+-            swa_kv_heads = text_config.num_key_value_heads
+-
+-            text_config.swa_head_dim = swa_head_dim
+-            text_config.swa_v_head_dim = swa_head_dim
+-            text_config.swa_num_key_value_heads = swa_kv_heads
+-
+-            if global_head_dim is not None:
+-                text_config.head_dim = global_head_dim
+-            if global_kv_heads is not None:
+-                text_config.num_key_value_heads = global_kv_heads
+-
+-            if not hasattr(text_config, "v_head_dim"):
+-                text_config.v_head_dim = text_config.head_dim
+-            if not hasattr(text_config, "swa_v_head_dim"):
+-                text_config.swa_v_head_dim = text_config.swa_head_dim
++            #
++            # Apply this remap to BOTH config.text_config (multimodal path, e.g.
++            # gemma4 26B MoE) AND the top-level config (the dense text-only path
++            # Gemma4ForCausalLM, e.g. gemma4-31b, consumes the top-level
++            # Gemma4Config directly — without this it sees head_dim=256 for
++            # full-attention layers and crashes loading the 512-dim q/k_norm +
++            # k/v projections; the KV pool also needs swa_head_dim). The
++            # swa_head_dim guard makes it idempotent / skip the non-applicable.
++            def _remap_gemma4_head_dims(tc):
++                if tc is None or getattr(tc, "swa_head_dim", None) is not None:
++                    return
++                if getattr(tc, "head_dim", None) is None:
++                    return
++                global_head_dim = getattr(tc, "global_head_dim", None)
++                global_kv_heads = getattr(tc, "num_global_key_value_heads", None)
++
++                tc.swa_head_dim = tc.head_dim
++                tc.swa_v_head_dim = tc.head_dim
++                tc.swa_num_key_value_heads = tc.num_key_value_heads
++
++                if global_head_dim is not None:
++                    tc.head_dim = global_head_dim
++                if global_kv_heads is not None:
++                    tc.num_key_value_heads = global_kv_heads
++
++                if not hasattr(tc, "v_head_dim"):
++                    tc.v_head_dim = tc.head_dim
++                if not hasattr(tc, "swa_v_head_dim"):
++                    tc.swa_v_head_dim = tc.swa_head_dim
++
++            _remap_gemma4_head_dims(getattr(config, "text_config", None))
++            _remap_gemma4_head_dims(config)
++
++            # gemma4_unified (12B) names end-of-audio `eoa_token_index`, but the
++            # shared Gemma4 multimodal processor reads `eoa_token_id` (the 26B/31B
++            # naming). All other mm token ids match; alias just this one so the
++            # processor __init__ doesn't AttributeError. Idempotent.
++            if config.model_type == "gemma4_unified" and not hasattr(
++                config, "eoa_token_id"
++            ):
++                eoa = getattr(config, "eoa_token_index", None)
++                if eoa is not None:
++                    config.eoa_token_id = eoa
+ 
+         if config.model_type == "longcat_flash":
+             _set_architectures(config, "LongcatFlashForCausalLM")
