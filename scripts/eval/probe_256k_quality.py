@@ -33,6 +33,13 @@ import requests
 FILLER = "The maintenance log records routine archival operations and status updates. " * 32
 WORDS = ["maple", "cobalt", "zenith", "falcon", "quartz", "nimbus", "tundra", "saffron", "onyx", "verbena"]
 
+# This repetitive English filler tokenizes at ~6.9 chars/token on the Qwen tokenizer
+# (measured: an old 3.8 multiplier made a "250K" request only ~137K ACTUAL prompt_tokens
+# — a ~1.9x shortfall that never reached the 256K target). 6.9 makes approx == actual,
+# so `--lengths 262144` genuinely probes ~256K. Override `--chars-per-token` for other
+# tokenizers; always read the printed `actual` column to confirm the real length hit.
+CHARS_PER_TOKEN = 6.9
+
 
 def _answer(msg):
     c = msg.get("content") or ""
@@ -40,8 +47,8 @@ def _answer(msg):
     return (rc + "\n" + c) if rc else c
 
 
-def fill(approx_tokens):
-    target = int(approx_tokens * 3.8)
+def fill(approx_tokens, cpt=CHARS_PER_TOKEN):
+    target = int(approx_tokens * cpt)
     n = target // len(FILLER) + 1
     return (FILLER * n)[:target]
 
@@ -89,9 +96,9 @@ def task_aggregate(rng):
 TASKS = {"multikey": task_multikey, "vartrack": task_vartrack, "aggregate": task_aggregate}
 
 
-def run_one(url, approx, task_fn, rng, max_tokens):
+def run_one(url, approx, task_fn, rng, max_tokens, cpt=CHARS_PER_TOKEN):
     facts, q, check = task_fn(rng)
-    prompt = plant(fill(approx), facts) + "\n\n" + q
+    prompt = plant(fill(approx, cpt), facts) + "\n\n" + q
     t0 = time.time()
     try:
         r = requests.post(url, json={
@@ -110,8 +117,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=23334)
     ap.add_argument("--tag", default="model")
-    ap.add_argument("--lengths", default="1024,65536,131072,200000,250000")
+    ap.add_argument("--lengths", default="1024,32768,65536,131072,200000,262144")
     ap.add_argument("--max-tokens", type=int, default=3000)
+    ap.add_argument("--chars-per-token", type=float, default=CHARS_PER_TOKEN)
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -124,7 +132,7 @@ def main():
         rng = random.Random(42)  # reset per length -> identical task instances, only ctx varies
         row = {"approx": L}
         for tname, tfn in TASKS.items():
-            row[tname] = run_one(url, L, tfn, rng, args.max_tokens)
+            row[tname] = run_one(url, L, tfn, rng, args.max_tokens, args.chars_per_token)
         oks = [row[t].get("correct") for t in TASKS]
         actual = next((row[t].get("actual_tokens") for t in TASKS if row[t].get("actual_tokens")), None)
         row["actual_tokens"] = actual
