@@ -20,7 +20,9 @@ cd "$REPO" || exit 1
 
 # The four thinking MoE families whose KV pool genuinely fits 256K (657K-2.4M tok).
 PRESETS="${PRESETS:-qwen36 qwen36-dense qwen36-ream qwen35-moe}"
-LENGTHS="${LENGTHS:-1024,32768,65536,131072,200000,262144}"
+# Top length leaves max-tokens headroom under the 262144 window (256000 prompt +
+# 3000 gen = 259000 < 262144); 262144 itself overflows and the server fast-rejects.
+LENGTHS="${LENGTHS:-1024,32768,65536,131072,200000,256000}"
 PORT=23334
 SERVER_TIMEOUT="${SERVER_TIMEOUT:-720}"
 OUT=/tmp/reason256k; mkdir -p "$OUT"; rm -f "$OUT/done"; : > "$OUT/result.txt"

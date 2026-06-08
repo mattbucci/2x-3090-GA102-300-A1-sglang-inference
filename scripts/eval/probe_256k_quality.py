@@ -105,6 +105,10 @@ def run_one(url, approx, task_fn, rng, max_tokens, cpt=CHARS_PER_TOKEN):
             "model": "default", "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens, "temperature": 0,
         }, timeout=max(600, approx // 150)).json()
+        # Surface a server-side rejection (e.g. prompt + max_tokens > context-length
+        # returns {"error": ...} fast) instead of silently scoring it 0/correct=False.
+        if isinstance(r, dict) and r.get("error"):
+            return {"actual_tokens": None, "error": str(r["error"])[:120]}
         choice = (r.get("choices") or [{}])[0]
         pt = (r.get("usage") or {}).get("prompt_tokens")
         ans = _answer(choice.get("message") or {})
@@ -117,7 +121,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=23334)
     ap.add_argument("--tag", default="model")
-    ap.add_argument("--lengths", default="1024,32768,65536,131072,200000,262144")
+    # Top length must leave max-tokens headroom under the served --context-length
+    # (262144): a 262144-token prompt + 3000 generation overflows the window and the
+    # server fast-rejects. 256000 prompt + 3000 = 259000 < 262144 — a genuine "at 256K".
+    ap.add_argument("--lengths", default="1024,32768,65536,131072,200000,256000")
     ap.add_argument("--max-tokens", type=int, default=3000)
     ap.add_argument("--chars-per-token", type=float, default=CHARS_PER_TOKEN)
     ap.add_argument("--out", default=None)
