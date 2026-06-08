@@ -28,7 +28,7 @@ What we **don't** ship: random community quants. Every `mattbucci/*-AWQ` is cali
 
 ![Single-user decode tok/s vs context length — all AWQ presets, unified 256K x-axis](benchmarks/all_models_context.png)
 
-Single-user decode (M=1), honestly capped at each model's real KV pool (`max_total_num_tokens`). **True-256K decoders** (solid right bars): qwen3-30b-ream **103**, qwen3.6-27b **54**, qwen36 / qwen36-ream **31** (flat DeltaNet+MoE). **KV-capped models** (hatched, shown at their deepest reliable length in the FP16-default config): devstral **56 @128K**, gemma4-31b **34 @16K**, gemma4-26b **33 @64K** — per-model KV ceilings are in [VRAM context limits](#vram-context-limits-kv-dtype-varies-tp2-48-gb-total). Both charts drop the long-context bench's over-KV-cap points, which were artifacts (a prompt that can't fit the pool never decodes at that length, so the logged tok/s was garbage — gemma4-26b "75 tok/s @262K" vs 34 @1K is impossible); now filtered at both the bench and chart layers.
+Single-user decode (M=1), honestly capped at each model's real KV pool (`max_total_num_tokens`). **True-256K decoders** (solid right bars): qwen36-ream **139**, qwen36 **126**, qwen3-30b-ream **103**, qwen3.6-27b **54**. The qwen36 family's **4× jump** (was 31, artificially flat across all contexts) is the **2026-06-07 CUDA-graph-enable fix**: the DeltaNet+MoE hybrids (`qwen36` / `qwen36-ream`) carried a stale `--disable-cuda-graph`, so every decode step paid ~27 ms of kernel-launch overhead that masked the real attention curve. Graph capture is clean on v0.5.12/Ampere TP=2 (5/5 capabilities under replay — thinking, vision, video, tool all intact), dropping TPOT 32→8 ms; decode now shows the correct attention-bound shape (qwen36 174→126 tok/s @ 1K→262K). **KV-capped models** (hatched, shown at their deepest reliable length in the FP16-default config): devstral **56 @128K**, gemma4-31b **34 @16K**, gemma4-26b **33 @64K** — per-model KV ceilings are in [VRAM context limits](#vram-context-limits-kv-dtype-varies-tp2-48-gb-total). Both charts drop the long-context bench's over-KV-cap points, which were artifacts (a prompt that can't fit the pool never decodes at that length, so the logged tok/s was garbage — gemma4-26b "75 tok/s @262K" vs 34 @1K is impossible); now filtered at both the bench and chart layers.
 
 ## Roadmap
 
@@ -94,7 +94,9 @@ EAGLE3 + DFlash work against our **INT4/AWQ targets** (draft stays BF16; target 
 | Target | Algo / Draft | Baseline | With spec | Speedup |
 |---|---|:---:|:---:|:---:|
 | `coder-30b` AWQ-native | EAGLE3, `lmsys/SGLang-EAGLE3-Qwen3-Coder-30B-A3B-Instruct-SpecForge` (steps 4 / topk 4 / draft 8) | 185 tok/s | **306 tok/s** | **1.65×** |
-| `qwen36` AWQ | DFlash, `z-lab/Qwen3.6-35B-A3B-DFlash` (`--dtype bfloat16` + spec-v2) | 31 tok/s | **126 tok/s** | **4.1×** |
+| `qwen36` AWQ | DFlash, `z-lab/Qwen3.6-35B-A3B-DFlash` (`--dtype bfloat16` + spec-v2) | 126 tok/s ‖ | 126 tok/s | **~1.0× (moot)** |
+
+‖ The prior row read baseline **31 tok/s** → **4.1×** — but that 31 was the *graph-disabled* no-spec number. After the 2026-06-07 CUDA-graph-enable fix (see [Performance](#performance--single-user-decode-at-256k)), plain no-spec decode is **126 tok/s @256K (174 @1K, ~150 @ DFlash's 32K cap)**, matching or beating DFlash spec at its own operating point. Spec-decode now buys nothing on this model — a second, independent reason no-spec is the only viable path here (the 24 GB-fit constraints below being the first).
 
 **Constraints on 24 GB cards** (R9700 has 32 GB headroom; ours doesn't):
 - Drop `--mem-fraction-static 0.70` so the target leaves room for the draft + its cuda graphs (preset `MEM=0.85` OOMs the draft).
@@ -218,10 +220,10 @@ Full host-side scaffold + toolchain notes (opencode + little-coder + claw-code, 
 
 | Model | Type | Max ctx | tok/s | Launch | HF + notes |
 |-------|------|:-------:|:----:|:------:|:-------|
-| **Qwen3.6-35B-A3B AWQ-Marlin** | DeltaNet+MoE A3B (256 exp, VL) | **262K** | 31 | `qwen36` | [`mattbucci/Qwen3.6-35B-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-35B-A3B-AWQ). Bake-off top tier (177/300 = 59.0% × opencode). |
-| **Qwen3.6-REAM-A3B AWQ** | DeltaNet+MoE A3B (192 exp, VL) | **262K** | ~74 | `qwen36-ream` | [`mattbucci/Qwen3.6-REAM-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-REAM-A3B-AWQ). Vision tower grafted. Bake-off 176/300 = 58.7% × opencode. |
+| **Qwen3.6-35B-A3B AWQ-Marlin** | DeltaNet+MoE A3B (256 exp, VL) | **262K** | **126** | `qwen36` | [`mattbucci/Qwen3.6-35B-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-35B-A3B-AWQ). Bake-off top tier (177/300 = 59.0% × opencode). 31→126 tok/s @256K (CUDA-graph-enable fix 2026-06-07). |
+| **Qwen3.6-REAM-A3B AWQ** | DeltaNet+MoE A3B (192 exp, VL) | **262K** | **139** | `qwen36-ream` | [`mattbucci/Qwen3.6-REAM-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-REAM-A3B-AWQ). Vision tower grafted. Bake-off 176/300 = 58.7% × opencode. ~74→139 tok/s @256K (same graph fix). |
 | **Qwen3-30B-Instruct-2507 REAM AWQ** | MoE A3B (96 exp) | **262K** | **107** | `qwen3-ream` | [`mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ`](https://huggingface.co/mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ). REAM 128→96; text-only generalist; fastest preset (183→107 tok/s @ 1K/250K). |
-| **Qwen3.5-28B MoE REAP** | DeltaNet+MoE A3B (205 exp, VL) | **262K** | 30 | `qwen35-moe` | Flat 30.5 tok/s across 1K–250K. |
+| **Qwen3.5-28B MoE REAP** | DeltaNet+MoE A3B (205 exp, VL) | **262K** | 30 ◆ | `qwen35-moe` | Flat 30.5 tok/s across 1K–250K. ◆ Still carries the same stale `--disable-cuda-graph` the qwen36 family had — the 2026-06-07 graph-enable fix is a likely ~4× win here too (follow-up, untested). |
 | **Qwen3-Coder-30B-A3B AWQ** | MoE A3B (128 exp) | **262K** | ~30 @256K | `coder-30b` or `coder-30b-eval` | [`mattbucci/Qwen3-Coder-30B-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-AWQ). Two presets serve the same model; for short-ctx batch-decode benchmarks override `CTX=16384 MAX_RUNNING=32 ./scripts/launch.sh coder-30b` (peaks ~187 tok/s @ 1K). |
 | Coder-REAP-30B AWQ-Marlin | MoE A3B (96 exp) | **262K** | 109 | `coder-reap-25b` | [`mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) (R9700 in-house). |
 | **Gemma 4 31B Dense AWQ** | Dense (VL) | **~24K** ‡‡ | ~22 | `gemma4-31b` | [`mattbucci/gemma-4-31B-AWQ`](https://huggingface.co/mattbucci/gemma-4-31B-AWQ). LM INT4, vision tower FP16. |

@@ -567,10 +567,20 @@ apply_preset() {
             # Cross-team breadcrumb (R9700 commit 6de2ff9): DECODE_STEPS=32 +
             # DeltaNet + thinking crashes scheduler on RDNA4; their fix was
             # =8. Ampere TP=2 thinking-mode 4/4 PASS at =32 (2026-05-09).
-            CTX=262144; MEM=0.85; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
+            CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
-            CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            # 2026-06-07: CUDA graph ENABLED (was --disable-cuda-graph — stale,
+            # defensive baggage). The DeltaNet+MoE hybrid captures cleanly on
+            # v0.5.12/Ampere TP=2 and validates 5/5 (basic+tool+thinking+vision+
+            # video) under graph replay. Single-user decode 31 -> 129 tok/s
+            # @262K (4.15x; TPOT 32.1 -> 7.8 ms), flat curve becomes the correct
+            # attention-bound one (5.7 ms @1K -> 7.8 ms @262K). bs=1 capture
+            # (single-user 256K is the target); piecewise stays OFF (the
+            # MoE-marlin TP regression qwen3-ream documents). MEM 0.85 -> 0.80
+            # for graph+warmup headroom — the 0.85 config died at the final init
+            # step with avail 2.9 GB (KV pool still ~900K >> 262K at 0.80).
+            CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
             # 2026-05-13: bakeoff p13 ran qwen36 x claw at 1/300 = 0.3%. Forensics
             # (286/300 .claw-only diffs) showed the model emits valid
             # <function=NAME><parameter=...>VAL</parameter></function> tool tags
@@ -609,10 +619,13 @@ apply_preset() {
             # applied) and from `qwen36` (full 256-expert Qwen3.6 MoE).
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-REAM-A3B-AWQ}"
             QUANT="awq_marlin"
-            CTX=262144; MEM=0.85; MAX_RUNNING=4; CHUNKED=8192; DECODE_STEPS=32
+            CTX=262144; MEM=0.80; MAX_RUNNING=4; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
-            CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            # 2026-06-07: CUDA graph ENABLED — same stale-disable fix as qwen36
+            # (Qwen3.6 DeltaNet+MoE captures cleanly @ v0.5.12/Ampere TP=2, 5/5
+            # capabilities under graph replay, ~4x single-user 256K decode).
+            CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         *)
@@ -745,6 +758,10 @@ if [[ -n "$REASONING" ]]; then
 fi
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
 [[ -n "$OVERLAP" ]] && CMD+=($OVERLAP)
+# _ENV_CUDA_GRAPH lets a caller A/B the graph-capture config from the env
+# without editing the preset (e.g. test cuda-graph-ON on the DeltaNet+MoE
+# hybrids whose presets default to --disable-cuda-graph). Empty/unset = preset.
+[[ -n "${_ENV_CUDA_GRAPH:-}" ]] && CUDA_GRAPH="$_ENV_CUDA_GRAPH"
 [[ -n "$CUDA_GRAPH" ]] && CMD+=($CUDA_GRAPH)
 # EXTRA_ARGS lets callers append/override flags (e.g. --disable-cuda-graph,
 # --enable-multimodal) without editing the script. Honor it from env.

@@ -63,7 +63,7 @@ STD_CONC = [1, 2, 4, 8, 16, 32]
 # its real pool so the charts show honest long-context decode, not the cap
 # overflow. Models absent here are uncapped (A3B-MoE pools are 0.6–2.4M tokens).
 KV_CAP = {
-    "qwen3.6-35b-a3b":   996_000,    # A3B MoE — true 256K (flat decode)
+    "qwen3.6-35b-a3b":   875_000,    # A3B MoE — true 256K (graph-ON @ MEM=0.80; attention-bound decode)
     "qwen3.6-ream":    2_400_000,    # A3B MoE — true 256K
     "qwen3.6-27b":       657_000,    # DeltaNet-hybrid dense — true 256K
     "qwen3-30b-ream":    578_000,    # MoE — true 256K
