@@ -519,7 +519,10 @@ apply_preset() {
             CTX=262144; MEM=0.80; MAX_RUNNING=4; CHUNKED=8192; DECODE_STEPS=4
             MAMBA_CACHE="--max-mamba-cache-size 4"
             REASONING="--reasoning-parser qwen3"
-            CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            # 2026-06-07: CUDA graph ENABLED — same stale-disable fix as the
+            # qwen36 family (DeltaNet+MoE hybrid; ~4x single-user 256K decode,
+            # 5/5 capabilities under graph replay). bs=1 capture, piecewise off.
+            CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen3-ream)
