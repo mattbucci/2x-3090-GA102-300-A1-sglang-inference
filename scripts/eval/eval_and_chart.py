@@ -21,6 +21,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.request
@@ -137,6 +138,24 @@ def mmlu_eval(url, n_samples=200, max_workers=8, max_tokens=4096):
     return {"correct": correct, "total": total, "accuracy": correct / total if total else 0}
 
 
+def _he_exec_check(full_code, test_code, entry, timeout=10):
+    """Run a HumanEval solution + its test in an ISOLATED SUBPROCESS with a hard
+    timeout. A pathological / infinite generation (e.g. a bad O(2^n) prime_fib
+    genexpr) otherwise hangs the eval forever — one spun 4 h GIL-bound and stalled
+    the whole fleet refresh (2026-06-08). signal.alarm can't help: exec runs in a
+    ThreadPoolExecutor worker, not the main thread. Subprocess + timeout is the
+    only robust kill. Returns True only if the test passes within `timeout`s."""
+    script = f"{full_code}\n{test_code}\ncheck({entry})\n"
+    try:
+        p = subprocess.run([sys.executable, "-c", script],
+                           capture_output=True, timeout=timeout)
+        return p.returncode == 0
+    except subprocess.TimeoutExpired:
+        return False
+    except Exception:
+        return False
+
+
 def humaneval_eval(url, n_samples=30, max_workers=4, max_tokens=4096):
     """HumanEval pass@1 via the CHAT endpoint.
 
@@ -166,10 +185,7 @@ def humaneval_eval(url, n_samples=30, max_workers=4, max_tokens=4096):
             blocks = re.findall(r"```(?:python)?\s*\n(.*?)```", content, re.DOTALL)
             code = blocks[-1] if blocks else content
             full = code if re.search(rf"def\s+{re.escape(entry)}\b", code) else prompt + code
-            g = {}
-            exec(full + "\n" + test, g)
-            g["check"](g[entry])
-            return True
+            return _he_exec_check(full, test, entry, timeout=10)
         except Exception:
             return False
 
