@@ -1,6 +1,6 @@
 {
   "tag": "qwen36-dense",
-  "timestamp": "2026-06-06 16:11",
+  "timestamp": "2026-06-08 05:08",
   "max_context": 262144,
   "thinking": {
     "results": [
@@ -14,7 +14,7 @@
       },
       {
         "name": "reasoning",
-        "tokens": 977,
+        "tokens": 845,
         "finish": "stop",
         "has_think_tags": false,
         "clean_answer": true,
@@ -38,7 +38,7 @@
       },
       {
         "name": "hard_mc",
-        "tokens": 3000,
+        "tokens": 2560,
         "finish": "length",
         "has_think_tags": false,
         "clean_answer": true,
@@ -48,53 +48,58 @@
     "think_tags_rate": 0.0,
     "clean_answer_rate": 1.0,
     "truncation_rate": 0.2,
-    "avg_tokens": 905.4
+    "avg_tokens": 791.0
   },
   "mmlu": {
-    "correct": 28,
-    "total": 30,
-    "accuracy": 0.9333333333333333
+    "correct": 56,
+    "total": 57,
+    "accuracy": 0.9824561403508771
+  },
+  "humaneval": {
+    "passed": 39,
+    "total": 40,
+    "pass_rate": 0.975
   },
   "labbench": {
     "LitQA2": {
-      "correct": 3,
-      "total": 12,
-      "accuracy": 0.25
+      "correct": 4,
+      "total": 20,
+      "accuracy": 0.2
     },
     "DbQA": {
-      "correct": 4,
-      "total": 12,
-      "accuracy": 0.3333333333333333
+      "correct": 7,
+      "total": 20,
+      "accuracy": 0.35
     },
     "SuppQA": {
-      "correct": 3,
-      "total": 12,
-      "accuracy": 0.25
+      "correct": 9,
+      "total": 20,
+      "accuracy": 0.45
     },
     "TableQA": {
-      "correct": 4,
-      "total": 12,
-      "accuracy": 0.3333333333333333
+      "correct": 6,
+      "total": 20,
+      "accuracy": 0.3
     },
     "ProtocolQA": {
       "correct": 6,
-      "total": 12,
-      "accuracy": 0.5
+      "total": 20,
+      "accuracy": 0.3
     },
     "SeqQA": {
-      "correct": 1,
-      "total": 12,
-      "accuracy": 0.08333333333333333
+      "correct": 4,
+      "total": 20,
+      "accuracy": 0.2
     },
     "CloningScenarios": {
-      "correct": 0,
-      "total": 12,
-      "accuracy": 0.0
+      "correct": 2,
+      "total": 20,
+      "accuracy": 0.1
     },
     "_overall": {
-      "correct": 21,
-      "total": 84,
-      "accuracy": 0.25
+      "correct": 38,
+      "total": 140,
+      "accuracy": 0.2714285714285714
     }
   },
   "needle": {
@@ -176,10 +181,5 @@
       }
     ],
     "score": 1.0
-  },
-  "humaneval": {
-    "passed": 15,
-    "total": 15,
-    "pass_rate": 1.0
   }
 }

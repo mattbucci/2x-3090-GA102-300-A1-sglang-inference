@@ -1,6 +1,6 @@
 {
   "tag": "qwen36",
-  "timestamp": "2026-06-06 16:07",
+  "timestamp": "2026-06-08 01:38",
   "max_context": 262144,
   "thinking": {
     "results": [
@@ -14,7 +14,7 @@
       },
       {
         "name": "reasoning",
-        "tokens": 702,
+        "tokens": 786,
         "finish": "stop",
         "has_think_tags": false,
         "clean_answer": true,
@@ -22,7 +22,7 @@
       },
       {
         "name": "knowledge",
-        "tokens": 131,
+        "tokens": 343,
         "finish": "stop",
         "has_think_tags": false,
         "clean_answer": true,
@@ -30,7 +30,7 @@
       },
       {
         "name": "code",
-        "tokens": 205,
+        "tokens": 169,
         "finish": "stop",
         "has_think_tags": false,
         "clean_answer": true,
@@ -38,7 +38,7 @@
       },
       {
         "name": "hard_mc",
-        "tokens": 1471,
+        "tokens": 1177,
         "finish": "stop",
         "has_think_tags": false,
         "clean_answer": true,
@@ -48,53 +48,58 @@
     "think_tags_rate": 0.0,
     "clean_answer_rate": 1.0,
     "truncation_rate": 0.0,
-    "avg_tokens": 565.6
+    "avg_tokens": 558.8
   },
   "mmlu": {
-    "correct": 27,
-    "total": 30,
-    "accuracy": 0.9
+    "correct": 53,
+    "total": 57,
+    "accuracy": 0.9298245614035088
+  },
+  "humaneval": {
+    "passed": 39,
+    "total": 40,
+    "pass_rate": 0.975
   },
   "labbench": {
     "LitQA2": {
-      "correct": 3,
-      "total": 12,
-      "accuracy": 0.25
+      "correct": 4,
+      "total": 20,
+      "accuracy": 0.2
     },
     "DbQA": {
-      "correct": 5,
-      "total": 12,
-      "accuracy": 0.4166666666666667
+      "correct": 4,
+      "total": 20,
+      "accuracy": 0.2
     },
     "SuppQA": {
-      "correct": 4,
-      "total": 12,
-      "accuracy": 0.3333333333333333
+      "correct": 6,
+      "total": 20,
+      "accuracy": 0.3
     },
     "TableQA": {
-      "correct": 1,
-      "total": 12,
-      "accuracy": 0.08333333333333333
+      "correct": 3,
+      "total": 20,
+      "accuracy": 0.15
     },
     "ProtocolQA": {
-      "correct": 6,
-      "total": 12,
-      "accuracy": 0.5
+      "correct": 8,
+      "total": 20,
+      "accuracy": 0.4
     },
     "SeqQA": {
-      "correct": 0,
-      "total": 12,
-      "accuracy": 0.0
+      "correct": 3,
+      "total": 20,
+      "accuracy": 0.15
     },
     "CloningScenarios": {
-      "correct": 1,
-      "total": 12,
-      "accuracy": 0.08333333333333333
+      "correct": 2,
+      "total": 20,
+      "accuracy": 0.1
     },
     "_overall": {
-      "correct": 20,
-      "total": 84,
-      "accuracy": 0.23809523809523808
+      "correct": 30,
+      "total": 140,
+      "accuracy": 0.21428571428571427
     }
   },
   "needle": {
@@ -176,10 +181,5 @@
       }
     ],
     "score": 1.0
-  },
-  "humaneval": {
-    "passed": 14,
-    "total": 15,
-    "pass_rate": 0.9333333333333333
   }
 }
