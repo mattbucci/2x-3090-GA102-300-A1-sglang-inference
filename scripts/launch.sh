@@ -283,9 +283,9 @@ apply_preset() {
             # stay there. R9700 runs gemma-4-26B at FP8 / 32-64K (torch_native
             # is their SWA limit) — we have triton + AWQ-int4 (half weight
             # bytes) so 256K fits comfortably on 2x24GB.
-            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
+            CTX=262144; MEM=0.78; MAX_RUNNING=1; CHUNKED=4096  # MEM 0.85->0.78: cuda-graph capture headroom (B1 receipts; 0.85 OOMs at final init, qwen36 precedent)
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---disable-cuda-graph --disable-piecewise-cuda-graph} --tool-call-parser gemma4 --swa-full-tokens-ratio 0.0625"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs 1 --disable-piecewise-cuda-graph} --tool-call-parser gemma4 --swa-full-tokens-ratio 0.0625"
             ;;
         gemma4-21b-reap)
             # Gemma 4 21B REAP AWQ — Cerebras-style expert prune of the 26B
@@ -341,7 +341,7 @@ apply_preset() {
             # leaves the prior turn unclosed → runaway to max_tokens=8192 → empty diff.
             # Override with GEMMA4_31B_CHAT_TEMPLATE="--chat-template <file>".
             CHAT_TEMPLATE="${GEMMA4_31B_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/gemma4_chat_template.jinja}"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---disable-cuda-graph --disable-piecewise-cuda-graph} --tool-call-parser gemma4"
             ;;
         gemma4-12b)
             # Gemma 4 12B unified omni (Gemma4UnifiedForConditionalGeneration) —
@@ -379,7 +379,7 @@ apply_preset() {
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4 --swa-full-tokens-ratio 0.0625"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---disable-cuda-graph --disable-piecewise-cuda-graph} --tool-call-parser gemma4 --swa-full-tokens-ratio 0.0625"
             ;;
         qwen3-vl-moe)
             # Repointed 2026-05-07 from missing $MODELS_DIR/Qwen3-VL-30B-A3B-

@@ -124,3 +124,14 @@ Root cause of the dense reject: down_proj `in=2112`, checkpoint `group_size=64` 
 **B1 arm N (torch_native, graphs OFF):** decode 34.8@1K → 32.6@64K → 31.1@256K, caps **5/5** — indistinguishable from the triton control (34.1→31.2). The backend swap is free on the 26B; the decisive arm is G (torch_native + cuda-graph), relaunched after an env-assignment bug no-oped it (`${var:+VAR=x}` prefix-assignments don't survive expansion — fixed with explicit `export` in a subshell).
 
 **B2′ — dense down_proj fallback prize: PARKED (1.9% < 5% bar).** Microbench at the production per-rank shape (M=1, K=1056, N=5376, g=32), receipt `B2-downproj-microbench.json`: dequant+mm (current fallback) **43.9 µs**; in-tree `awq_gemm_triton` fused W4A16 **23.8 µs**; pure fp16 mm floor **23.5 µs**. The Triton path is already AT the bandwidth floor, so best-case saving = 20 µs × 30 layers = **0.60 ms/token ≈ 1.9% of the ~32 ms TPOT**. Not worth a routing patch; the 26B's gap is launch-bound, not this. Root-cause note for the ledger: the marlin reject is the `K % 128` thread-tile check (1056%128=32; full-width 2112%128=64 — so replication would not have helped either); checkpoint g=32 is itself marlin-legal. Track D pass-1 finding hereby *sized and closed for the 26B dense path*; the `moe.experts`→WNA16 fallback remains structural-and-fine.
+
+### 2026-06-10 05:27 — B1 CONCLUDED on the 26B: graphs were the whole gap; "triton can't capture" FALSIFIED
+
+| arm | 1K | 32K | 64K | 128K | 256K | caps |
+|---|---:|---:|---:|---:|---:|---|
+| control (triton, no graph — A2) | 34.1 | 33.9 | 33.3 | 31.6 | 31.2 | 5/5 |
+| N (torch_native, no graph) | 34.8 | 33.5 | 32.6 | 31.2 | 31.1 | 5/5 |
+| **G (torch_native + graphs, MEM 0.78)** | **83.3** | 65.7 | 55.2 | 40.9 | **40.9** | 5/5 |
+| **GT (triton + graphs, MEM 0.78)** | **82.9** | 65.8 | 54.9 | 41.1 | **40.9** | 5/5 |
+
+**Verdict:** graphs deliver **2.44× @1K → 1.31× @256K** (clears the ≥1.3× bar at every point); backend choice is irrelevant (N ≈ control; GT ≈ G). **The 2026-06-06 belief "Gemma's triton SWA attention can't graph-capture" is falsified on v0.5.12 at bs=1 capture** — the 26B sat at flat-33 tok/s for no current reason. Decode is now properly attention-bound (83→41 vs the flat launch-bound 33). Wired: `gemma4` preset graphs ON (`--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph`) + MEM 0.85→0.78 (capture headroom, qwen36 precedent). 12B/31B graph arms running for their own receipts (hooks added, defaults unchanged until receipts land). The flat-TPOT tell from Track C is hereby explained for all three Gemma presets; B2′ already showed the dense-MLP fallback contributes only 1.9%.
