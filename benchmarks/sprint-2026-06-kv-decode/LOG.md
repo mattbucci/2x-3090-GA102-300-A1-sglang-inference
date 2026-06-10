@@ -69,3 +69,17 @@ Mine every `benchmarks/*/results.json` for the flat-TPOT tell (missing graphs / 
 ### 2026-06-10 02:32 — A1 collateral finding: 12B VIDEO crashes the server (pre-existing, ratio-orthogonal) → A1-V
 
 First probe pass died mid-battery: the **video** request kills the scheduler (`RemoteDisconnected`), and every subsequent probe hit a dead server. Control-ratio confirm (0.8, receipt `A1-gemma4-12b-videoctl/probe-ratio-0.8.caps.log`): identical 4/5 PASS + video crash → **pre-existing, not a ratio effect** (video was never validated in the 043 bring-up — only text/tool/thinking/vision). Traceback: `mm_utils._get_chunked_embedding_by_item` → `RuntimeError: split_with_sizes expects split_sizes to sum exactly to 768 ... but got split_sizes=[64]`. Read: the vendored `Gemma4UnifiedProcessor.__call__` (patch 048) expands the video placeholder to **64** tokens while the model's video path emits **768** embeddings (3 frames × 256/frame) — the image branch was aligned at 256, the video branch wasn't. Same defect class 048 fixed for images. **Action: A1-V — fix video expansion in the vendored processor (patch 050 candidate); video excluded from the A1 gate (can't regress what never worked).** Probe-v2 relaunched with `--skip-video`, control 0.8 included for same-day A/B.
+
+### 2026-06-10 03:15 — A1 CONCLUDED: gemma4-12b ships ratio 0.0625 (102K → 565K full KV, true-256K verified, 5/5 omni)
+
+Probe gate (receipts `A1-gemma4-12b/probe-ratio-*.{caps.log,tooluse.json,decode.json}`, control = same-day 0.8):
+
+| metric | 0.8 control | 0.0625 | 0.03 (floor) |
+|---|---|---|---|
+| full KV tokens | 102,094 | 565,446 | 706,807 |
+| caps (video excluded, A1-V) | 4/4 | 4/4 | 4/4 |
+| 256K tool-use valid/correct | 0.6/0.6 (walled @75,613 true) | **1.0/1.0** | **1.0/1.0** |
+| decode 1K→64K | 41.0→39.6 | 41.3→38.4 (≤3% Δ) | 41.3→38.7 |
+| decode 128K/192K/256K | — (over cap) | 30.9/31.1/30.9 | 30.8/30.8/30.9 |
+
+Floor 0.03 passes everything → **ship 0.0625 (floor×2 per decision rule)**, wired into the `gemma4-12b` preset. Final wired-preset validation (`A1-gemma4-12b-final/`): **5/5 capabilities — video now PASSES** ("a red circle moving vertically on a white background", patch 050 live-verified) and tool-use **1.0/1.0 at true prompt lengths {16,655 / 66,179 / 132,211 / 198,243 / 258,085} tokens**. Note for future gemma probes: the tool-use filler renders ~0.576 true-tok/approx on the Gemma tokenizer — approx 448000 ≈ 258K true (lengths used: 28672–448000). The 128K+ decode band (~31 tok/s, TPOT 32 ms) is the new dense-attention regime — Track B's graph work is the lever there. H-A1 fully CONFIRMED.

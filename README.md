@@ -1,8 +1,6 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
-High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.12** + 24 local patches, CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
-
-> 📢 **R9700 ack + finding (2026-06-10):** Adopted your 3-gate audit (gates 2+3 in our patches/README). Number-remap noted; thanks for grafting 048→your 049. **New cross-stack lever from today's loop: our dense-AWQ GEMV was silently dead** — checkpoints ship FP16 scales, dispatch gate required BF16 → 4.6 tok/s dequant fallback on every dense ship; fixed (cast scales→model dtype at load + fp16 GEMV twin). qwen36-27b 4.6→24.7, devstral 9.7→38.3 @128. Worth checking your marlin path: any dtype/format gate ahead of the fast kernel that fails open to a slow fallback won't show in resolve-rate evals — only in tok/s. Joint-PR plan: we'll draft 011 triton-FP32 + sampler ±Inf + 040 omission-recovery PRs with both stacks' receipts after our bake-off resumes.
+High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.12** + 25 local patches, CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 ## Direction
 
@@ -40,9 +38,10 @@ What's queued, grouped by theme. Calibration work is gated on the bake-off sweep
 
 Hypotheses mined from the patch-set patterns; lab notebook with methods + decision rules: [`benchmarks/sprint-2026-06-kv-decode/LOG.md`](benchmarks/sprint-2026-06-kv-decode/LOG.md). One variable at a time; instruments identical to the fleet eval so results compare to existing baselines.
 
-1. **Track A — SWA sub-pool right-sizing** (from patches 043/047): SGLang defaults `--swa-full-tokens-ratio 0.8`, but sliding layers (40/48 on the 12B, 25/30 on the 26B, window 1024) can't attend past 1024 tokens — the dominant KV consumer is mostly dead weight at MAX_RUNNING=1. Sweep the ratio to its floor; expected outcome: gemma4-12b 102K→256K and gemma4 26B 118K→256K true KV, closing both KV-wall entries.
-2. **Track B — Gemma 4 26B decode** (from 011/017/021 + the flat-TPOT graph tell): A/B torch_native+cuda-graph vs triton+no-graph, and awq_marlin vs moe_wna16 MoE runner at M=1. Target ≥1.3× at 131K+ with 5/5 capabilities held.
-3. **Track C — fleet TPOT-vs-ctx audit**: mine existing `benchmarks/*/results.json` for flat-TPOT / cliff anomalies (no GPU; runs in wait gaps).
+1. **Track A — SWA sub-pool right-sizing** (from patches 043/047): SGLang defaults `--swa-full-tokens-ratio 0.8`, but sliding layers (40/48 on the 12B, 25/30 on the 26B, window 1024) can't attend past 1024 tokens — the dominant KV consumer is mostly dead weight at MAX_RUNNING=1. **A1 (12B) CONCLUDED: ratio 0.0625 shipped — full pool 102K→565K tokens, tool-use 1.0/1.0 to 258K true tokens, 5/5 omni (video fixed by patch 050 en route), decode within 3% of control ≤64K + new 128K–256K band at ~31 tok/s.** A2 (26B) sweep in flight.
+2. **Track B — Gemma decode** (from 011/017/021 + the flat-TPOT graph tell, which Track C confirmed fires on ALL three Gemma presets): A/B torch_native+cuda-graph vs triton+no-graph, and awq_marlin vs moe_wna16 MoE runner at M=1. Target ≥1.3× at 131K+ with capabilities held.
+3. **Track C — fleet TPOT-vs-ctx audit: DONE** (LOG.md): flat-TPOT tell on gemma4-12b/26B/31B (1.07/1.01/0.99 = launch-bound); qwen3-ream −26% decode cliff at 64K→128K queued as B3.
+4. **Track D — fail-open kernel-gate audit** (from R9700's dense-GEMV find: an FP16-scales-vs-BF16 dispatch gate silently dropped every dense ship to a 5× slower dequant fallback, 4.6→24.7 tok/s when fixed): first pass greps fleet boot logs for the per-layer chosen quant method per preset; any preset whose hot path differs from intent gets a tok/s A/B. Quality evals cannot catch this class — only tok/s can.
 
 ### New-arch bringup — 256K candidate
 
@@ -239,7 +238,7 @@ Full host-side scaffold + toolchain notes (opencode + little-coder + claw-code, 
 | Coder-REAP-30B AWQ-Marlin | MoE A3B (96 exp) | **262K** | 109 | `coder-reap-25b` | [`mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) (R9700 in-house). |
 | **Gemma 4 31B Dense AWQ** | Dense (VL) | **~24K** ‡‡ | ~22 | `gemma4-31b` | [`mattbucci/gemma-4-31B-AWQ`](https://huggingface.co/mattbucci/gemma-4-31B-AWQ). LM INT4, vision tower FP16. |
 | **Gemma 4 26B MoE AWQ** | MoE A4B (103 exp, VL) | **~118K** ‡‡ | 22 | `gemma4` | [`mattbucci/gemma-4-26B-AWQ`](https://huggingface.co/mattbucci/gemma-4-26B-AWQ). |
-| **Gemma 4 12B Unified AWQ** | Omni, encoder-free | **~80K** ‡‡ | 42 | `gemma4-12b` | [`mattbucci/gemma-4-12B-AWQ`](https://huggingface.co/mattbucci/gemma-4-12B-AWQ). In-house int4 RTN-from-QAT. MMLU 77 / HE 93 / tool-use 100→95K, **vision ✓**, thinking clean. Full omni (patches 042–048). Effective ctx ~80K (sliding-KV-walled, not 256K). |
+| **Gemma 4 12B Unified AWQ** | Omni, encoder-free | **262K** ✓ | 42 (31 @256K) | `gemma4-12b` | [`mattbucci/gemma-4-12B-AWQ`](https://huggingface.co/mattbucci/gemma-4-12B-AWQ). In-house int4 RTN-from-QAT. MMLU 77 / HE 93 / **tool-use 1.0 → 258K true tokens**, **5/5 omni** (vision + video ✓, patches 042–050). KV wall removed 2026-06-10: `--swa-full-tokens-ratio 0.0625` → 565K-token full pool (was 102K at the 0.8 default). |
 | **Qwen3.6-27B Dense AWQ** | Dense + DeltaNet (VL) | **262K** (657K KV) | 21 | `qwen36-dense` | [`mattbucci/Qwen3.6-27B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-27B-AWQ) (R9700 self-cal). |
 | **Devstral-Small-2-24B AWQ** | Dense (VL) | **~172K** ‡‡ | 56 | `devstral` | [`mattbucci/Devstral-Small-2-24B-AWQ`](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ). The canonical Devstral; built from [`mistralai/Devstral-Small-2-24B-Instruct-2512`](https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512). FP8→BF16→GPTQ+tool-cal→AWQ. |
 | **Qwen3-VL-32B Instruct AWQ** | Dense (VL) | **131K** (model-card cap) | 40 | `qwen3-vl-32b` | [`mattbucci/Qwen3-VL-32B-AWQ`](https://huggingface.co/mattbucci/Qwen3-VL-32B-AWQ) (R9700). 68→50→40 tok/s @ 1K/65K/131K. |
@@ -312,11 +311,12 @@ Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimod
 | Qwen3-Coder-30B-A3B-REAP AWQ | 6.5 GB | 72 KB | 262K |
 | Qwen3.6-27B Dense AWQ | 13.5 GB | 24 KB | 262K |
 | Devstral-Small-2-24B AWQ | 7.0 GB | ~40 KB (fp8 KV) | **~172K** ‡‡ |
-| Gemma 4 26B A4B MoE AWQ | 6.5 GB | ~12 KB (SWA) | **~118K** ‡‡ |
+| Gemma 4 26B A4B MoE AWQ | 6.5 GB | ~12 KB (SWA) | **~118K** ‡‡ (Track A2 in flight) |
 | Gemma 4 31B Dense AWQ | 7.7 GB | ~25 KB (SWA) | **~24K** ‡‡ |
+| Gemma 4 12B Unified AWQ | 5.4 GB | 15.3 KB full + 152.6 KB swa | **565K full / 35K swa** (262K ✓ @ ratio 0.0625) |
 | Qwen3-VL-32B Dense AWQ | 10.0 GB | 24 KB | 131K (model-card cap) |
 
-‡‡ **"Max context" is the REAL KV-pool capacity** (`max_total_num_tokens` from the serve log), not the declared `--context-length`. Corrected 2026-06-06 — the heavy-**VL** models are KV-bound: dense/large weights + the **FP16 vision tower** eat the budget, leaving far less than 262K (gemma4-31b ~24K, gemma4-26b ~118K, devstral ~172K in shipped multimodal config). Measured by the fixed needle + 256K tool-use probe. The A3B-MoE models are genuinely 256K+: qwen36 996K / qwen36-ream 2.4M / qwen36-dense 657K / qwen3-ream 578K KV (fleet serve logs); the Coder-A3B-MoE presets clear 256K by the same light-KV arch (~900K). A non-multimodal or higher-mem-fraction Gemma/Devstral variant would reach further, but the shipped VL preset is what these rows describe.
+‡‡ **"Max context" is the REAL KV-pool capacity** (`max_total_num_tokens` from the serve log), not the declared `--context-length`. Corrected 2026-06-06 — the heavy-**VL** models are KV-bound: dense/large weights + the **FP16 vision tower** eat the budget, leaving far less than 262K (gemma4-31b ~24K, gemma4-26b ~118K, devstral ~172K in shipped multimodal config). Measured by the fixed needle + 256K tool-use probe. **For hybrid-SWA models this is fixable in config:** the default `--swa-full-tokens-ratio 0.8` sizes the sliding sub-pool at 80% of full although sliding layers attend only `window=1024` tokens — right-sizing freed the 12B (102K→565K full, tool-use 1.0 to 258K true; sprint Track A). 26B sweep in flight; 31B/devstral are full-attention-bound (different lever). The A3B-MoE models are genuinely 256K+: qwen36 996K / qwen36-ream 2.4M / qwen36-dense 657K / qwen3-ream 578K KV (fleet serve logs); the Coder-A3B-MoE presets clear 256K by the same light-KV arch (~900K). A non-multimodal or higher-mem-fraction Gemma/Devstral variant would reach further, but the shipped VL preset is what these rows describe.
 
 ## Quality Evals
 
@@ -389,7 +389,7 @@ cd python && pip install -e .
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.12 + 24 local patches |
+| SGLang | v0.5.12 + 25 local patches |
 | PyTorch | 2.11.0 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
 | transformers | 5.6.0 (v0.5.12 pin) |
@@ -400,20 +400,20 @@ The serving tree lives at `/data/sglang-rebase-v0512` (env `sglang-v0512`); laun
 
 ## Patches
 
-**24 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang v0.5.12 — consolidated 2026-06-10 (five multi-patch series merged into single units; full set re-verified: applies clean on pristine v0.5.12, byte-identical to the live serving tree, rerun-safe). By work area:
+**25 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang v0.5.12 — consolidated 2026-06-10 (five multi-patch series merged into single units; full set re-verified: applies clean on pristine v0.5.12, byte-identical to the live serving tree, rerun-safe). By work area:
 
 | Area | Patches |
 |------|---------|
 | Quantized-weight loading (AWQ/CT int4) | 002, 029, 030, 031 |
 | Qwen3.5/3.6 enablement | 018, 035 |
-| Gemma 4 bring-up (26B MoE mm / 31B dense / 12B unified) | 004, 023, 025, 026, 028, 039, 043 |
+| Gemma 4 bring-up (26B MoE mm / 31B dense / 12B unified) | 004, 023, 025, 026, 028, 039, 043, 050 |
 | MoE runner gelu coverage | 017 |
 | Kernel correctness & precision | 003, 011, 012 |
 | Ampere (sm_86) enablement | 005, 007 |
 | Serving robustness / agentic | 034, 041, 049 |
 | New-arch grafts / build | 042, 037 |
 
-Every patch is classified against upstream main (2026-06-10): **12 upstream-PR candidates, 4 drop-on-next-rebase, 5 site-specific**. Per-patch narratives, the merged-unit mapping (old 021/024/036/038/040/044–048 → 017/023/035/039/043), the upstream ledger, and the patch-hygiene gates for any new patch live in [`patches/README.md`](patches/README.md).
+Every patch is classified against upstream main (2026-06-10): **12 sglang-PR candidates + 1 transformers-PR (050), 4 drop-on-next-rebase, 5 site-specific**. Per-patch narratives, the merged-unit mapping (old 021/024/036/038/040/044–048 → 017/023/035/039/043), the upstream ledger, and the patch-hygiene gates for any new patch live in [`patches/README.md`](patches/README.md).
 
 ## Quantization
 

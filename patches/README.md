@@ -2,7 +2,7 @@
 
 This file collects the details of **what was fixed and why** — per-patch narratives, root-cause notes, and cross-team learnings. The top-level `README.md` keeps only current state; once an issue is closed with a patch, the narrative lives here.
 
-**24 logical patches** apply in numeric order against SGLang **v0.5.12**. `scripts/setup.sh` applies every `*.patch` in this directory idempotently (`git apply --check` → apply, else skip). Consolidated 2026-06-10: five multi-file series were merged into single logical patches (mapping below), and the whole set was re-verified — applied to pristine v0.5.12 it produces a tree **byte-identical** to the live serving tree at `/data/sglang-rebase-v0512`, and re-running the loop on an already-patched tree applies nothing.
+**25 logical patches** apply in numeric order against SGLang **v0.5.12**. `scripts/setup.sh` applies every `*.patch` in this directory idempotently (`git apply --check` → apply, else skip). Consolidated 2026-06-10: five multi-file series were merged into single logical patches (mapping below), and the whole set was re-verified — applied to pristine v0.5.12 it produces a tree **byte-identical** to the live serving tree at `/data/sglang-rebase-v0512`, and re-running the loop on an already-patched tree applies nothing.
 
 ## Patch map
 
@@ -34,8 +34,9 @@ Grouped by work area. *Upstream* = status vs `sgl-project/sglang` main `70c71ba1
 | 042 | cohere2-moe-loader-graft | New arch | **drop** — grafted *from* main |
 | 043 | gemma4-unified-bringup *(= old 043–048)* | Gemma 4 | mostly **drop**: model graft + `model_config` arch-lists are in main; the transformers-5.6 config/processor vendor shims evaporate once env moves to tx ≥ 5.10 |
 | 049 | tp-load-timeout-cold-cache | Robustness | **site** (R9700 graft — their 048; upstream would want an env-var, low-priority PR) |
+| 050 | gemma4-unified-video-token-count | Gemma 4 | vendor-shim fix — **PR to HF transformers** (vendored verbatim 2026-06-07, likely upstream-broken there too) |
 
-Rebase ledger: **4 drop** (012, 028, 030, 042) + most of 043; **~12 upstream-PR candidates** (002, 003, 004, 011, 017, 018, 026, 031, 034, 035, 041 + 025's masked_fill); **5 site-specific** (005, 007, 037, 049, 023-Ampere-only). Bonus from the same main audit: `Qwen3VLMoeForConditionalGeneration` now exists upstream with a registered EntryClass — re-check the VL-30B loader (top-level README MoE backlog №3) against a graft before sinking calibration time.
+Rebase ledger: **4 drop** (012, 028, 030, 042) + most of 043; **~12 upstream-PR candidates** (002, 003, 004, 011, 017, 018, 026, 031, 034, 035, 041 + 025's masked_fill); **5 site-specific** (005, 007, 037, 049, 023-Ampere-only); 050 is a transformers-side vendor fix (PR to HF transformers, not sglang). Bonus from the same main audit: `Qwen3VLMoeForConditionalGeneration` now exists upstream with a registered EntryClass — re-check the VL-30B loader (top-level README MoE backlog №3) against a graft before sinking calibration time.
 
 ### Merged-unit mapping (2026-06-10 consolidation)
 
@@ -127,6 +128,9 @@ Verified 2026-05-26: 31B boots TP=2, basic/tool/thinking/vision PASS; 26B unchan
 - **Processor `__call__`** *(old 048)*: tx 5.10's base `ProcessorMixin.__call__` expands `<|image|>` into N soft tokens; tx 5.6's does not → `split_with_sizes expects 256 got [1]` scheduler crash on first image. Inlined an expansion `__call__` modeled on the 26B's processor.
 
 Bring-up status (2026-06-07): ships as a full omni model — text + reasoning + tool-call + vision verified; int4 AWQ (RTN-from-QAT) at TP=2 awq_marlin, MMLU 80 / HumanEval 95 / needle 100 / 256K tool-use 100%→95K / ~42 tok/s. Open item: KV caps at 102K full / 81K swa — true 256K needs swa-pool/mem-fraction tuning (decode/KV track). On rebase: model graft + arch-lists come from main; the tx-5.6 vendor shims evaporate once the env moves to tx ≥ 5.10.
+
+#### 050 — gemma4-unified-video-token-count (2026-06-10, 1 LOC, sprint A1-V)
+First video request to the 12B killed the scheduler: `split_with_sizes expects sum 768 ... got [64]`. The vendored video processor (patch 046, verbatim from transformers main) declared `num_soft_tokens_per_video = merged_patches.shape[1]` — the **per-frame** merged-patch count — while `_embed_patches` emits every frame's non-padding patches (12-frame validator video × 64/frame = 768). `__call__` therefore expanded 64 placeholders against 768 embeddings. Fix: declare the all-frames total (`shape[0] × shape[1]`); per-frame `-1` padding is still dropped model-side. **Live-verified: video crash → PASS ("a red circle moving vertically"), 12B = 5/5 full omni.** Found because the A1 ratio-sweep probe battery exercised video where the bring-up had not. Transformers main likely carries the same defect — upstream report goes there.
 
 ### MoE runner activation coverage
 
