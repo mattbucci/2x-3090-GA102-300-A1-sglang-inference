@@ -1,8 +1,34 @@
+From: 3090 team <noreply@anthropic.com>
+Date: 2026-05-04
+Subject: [PATCH] gemma4_mm: process video frames one-at-a-time in get_video_feature
+
+Closes Gemma 4 video OOM on Ampere AND R9700's bsz==1 vision-attention
+assertion in one shot. The batched vt(pv, pp) call materializes a
+[num_frames x num_patches x 2 x position_embedding_size] one_hot tensor
+inside Gemma4VisionPatchEmbedder._position_embeddings (~1.24 GB bf16 for
+a 12-frame video at pooling_kernel_size=3 / 10240 classes) — OOMs after
+LM weights + KV pool. Per-frame calls keep the peak at 1/num_frames and
+satisfy the RDNA4 bsz==1 assertion. Validated 2026-05-04 (4/4 PASS).
+
+Regenerated 2026-06-10 with wide context: the original hand-written hunk
+had no unique anchor, so on an already-patched tree git apply matched the
+get_image_feature block (same vt(pv, pp) shape) and would silently patch
+the IMAGE path on a setup.sh rerun. Context now pins the video-only
+4D->3D reshape so re-application fails cleanly. Narrative:
+patches/README.md.
+
 diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
-index 0000000..1111111 100644
+index 40e06f647..615b7198a 100644
 --- a/python/sglang/srt/models/gemma4_mm.py
 +++ b/python/sglang/srt/models/gemma4_mm.py
-@@ -447,10 +447,26 @@
+@@ -466,24 +466,40 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+                 # 3-D (num_frames, num_patches, ...) so each frame is a
+                 # batch element for the vision tower.
+                 if pv.dim() == 4:
+                     pv = pv.reshape(-1, pv.shape[-2], pv.shape[-1])
+                 if pp.dim() == 4:
+                     pp = pp.reshape(-1, pp.shape[-2], pp.shape[-1])
+ 
                  pv = pv.to(device=vt.device, dtype=self.language_model.dtype())
                  pp = pp.to(device=vt.device)
  
@@ -33,3 +59,10 @@ index 0000000..1111111 100644
                      all_embeds.append(
                          self.embed_vision(
                              inputs_embeds=real_tokens.unsqueeze(0)
+                         ).squeeze(0)
+                     )
+ 
+         if all_embeds:
+             return torch.cat(all_embeds, dim=0)
+         else:
+             return torch.empty(

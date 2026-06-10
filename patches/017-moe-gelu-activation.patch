@@ -1,3 +1,17 @@
+From: 3090 team <noreply@anthropic.com>
+Date: 2026-06-10
+Subject: [PATCH] MoE runners: accept gelu activation alongside silu (Gemma 4)
+
+Merged unit (2026-06-10) absorbing former 017-moe-wna16-gelu-activation
+(2026-04-30) + 021-marlin-moe-gelu-activation (2026-04-30). One feature:
+Gemma 4 MoE uses gelu_pytorch_tanh, but every fused-MoE chokepoint
+hard-asserted silu-only. Relax to silu|gelu and dispatch on
+runner_config.activation across: moe_wna16 Triton runner, fused_marlin_moe,
+the Marlin MoE runner, compressed_tensors_wNa16_moe, and marlin_utils.
+sgl_kernel.gelu_and_mul matches gelu_pytorch_tanh to 0.00012 in FP16.
+Loads clean across silu models (Qwen3 MoE/Coder/REAP) and gelu (Gemma 4).
+Per-member narratives: patches/README.md.
+
 diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
 index f62fe7278..0631212ad 100644
 --- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
@@ -115,3 +129,24 @@ index 0c754b9b2..c58440d42 100644
  
      # gate-up: (n, k) = (intermediate_size_per_partition * 2, hidden_size)
      # down: (n, k) = (hidden_size, intermediate_size_per_partition)
+diff --git a/python/sglang/srt/layers/quantization/moe_wna16.py b/python/sglang/srt/layers/quantization/moe_wna16.py
+index a7d87c638..367ceb887 100644
+--- a/python/sglang/srt/layers/quantization/moe_wna16.py
++++ b/python/sglang/srt/layers/quantization/moe_wna16.py
+@@ -386,9 +386,13 @@ class MoeWNA16Method(FusedMoEMethodBase):
+         layer: torch.nn.Module,
+         dispatch_output: StandardDispatchOutput,
+     ) -> CombineInput:
+-        assert (
+-            self.moe_runner_config.activation == "silu"
+-        ), "Only SiLU activation is supported."
++        # Triton fused MoE runner supports silu + gelu (moe_runner/triton.py
++        # uses both via gate_up_proj + gate_act dispatch). Gemma 4 MoE uses
++        # gelu_pytorch_tanh; relax the silu-only assertion so awq_marlin +
++        # moe_wna16 fallback can serve Gemma 4.
++        assert self.moe_runner_config.activation in ("silu", "gelu"), (
++            "Only SiLU and GeLU activations are supported."
++        )
+ 
+         quant_info = self.get_triton_quant_info(layer)
+         return self.runner.run(dispatch_output, quant_info)

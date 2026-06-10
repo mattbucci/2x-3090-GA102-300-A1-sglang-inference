@@ -1,19 +1,39 @@
 From: 3090 team <noreply@anthropic.com>
-Date: 2026-05-26
-Subject: [PATCH] config: apply Gemma4 global/swa head-dim remap to top-level config too
+Date: 2026-06-10
+Subject: [PATCH] gemma4 dense (31B) bring-up: num_experts fallback + top-level head-dim remap
 
-Gemma4 stores head_dim/num_key_value_heads for sliding-window layers and
-global_head_dim/num_global_key_value_heads for full-attention layers; SGLang's
-get_config remaps them (base=full, swa_*=sliding). It only remapped
-config.text_config (the multimodal path, gemma4 26B). The dense text-only path
-(Gemma4ForCausalLM, gemma4-31b) consumes the TOP-LEVEL Gemma4Config, which was
-never remapped -> full-attention layers built at head_dim=256 not
-global_head_dim=512 (and 16 kv-heads not num_global_key_value_heads=4) ->
-512->256 q/k_norm + k/v load crash; KV pool missing swa_head_dim. Now remaps
-both objects; swa_head_dim guard keeps it idempotent (26B unchanged, still 5/5).
-Pairs with patch 039 (num_experts fallback). Verified gemma4-31b boots TP=2 +
-basic/tool/thinking PASS 2026-05-26.
+Merged unit (2026-06-10) absorbing former 039-gemma4-dense-num-experts-fallback
+(2026-05-26) + 040-gemma4-dense-head-dim-remap (2026-05-26, explicitly
+"pairs with 039"). One bring-up: dense Gemma4 (gemma4-31b) loads via
+gemma4_causal + the TOP-LEVEL Gemma4Config. (1) load_weights:
+getattr(config, "num_experts", 0) — dense configs omit the attr and the
+expert loop never matches anyway. (2) hf config parse: refactor the
+gemma4 global/swa head-dim remap into _remap_gemma4_head_dims(tc) and run
+it on BOTH config.text_config (26B multimodal path) and the top-level
+config (dense path) — otherwise full-attention layers build at
+head_dim=256 instead of global 512 and crash on q/k_norm + k/v load; the
+swa_head_dim guard keeps it idempotent. Verified 2026-05-26: gemma4-31b
+boots TP=2, basic/tool/thinking/vision PASS; 26B unchanged 5/5.
+Per-member narratives: patches/README.md.
 
+diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
+index bf73f4d92..6be68a77f 100644
+--- a/python/sglang/srt/models/gemma4_causal.py
++++ b/python/sglang/srt/models/gemma4_causal.py
+@@ -1034,7 +1034,12 @@ class Gemma4ForCausalLM(PreTrainedModel):
+             ("experts.w13_weight", "experts.gate_up_proj", ("w1", "w3")),
+             ("experts.w2_weight", "experts.down_proj", ("w2",)),
+         ]
+-        num_experts = self.config.num_experts
++        # Dense Gemma4 variants (e.g. gemma4-31b) have no MoE experts and omit
++        # `num_experts` from their config entirely. The expert loop below never
++        # matches for dense checkpoints (no experts.* weights), so 0 is safe;
++        # the bare attribute access would otherwise AttributeError at load.
++        # Mirrors the getattr guard already in gemma4_mm.py.
++        num_experts = getattr(self.config, "num_experts", 0) or 0
+ 
+         k_eq_v_layers = self._get_k_eq_v_layers()
+ 
 diff --git a/python/sglang/srt/utils/hf_transformers/config.py b/python/sglang/srt/utils/hf_transformers/config.py
 index a46c4a45d..ee899e906 100644
 --- a/python/sglang/srt/utils/hf_transformers/config.py
