@@ -185,3 +185,14 @@ Probe gate (`A3-gemma4-31b/probe-ratio-*`): all three rungs caps **5/5**; toolus
 **B5′ (allreduce-fusion, qwen36-dense): NULL RESULT — parked.** Code probe 62.6 vs ctl 62.4; decode 68.3/63.6/54.8 vs 68.6/63.3/54.8 — identical within noise (target was ≥72 @1K). `--enable-flashinfer-allreduce-fusion` changes nothing measurable on this path; the 3.2 ms/token allreduce stands. Remaining ideas for that 22%: NVLink symm-mem/MSCCLPP paths (`--enable-torch-symm-mem`, `--enable-mscclpp`) — logged, not started.
 
 **B4 (NGRAM on qwen36-dense): blocked twice, root-caused, retargeted.** Boot 1: spec×radix on DeltaNet hybrids requires `--mamba-scheduler-strategy extra_buffer` + `SGLANG_ENABLE_SPEC_V2=1` (the DFlash recipe generalizes to NGRAM). Boot 2 (with recipe): Triton compile assert in the conv1d spec-verify branch — `matrix_x` defined fp16 then redefined bf16 in the `KERNEL_WIDTH` branches: **patch 003's exact bug class in a branch 003 didn't cover** (the spec path loads conv_state cols without the cast). Filed as **patch-051 candidate** (extend 003's `.to(_x_dtype)` to the KERNEL_WIDTH col loads); NGRAM-on-hybrids gated on it. Trial retargeted at **qwen3-ream** (full-attention MoE, no conv path, bake-off model, 105-183 tok/s) — B4c running with same-day ctl.
+
+### 2026-06-10 09:38 — B4c (NGRAM on qwen3-ream): split verdict, one tuning arm before park
+
+| probe | ctl | ngram (draft 12) |
+|---|---|---|
+| code agg | 186.5 | 188.9 (**1.01×**) |
+| code per-row | 182/186/190/188 | **122 / 581 / 236 / 142** |
+| filler decode 1K/40K/128K | 184/163/104 | 1042/714/328 (filler is repetitive → n-gram paradise; real but unrepresentative) |
+| accept | — | len 1.48–2.10, rate 0.04–0.10 |
+
+The variance is the story: **3.1× on the verbatim-copy prompt** (docstring insertion = mostly re-emission), **+24%** on fresh codegen, **−25-33%** on edit/diff prompts — the trie mispredicts on copy-with-deltas (THE agentic pattern) and 12-token drafts make each mispredict expensive. Hypothesis arm `ngram_d6` (`--speculative-num-draft-tokens 6`) running: shallower drafts cut mispredict cost, should keep most copy-span wins. Verdict after d6; bar stays ≥1.3× aggregate for a preset wire-in (opt-in env at most — bake-off latency variance matters too).
