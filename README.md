@@ -60,18 +60,18 @@ Detailed matrix + rebuild paths in the [MoE coverage matrix](#moe-coverage-matri
 
 1. **`Qwen3.6-35B-A3B-REAP-AWQ`** — REAP of bake-off top scorer (177/300 = 59.0%); 256→192e via `run_reap.py` on upstream BF16. **Tooling ready:** the fused-`Qwen3_5MoeExperts` unfuse + custom-router handling are built and miniature-validated (`scripts/quantize/test_qwen3_5moe_unfuse.py`, 7/7). Remaining = the on-box run: 62 GB BF16 → CPU offload on 48 GB VRAM (memory-marginal; R9700's 64 GB may be the better prune host), then AWQ recal with `thinking_vision_video` + `check_awq_scales.py --base`.
 2. **`gemma-4-26B-A4B-REAM-AWQ`** — REAM of multimodal MoE. Blocked on tooling task below (Samsung SAIL needs Gemma 4 port).
-3. **`Qwen3.6-VL-30B-A3B`** native + REAM + in-house REAP — rebuild VL trio with vision tensors retained (current REAP-26B is atbender pre-pruned, vision-broken). ⚠ pre-flight: SGLang's `Qwen3VLMoeForConditionalGeneration` loader was previously broken in v0.5.11 (no upstream fix found in v0.5.12 grep); smoke a community AWQ first before sinking calibration time.
+3. **`Qwen3.6-VL-30B-A3B`** native + REAM + in-house REAP — rebuild VL trio with vision tensors retained (current REAP-26B is atbender pre-pruned, vision-broken). ⚠ pre-flight: SGLang's `Qwen3VLMoeForConditionalGeneration` loader was previously broken in v0.5.11 (no upstream fix found in v0.5.12 grep) — but main now ships the class with a registered EntryClass (2026-06-10 audit), making it a graft candidate like 042/043; smoke a community AWQ first before sinking calibration time.
 4. **`Qwen3-30B-Instruct-2507`** native + REAP — REAM exists (`qwen3-ream`, fastest preset at 107 tok/s); complete the trio.
 5. **`Qwen3.5-28B-A3B`** native + REAM — older DeltaNet+VL gen; only Cerebras REAP currently ships.
 6. **`Nemotron-3-Nano-Omni`** REAP + REAM — gated on native ship + EAGLE3 above.
 
 ### Tooling
 
-Both are prerequisites for the MoE backlog. Detailed plan: [`scripts/quantize/ream_gemma4_port_plan.md`](scripts/quantize/ream_gemma4_port_plan.md).
+Items 2–3 are prerequisites for the MoE backlog. Detailed plan: [`scripts/quantize/ream_gemma4_port_plan.md`](scripts/quantize/ream_gemma4_port_plan.md).
 
-1. **Patch-set consolidation (in progress 2026-06-10)** — the tree carries 33 patches but the docs say 26/31; five series are really single features split across files (017+021 MoE-gelu, 023+024 gemma4 quant-detect, 035+036+038 qwen3.5 CausalLM enablement, 039+040 gemma4-dense bring-up, 043–048 gemma4-unified bring-up — the last is only valid applied whole). Plan: merge each series into one logical patch under its lowest number, regroup `patches/README.md` by work area, fix counts everywhere, and classify every patch against **upstream sglang main** (graft-from-main → drops on next rebase / fixed-in-main / still-needed → upstream-PR candidate / site-specific). Verification gate: the merged set applied to pristine v0.5.12 must produce a **byte-identical tree** to the current 33-patch result, and every merged patch must reverse-apply clean against the live `/data/sglang-rebase-v0512` tree (so `setup.sh` idempotency holds).
+1. **Upstream-PR sweep** — 12 of our 23 patches fix bugs still present in sglang main as of 2026-06-10 (see the patch map in [`patches/README.md`](patches/README.md)): the Qwen3.5/3.6 AWQ + CausalLM family (002 / 018 / 031 / 035), kernel correctness (003 / 011 — 011 also bites RDNA4 + Blackwell SM12.x), MoE gelu routing (017), Gemma 4 (004 / 026 + 025's `masked_fill` half), agentic robustness (034 / 041 — R9700-originated, coordinate the PRs with them). Upstreaming erases carry cost at every future rebase; the next rebase already drops 012 / 028 / 030 / 042 + most of 043 (fixed or native in main).
 2. **Port Samsung SAIL REAM merge to Gemma 4 arch** — current `run_ream_qwen3moe.sh` + the upstream `merge.py` are Qwen3-family-only (5 hardcoded assumptions identified). Port unblocks the gemma-4-26B REAM build. Est. 40-60 h dev.
-2. **Extend `run_reap.py` to remaining MoE layouts.** `run_reap.py` + the unfuse patches are in-repo (`run_reap.py` ported from R9700; the Coder-30B-A3B-REAP ship used the Qwen3Moe path). Coverage: (a) **`Qwen3_5MoeExperts`** (Qwen3.5/3.6 fused 3-D experts + `Qwen3_5MoeTopKRouter`) — ✅ done: `patches/qwen3_5moe_unfused_experts.py` (load-split + save-fuse hooks) + tuple-router handling in the saliency hook, miniature-validated 7/7 by `test_qwen3_5moe_unfuse.py`; (b) Gemma 4 parallel dense+MoE + different expert keys — ❌ TODO; (c) Nemotron-H Mamba2-hybrid (only the 23 MLP/MoE layers pruneable per `hybrid_override_pattern`) — ❌ TODO. The saliency tracker + `prune_model` are arch-agnostic once `.mlp.gate` + per-expert `.mlp.experts.{i}.down_proj` modules exist — the unfuse patches create them.
+3. **Extend `run_reap.py` to remaining MoE layouts.** `run_reap.py` + the unfuse patches are in-repo (`run_reap.py` ported from R9700; the Coder-30B-A3B-REAP ship used the Qwen3Moe path). Coverage: (a) **`Qwen3_5MoeExperts`** (Qwen3.5/3.6 fused 3-D experts + `Qwen3_5MoeTopKRouter`) — ✅ done: `patches/qwen3_5moe_unfused_experts.py` (load-split + save-fuse hooks) + tuple-router handling in the saliency hook, miniature-validated 7/7 by `test_qwen3_5moe_unfuse.py`; (b) Gemma 4 parallel dense+MoE + different expert keys — ❌ TODO; (c) Nemotron-H Mamba2-hybrid (only the 23 MLP/MoE layers pruneable per `hybrid_override_pattern`) — ❌ TODO. The saliency tracker + `prune_model` are arch-agnostic once `.mlp.gate` + per-expert `.mlp.experts.{i}.down_proj` modules exist — the unfuse patches create them.
 
 ## Coding-eval bake-off (SWE-bench Lite, v2 Docker harness, 256K, single-user)
 
@@ -373,15 +373,15 @@ Run with `scripts/eval/eval_quality.py` (or `eval_and_chart.py` / the full-fleet
 
 ```bash
 ./scripts/setup.sh
-# or manually:
-cd components/sglang && git checkout v0.5.12
-for p in ../../patches/*.patch; do git apply "$p"; done
+# or manually ($SGLANG_DIR defaults to components/sglang; the live tree is /data/sglang-rebase-v0512):
+cd "$SGLANG_DIR" && git checkout v0.5.12
+for p in "$REPO_DIR"/patches/*.patch; do git apply "$p"; done
 cd python && pip install -e .
 ```
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.12 + 26 local patches |
+| SGLang | v0.5.12 + 23 local patches |
 | PyTorch | 2.11.0 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
 | transformers | 5.6.0 (v0.5.12 pin) |
@@ -392,16 +392,20 @@ The serving tree lives at `/data/sglang-rebase-v0512` (env `sglang-v0512`); laun
 
 ## Patches
 
-26 patches (`ls patches/*.patch | wc -l`) targeting SGLang v0.5.12. Notable:
-- **002** Qwen3-Next AWQ weight_loader fix (port from R9700)
-- **028** Gemma 4 MM per-expert AWQ loader (cross-stack with R9700)
-- **030** fused_moe_triton presharded-w2 detection (CT MoE at TP≥2)
-- **031** Qwen3.5/3.6 DeltaNet AWQ weight_loader
-- **034** sampler ±Inf detection (port from R9700)
-- **039/040** Gemma4 dense loader — `num_experts` fallback + top-level `Gemma4Config` head-dim remap (gemma4-31b)
-- **041** Devstral `[TOOL_CALLS]`-omission recovery in `MistralDetector` (grafted from R9700; fixes opencode-rolled tool-call leakage when model drops the leading marker)
+**23 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang v0.5.12 — consolidated 2026-06-10 (five multi-patch series merged into single units; full set re-verified: applies clean on pristine v0.5.12, byte-identical to the live serving tree, rerun-safe). By work area:
 
-Per-patch narratives + closed-item history in [`patches/README.md`](patches/README.md).
+| Area | Patches |
+|------|---------|
+| Quantized-weight loading (AWQ/CT int4) | 002, 029, 030, 031 |
+| Qwen3.5/3.6 enablement | 018, 035 |
+| Gemma 4 bring-up (26B MoE mm / 31B dense / 12B unified) | 004, 023, 025, 026, 028, 039, 043 |
+| MoE runner gelu coverage | 017 |
+| Kernel correctness & precision | 003, 011, 012 |
+| Ampere (sm_86) enablement | 005, 007 |
+| Serving robustness / agentic | 034, 041 |
+| New-arch grafts / build | 042, 037 |
+
+Every patch is classified against upstream main (2026-06-10): **12 upstream-PR candidates, 4 drop-on-next-rebase, 4 site-specific**. Per-patch narratives, the merged-unit mapping (old 021/024/036/038/040/044–048 → 017/023/035/039/043), the upstream ledger, and the patch-hygiene gates for any new patch live in [`patches/README.md`](patches/README.md).
 
 ## Quantization
 

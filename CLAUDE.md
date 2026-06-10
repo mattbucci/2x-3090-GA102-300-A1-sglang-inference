@@ -13,7 +13,7 @@ SGLang for 2x NVIDIA RTX 3090 (GA102-300-A1, 48GB total VRAM).
 
 ## Key Commands
 ```bash
-scripts/setup.sh                       # Full setup (clones SGLang v0.5.12, applies all patches/*.patch — 26)
+scripts/setup.sh                       # Full setup (clones SGLang v0.5.12, applies all patches/*.patch — 23 logical units)
 scripts/launch.sh devstral             # Devstral 24B AWQ (Dense, Mistral)
 scripts/launch.sh coder-30b-eval       # Qwen3-Coder-30B-A3B AWQ CT (256K, bakeoff lead 40.3% opencode)
 scripts/launch.sh coder-reap-25b       # Qwen3-Coder-REAP-25B-A3B AWQ (256K, 33% claw)
@@ -108,6 +108,7 @@ Full preset list: `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scripts/launch.sh
 ### Project hygiene
 - **No hardcoded `/home/letsrtfm/...` paths.** Use `$REPO_DIR` / `$MODELS_DIR` (set in `scripts/common.sh`) or derive from `$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)`. Hardcoded paths break for any other operator or host.
 - **HuggingFace push target: `mattbucci/<NAME>`** (not `letsrtfm/`). Token at `~/.secrets/hf_token`. For uploads ≤25 GB use `hf upload <repo> <dir>`; for 50 GB+ that stall in commit phase, use R9700's `scripts/quantize/upload_repo_per_file.py` (one `HfApi.upload_file()` per file, idempotent on retry). GitHub PAT at `~/.secrets/gh_token` (already embedded in remote URLs).
+- **Patch hygiene — 3-gate test for any new `patches/NNN-*.patch` (learned 2026-06-10).** Generate the diff against the *predecessor-patched* tree, NEVER pristine (old 045 was diffed vs pristine, conflicted with 040's rewrite of the same block, and fresh setups silently skipped it — the idempotent loop hides broken chains on the live tree). Hand-written hunks need unique anchoring context, ≥U10 from the real tree (old 026's anonymous hunk re-targeted the *image* path's identical block on a setup.sh rerun). Gate before commit: (a) full glob-order sequence applies on pristine v0.5.12; (b) result is byte-identical to the live serving tree; (c) `git apply --check` FAILS for every patch on the already-patched tree (rerun safety). Recipe + narratives in `patches/README.md`.
 
 ### Known model issues
-- **CT-format MoE at TP=2 crashes in `_load_w2`** with `RuntimeError: start (4) + length (4) exceeds dimension size (4)`. CT ships w2 already at per-rank size; the loader still calls `narrow(shard_dim, shard_size*tp_rank, shard_size)` which overflows. Native AWQ (awq_marlin quant) ships full-global w2, narrow works. Don't repoint qwen36 (TP=2) to CT until patched. TP=1 (qwen36-tp1) is fine. Affects any CT MoE at TP≥2; check qwen35-moe + Coder-30B-REAM when reaching them.
+- **CT-format MoE at TP=2 `_load_w2` crash — FIXED by patch 030** (presharded-w2 detect; upstream main has an equivalent `use_presharded_weights` mechanism, so 030 drops at the next rebase). CT pre-shards w2 to per-rank size; the loader's `narrow(shard_dim, shard_size*tp_rank, shard_size)` overflowed on rank>0. Native AWQ was never affected (full-global w2). Residual caution: 030 is verified at the load path — smoke any TP=2 preset before repointing it at a CT checkpoint.
