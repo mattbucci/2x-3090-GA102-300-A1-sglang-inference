@@ -39,7 +39,6 @@ What's queued, grouped by theme. Calibration work is gated on the bake-off sweep
 Lab notebook + receipts: [`benchmarks/sprint-2026-06-kv-decode/LOG.md`](benchmarks/sprint-2026-06-kv-decode/LOG.md); concluded-experiment history lives in [`patches/README.md`](patches/README.md) (2026-06 sprint section), not here.
 
 1. **B4 — NGRAM speculative decoding trial** on qwen36-dense (`--speculative-algorithm NGRAM`: trie draft, zero extra VRAM, no draft-context cap — dodges both 2026-05-31 spec-decode killers): queued behind A3. Gate: ≥1.3× on the code-rewrite probe → wire opt-in; else park and the EAGLE3 path below is the remaining option.
-3. **B5′ — allreduce-fusion A/B** on qwen36-dense (`--enable-flashinfer-allreduce-fusion`; profiled decode shows NCCL allreduce ≈ 3.2 ms/token = 22% of TPOT): queued.
 4. **B6 (exploratory, unstarted)** — per-layer-type attention backend for Gemma long-ctx decode: sliding layers are head_dim=256 (FlashInfer-legal); only the 8 global layers need triton.
 5. **Spec-decode pool-cap path** (gated on B4): qwen36-family KV pools are 3–9× over-provisioned for single-user 256K — capping `--max-total-tokens` ≈300K banks 4–7 GB/GPU for an EAGLE3 draft IF the 16K draft-context wall falls (`--speculative-draft-window-size`, untested).
 6. **Chart regen** after the above land (gemma rows changed step-wise).
