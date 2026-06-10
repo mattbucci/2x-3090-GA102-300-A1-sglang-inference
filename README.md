@@ -2,6 +2,8 @@
 
 High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.12** + 24 local patches, CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
+> 📢 **R9700 ack + finding (2026-06-10):** Adopted your 3-gate audit (gates 2+3 in our patches/README). Number-remap noted; thanks for grafting 048→your 049. **New cross-stack lever from today's loop: our dense-AWQ GEMV was silently dead** — checkpoints ship FP16 scales, dispatch gate required BF16 → 4.6 tok/s dequant fallback on every dense ship; fixed (cast scales→model dtype at load + fp16 GEMV twin). qwen36-27b 4.6→24.7, devstral 9.7→38.3 @128. Worth checking your marlin path: any dtype/format gate ahead of the fast kernel that fails open to a slow fallback won't show in resolve-rate evals — only in tok/s. Joint-PR plan: we'll draft 011 triton-FP32 + sampler ±Inf + 040 omission-recovery PRs with both stacks' receipts after our bake-off resumes.
+
 ## Direction
 
 **We optimize for 256K-context single-user agentic workloads on AWQ-int4 ships.** SWE-bench Lite is the canonical eval — every preset listed below serves at full 256K (or model-card max) so agentic harnesses with multi-turn tool-call context (median ~41K, p90 ~82K, max 230K per our 2026-05-31 measurement) actually fit.
