@@ -34,21 +34,16 @@ Single-user decode (M=1), honestly capped at each model's real KV pool (`max_tot
 
 What's queued, grouped by theme. Calibration work is gated on the bake-off sweep finishing + Rule 1 (no concurrent calibration + serving). The bake-off methodology + resume mechanics live in [`CLAUDE.md`](CLAUDE.md) and [`evals/swebench/`](evals/swebench/).
 
-### Experimentation sprint (CONCLUDED 2026-06-10 — GPUs free; bake-off ready to resume on the NEW gemma presets)
+### Active experiments (sprint-2, 2026-06-10 — GPUs reserved while bake-off is paused)
 
-**Sprint 2 (opened 2026-06-10, pre-chart-regen — "anything unoptimized + spec-decode within 24 GB"):**
-1. **A3 — gemma4-31b SWA ratio** (was WRONGLY excluded from Track A as "full-attention-bound"; its receipt shows the same hybrid pool, swa 19,398/full 24,248 @0.8, 8.33 GB). Expected 24K → ~100-150K KV. Ladder in flight.
-2. **B4 — NGRAM speculative decoding** (`--speculative-algorithm NGRAM`, in-tree v0.5.12): trie draft, **zero draft weights, zero extra VRAM, no draft-context cap** — dodges both 2026-05-31 spec-decode killers. Trial on qwen36-dense (bake-off leader, 69 tok/s = most headroom): filler floor + code-rewrite probe (the agentic edit pattern is n-gram-friendly).
-3. **B5 — qwen36-dense TP-sharding** (investigation): at 13.5 GB/GPU it is FULLY REPLICATED and decodes at ~100% MBU of that replication (69 ≈ 936/13.5) — the model is kernel-optimal but structurally halved. If only DeltaNet layers need replication (the 1-ULP recurrence argument) and full-attention+MLP can shard, the ceiling roughly doubles (~110-130 tok/s). Code-read first.
-4. **B6 (exploratory, logged)** — Gemma 256K decode is triton-attention-bound (34/41 tok/s): sliding layers are head_dim=256 (FlashInfer-legal!); only the 8 global layers are 512. A per-layer-type backend split could lift long-ctx decode. Not started.
-5. **Spec-decode VRAM math reopened** by Track A: the qwen36-family KV pools are 3-9× over-provisioned for single-user 256K (876K-2.4M tokens). Capping `--max-total-tokens` ~300K banks 4-7 GB/GPU — enough for an EAGLE3 draft + graphs IF the 16K draft-context wall falls (`--speculative-draft-window-size` exists in v0.5.12; untested). Gated behind B4 results.
+Lab notebook + receipts: [`benchmarks/sprint-2026-06-kv-decode/LOG.md`](benchmarks/sprint-2026-06-kv-decode/LOG.md); concluded-experiment history lives in [`patches/README.md`](patches/README.md) (2026-06 sprint section), not here.
 
-Hypotheses mined from the patch-set patterns; lab notebook with methods + decision rules: [`benchmarks/sprint-2026-06-kv-decode/LOG.md`](benchmarks/sprint-2026-06-kv-decode/LOG.md). One variable at a time; instruments identical to the fleet eval so results compare to existing baselines.
-
-1. **Track A — SWA sub-pool right-sizing** (from patches 043/047): SGLang defaults `--swa-full-tokens-ratio 0.8`, but sliding layers (40/48 on the 12B, 25/30 on the 26B, window 1024) can't attend past 1024 tokens — the dominant KV consumer is mostly dead weight at MAX_RUNNING=1. **TRACK A CONCLUDED — both Gemma hybrids now true-256K: 12B 102K→565K and 26B 118K→652K full-pool tokens at ratio 0.0625; tool-use 1.0/1.0 to 258,085 true tokens on both; caps 5/5 (12B video fixed by patch 050 en route); decode within ~3%/1% of control at shared ctx + new 128K–256K decode band (~31 tok/s each).**
-2. **Track B — Gemma decode** (from 011/017/021 + the flat-TPOT graph tell, which Track C confirmed fires on ALL three Gemma presets): A/B torch_native+cuda-graph vs triton+no-graph, and awq_marlin vs moe_wna16 MoE runner at M=1. Target ≥1.3× at 131K+ with capabilities held.
-3. **Track C — fleet TPOT-vs-ctx audit: DONE** (LOG.md): flat-TPOT tell on gemma4-12b/26B/31B (1.07/1.01/0.99 = launch-bound — explained and fixed by B1); the qwen3-ream "−26% cliff" was **disproven by B3** (fine steps: smooth 6.2→9.4 ms TPOT 48K→144K; 2-point sampling artifact).
-4. **Track D — fail-open kernel-gate audit: DONE.** Pass 1 (boot-log fingerprint): 7 presets clean on Marlin; one hit — the 26B dense `down_proj` on the dequant path (`K%128` tile reject) — **sized by microbench at 1.9% of TPOT and parked**. Pass 2 (profiled decode, `scripts/bench/profile_decode_step.sh`): qwen36-dense **clean** (Marlin dominant, no dequant kernels; the fp16 `gemvx` share = by-design unquantized lm_head + DeltaNet projs). The profile recipe is the standing audit for any new preset.
+1. **A3 — gemma4-31b SWA ratio** (same lever that unwalled the 12B/26B; ladder: 24K→134K full tokens @0.0625, swa-floor margin favors 0.1): probe gate `{0.8, 0.1, 0.0625}` **in flight**; wire winner into the preset on receipts.
+2. **B4 — NGRAM speculative decoding trial** on qwen36-dense (`--speculative-algorithm NGRAM`: trie draft, zero extra VRAM, no draft-context cap — dodges both 2026-05-31 spec-decode killers): queued behind A3. Gate: ≥1.3× on the code-rewrite probe → wire opt-in; else park and the EAGLE3 path below is the remaining option.
+3. **B5′ — allreduce-fusion A/B** on qwen36-dense (`--enable-flashinfer-allreduce-fusion`; profiled decode shows NCCL allreduce ≈ 3.2 ms/token = 22% of TPOT): queued.
+4. **B6 (exploratory, unstarted)** — per-layer-type attention backend for Gemma long-ctx decode: sliding layers are head_dim=256 (FlashInfer-legal); only the 8 global layers need triton.
+5. **Spec-decode pool-cap path** (gated on B4): qwen36-family KV pools are 3–9× over-provisioned for single-user 256K — capping `--max-total-tokens` ≈300K banks 4–7 GB/GPU for an EAGLE3 draft IF the 16K draft-context wall falls (`--speculative-draft-window-size`, untested).
+6. **Chart regen** after the above land (gemma rows changed step-wise).
 
 ### New-arch bringup — 256K candidate
 

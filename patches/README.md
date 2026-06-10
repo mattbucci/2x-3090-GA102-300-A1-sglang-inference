@@ -61,6 +61,12 @@ Two latent defects surfaced while consolidating — both invisible on the live t
 
 ---
 
+## 2026-06-10 optimization sprint (history)
+
+Full lab notebook with per-experiment receipts: [`../benchmarks/sprint-2026-06-kv-decode/LOG.md`](../benchmarks/sprint-2026-06-kv-decode/LOG.md). One-line verdicts: **Track A** — SGLang's `--swa-full-tokens-ratio 0.8` default was the Gemma KV wall; ratio 0.0625 took the 12B 102K→565K and the 26B 118K→652K full-pool tokens, tool-use 1.0/1.0 verified to 258,085 true tokens on both (patch 050 fixed the 12B video crash found en route → 5/5 omni). **Track B** — CUDA graphs were the whole Gemma decode gap ("triton SWA can't capture" falsified): 26B 34→83 tok/s @1K / 31→41 @256K, 12B 41→107, 31B 33→58, all 5/5; B2′ (26B dense down_proj dequant fallback) microbenched at 1.9% of TPOT and parked; B3 (qwen3-ream 64K→128K "cliff") disproven — smooth slope, 2-point sampling artifact. **Track C** — fleet flat-TPOT audit found the three graph-off Gemmas. **Track D** — kernel-gate audit: pass-1 log fingerprint (7 presets clean, 1 sized+parked hit), pass-2 profiled-decode recipe (`scripts/bench/profile_decode_step.sh`) demonstrated clean on qwen36-dense. Sprint-2 (A3 31B ratio, B4 NGRAM, B5′ allreduce-fusion) tracked live in the top-level README until concluded, then summarized here.
+
+---
+
 ## Per-patch notes
 
 ### Quantized-weight loading (AWQ / CT int4)
