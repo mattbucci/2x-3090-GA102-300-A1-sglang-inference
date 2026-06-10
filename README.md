@@ -36,6 +36,13 @@ What's queued, grouped by theme. Calibration work is gated on the bake-off sweep
 
 ### Experimentation sprint (CONCLUDED 2026-06-10 — GPUs free; bake-off ready to resume on the NEW gemma presets)
 
+**Sprint 2 (opened 2026-06-10, pre-chart-regen — "anything unoptimized + spec-decode within 24 GB"):**
+1. **A3 — gemma4-31b SWA ratio** (was WRONGLY excluded from Track A as "full-attention-bound"; its receipt shows the same hybrid pool, swa 19,398/full 24,248 @0.8, 8.33 GB). Expected 24K → ~100-150K KV. Ladder in flight.
+2. **B4 — NGRAM speculative decoding** (`--speculative-algorithm NGRAM`, in-tree v0.5.12): trie draft, **zero draft weights, zero extra VRAM, no draft-context cap** — dodges both 2026-05-31 spec-decode killers. Trial on qwen36-dense (bake-off leader, 69 tok/s = most headroom): filler floor + code-rewrite probe (the agentic edit pattern is n-gram-friendly).
+3. **B5 — qwen36-dense TP-sharding** (investigation): at 13.5 GB/GPU it is FULLY REPLICATED and decodes at ~100% MBU of that replication (69 ≈ 936/13.5) — the model is kernel-optimal but structurally halved. If only DeltaNet layers need replication (the 1-ULP recurrence argument) and full-attention+MLP can shard, the ceiling roughly doubles (~110-130 tok/s). Code-read first.
+4. **B6 (exploratory, logged)** — Gemma 256K decode is triton-attention-bound (34/41 tok/s): sliding layers are head_dim=256 (FlashInfer-legal!); only the 8 global layers are 512. A per-layer-type backend split could lift long-ctx decode. Not started.
+5. **Spec-decode VRAM math reopened** by Track A: the qwen36-family KV pools are 3-9× over-provisioned for single-user 256K (876K-2.4M tokens). Capping `--max-total-tokens` ~300K banks 4-7 GB/GPU — enough for an EAGLE3 draft + graphs IF the 16K draft-context wall falls (`--speculative-draft-window-size` exists in v0.5.12; untested). Gated behind B4 results.
+
 Hypotheses mined from the patch-set patterns; lab notebook with methods + decision rules: [`benchmarks/sprint-2026-06-kv-decode/LOG.md`](benchmarks/sprint-2026-06-kv-decode/LOG.md). One variable at a time; instruments identical to the fleet eval so results compare to existing baselines.
 
 1. **Track A — SWA sub-pool right-sizing** (from patches 043/047): SGLang defaults `--swa-full-tokens-ratio 0.8`, but sliding layers (40/48 on the 12B, 25/30 on the 26B, window 1024) can't attend past 1024 tokens — the dominant KV consumer is mostly dead weight at MAX_RUNNING=1. **TRACK A CONCLUDED — both Gemma hybrids now true-256K: 12B 102K→565K and 26B 118K→652K full-pool tokens at ratio 0.0625; tool-use 1.0/1.0 to 258,085 true tokens on both; caps 5/5 (12B video fixed by patch 050 en route); decode within ~3%/1% of control at shared ctx + new 128K–256K decode band (~31 tok/s each).**
