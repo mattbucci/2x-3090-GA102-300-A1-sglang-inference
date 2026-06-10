@@ -36,3 +36,19 @@ Mine every `benchmarks/*/results.json` for the flat-TPOT tell (missing graphs / 
 ## Run log
 
 (entries appended chronologically by the sweep runner + analysis)
+
+### 2026-06-10 01:55 — Track C: fleet TPOT-vs-ctx audit (existing results.json, fleet eval 2026-06-07)
+
+| preset | max KV tok | ctx measured | TPOT lo→hi ms | ratio | tok/s lo→hi | cliff |
+|---|---:|---|---|---:|---|---|
+| devstral | 172,058 | 1K–128K | 10.8→17.4 | 1.61 | 92→58 | 64K→128K −19% |
+| **gemma4-12b** | 102,094 | 1K–64K | 23.4→25.1 | **1.07** | 43→40 | – |
+| **gemma4 (26B)** | 117,840 | 1K–64K | 29.3→29.6 | **1.01** | 34→34 | – |
+| **gemma4-31b** | 24,248 | 1K–16K | 29.9→29.8 | **0.99** | 33→34 | – |
+| qwen3-ream | 578,433 | 1K–256K | 5.5→9.5 | 1.75 | 183→105 | **64K→128K −26%** |
+| qwen35-moe | 2,108,823 | 1K–256K | 5.9→7.3 | 1.23 | 170→138 | – |
+| qwen36-dense | 657,010 | 1K–256K | 14.6→18.3 | 1.26 | 69→55 | – |
+| qwen36 | 875,947 | 1K–256K | 5.8→7.9 | 1.38 | 174→126 | – |
+| qwen36-ream | 2,166,819 | 1K–256K | 5.8→7.2 | 1.24 | 172→139 | – |
+
+**Findings.** (1) The flat-TPOT missing-graph tell fires on **all three Gemma presets** (1.07 / 1.01 / 0.99 — a decode step that doesn't get more expensive from 1K to 64K KV is launch-bound, not compute-bound). Track B therefore targets the whole Gemma family, expected headroom 2–4× like the qwen36-family graph win. (2) `qwen3-ream` has a real −26% decode cliff at 64K→128K (5.5→9.5 ms TPOT) — healthy at 105 tok/s @256K but the step is anomalous → queued as **B3** (suspect: attention kernel regime change, e.g. split-KV path switch). (3) Coverage gaps corroborate Track A: the Gemma rows stop exactly where their KV walls sit (102K/118K/24K vs 578K–2.2M for the Qwen fleet); `coder-30b-awq/results.json` is an old format with no usable rows — re-bench when convenient. (4) Qwen3.5-27B legacy row (Apr 13, 13 tok/s, 75 ms flat TPOT) is the known replicated-DeltaNet case — superseded by qwen36-dense, not pursuing.
