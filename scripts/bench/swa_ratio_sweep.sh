@@ -44,6 +44,7 @@ mkdir -p "$OUT" "$LOGROOT"
 case "$PRESET" in
   gemma4-12b) MODELPATH="$MODELS_DIR/gemma-4-12B-it-AWQ" ;;
   gemma4)     MODELPATH="$MODELS_DIR/hf-mattbucci/gemma-4-26B-AWQ" ;;
+  gemma4-31b) MODELPATH="$MODELS_DIR/hf-mattbucci/gemma-4-31B-AWQ" ;;
   *)          MODELPATH="" ;;
 esac
 
