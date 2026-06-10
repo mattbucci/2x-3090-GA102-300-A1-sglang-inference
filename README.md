@@ -34,6 +34,14 @@ Single-user decode (M=1), honestly capped at each model's real KV pool (`max_tot
 
 What's queued, grouped by theme. Calibration work is gated on the bake-off sweep finishing + Rule 1 (no concurrent calibration + serving). The bake-off methodology + resume mechanics live in [`CLAUDE.md`](CLAUDE.md) and [`evals/swebench/`](evals/swebench/).
 
+### Experimentation sprint (active 2026-06-10 — bake-off paused, GPUs reserved, TP=2)
+
+Hypotheses mined from the patch-set patterns; lab notebook with methods + decision rules: [`benchmarks/sprint-2026-06-kv-decode/LOG.md`](benchmarks/sprint-2026-06-kv-decode/LOG.md). One variable at a time; instruments identical to the fleet eval so results compare to existing baselines.
+
+1. **Track A — SWA sub-pool right-sizing** (from patches 043/047): SGLang defaults `--swa-full-tokens-ratio 0.8`, but sliding layers (40/48 on the 12B, 25/30 on the 26B, window 1024) can't attend past 1024 tokens — the dominant KV consumer is mostly dead weight at MAX_RUNNING=1. Sweep the ratio to its floor; expected outcome: gemma4-12b 102K→256K and gemma4 26B 118K→256K true KV, closing both KV-wall entries.
+2. **Track B — Gemma 4 26B decode** (from 011/017/021 + the flat-TPOT graph tell): A/B torch_native+cuda-graph vs triton+no-graph, and awq_marlin vs moe_wna16 MoE runner at M=1. Target ≥1.3× at 131K+ with 5/5 capabilities held.
+3. **Track C — fleet TPOT-vs-ctx audit**: mine existing `benchmarks/*/results.json` for flat-TPOT / cliff anomalies (no GPU; runs in wait gaps).
+
 ### New-arch bringup — 256K candidate
 
 The arch has an **upstream SGLang loader grafted onto our v0.5.12 tree** — no from-scratch port; it passed GPU-free validation (import + AST constructor-drift check, zero kwarg drift on core primitives).
