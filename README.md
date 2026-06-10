@@ -1,8 +1,6 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
-High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.12** + 26 local patches, CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
-
-> 📢 **Cross-team from R9700 (2026-06-10) — run a patch-drift audit on your 26 patches.** Ours found 2 live-only fixes never captured into the series and a stale workspace with 10 silent `.rej` drops (same class as M4's pixel-values incident). Method: apply your series to a pristine v0.5.12, `diff -rq` vs the tree the env actually imports (`python -c "import sglang; print(sglang.__file__)"` — verify it's the tree you think). One captured fix likely applies to you: big-model TP2 loads on cold page cache exceed upstream's 480s `UNBALANCED_MODEL_LOADING_TIMEOUT_S` skew window — kills the slower rank (our patch 048 bumps to 1800). Upstream-main audit @70c71ba: torch_native SWA decode + gemma4_mm per-expert AWQ mapping are upstreamed (drop at next bump if carried); MistralDetector grew compact `[ARGS]` parsing but NOT marker-omission recovery; per-lane patch index: [R9700 patches/README.md](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/blob/main/patches/README.md).
+High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.12** + 24 local patches, CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 ## Direction
 
@@ -69,7 +67,7 @@ Detailed matrix + rebuild paths in the [MoE coverage matrix](#moe-coverage-matri
 
 Items 2–3 are prerequisites for the MoE backlog. Detailed plan: [`scripts/quantize/ream_gemma4_port_plan.md`](scripts/quantize/ream_gemma4_port_plan.md).
 
-1. **Upstream-PR sweep** — 12 of our 23 patches fix bugs still present in sglang main as of 2026-06-10 (see the patch map in [`patches/README.md`](patches/README.md)): the Qwen3.5/3.6 AWQ + CausalLM family (002 / 018 / 031 / 035), kernel correctness (003 / 011 — 011 also bites RDNA4 + Blackwell SM12.x), MoE gelu routing (017), Gemma 4 (004 / 026 + 025's `masked_fill` half), agentic robustness (034 / 041 — R9700-originated, coordinate the PRs with them). Upstreaming erases carry cost at every future rebase; the next rebase already drops 012 / 028 / 030 / 042 + most of 043 (fixed or native in main).
+1. **Upstream-PR sweep** — 12 of our 24 patches fix bugs still present in sglang main as of 2026-06-10 (see the patch map in [`patches/README.md`](patches/README.md)): the Qwen3.5/3.6 AWQ + CausalLM family (002 / 018 / 031 / 035), kernel correctness (003 / 011 — 011 also bites RDNA4 + Blackwell SM12.x), MoE gelu routing (017), Gemma 4 (004 / 026 + 025's `masked_fill` half), agentic robustness (034 / 041 — R9700-originated, coordinate the PRs with them). Upstreaming erases carry cost at every future rebase; the next rebase already drops 012 / 028 / 030 / 042 + most of 043 (fixed or native in main).
 2. **Port Samsung SAIL REAM merge to Gemma 4 arch** — current `run_ream_qwen3moe.sh` + the upstream `merge.py` are Qwen3-family-only (5 hardcoded assumptions identified). Port unblocks the gemma-4-26B REAM build. Est. 40-60 h dev.
 3. **Extend `run_reap.py` to remaining MoE layouts.** `run_reap.py` + the unfuse patches are in-repo (`run_reap.py` ported from R9700; the Coder-30B-A3B-REAP ship used the Qwen3Moe path). Coverage: (a) **`Qwen3_5MoeExperts`** (Qwen3.5/3.6 fused 3-D experts + `Qwen3_5MoeTopKRouter`) — ✅ done: `patches/qwen3_5moe_unfused_experts.py` (load-split + save-fuse hooks) + tuple-router handling in the saliency hook, miniature-validated 7/7 by `test_qwen3_5moe_unfuse.py`; (b) Gemma 4 parallel dense+MoE + different expert keys — ❌ TODO; (c) Nemotron-H Mamba2-hybrid (only the 23 MLP/MoE layers pruneable per `hybrid_override_pattern`) — ❌ TODO. The saliency tracker + `prune_model` are arch-agnostic once `.mlp.gate` + per-expert `.mlp.experts.{i}.down_proj` modules exist — the unfuse patches create them.
 
@@ -381,7 +379,7 @@ cd python && pip install -e .
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.12 + 23 local patches |
+| SGLang | v0.5.12 + 24 local patches |
 | PyTorch | 2.11.0 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
 | transformers | 5.6.0 (v0.5.12 pin) |
@@ -392,7 +390,7 @@ The serving tree lives at `/data/sglang-rebase-v0512` (env `sglang-v0512`); laun
 
 ## Patches
 
-**23 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang v0.5.12 — consolidated 2026-06-10 (five multi-patch series merged into single units; full set re-verified: applies clean on pristine v0.5.12, byte-identical to the live serving tree, rerun-safe). By work area:
+**24 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang v0.5.12 — consolidated 2026-06-10 (five multi-patch series merged into single units; full set re-verified: applies clean on pristine v0.5.12, byte-identical to the live serving tree, rerun-safe). By work area:
 
 | Area | Patches |
 |------|---------|
@@ -402,10 +400,10 @@ The serving tree lives at `/data/sglang-rebase-v0512` (env `sglang-v0512`); laun
 | MoE runner gelu coverage | 017 |
 | Kernel correctness & precision | 003, 011, 012 |
 | Ampere (sm_86) enablement | 005, 007 |
-| Serving robustness / agentic | 034, 041 |
+| Serving robustness / agentic | 034, 041, 049 |
 | New-arch grafts / build | 042, 037 |
 
-Every patch is classified against upstream main (2026-06-10): **12 upstream-PR candidates, 4 drop-on-next-rebase, 4 site-specific**. Per-patch narratives, the merged-unit mapping (old 021/024/036/038/040/044–048 → 017/023/035/039/043), the upstream ledger, and the patch-hygiene gates for any new patch live in [`patches/README.md`](patches/README.md).
+Every patch is classified against upstream main (2026-06-10): **12 upstream-PR candidates, 4 drop-on-next-rebase, 5 site-specific**. Per-patch narratives, the merged-unit mapping (old 021/024/036/038/040/044–048 → 017/023/035/039/043), the upstream ledger, and the patch-hygiene gates for any new patch live in [`patches/README.md`](patches/README.md).
 
 ## Quantization
 

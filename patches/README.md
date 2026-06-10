@@ -2,7 +2,7 @@
 
 This file collects the details of **what was fixed and why** — per-patch narratives, root-cause notes, and cross-team learnings. The top-level `README.md` keeps only current state; once an issue is closed with a patch, the narrative lives here.
 
-**23 logical patches** apply in numeric order against SGLang **v0.5.12**. `scripts/setup.sh` applies every `*.patch` in this directory idempotently (`git apply --check` → apply, else skip). Consolidated 2026-06-10: five multi-file series were merged into single logical patches (mapping below), and the whole set was re-verified — applied to pristine v0.5.12 it produces a tree **byte-identical** to the live serving tree at `/data/sglang-rebase-v0512`, and re-running the loop on an already-patched tree applies nothing.
+**24 logical patches** apply in numeric order against SGLang **v0.5.12**. `scripts/setup.sh` applies every `*.patch` in this directory idempotently (`git apply --check` → apply, else skip). Consolidated 2026-06-10: five multi-file series were merged into single logical patches (mapping below), and the whole set was re-verified — applied to pristine v0.5.12 it produces a tree **byte-identical** to the live serving tree at `/data/sglang-rebase-v0512`, and re-running the loop on an already-patched tree applies nothing.
 
 ## Patch map
 
@@ -33,8 +33,9 @@ Grouped by work area. *Upstream* = status vs `sgl-project/sglang` main `70c71ba1
 | 041 | devstral-toolcall-omission-recovery | Robustness | **PR** — main's MistralDetector still leaks marker-less calls (R9700-originated) |
 | 042 | cohere2-moe-loader-graft | New arch | **drop** — grafted *from* main |
 | 043 | gemma4-unified-bringup *(= old 043–048)* | Gemma 4 | mostly **drop**: model graft + `model_config` arch-lists are in main; the transformers-5.6 config/processor vendor shims evaporate once env moves to tx ≥ 5.10 |
+| 049 | tp-load-timeout-cold-cache | Robustness | **site** (R9700 graft — their 048; upstream would want an env-var, low-priority PR) |
 
-Rebase ledger: **4 drop** (012, 028, 030, 042) + most of 043; **~12 upstream-PR candidates** (002, 003, 004, 011, 017, 018, 026, 031, 034, 035, 041 + 025's masked_fill); **4 site-specific** (005, 007, 037, 023-Ampere-only). Bonus from the same main audit: `Qwen3VLMoeForConditionalGeneration` now exists upstream with a registered EntryClass — re-check the VL-30B loader (top-level README MoE backlog №3) against a graft before sinking calibration time.
+Rebase ledger: **4 drop** (012, 028, 030, 042) + most of 043; **~12 upstream-PR candidates** (002, 003, 004, 011, 017, 018, 026, 031, 034, 035, 041 + 025's masked_fill); **5 site-specific** (005, 007, 037, 049, 023-Ampere-only). Bonus from the same main audit: `Qwen3VLMoeForConditionalGeneration` now exists upstream with a registered EntryClass — re-check the VL-30B loader (top-level README MoE backlog №3) against a graft before sinking calibration time.
 
 ### Merged-unit mapping (2026-06-10 consolidation)
 
@@ -155,6 +156,9 @@ DeltaNet fused-recurrent BV=64 tuning for sm_86 — default `BV≤32, num_warps=
 
 #### 034 — sampler-inf-detection (R9700 backport, 2026-05-13, ~13 LOC)
 Extends `--enable-nan-detection` to catch ±Inf logits parallel to the NaN branch in `Sampler._preprocess_logits` — `softmax(+Inf)` → NaN cascade → invalid `multinomial` index → `gather` fault, with the NaN check only firing after softmax destroyed the Inf-vs-NaN signal that bisection needs. Replaces +Inf→`+1e4`, −Inf→`−1e4`; escalates to ValueError under `SGLANG_IS_IN_CI=1`. Verbatim from R9700 commit `ec1cf36`.
+
+#### 049 — tp-load-timeout-cold-cache (R9700 graft of their 048, 2026-06-10, 1 LOC)
+Big-model TP=2 loads on a cold page cache exceed upstream's 480s `UNBALANCED_MODEL_LOADING_TIMEOUT_S` rank-skew window — the slower rank gets killed mid-load. Bites 30–62 GB checkpoints when NVMe is contended (bake-off docker I/O); directly de-risks the queued Nemotron-3-Nano-Omni 62 GB BF16 TP=2 smoke. 480 → 1800s; genuinely wedged ranks still time out. Numbered 049 (not a reuse of retired 044–048) to keep historical references unambiguous.
 
 #### 041 — devstral-toolcall-omission-recovery (R9700 graft, 217 LOC)
 Devstral-Small-2 / Mistral-3 intermittently emit the compact tool call **without** the leading `[TOOL_CALLS]` special token (`tool_name[ARGS]{...}`), especially at temperature — the whole call leaks as assistant text, the agent sees no tool call, and the episode ends with an empty diff. Recovery only fires when the identifier before `[ARGS]` is a *known tool* and the JSON payload parses complete — no false positives on prose. Directly material to the SWE-bench bake-off (empty-diff class). Main still leaks — PR candidate.
