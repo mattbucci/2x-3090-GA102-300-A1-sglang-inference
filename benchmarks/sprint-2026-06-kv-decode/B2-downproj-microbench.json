@@ -1,0 +1,17 @@
+{
+ "shape": {
+  "K_rank": 1056,
+  "N": 5376,
+  "group": 32,
+  "K_pad": 1152,
+  "M": 1
+ },
+ "A_dequant_mm_us": 43.85126495361328,
+ "A2_sgl_awq_gemm_us": "unavailable: ImportError cannot import name 'awq_gemm' from 'sgl_kernel' (/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/sgl_kernel/__init__.py)",
+ "B_triton_gemm_us": 23.78291130065918,
+ "C_marlin_padded_us": "unavailable: ImportError: cannot import name 'awq_marlin_gemm' from 'sgl_kernel' (/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/sgl_kernel/__init__.py)",
+ "ref_fp16_mm_us": 23.495647430419922,
+ "per_layer_saving_us": 20.0683536529541,
+ "per_token_saving_ms_30layers": 0.602050609588623,
+ "note": "TPOT @256K is ~31-32 ms (A2 receipts); share = saving/TPOT"
+}

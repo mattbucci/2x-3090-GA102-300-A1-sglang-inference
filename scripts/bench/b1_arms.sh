@@ -13,14 +13,19 @@ REPO="$(cd "$SCRIPT_DIR/../.." && pwd)"
 run_arm() { # name extra_sweep_args gemma_graph mem
   local name="$1" esa="$2" gg="$3" mem="$4"
   echo "[b1-arms $(date +%H:%M:%S)] ===== arm $name ====="
-  PRESET=gemma4 MODE=probe RATIOS="0.0625" STAGES=caps,decode \
-    EXP="B1-gemma4-26b-$name" \
-    EXTRA_SWEEP_ARGS="$esa" \
-    ${gg:+_ENV_GEMMA_GRAPH="$gg"} \
-    ${mem:+MEM="$mem"} \
+  # subshell + explicit export: ${var:+VAR=x} prefix-assignment does NOT work
+  # (expansion happens after assignment parsing -> rc 127; arms G/GT no-oped
+  # on the first run this way)
+  (
+    export PRESET=gemma4 MODE=probe RATIOS="0.0625" STAGES=caps,decode
+    export EXP="B1-gemma4-26b-$name" EXTRA_SWEEP_ARGS="$esa"
+    [ -n "$gg" ] && export _ENV_GEMMA_GRAPH="$gg"
+    [ -n "$mem" ] && export MEM="$mem"
     "$REPO/scripts/bench/swa_ratio_sweep.sh"
+  )
 }
-run_arm N  "--attention-backend torch_native" "" ""
-run_arm G  "--attention-backend torch_native" "--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph" "0.78"
-run_arm GT ""                                  "--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph" "0.78"
+ARMS="${ARMS:-N G GT}"
+case " $ARMS " in *" N "*)  run_arm N  "--attention-backend torch_native" "" "" ;; esac
+case " $ARMS " in *" G "*)  run_arm G  "--attention-backend torch_native" "--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph" "0.78" ;; esac
+case " $ARMS " in *" GT "*) run_arm GT ""                                 "--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph" "0.78" ;; esac
 echo "[b1-arms $(date +%H:%M:%S)] all arms done"
