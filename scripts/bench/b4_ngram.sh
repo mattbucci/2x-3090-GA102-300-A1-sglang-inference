@@ -20,7 +20,10 @@ cd "$REPO" || exit 1
 
 PRESET="${PRESET:-qwen36-dense}"
 PORT=23334
-TOK="$MODELS_DIR/hf-mattbucci/Qwen3.6-27B-AWQ"
+case "$PRESET" in
+  qwen3-ream) TOK="$MODELS_DIR/Qwen3-30B-Instruct-2507-REAM-AWQ" ;;
+  *)          TOK="$MODELS_DIR/hf-mattbucci/Qwen3.6-27B-AWQ" ;;
+esac
 OUT="$REPO/benchmarks/sprint-2026-06-kv-decode/B4-ngram-$PRESET"
 LOGROOT="/tmp/swa-sweep-logs/B4-$PRESET"
 mkdir -p "$OUT" "$LOGROOT"
@@ -86,6 +89,7 @@ for A in $ARMS; do
     ctl)    arm ctl "" ;;
     ngram)  SGLANG_ENABLE_SPEC_V2=1 arm ngram "--speculative-algorithm NGRAM --mamba-scheduler-strategy extra_buffer" ;;
     fusion) arm fusion "--enable-flashinfer-allreduce-fusion" ;;
+    ngram_plain) arm ngram "--speculative-algorithm NGRAM" ;;  # non-hybrid presets: no mamba flags
   esac
 done
 log "done"

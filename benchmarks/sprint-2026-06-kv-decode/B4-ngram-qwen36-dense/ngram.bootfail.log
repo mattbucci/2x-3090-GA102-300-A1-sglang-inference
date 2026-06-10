@@ -1,28 +1,30 @@
-==============================================
-qwen36-dense — SGLang TP=2 on RTX 3090
-PyTorch 2.11.0+cu130
-Model:  /home/letsrtfm/AI/models/hf-mattbucci/Qwen3.6-27B-AWQ
-Quant:  none  Context: 262144  Port: 23334
-==============================================
-[2026-06-10 08:27:43] Casting torch.bfloat16 to torch.float16.
-[2026-06-10 08:27:43] The model is convertible to awq_marlin during runtime. Using awq_marlin kernel.
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "/data/sglang-rebase-v0512/python/sglang/launch_server.py", line 66, in <module>
-    server_args = prepare_server_args(sys.argv[1:])
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/sglang-rebase-v0512/python/sglang/srt/server_args.py", line 7757, in prepare_server_args
-    return ServerArgs.from_cli_args(raw_args)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/sglang-rebase-v0512/python/sglang/srt/server_args.py", line 7141, in from_cli_args
-    return cls(**{attr: getattr(args, attr) for attr in attrs})
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<string>", line 384, in __init__
-  File "/data/sglang-rebase-v0512/python/sglang/srt/server_args.py", line 929, in __post_init__
-    self._handle_model_specific_adjustments()
-  File "/data/sglang-rebase-v0512/python/sglang/srt/server_args.py", line 2340, in _handle_model_specific_adjustments
-    self._handle_mamba_radix_cache(
-  File "/data/sglang-rebase-v0512/python/sglang/srt/server_args.py", line 2568, in _handle_mamba_radix_cache
-    raise ValueError(
-ValueError: Speculative decoding for Qwen3_5ForConditionalGeneration is not compatible with radix cache when using --mamba-scheduler-strategy no_buffer.To use radix cache with speculative decoding, please use --mamba-scheduler-strategy extra_buffer and set SGLANG_ENABLE_SPEC_V2=1.
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/triton/runtime/jit.py", line 720, in run
+    kernel = self._do_compile(key, signature, device, constexprs, options, attrs, warmup)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/triton/runtime/jit.py", line 849, in _do_compile
+    kernel = self.compile(src, target=target, options=options.__dict__)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/triton/compiler/compiler.py", line 304, in compile
+    module = src.make_ir(target, options, codegen_fns, module_map, context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/triton/compiler/compiler.py", line 80, in make_ir
+    return ast_to_ttir(self.fn, self, context=context, options=options, codegen_fns=codegen_fns,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+triton.compiler.errors.CompilationError: at 322:24:
+                    if KERNEL_WIDTH == 2:
+                        if _idx_token == 0:
+                            matrix_x = col0
+                    elif KERNEL_WIDTH == 3:
+                        if _idx_token == 0:
+                            matrix_x = col1
+                        else:
+                            matrix_x = col0
+                    elif KERNEL_WIDTH == 4:
+                        if _idx_token == 0:
+                            matrix_x = col2
+                        elif _idx_token == -1:
+                        ^
+AssertionError('initial value for `matrix_x` is of type fp16[constexpr[256]], but the then block redefines it as bf16[constexpr[256]]')
+
+[2026-06-10 08:50:47] Received sigquit from a child process. It usually means the child failed.
