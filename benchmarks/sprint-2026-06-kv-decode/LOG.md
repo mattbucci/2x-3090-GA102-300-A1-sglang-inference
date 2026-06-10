@@ -118,3 +118,9 @@ Root cause of the dense reject: down_proj `in=2112`, checkpoint `group_size=64` 
 | decode 128K/192K/256K | — (over cap) | 31.6/31.1/31.2 |
 
 **Track A CONCLUDED.** Both Gemma hybrids are now genuine 256K models. Same-shaped result as A1; the swa floor argument held (40,790 swa tokens ≈ 2× the A1-verified 21,204 working set; no eviction thrash — decode flat ~31 tok/s through 256K). The ~31 tok/s 128K+ band on BOTH models is the launch-bound ceiling Track B attacks next (graph-off TPOT ~32 ms dominates regardless of attention length — consistent with the Track C flat-TPOT tell).
+
+### 2026-06-10 04:57 — B1 arm N + B2′ microbench
+
+**B1 arm N (torch_native, graphs OFF):** decode 34.8@1K → 32.6@64K → 31.1@256K, caps **5/5** — indistinguishable from the triton control (34.1→31.2). The backend swap is free on the 26B; the decisive arm is G (torch_native + cuda-graph), relaunched after an env-assignment bug no-oped it (`${var:+VAR=x}` prefix-assignments don't survive expansion — fixed with explicit `export` in a subshell).
+
+**B2′ — dense down_proj fallback prize: PARKED (1.9% < 5% bar).** Microbench at the production per-rank shape (M=1, K=1056, N=5376, g=32), receipt `B2-downproj-microbench.json`: dequant+mm (current fallback) **43.9 µs**; in-tree `awq_gemm_triton` fused W4A16 **23.8 µs**; pure fp16 mm floor **23.5 µs**. The Triton path is already AT the bandwidth floor, so best-case saving = 20 µs × 30 layers = **0.60 ms/token ≈ 1.9% of the ~32 ms TPOT**. Not worth a routing patch; the 26B's gap is launch-bound, not this. Root-cause note for the ledger: the marlin reject is the `K % 128` thread-tile check (1056%128=32; full-width 2112%128=64 — so replication would not have helped either); checkpoint g=32 is itself marlin-legal. Track D pass-1 finding hereby *sized and closed for the 26B dense path*; the `moe.experts`→WNA16 fallback remains structural-and-fine.
