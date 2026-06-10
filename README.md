@@ -316,7 +316,7 @@ Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimod
 | Qwen3.6-REAM-A3B AWQ | 7.4 GB | ~8 KB hybrid | 262K |
 | Qwen3-Coder-30B-A3B AWQ | 8.0 GB | 36 KB | 262K |
 | Qwen3-Coder-30B-A3B-REAP AWQ | 6.5 GB | 72 KB | 262K |
-| Qwen3.6-27B Dense AWQ | 13.5 GB | 24 KB | 262K |
+| Qwen3.6-27B Dense AWQ | 8.8 GB (measured; sharded) | 24 KB | 262K |
 | Devstral-Small-2-24B AWQ | 7.0 GB | ~40 KB (fp8 KV) | **~172K** ‡‡ |
 | Gemma 4 26B A4B MoE AWQ | 6.5 GB | ~12 KB (SWA) | **652K full / 41K swa** (262K ✓ @ ratio 0.0625) |
 | Gemma 4 31B Dense AWQ | 7.7 GB | ~25 KB (SWA) | **~24K** ‡‡ |
