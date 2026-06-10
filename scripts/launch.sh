@@ -341,7 +341,7 @@ apply_preset() {
             # leaves the prior turn unclosed → runaway to max_tokens=8192 → empty diff.
             # Override with GEMMA4_31B_CHAT_TEMPLATE="--chat-template <file>".
             CHAT_TEMPLATE="${GEMMA4_31B_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/gemma4_chat_template.jinja}"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---disable-cuda-graph --disable-piecewise-cuda-graph} --tool-call-parser gemma4"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs 1 --disable-piecewise-cuda-graph} --tool-call-parser gemma4"
             ;;
         gemma4-12b)
             # Gemma 4 12B unified omni (Gemma4UnifiedForConditionalGeneration) —

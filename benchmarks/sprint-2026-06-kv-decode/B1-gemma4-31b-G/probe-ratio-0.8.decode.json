@@ -3,14 +3,44 @@
   "engine": "SGLang",
   "hardware": "2x RTX 3090 TP=2",
   "benchmark_tool": "sglang.bench_serving",
-  "timestamp": "2026-06-10 05:34:59",
+  "timestamp": "2026-06-10 05:55:58",
   "output_tokens": 100,
   "max_total_num_tokens": 24248,
   "context_sweep": [
     {
       "context": 1024,
-      "error": "parse failed",
-      "raw": "         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/transformers/models/auto/tokenization_auto.py\", line 690, in from_pretrained\n    config = PreTrainedConfig.from_pretrained(pretrained_model_name_or_path, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/transformers/configuration_utils.py\", line 632, in from_pretrained\n    config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)\n                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/transformers/configuration_utils.py\", line 673, in get_config_dict\n    config_dict, kwargs = cls._get_config_dict(pretrained_model_name_or_path, **kwargs)\n                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/transformers/configuration_utils.py\", line 728, in _get_config_dict\n    resolved_config_file = cached_file(\n                           ^^^^^^^^^^^^\n  File \"/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/transformers/utils/hub.py\", line 278, in cached_file\n    file = cached_files(path_or_repo_id=path_or_repo_id, filenames=[filename], **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/transformers/utils/hub.py\", line 454, in cached_files\n    raise OSError(\nOSError: gemma4-31b is not a local folder and is not a valid model identifier listed on 'https://huggingface.co/models'\nIf this is a private repository, make sure to pass a token having permission to this repo either by logging in with `hf auth login` or by passing `token=<your_token>`\n"
+      "throughput": 4.81,
+      "ttft_ms": 46.43,
+      "tpot_ms": 17.33,
+      "tok_per_sec": 57.7
+    },
+    {
+      "context": 2048,
+      "throughput": 4.81,
+      "ttft_ms": 44.67,
+      "tpot_ms": 18.37,
+      "tok_per_sec": 54.4
+    },
+    {
+      "context": 4096,
+      "throughput": 4.81,
+      "ttft_ms": 48.34,
+      "tpot_ms": 18.38,
+      "tok_per_sec": 54.4
+    },
+    {
+      "context": 8192,
+      "throughput": 4.81,
+      "ttft_ms": 58.7,
+      "tpot_ms": 19.36,
+      "tok_per_sec": 51.7
+    },
+    {
+      "context": 16384,
+      "throughput": 4.81,
+      "ttft_ms": 93.42,
+      "tpot_ms": 21.31,
+      "tok_per_sec": 46.9
     }
   ]
 }

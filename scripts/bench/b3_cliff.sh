@@ -25,7 +25,12 @@ log(){ echo "[b3 $(date +%H:%M:%S)] $*"; }
 stop_server(){ pkill -KILL -f "sglang.launch_server" 2>/dev/null || true; sleep 8; }
 
 arm(){ # name extra_args
-  local name="$1" extra="$2" RLOG="$LOGROOT/$name"; mkdir -p "$RLOG"
+  # NB: one `local a="$1" b="$a"` line does NOT work — all words expand before
+  # local assigns anything (set -u trap; cost one chain run)
+  local name="$1"
+  local extra="$2"
+  local RLOG="$LOGROOT/$name"
+  mkdir -p "$RLOG"
   log "===== arm $name ====="
   stop_server
   EXTRA_ARGS="$extra" nohup setsid bash "$REPO/scripts/launch.sh" qwen3-ream \
