@@ -1,0 +1,8 @@
+FAILED: ['video']
+=== Capability validator — http://127.0.0.1:23334  model=gemma4-12b ===
+  [PASS] basic     finish=stop answer='paris'
+  [PASS] tool_call finish=tool_calls name='get_weather' args='{"location": "Paris"}'
+  [PASS] thinking  reasoning_seen terminated answer_ok (552 tok, finish=stop)
+  [PASS] vision    saw=['red', 'circle']  response='a red circle with a black outline is shown in the lower center of the image.'
+  [FAIL] video     request failed: RemoteDisconnected('Remote end closed connection without response')
+--- 4/5 passed in 14.7s ---

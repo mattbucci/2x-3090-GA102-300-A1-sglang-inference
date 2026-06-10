@@ -28,6 +28,10 @@ PRESET="${PRESET:-gemma4-12b}"
 MODE="${MODE:-ladder}"
 RATIOS="${RATIOS:-0.8 0.5 0.25 0.1 0.0625 0.03}"
 CTX="${CTX:-262144}"
+# probe-stage gating + validator args (e.g. CAPS_ARGS="--skip-video" — the 12B
+# video path crashes the server pre-existing; receipt probe-*-videocrash)
+STAGES="${STAGES:-caps,tooluse,decode}"
+CAPS_ARGS="${CAPS_ARGS:-}"
 EXP="${EXP:-A1-$PRESET}"
 TOOLUSE_LENGTHS="${TOOLUSE_LENGTHS:-16384,65536,131072,196608,256000}"
 PORT=23334
@@ -97,23 +101,29 @@ for R in $RATIOS; do
   [ "$BOOT_OK" = "1" ] || { tail -25 "$RLOG/server.log" > "$OUT/${MODE}-${TAG}.bootfail.log"; stop_server; continue; }
 
   if [ "$MODE" = "probe" ]; then
-    log "  capabilities battery"
-    python "$REPO/scripts/eval/validate_capabilities.py" --port $PORT \
-      > "$RLOG/caps.log" 2>&1
-    CAPS_RC=$?
-    cp "$RLOG/caps.log" "$OUT/probe-$TAG.caps.log"
-    log "    caps rc=$CAPS_RC"
-    log "  256K tool-use probe @[$TOOLUSE_LENGTHS]"
-    python "$REPO/scripts/eval/probe_256k_tooluse.py" --port $PORT --tag "$PRESET-swa$R" \
-      --lengths "$TOOLUSE_LENGTHS" \
-      --out "$OUT/probe-$TAG.tooluse.json" > "$RLOG/tooluse.log" 2>&1
-    log "    tooluse rc=$?"
-    log "  decode curve (bench_long_context)"
-    python "$REPO/scripts/bench/bench_long_context.py" --port $PORT \
-      --name "$PRESET-swa$R" --max-context "$CTX" \
-      --output "$OUT/probe-$TAG.decode.json" \
-      ${MODELPATH:+--tokenizer "$MODELPATH"} > "$RLOG/decode.log" 2>&1
-    log "    decode rc=$?"
+    case ",$STAGES," in *,caps,*)
+      log "  capabilities battery ${CAPS_ARGS:+(args: $CAPS_ARGS)}"
+      python "$REPO/scripts/eval/validate_capabilities.py" --port $PORT $CAPS_ARGS \
+        > "$RLOG/caps.log" 2>&1
+      CAPS_RC=$?
+      cp "$RLOG/caps.log" "$OUT/probe-$TAG.caps.log"
+      log "    caps rc=$CAPS_RC"
+    ;; esac
+    case ",$STAGES," in *,tooluse,*)
+      log "  256K tool-use probe @[$TOOLUSE_LENGTHS]"
+      python "$REPO/scripts/eval/probe_256k_tooluse.py" --port $PORT --tag "$PRESET-swa$R" \
+        --lengths "$TOOLUSE_LENGTHS" \
+        --out "$OUT/probe-$TAG.tooluse.json" > "$RLOG/tooluse.log" 2>&1
+      log "    tooluse rc=$?"
+    ;; esac
+    case ",$STAGES," in *,decode,*)
+      log "  decode curve (bench_long_context)"
+      python "$REPO/scripts/bench/bench_long_context.py" --port $PORT \
+        --name "$PRESET-swa$R" --max-context "$CTX" \
+        --output "$OUT/probe-$TAG.decode.json" \
+        ${MODELPATH:+--tokenizer "$MODELPATH"} > "$RLOG/decode.log" 2>&1
+      log "    decode rc=$?"
+    ;; esac
   fi
   stop_server
 done
