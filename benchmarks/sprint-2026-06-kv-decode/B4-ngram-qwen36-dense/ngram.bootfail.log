@@ -1,0 +1,28 @@
+==============================================
+qwen36-dense — SGLang TP=2 on RTX 3090
+PyTorch 2.11.0+cu130
+Model:  /home/letsrtfm/AI/models/hf-mattbucci/Qwen3.6-27B-AWQ
+Quant:  none  Context: 262144  Port: 23334
+==============================================
+[2026-06-10 08:27:43] Casting torch.bfloat16 to torch.float16.
+[2026-06-10 08:27:43] The model is convertible to awq_marlin during runtime. Using awq_marlin kernel.
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/data/sglang-rebase-v0512/python/sglang/launch_server.py", line 66, in <module>
+    server_args = prepare_server_args(sys.argv[1:])
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/server_args.py", line 7757, in prepare_server_args
+    return ServerArgs.from_cli_args(raw_args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/server_args.py", line 7141, in from_cli_args
+    return cls(**{attr: getattr(args, attr) for attr in attrs})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 384, in __init__
+  File "/data/sglang-rebase-v0512/python/sglang/srt/server_args.py", line 929, in __post_init__
+    self._handle_model_specific_adjustments()
+  File "/data/sglang-rebase-v0512/python/sglang/srt/server_args.py", line 2340, in _handle_model_specific_adjustments
+    self._handle_mamba_radix_cache(
+  File "/data/sglang-rebase-v0512/python/sglang/srt/server_args.py", line 2568, in _handle_mamba_radix_cache
+    raise ValueError(
+ValueError: Speculative decoding for Qwen3_5ForConditionalGeneration is not compatible with radix cache when using --mamba-scheduler-strategy no_buffer.To use radix cache with speculative decoding, please use --mamba-scheduler-strategy extra_buffer and set SGLANG_ENABLE_SPEC_V2=1.

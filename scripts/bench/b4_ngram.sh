@@ -77,6 +77,15 @@ arm(){ # name extra
   grep -ioE "accept.{0,60}" "$RLOG/server.log" | tail -5 > "$OUT/$name.accept.log" || true
   stop_server
 }
-arm ctl ""
-arm ngram "--speculative-algorithm NGRAM"
+# Arms selectable via ARMS env. ngram on the DeltaNet hybrid needs the
+# mamba extra_buffer strategy + SPEC_V2 (same combo as DFlash; radix-cache
+# incompat with no_buffer otherwise — first run boot-failed on this).
+ARMS="${ARMS:-ctl ngram}"
+for A in $ARMS; do
+  case "$A" in
+    ctl)    arm ctl "" ;;
+    ngram)  SGLANG_ENABLE_SPEC_V2=1 arm ngram "--speculative-algorithm NGRAM --mamba-scheduler-strategy extra_buffer" ;;
+    fusion) arm fusion "--enable-flashinfer-allreduce-fusion" ;;
+  esac
+done
 log "done"
