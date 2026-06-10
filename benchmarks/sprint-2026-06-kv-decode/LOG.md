@@ -52,3 +52,16 @@ Mine every `benchmarks/*/results.json` for the flat-TPOT tell (missing graphs / 
 | qwen36-ream | 2,166,819 | 1K–256K | 5.8→7.2 | 1.24 | 172→139 | – |
 
 **Findings.** (1) The flat-TPOT missing-graph tell fires on **all three Gemma presets** (1.07 / 1.01 / 0.99 — a decode step that doesn't get more expensive from 1K to 64K KV is launch-bound, not compute-bound). Track B therefore targets the whole Gemma family, expected headroom 2–4× like the qwen36-family graph win. (2) `qwen3-ream` has a real −26% decode cliff at 64K→128K (5.5→9.5 ms TPOT) — healthy at 105 tok/s @256K but the step is anomalous → queued as **B3** (suspect: attention kernel regime change, e.g. split-KV path switch). (3) Coverage gaps corroborate Track A: the Gemma rows stop exactly where their KV walls sit (102K/118K/24K vs 578K–2.2M for the Qwen fleet); `coder-30b-awq/results.json` is an old format with no usable rows — re-bench when convenient. (4) Qwen3.5-27B legacy row (Apr 13, 13 tok/s, 75 ms flat TPOT) is the known replicated-DeltaNet case — superseded by qwen36-dense, not pursuing.
+
+### 2026-06-10 01:56 — A1 ladder result (gemma4-12b, boot-only, warm cache ~27s/boot)
+
+| `--swa-full-tokens-ratio` | full tokens | swa tokens | 262144 full? |
+|---:|---:|---:|:---:|
+| 0.8 (default = control) | 102,094 | 81,675 | ✗ |
+| 0.5 | 153,141 | 76,570 | ✗ |
+| 0.25 | 262,528 | 65,632 | ✓ (exactly) |
+| 0.1 | 459,425 | 45,942 | ✓ |
+| 0.0625 | 565,446 | 35,340 | ✓ |
+| 0.03 | 706,807 | 21,204 | ✓ |
+
+**Cost model validated:** control receipt gives per-GPU per-token K+V ≈ 152.6 KB (swa: ~38 sliding-layer-equivalents × 4 kv × 256 × 2B × 2) vs ≈ 15.3 KB (full: 8 global layers × MQA × 512 × 2B × 2); budget 14.03 GB. Predictions {0.25: 262,540, 0.0625: 565,4xx, 0.03: 706,8xx} matched measurements to ≤0.1% on every rung — capacity is purely `budget / (15.3 + r×152.6) KB`. **H-A1 capacity half: CONFIRMED — the SWA sub-pool was the binding constraint; 6.9× full-pool headroom at the smallest rung.** Excess full tokens beyond 262144 = radix-cache retention for multi-turn agentic reuse (not waste). Next: probe phase on {0.03, 0.0625} for the quality/safety floor (256K prefill exercises the small swa pool: working set ≈ chunked-prefill chunk + window 1024 ≪ 21,204).
