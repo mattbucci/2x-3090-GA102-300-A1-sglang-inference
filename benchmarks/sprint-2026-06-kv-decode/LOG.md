@@ -106,3 +106,15 @@ Method: grep fleet `/tmp/v0512-eval-logs/*/server.log` for `Using <x> kernel` + 
 Root cause of the dense reject: down_proj `in=2112`, checkpoint `group_size=64` (33 groups, the patch-015-era shape) → at TP=2 RowParallel each rank holds 1056 → **16.5 groups** → Marlin can't pack fractional groups. At TP=1 it would pack (33 ✓). Candidate fixes, queued as **B2′** for the next GPU slot: (a) replicate the dense `down_proj` (tp_size=1 for that module — ~170 MB total replicated int4, marlin-packs at full 2112); (b) check marlin_utils' pad-groups path; (c) microbench first: marlin vs unoptimized-AWQ at (in 1056, out 5376) M=1 to size the prize (`scripts/test_marlin_repack.py` harness). This compounds with the graph-off finding (Track C) for why the 26B is fleet-slowest (22–33 tok/s).
 
 **Limitation:** pass 1 only sees *logged* fallbacks — R9700's GEMV bug was silent. Pass 2 (queued): runtime kernel verification per preset (one profiled decode step; compare hottest GEMM kernel name against intent).
+
+### 2026-06-10 03:35 — A2 CONCLUDED: gemma4 (26B) ships ratio 0.0625 (118K → 652K full KV, true-256K verified, 5/5 caps)
+
+| metric | 0.8 control | 0.0625 |
+|---|---|---|
+| full / swa KV tokens | 117,840 / 94,272 | 652,652 / 40,790 |
+| caps (full battery incl. video) | 5/5 | 5/5 |
+| tool-use valid/correct | 0.4/0.4 (walls at 66,179 true) | **1.0/1.0 to 258,085 true** |
+| decode 1K→64K | 33.1→32.5 | 34.1→33.3 (≤1% Δ, if anything faster) |
+| decode 128K/192K/256K | — (over cap) | 31.6/31.1/31.2 |
+
+**Track A CONCLUDED.** Both Gemma hybrids are now genuine 256K models. Same-shaped result as A1; the swa floor argument held (40,790 swa tokens ≈ 2× the A1-verified 21,204 working set; no eviction thrash — decode flat ~31 tok/s through 256K). The ~31 tok/s 128K+ band on BOTH models is the launch-bound ceiling Track B attacks next (graph-off TPOT ~32 ms dominates regardless of attention length — consistent with the Track C flat-TPOT tell).

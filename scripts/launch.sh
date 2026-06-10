@@ -285,7 +285,7 @@ apply_preset() {
             # bytes) so 256K fits comfortably on 2x24GB.
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4 --swa-full-tokens-ratio 0.0625"
             ;;
         gemma4-21b-reap)
             # Gemma 4 21B REAP AWQ — Cerebras-style expert prune of the 26B
