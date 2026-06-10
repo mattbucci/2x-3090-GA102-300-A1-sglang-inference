@@ -135,3 +135,13 @@ Root cause of the dense reject: down_proj `in=2112`, checkpoint `group_size=64` 
 | **GT (triton + graphs, MEM 0.78)** | **82.9** | 65.8 | 54.9 | 41.1 | **40.9** | 5/5 |
 
 **Verdict:** graphs deliver **2.44× @1K → 1.31× @256K** (clears the ≥1.3× bar at every point); backend choice is irrelevant (N ≈ control; GT ≈ G). **The 2026-06-06 belief "Gemma's triton SWA attention can't graph-capture" is falsified on v0.5.12 at bs=1 capture** — the 26B sat at flat-33 tok/s for no current reason. Decode is now properly attention-bound (83→41 vs the flat launch-bound 33). Wired: `gemma4` preset graphs ON (`--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph`) + MEM 0.85→0.78 (capture headroom, qwen36 precedent). 12B/31B graph arms running for their own receipts (hooks added, defaults unchanged until receipts land). The flat-TPOT tell from Track C is hereby explained for all three Gemma presets; B2′ already showed the dense-MLP fallback contributes only 1.9%.
+
+### 2026-06-10 06:35 — B1b: graphs flipped fleet-wide for Gemma (12B + 31B receipts)
+
+| preset | control @1K→cap | graphs @1K→cap | gain | caps |
+|---|---|---|---|---|
+| gemma4 (26B) | 34.1→31.2 @256K | 82.9→40.9 @256K | 2.44×→1.31× | 5/5 |
+| gemma4-12b | 41.3→30.9 @256K | **107.3**→34.1 @256K | 2.60×→1.10× | 5/5 |
+| gemma4-31b | 33.4→33.6 @16K (flat) | **57.7**→46.9 @16K | 1.73×→1.40× | 5/5 (caps from G arm) |
+
+All three Gemma presets now default `--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph` via the `_ENV_GEMMA_GRAPH` hook (env-overridable for A/Bs); MEM stays 0.85 — capture fits with the full Track-A pools (the 0.78 precaution was unnecessary, receipts confirm). 12B note: 256K gain is small (1.10×) because dense-attention time dominates there; the 1K–64K band (where most agentic decode lives — median prompt 41K) gains 1.3–2.6×. Two shell-expansion traps cost one arm-run each, both now documented in-script: `${var:+VAR=x}` prefix-assignments don't assign; `local a="$1" b="$a"` expands before assigning.
