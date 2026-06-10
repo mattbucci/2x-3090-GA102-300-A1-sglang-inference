@@ -72,10 +72,11 @@ Both are prerequisites for the MoE backlog. Detailed plan: [`scripts/quantize/re
 
 ## Coding-eval bake-off (SWE-bench Lite, v2 Docker harness, 256K, single-user)
 
-Top tier: `qwen36` (AWQ-Marlin rebuild) and `qwen36-ream` both reach **~59%** on opencode — the new ship matches the prior leader.
+Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **leads at 62.0%** on opencode — ahead of the A3B-MoE thinkers `qwen36` (59.0%) and `qwen36-ream` (58.7%). All three clear the coders. The dense 27B that already tops MMLU (98.2%) and holds 100% reasoning to true 256K is also the strongest agentic coder — the lifted-hold 256K bake-off (qwen35-moe in flight) is filling in the rest.
 
 | Preset | opencode | claw-code | little-coder |
 |--------|:--------:|:---------:|:------------:|
+| `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **186/300 = 62.0%** | — | — |
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **177/300 = 59.0%** | (sweeping) | (sweeping) |
 | `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **176/300 = 58.7%** | 20/123 = 16.3% † | 0/10 = 0.0% † |
 | `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | 129/300 = 43.0% | 107/300 = 35.7% | 74/300 = 24.7% |
