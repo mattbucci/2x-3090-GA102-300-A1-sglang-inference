@@ -83,3 +83,16 @@ Probe gate (receipts `A1-gemma4-12b/probe-ratio-*.{caps.log,tooluse.json,decode.
 | decode 128K/192K/256K | — (over cap) | 30.9/31.1/30.9 | 30.8/30.8/30.9 |
 
 Floor 0.03 passes everything → **ship 0.0625 (floor×2 per decision rule)**, wired into the `gemma4-12b` preset. Final wired-preset validation (`A1-gemma4-12b-final/`): **5/5 capabilities — video now PASSES** ("a red circle moving vertically on a white background", patch 050 live-verified) and tool-use **1.0/1.0 at true prompt lengths {16,655 / 66,179 / 132,211 / 198,243 / 258,085} tokens**. Note for future gemma probes: the tool-use filler renders ~0.576 true-tok/approx on the Gemma tokenizer — approx 448000 ≈ 258K true (lengths used: 28672–448000). The 128K+ decode band (~31 tok/s, TPOT 32 ms) is the new dense-attention regime — Track B's graph work is the lever there. H-A1 fully CONFIRMED.
+
+### 2026-06-10 03:20 — A2 ladder (gemma4 26B MoE): lever generalizes
+
+| ratio | full tokens | swa tokens |
+|---:|---:|---:|
+| 0.8 (control) | 117,840 | 94,272 |
+| 0.5 | 176,760 | 88,380 |
+| 0.25 | 303,017 | 75,754 |
+| 0.1 | 530,280 | 53,028 |
+| 0.0625 | 652,652 | 40,790 |
+| 0.03 | 815,815 | 24,474 |
+
+262144 clears at ratio ≤0.25. Probe phase gates `{0.8 control, 0.0625 ship-candidate}` directly (vs re-probing floor 0.03): the swa working set is arch-invariant — `window 1024 + prefill chunk + slack`; A1 verified **21,204 swa tokens** sufficient under a 258K-true prefill, and the 26B at 0.0625 carries **40,790** (~2× that verified absolute floor). Full caps battery incl. video (works on the 26B via patch 026). Extended tooluse lengths (approx 28672–448000 ≈ true 16K–258K on the Gemma tokenizer).
