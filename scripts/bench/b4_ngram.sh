@@ -90,6 +90,7 @@ for A in $ARMS; do
     ngram)  SGLANG_ENABLE_SPEC_V2=1 arm ngram "--speculative-algorithm NGRAM --mamba-scheduler-strategy extra_buffer" ;;
     fusion) arm fusion "--enable-flashinfer-allreduce-fusion" ;;
     ngram_plain) arm ngram "--speculative-algorithm NGRAM" ;;  # non-hybrid presets: no mamba flags
+    ngram_d6) arm ngram_d6 "--speculative-algorithm NGRAM --speculative-num-draft-tokens 6" ;;  # shallow drafts: cut mispredict cost
   esac
 done
 log "done"

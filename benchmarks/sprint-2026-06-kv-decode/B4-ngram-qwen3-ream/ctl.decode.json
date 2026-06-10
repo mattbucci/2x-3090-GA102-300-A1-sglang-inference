@@ -1,0 +1,32 @@
+{
+  "model": "qwen3-ream-ctl",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-06-10 09:18:43",
+  "output_tokens": 100,
+  "max_total_num_tokens": 578433,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "throughput": 4.81,
+      "ttft_ms": 46.44,
+      "tpot_ms": 5.43,
+      "tok_per_sec": 184.2
+    },
+    {
+      "context": 40960,
+      "throughput": 4.81,
+      "ttft_ms": 88.91,
+      "tpot_ms": 6.15,
+      "tok_per_sec": 162.6
+    },
+    {
+      "context": 131072,
+      "throughput": 4.81,
+      "ttft_ms": 221.38,
+      "tpot_ms": 9.62,
+      "tok_per_sec": 104.0
+    }
+  ]
+}
