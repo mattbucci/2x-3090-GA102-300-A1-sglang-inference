@@ -265,7 +265,7 @@ apply_preset() {
             # video) 2026-05-09 with v0.5.11 + patch 023 detection.
             # Same head_dim=256 / Ampere FP8 incompat as gemma4-31b (FlashInfer
             # rejects head_dim=256, triton rejects FP8 E4M3 KV on sm_86) — fix
-            # combo: triton attn + KV_DTYPE=auto + disable-cuda-graph + bf16.
+            # combo: triton attn + KV_DTYPE=auto + bf16. CUDA graphs ENABLED 2026-06-10
             # Patches 024 (vision/audio towers no quant_config) + 025/026 also
             # apply.
             #
@@ -324,8 +324,8 @@ apply_preset() {
             # FlashInfer rejects head_dim=256 (NUM_MMA_D_QK=32 invalid → first
             # prefill crashes "Unsupported max_mma_kv: 0"), so use
             # --attention-backend triton; triton in turn rejects FP8 E4M3 KV on
-            # sm_86, so KV_DTYPE=auto (FP16); --disable-cuda-graph for the same
-            # head_dim limitation.
+            # sm_86, so KV_DTYPE=auto (FP16); graphs ENABLED 2026-06-10 (sprint B1:
+            # triton captures fine at bs=1 — the old head_dim concern was wrong).
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/gemma-4-31B-AWQ}"
             REASONING="--reasoning-parser gemma4"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
@@ -358,7 +358,7 @@ apply_preset() {
             # head_dim=256 / global_head_dim=512 → same Ampere attn constraints as
             # 26B/31B: FlashInfer rejects head_dim>256, so --attention-backend
             # triton; triton rejects FP8 E4M3 KV on sm_86, so KV_DTYPE=auto (FP16);
-            # --disable-cuda-graph for the same head_dim limitation.
+            # graphs ENABLED 2026-06-10 (sprint B1: triton captures at bs=1).
             #
             # Serves the -it (instruction-tuned) checkpoint — the deployable one;
             # the base is a raw next-token model. gemma4_unified is a tx-5.10 arch:

@@ -34,14 +34,14 @@ Single-user decode (M=1), honestly capped at each model's real KV pool (`max_tot
 
 What's queued, grouped by theme. Calibration work is gated on the bake-off sweep finishing + Rule 1 (no concurrent calibration + serving). The bake-off methodology + resume mechanics live in [`CLAUDE.md`](CLAUDE.md) and [`evals/swebench/`](evals/swebench/).
 
-### Experimentation sprint (active 2026-06-10 — bake-off paused, GPUs reserved, TP=2)
+### Experimentation sprint (CONCLUDED 2026-06-10 — GPUs free; bake-off ready to resume on the NEW gemma presets)
 
 Hypotheses mined from the patch-set patterns; lab notebook with methods + decision rules: [`benchmarks/sprint-2026-06-kv-decode/LOG.md`](benchmarks/sprint-2026-06-kv-decode/LOG.md). One variable at a time; instruments identical to the fleet eval so results compare to existing baselines.
 
 1. **Track A — SWA sub-pool right-sizing** (from patches 043/047): SGLang defaults `--swa-full-tokens-ratio 0.8`, but sliding layers (40/48 on the 12B, 25/30 on the 26B, window 1024) can't attend past 1024 tokens — the dominant KV consumer is mostly dead weight at MAX_RUNNING=1. **TRACK A CONCLUDED — both Gemma hybrids now true-256K: 12B 102K→565K and 26B 118K→652K full-pool tokens at ratio 0.0625; tool-use 1.0/1.0 to 258,085 true tokens on both; caps 5/5 (12B video fixed by patch 050 en route); decode within ~3%/1% of control at shared ctx + new 128K–256K decode band (~31 tok/s each).**
 2. **Track B — Gemma decode** (from 011/017/021 + the flat-TPOT graph tell, which Track C confirmed fires on ALL three Gemma presets): A/B torch_native+cuda-graph vs triton+no-graph, and awq_marlin vs moe_wna16 MoE runner at M=1. Target ≥1.3× at 131K+ with capabilities held.
-3. **Track C — fleet TPOT-vs-ctx audit: DONE** (LOG.md): flat-TPOT tell on gemma4-12b/26B/31B (1.07/1.01/0.99 = launch-bound); qwen3-ream −26% decode cliff at 64K→128K queued as B3.
-4. **Track D — fail-open kernel-gate audit** (from R9700's dense-GEMV find: an FP16-scales-vs-BF16 dispatch gate silently dropped every dense ship to a 5× slower dequant fallback, 4.6→24.7 tok/s when fixed): first pass greps fleet boot logs for the per-layer chosen quant method per preset; any preset whose hot path differs from intent gets a tok/s A/B. Quality evals cannot catch this class — only tok/s can.
+3. **Track C — fleet TPOT-vs-ctx audit: DONE** (LOG.md): flat-TPOT tell on gemma4-12b/26B/31B (1.07/1.01/0.99 = launch-bound — explained and fixed by B1); the qwen3-ream "−26% cliff" was **disproven by B3** (fine steps: smooth 6.2→9.4 ms TPOT 48K→144K; 2-point sampling artifact).
+4. **Track D — fail-open kernel-gate audit: DONE.** Pass 1 (boot-log fingerprint): 7 presets clean on Marlin; one hit — the 26B dense `down_proj` on the dequant path (`K%128` tile reject) — **sized by microbench at 1.9% of TPOT and parked**. Pass 2 (profiled decode, `scripts/bench/profile_decode_step.sh`): qwen36-dense **clean** (Marlin dominant, no dequant kernels; the fp16 `gemvx` share = by-design unquantized lm_head + DeltaNet projs). The profile recipe is the standing audit for any new preset.
 
 ### New-arch bringup — 256K candidate
 

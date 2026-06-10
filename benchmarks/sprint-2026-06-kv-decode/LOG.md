@@ -145,3 +145,27 @@ Root cause of the dense reject: down_proj `in=2112`, checkpoint `group_size=64` 
 | gemma4-31b | 33.4→33.6 @16K (flat) | **57.7**→46.9 @16K | 1.73×→1.40× | 5/5 (caps from G arm) |
 
 All three Gemma presets now default `--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph` via the `_ENV_GEMMA_GRAPH` hook (env-overridable for A/Bs); MEM stays 0.85 — capture fits with the full Track-A pools (the 0.78 precaution was unnecessary, receipts confirm). 12B note: 256K gain is small (1.10×) because dense-attention time dominates there; the 1K–64K band (where most agentic decode lives — median prompt 41K) gains 1.3–2.6×. Two shell-expansion traps cost one arm-run each, both now documented in-script: `${var:+VAR=x}` prefix-assignments don't assign; `local a="$1" b="$a"` expands before assigning.
+
+### 2026-06-10 07:12 — B3 CONCLUDED: the qwen3-ream "cliff" does not exist (coarse-sampling artifact)
+
+Fine-step decode on the preset's FlashInfer path (receipt `B3-qwen3-ream/fi.json`): 48K **6.2 ms** → 64K 7.0 → 80K 7.9 → 96K 7.9 → 112K 8.5 → 128K 9.4 → 144K **9.4 ms** TPOT — smooth, monotone, attention-bound. No regime discontinuity anywhere in 48K–144K; the fleet table's "−26% at 64K→128K" was two samples on a doubling interval read as a step. **Parked: nothing to fix.** (Triton comparison arm boot-failed on the known sm_86 `fp8e4nv` KV limitation — the preset serves FP8 KV, which triton can't emit on Ampere, patch-005 domain; irrelevant to the verdict since the production path IS FlashInfer.) Meta-lesson for Track C-style audits: a "cliff" needs ≥3 points inside the step before it's real.
+
+### 2026-06-10 07:14 — D2 demonstrator (qwen36-dense): CLEAN; Track D concluded
+
+Profiled decode (256 tok) via `/start_profile` + `SGLANG_TORCH_PROFILER_DIR` (`scripts/bench/profile_decode_step.sh`; receipt `D2-qwen36-dense/top_kernels.json`): **Marlin is the dominant kernel (4,461 ms aggregate) — `marlin_present: True, dequant_present: False`.** The 1,530 ms of cuBLAS `gemvx` fp16 is the by-design unquantized set (lm_head + DeltaNet `in_proj_a/b`, patch-031 domain; `fused_recurrent_gated_delta_rule` 284 ms confirms the hybrid). No silent fallback. **Track D concluded:** pass 1 (boot-log fingerprint) caught the fleet's only logged fallback (26B dense down_proj — sized at 1.9% by B2′ and parked); pass 2 (this profiled-decode recipe) is the per-preset audit for the silent class — run it on any new preset or after any kernel-adjacent bump.
+
+---
+
+## SPRINT SUMMARY (2026-06-10, ~5.5 h wall, all tracks concluded)
+
+| Track | Verdict | Wired / Receipts |
+|---|---|---|
+| **A — SWA ratio** | Default 0.8 was the Gemma KV wall. 12B 102K→**565K**, 26B 118K→**652K** full tokens; tool-use **1.0/1.0 to 258,085 true tokens** both; caps 5/5 | `--swa-full-tokens-ratio 0.0625` in both presets; ladder cost-model exact to 0.1%; A1/A2 receipt dirs |
+| **A collateral** | 12B video crashed pre-existing (processor declared per-frame tokens) | **Patch 050** (3-gated); 12B now **5/5 full omni** |
+| **B1 — graphs** | "Triton SWA can't capture" FALSIFIED; graphs were the whole Gemma decode gap | All 3 Gemma presets graphs-ON: 26B 34→**83**@1K/31→**41**@256K; 12B 41→**107**@1K; 31B 33→**58**@1K; 5/5 caps everywhere |
+| **B2′ — down_proj fallback** | Real but tiny: 0.60 ms/tok = **1.9%** of TPOT (triton W4A16 already at fp16-mm floor) | **Parked** with microbench receipt |
+| **B3 — qwen3-ream cliff** | **No cliff** — smooth 6.2→9.4 ms TPOT 48K→144K; fleet "−26%" was 2-point sampling on a doubling | Parked; meta-rule: a cliff needs ≥3 in-step points |
+| **C — TPOT audit** | Flat-TPOT tell found all 3 Gemma graph-off cases; cliff candidate disproven by B3 | Table in LOG; charts regen at next fleet pass |
+| **D — kernel gates** | Pass-1 fingerprint: 7 presets clean, 1 hit (sized, parked). Pass-2 profiled-decode: qwen36-dense clean | `profile_decode_step.sh` = standing per-preset audit |
+
+**Fleet effect:** the Gemma family went from "KV-walled (24K–118K) + flat ~33 tok/s + 12B video-crashing" to **two genuine 256K models at 83–107 tok/s short-ctx / 41+34 @256K with full multimodal batteries**, and the 31B at 58 tok/s within its weight-bound 24K. Tooling kept: swa_ratio_sweep.sh (capacity ladders + probe gates), b1_arms-style A/B harnesses, profile_decode_step.sh, fine-step decode protocol. Shell-trap lessons baked into scripts: `${var:+VAR=x}` doesn't assign; one-line `local a="$1" b="$a"` expands before assigning. Bake-off remains paused; resume picks up the new gemma presets automatically.

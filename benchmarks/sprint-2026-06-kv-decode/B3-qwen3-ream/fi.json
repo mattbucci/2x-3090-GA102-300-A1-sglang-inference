@@ -1,0 +1,60 @@
+{
+  "model": "qwen3-ream-fi",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-06-10 06:37:14",
+  "output_tokens": 100,
+  "max_total_num_tokens": 578433,
+  "context_sweep": [
+    {
+      "context": 49152,
+      "throughput": 4.81,
+      "ttft_ms": 105.95,
+      "tpot_ms": 6.24,
+      "tok_per_sec": 160.3
+    },
+    {
+      "context": 65536,
+      "throughput": 4.81,
+      "ttft_ms": 109.57,
+      "tpot_ms": 7.04,
+      "tok_per_sec": 142.0
+    },
+    {
+      "context": 81920,
+      "throughput": 100.93,
+      "ttft_ms": 150.77,
+      "tpot_ms": 7.86,
+      "tok_per_sec": 127.2
+    },
+    {
+      "context": 98304,
+      "throughput": 100.91,
+      "ttft_ms": 150.0,
+      "tpot_ms": 7.87,
+      "tok_per_sec": 127.1
+    },
+    {
+      "context": 114688,
+      "throughput": 4.8,
+      "ttft_ms": 182.34,
+      "tpot_ms": 8.47,
+      "tok_per_sec": 118.1
+    },
+    {
+      "context": 131072,
+      "throughput": 4.81,
+      "ttft_ms": 222.49,
+      "tpot_ms": 9.42,
+      "tok_per_sec": 106.2
+    },
+    {
+      "context": 147456,
+      "throughput": 4.81,
+      "ttft_ms": 224.66,
+      "tpot_ms": 9.41,
+      "tok_per_sec": 106.3
+    }
+  ]
+}
