@@ -64,6 +64,16 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     git clone --branch "$SGLANG_TAG" --depth 1 "$SGLANG_REPO" "$SGLANG_DIR"
 else
     echo "[1/3] Using existing SGLang source at $SGLANG_DIR"
+    # Stale-workspace guard (R9700 cross-team 2026-06-10): applying v0.5.12
+    # patches onto a checkout at a different tag "succeeds" as a wall of
+    # silent "Skipped (conflict)" lines. Abort instead.
+    _have_tag="$(git -C "$SGLANG_DIR" describe --tags --exact-match 2>/dev/null || echo unknown)"
+    if [ "$_have_tag" != "$SGLANG_TAG" ]; then
+        echo "ERROR: $SGLANG_DIR is at '$_have_tag', expected $SGLANG_TAG."
+        echo "       Point SGLANG_DIR at a $SGLANG_TAG checkout (live tree:"
+        echo "       /data/sglang-rebase-v0512) or remove the stale dir to re-clone."
+        exit 1
+    fi
 fi
 
 # Apply local patches (idempotent — skips already-applied)
