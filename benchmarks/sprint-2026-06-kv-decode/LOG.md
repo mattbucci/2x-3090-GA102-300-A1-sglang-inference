@@ -96,3 +96,13 @@ Floor 0.03 passes everything → **ship 0.0625 (floor×2 per decision rule)**, w
 | 0.03 | 815,815 | 24,474 |
 
 262144 clears at ratio ≤0.25. Probe phase gates `{0.8 control, 0.0625 ship-candidate}` directly (vs re-probing floor 0.03): the swa working set is arch-invariant — `window 1024 + prefill chunk + slack`; A1 verified **21,204 swa tokens** sufficient under a 258K-true prefill, and the 26B at 0.0625 carries **40,790** (~2× that verified absolute floor). Full caps battery incl. video (works on the 26B via patch 026). Extended tooluse lengths (approx 28672–448000 ≈ true 16K–258K on the Gemma tokenizer).
+
+### 2026-06-10 03:25 — Track D pass 1 (logged-fallback fingerprint, fleet boot logs): HIT on gemma4 26B
+
+Method: grep fleet `/tmp/v0512-eval-logs/*/server.log` for `Using <x> kernel` + `Falling back` + quant-method lines. Result: **devstral, gemma4-12b, gemma4-31b, qwen36, qwen36-dense, qwen36-ream, qwen3-ream = clean awq_marlin.** `gemma4` (26B): boot banner says awq_marlin, but per-layer:
+- `layers.{0..29}.mlp.down_proj` → **"not supported by AWQMarlin → unoptimized AWQ kernels"** — the dequant+GEMM slow path (R9700's 5× class), on the **dense** MLP that runs EVERY token (parallel dense+MoE block).
+- `layers.{0..29}.moe.experts` → "not supported by AWQMoeMarlin → Moe WNA16" — structural (expert `down_proj` in=704 ≠ 0 mod 128/64-shard; WNA16 Triton fused-MoE is the correct fallback, acceptable).
+
+Root cause of the dense reject: down_proj `in=2112`, checkpoint `group_size=64` (33 groups, the patch-015-era shape) → at TP=2 RowParallel each rank holds 1056 → **16.5 groups** → Marlin can't pack fractional groups. At TP=1 it would pack (33 ✓). Candidate fixes, queued as **B2′** for the next GPU slot: (a) replicate the dense `down_proj` (tp_size=1 for that module — ~170 MB total replicated int4, marlin-packs at full 2112); (b) check marlin_utils' pad-groups path; (c) microbench first: marlin vs unoptimized-AWQ at (in 1056, out 5376) M=1 to size the prize (`scripts/test_marlin_repack.py` harness). This compounds with the graph-off finding (Track C) for why the 26B is fleet-slowest (22–33 tok/s).
+
+**Limitation:** pass 1 only sees *logged* fallbacks — R9700's GEMV bug was silent. Pass 2 (queued): runtime kernel verification per preset (one profiled decode step; compare hottest GEMM kernel name against intent).
