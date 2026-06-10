@@ -196,3 +196,13 @@ Probe gate (`A3-gemma4-31b/probe-ratio-*`): all three rungs caps **5/5**; toolus
 | accept | — | len 1.48–2.10, rate 0.04–0.10 |
 
 The variance is the story: **3.1× on the verbatim-copy prompt** (docstring insertion = mostly re-emission), **+24%** on fresh codegen, **−25-33%** on edit/diff prompts — the trie mispredicts on copy-with-deltas (THE agentic pattern) and 12-token drafts make each mispredict expensive. Hypothesis arm `ngram_d6` (`--speculative-num-draft-tokens 6`) running: shallower drafts cut mispredict cost, should keep most copy-span wins. Verdict after d6; bar stays ≥1.3× aggregate for a preset wire-in (opt-in env at most — bake-off latency variance matters too).
+
+### 2026-06-10 09:55 — B4 CONCLUDED: NGRAM parked at 1.24× aggregate (pre-registered bar 1.3×); full tuning curve on record
+
+| arm | code agg | rows (rename/docstring/fresh/diff) | accept |
+|---|---|---|---|
+| ctl | 186.5 | 182 / 186 / 190 / 188 | — |
+| ngram draft-12 | 188.9 (1.01×) | 122 / 581 / 236 / 142 | len 1.5–2.1, rate 4–10% |
+| **ngram draft-6** | **230.6 (1.24×)** | 131 / 394 / 251 / 314 | len 3.0–3.45, rate 40–49% |
+
+Shallow drafts validated the mispredict-cost hypothesis (d12→d6: diff prompt 142→314, fresh 236→251, aggregate 1.01→1.24×) at the cost of capping copy-span wins (581→394). **Parked per the bar**: 1.24× aggregate with a −28% worst-case row isn't bake-off-safe as a default, and opt-in wiring was gated on ≥1.3×. On record for future use: **copy-heavy workloads (doc-gen, boilerplate, refactor bots) get 1.3–2.1× from one flag** (`--speculative-algorithm NGRAM --speculative-num-draft-tokens 6`, zero VRAM); receipts here. Spec-decode state after B4: hybrids gated on **patch-051 candidate** (conv1d spec-verify fp16/bf16, 003-class); the EAGLE3 pool-cap (+`--speculative-draft-window-size`) path remains the untested 24 GB option; filler-bench numbers under NGRAM are invalid as decode floors (repetitive filler = trie paradise — 1042 tok/s artifacts).
