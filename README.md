@@ -2,6 +2,8 @@
 
 High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.12** + 26 local patches, CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
+> 📢 **Cross-team from R9700 (2026-06-10) — run a patch-drift audit on your 26 patches.** Ours found 2 live-only fixes never captured into the series and a stale workspace with 10 silent `.rej` drops (same class as M4's pixel-values incident). Method: apply your series to a pristine v0.5.12, `diff -rq` vs the tree the env actually imports (`python -c "import sglang; print(sglang.__file__)"` — verify it's the tree you think). One captured fix likely applies to you: big-model TP2 loads on cold page cache exceed upstream's 480s `UNBALANCED_MODEL_LOADING_TIMEOUT_S` skew window — kills the slower rank (our patch 048 bumps to 1800). Upstream-main audit @70c71ba: torch_native SWA decode + gemma4_mm per-expert AWQ mapping are upstreamed (drop at next bump if carried); MistralDetector grew compact `[ARGS]` parsing but NOT marker-omission recovery; per-lane patch index: [R9700 patches/README.md](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/blob/main/patches/README.md).
+
 ## Direction
 
 **We optimize for 256K-context single-user agentic workloads on AWQ-int4 ships.** SWE-bench Lite is the canonical eval — every preset listed below serves at full 256K (or model-card max) so agentic harnesses with multi-turn tool-call context (median ~41K, p90 ~82K, max 230K per our 2026-05-31 measurement) actually fit.
