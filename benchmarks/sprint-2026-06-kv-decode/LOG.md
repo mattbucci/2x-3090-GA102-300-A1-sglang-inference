@@ -251,3 +251,7 @@ Also folded this session: **deep-tooluse-fill** receipts (the chart-depth gaps) 
 ### 2026-06-11 03:00 — gemma4-21b-reap: sprint levers wired, first instrument queued
 
 The one Gemma preset never given the sprint levers (user "gemma unlock" signal): preset carried `--disable-cuda-graph` (falsified in Track B) and no swa-ratio (default 0.8 starves the full pool). Modernized to the 26B's config: graphs ON (bs=1) + `--swa-full-tokens-ratio 0.0625`. Model (~10 GB) downloading; first-ever instrument pass (pool + decode sweep + tooluse probe) queued behind the 31B refresh in the same fleet unit. Chart slug map extended (`gemma4-21b*` → its own slug — previously would have mis-attributed to the 26B).
+
+### 2026-06-11 03:22 — gemma4-21b-reap UNLOCKED: first instrument receipts (652K pool, 82/41 tok/s)
+
+First-ever instrument pass after wiring the sprint levers (preset had carried `--disable-cuda-graph` + default ratio 0.8 since bring-up). Results mirror its 26B parent almost exactly: **pool 652,652** (vs 26B 652K), decode **82.3 @1K → 40.9 @262144** (26B: 83 → 41 — same active-param A4B class), **tool-use 1.0/1.0** to the standard-ladder cap (147,541 true; no wall short of the pool — deep 448000-point rides the next receipt pass). The model is a true-256K thinking+vision ship for non-code workloads (HumanEval 0% REAP artifact stands). The 31B standard-ladder probe from the same session also re-confirmed 1.0/1.0 (deep 258,085 receipt already on file from the A5-nudge conclusion).
