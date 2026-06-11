@@ -1,9 +1,9 @@
 diff --git a/python/sglang/srt/models/cohere2_moe.py b/python/sglang/srt/models/cohere2_moe.py
 new file mode 100644
-index 000000000..a13bd03f8
+index 000000000..de724b760
 --- /dev/null
 +++ b/python/sglang/srt/models/cohere2_moe.py
-@@ -0,0 +1,619 @@
+@@ -0,0 +1,628 @@
 +# GRAFTED from sgl-project/sglang main (2026-06-07) onto v0.5.12 rebase. Source: vLLM v0.21.0 cohere2_moe ref. Serving-side bringup for CohereLabs/BLS-Mini-Code-1.0. -MB
 +# SPDX-License-Identifier: Apache-2.0
 +# Copyright 2026 SGLang Team
@@ -257,10 +257,19 @@ index 000000000..a13bd03f8
 +        if self.expert_selection_fn == "sigmoid":
 +            custom_routing_function = cohere2_sigmoid_topk
 +            scoring_func = "sigmoid"
++            # v0.5.12's RoutingMethodType predates the Sigmoid/SigmoidRenorm members
++            # (added upstream for the flashinfer-trtllm fused-routing runner, which
++            # never runs on sm_86). The real sigmoid routing is carried by
++            # custom_routing_function above; the enum is runner-selection metadata
++            # only, so fall back to Unspecified where a member is missing. -MB
 +            routing_method_type = (
-+                RoutingMethodType.SigmoidRenorm
++                getattr(
++                    RoutingMethodType, "SigmoidRenorm", RoutingMethodType.Unspecified
++                )
 +                if self.norm_topk_prob
-+                else RoutingMethodType.Sigmoid
++                else getattr(
++                    RoutingMethodType, "Sigmoid", RoutingMethodType.Unspecified
++                )
 +            )
 +        else:
 +            custom_routing_function = None
