@@ -1,0 +1,74 @@
+{
+  "model": "gemma4-31b-swa0.1",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-06-11 00:06:43",
+  "output_tokens": 100,
+  "max_total_num_tokens": 260289,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "throughput": 4.81,
+      "ttft_ms": 38.92,
+      "tpot_ms": 17.57,
+      "tok_per_sec": 56.9
+    },
+    {
+      "context": 2048,
+      "throughput": 4.81,
+      "ttft_ms": 41.66,
+      "tpot_ms": 18.52,
+      "tok_per_sec": 54.0
+    },
+    {
+      "context": 4096,
+      "throughput": 4.81,
+      "ttft_ms": 39.75,
+      "tpot_ms": 18.55,
+      "tok_per_sec": 53.9
+    },
+    {
+      "context": 8192,
+      "throughput": 4.81,
+      "ttft_ms": 54.54,
+      "tpot_ms": 19.52,
+      "tok_per_sec": 51.2
+    },
+    {
+      "context": 16384,
+      "throughput": 4.81,
+      "ttft_ms": 82.61,
+      "tpot_ms": 21.29,
+      "tok_per_sec": 47.0
+    },
+    {
+      "context": 32768,
+      "throughput": 4.81,
+      "ttft_ms": 153.99,
+      "tpot_ms": 24.94,
+      "tok_per_sec": 40.1
+    },
+    {
+      "context": 65536,
+      "throughput": 4.81,
+      "ttft_ms": 278.73,
+      "tpot_ms": 32.27,
+      "tok_per_sec": 31.0
+    },
+    {
+      "context": 131072,
+      "throughput": 4.81,
+      "ttft_ms": 502.7,
+      "tpot_ms": 46.57,
+      "tok_per_sec": 21.5
+    },
+    {
+      "context": 196608,
+      "throughput": 4.81,
+      "ttft_ms": 502.08,
+      "tpot_ms": 46.62,
+      "tok_per_sec": 21.5
+    }
+  ]
+}

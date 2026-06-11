@@ -226,3 +226,14 @@ Gates green within their real pools (receipts `A4-gate-*`): **31B @ MEM 0.92** c
 ### 2026-06-10 20:50 — A5: FP8 KV on the triton-forced Gemma path (e5m2 hypothesis)
 
 Question (user): can we do FP8 KV on this hardware? **Already yes via FlashInfer** (head_dim ≤ 256 — devstral + the A3B-MoE full-attention layers run `fp8_e4m3` KV in production). The gap is the **triton-forced path** (Gemma's 512-dim global layers): triton on sm_86 can't emit `fp8e4nv` (= e4m3) — that's the B3 bootfail and the patch-005 wall. **But the triton attention kernels carry no fp8e4nv hardcode** (grep clean) — the fp8 type is inferred from the KV *buffer* dtype, and the same error explicitly lists **`fp8e5` (e5m2) as supported on sm_86**. Hypothesis: `--kv-cache-dtype fp8_e5m2` compiles where e4m3 doesn't → halves Gemma KV → 31B 130K→~260K (clears true 256K), 26B/12B gain headroom. Risk: e5m2 has 2 mantissa bits (vs e4m3's 3) — must gate on long-ctx tool-use, not just boot. Probe: gemma4-31b @ ratio 0.1 / MEM 0.92 / KV e5m2, full battery + tooluse to ~256K true.
+
+### 2026-06-11 00:07 — A5 CONFIRMED: e5m2 FP8 KV works on triton sm_86, retrieval intact to 256K
+
+Hypothesis held. gemma4-31b @ ratio 0.1 / MEM 0.92 / **KV fp8_e5m2** on the triton-forced path:
+- **Boots** (the e4m3 wall is e4m3-specific; `fp8e5`/e5m2 is sm_86-supported — triton kernels are dtype-agnostic, type comes from the KV buffer).
+- **KV pool 130,144 → 260,289 full** (+26,028 swa) — the ~2× from halving KV.
+- **Caps 5/5** incl. vision + video — e5m2's 2-bit mantissa did NOT break multimodal.
+- **Tool-use 1.0/1.0 correct to 258,085 true tokens** — long-context *retrieval* survives the coarser cache. This was the real risk; it passed.
+- **Decode unchanged**: 56.9/47.0/31.0 @1K/16K/64K (vs FP16 57.2/46.9/30.8) + now reaches 128K@21.5 / 192K@21.5.
+
+**Answer to "can we do FP8 KV on this hardware":** (1) already yes via FlashInfer for head_dim ≤ 256 (devstral + A3B-MoE full-attn run e4m3 in production); (2) the triton-forced path (Gemma 512-dim global layers) was the only gap — **`fp8_e5m2` unblocks it** where e4m3 (`fp8e4nv`) can't compile on sm_86. Reusable rule: **any sm_86 triton-attention model can take FP8 KV via e5m2, not e4m3.** Confirm at ratio 0.0625 (target full pool >262,144 to clear the literal 256K bar) before wiring; 26B/12B already clear 256K at FP16 with margin so they keep the higher-quality e4m3/FP16 KV — e5m2 is the holdout-only lever.
