@@ -1,0 +1,60 @@
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/models/glm4_moe.py", line 968, in forward
+    hidden_states = self.mlp(
+                    ^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/models/glm4_moe.py", line 581, in forward
+    return self.forward_normal(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/models/glm4_moe.py", line 632, in forward_normal
+    final_hidden_states = self.experts(hidden_states, topk_output)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/layers/moe/fused_moe_triton/layer.py", line 1049, in forward
+    return moe_forward_piecewise_cuda_graph_impl(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/torch/_ops.py", line 1269, in __call__
+    return self._op(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/layers/moe/fused_moe_triton/layer.py", line 1286, in moe_forward_piecewise_cuda_graph_impl
+    return moe_layer.forward_impl(hidden_states, topk_output)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/layers/moe/fused_moe_triton/layer.py", line 1081, in forward_impl
+    combine_input = self.run_moe_core(
+                    ^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/layers/moe/fused_moe_triton/layer.py", line 1102, in run_moe_core
+    return self.quant_method.apply(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/layers/quantization/compressed_tensors/compressed_tensors.py", line 1030, in apply
+    return scheme.apply_weights(layer, dispatch_output)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py", line 406, in apply_weights
+    output = fused_marlin_moe(
+             ^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0512/lib/python3.12/site-packages/torch/_ops.py", line 1269, in __call__
+    return self._op(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py", line 232, in fused_marlin_moe
+    intermediate_cache3 = moe_wna16_marlin_gemm(
+                          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/jit_kernel/moe_wna16_marlin.py", line 138, in moe_wna16_marlin_gemm
+    module.moe_wna16_marlin_gemm(
+  File "python/tvm_ffi/cython/function.pxi", line 929, in tvm_ffi.core.Function.__call__
+RuntimeError: Runtime check failed at /data/sglang-rebase-v0512/python/sglang/jit_kernel/csrc/gemm/marlin_moe/moe_wna16_marlin.cuh:963: size_k = 704, is not divisible by b_scales.size(1) = 5
+
+[2026-06-11 05:11:11] Received sigquit from a child process. It usually means the child failed.

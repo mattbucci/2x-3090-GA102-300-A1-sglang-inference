@@ -1,0 +1,40 @@
+[2026-06-11 05:11:58 TP1] Memory pool end. avail mem=0.49 GB
+[2026-06-11 05:11:58 TP1] Capture piecewise CUDA graph begin. avail mem=0.08 GB
+[2026-06-11 05:11:58 TP0] Scheduler hit an exception: Traceback (most recent call last):
+  File "/data/sglang-rebase-v0512/python/sglang/srt/managers/scheduler.py", line 4025, in run_scheduler_process
+    scheduler = Scheduler(
+                ^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/managers/scheduler.py", line 437, in __init__
+    self.init_model_worker()
+  File "/data/sglang-rebase-v0512/python/sglang/srt/managers/scheduler.py", line 718, in init_model_worker
+    self.init_tp_model_worker()
+  File "/data/sglang-rebase-v0512/python/sglang/srt/managers/scheduler.py", line 673, in init_tp_model_worker
+    self.tp_worker = TpModelWorker(**worker_kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/managers/tp_worker.py", line 262, in __init__
+    self._init_model_runner()
+  File "/data/sglang-rebase-v0512/python/sglang/srt/managers/tp_worker.py", line 347, in _init_model_runner
+    self._model_runner = ModelRunner(
+                         ^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/model_executor/model_runner.py", line 535, in __init__
+    self.initialize(pre_model_load_memory)
+  File "/data/sglang-rebase-v0512/python/sglang/srt/model_executor/model_runner.py", line 766, in initialize
+    self.init_attention_backend()
+  File "/data/sglang-rebase-v0512/python/sglang/srt/model_executor/model_runner.py", line 2408, in init_attention_backend
+    self.attn_backend = self._get_attention_backend()
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/model_executor/model_runner.py", line 2453, in _get_attention_backend
+    attn_backend = self._get_attention_backend_from_str(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/model_executor/model_runner.py", line 2470, in _get_attention_backend_from_str
+    full_attention_backend = ATTENTION_BACKENDS[backend_str](self)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/layers/attention/attention_registry.py", line 45, in create_flashinfer_backend
+    return FlashInferAttnBackend(
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sglang-rebase-v0512/python/sglang/srt/layers/attention/flashinfer_backend.py", line 202, in __init__
+    global_workspace_buffer = torch.empty(
+                              ^^^^^^^^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 384.00 MiB. GPU 0 has a total capacity of 23.56 GiB of which 338.75 MiB is free. Including non-PyTorch memory, this process has 23.06 GiB memory in use. Of the allocated memory 22.33 GiB is allocated by PyTorch, and 210.78 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+
+[2026-06-11 05:11:58] Received sigquit from a child process. It usually means the child failed.
