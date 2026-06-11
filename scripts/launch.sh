@@ -294,13 +294,15 @@ apply_preset() {
             # to route both the 26B HF mirror AND the 21B-REAP-v3b checkpoint
             # through the same AWQ path. Reuses every gemma4 serving flag:
             # bf16 dtype (SigLIP vision tower NaNs in fp16), triton attention
-            # (head_dim=256 FlashInfer-unsupported on sm_86), disable cuda
-            # graph (head_dim limitation), gemma4 reasoning + tool-call
-            # parsers. The 21B-REAP weights are ~10 GB (vs 26B's 13 GB) so
-            # KV headroom is slightly wider at TP=2; same 256K ctx fits
-            # comfortably. Model card on HF: mattbucci/gemma-4-21B-REAP-AWQ
-            # (commit a31a584 v3b, regex-ignore recal post the May-7 v2 audit
-            # disaster). If not yet downloaded locally:
+            # (head_dim=256 FlashInfer-unsupported on sm_86), gemma4 reasoning
+            # + tool-call parsers, CUDA graphs ON (bs=1 capture — the 2026-06-10
+            # sprint falsified "triton SWA can't capture"; graphs were the whole
+            # Gemma decode gap), --swa-full-tokens-ratio 0.0625 (the 26B's
+            # right-sizing; default 0.8 starves the full pool). The 21B-REAP
+            # weights are ~10 GB (vs 26B's 13 GB) so KV headroom is wider at
+            # TP=2. Model card: mattbucci/gemma-4-21B-REAP-AWQ (commit a31a584
+            # v3b, regex-ignore recal post the May-7 v2 audit disaster).
+            # If not yet downloaded locally:
             #   hf download mattbucci/gemma-4-21B-REAP-AWQ \
             #     --local-dir /data/models/hf-mattbucci/gemma-4-21B-REAP-AWQ
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/gemma-4-21B-REAP-AWQ}"
@@ -309,7 +311,7 @@ apply_preset() {
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton --disable-cuda-graph --disable-piecewise-cuda-graph --tool-call-parser gemma4"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs 1 --disable-piecewise-cuda-graph} --tool-call-parser gemma4 --swa-full-tokens-ratio 0.0625"
             ;;
         gemma4-31b)
             # Gemma 4 31B Dense AWQ — in-house BF16->GPTQ->AWQ rebuild
@@ -341,7 +343,7 @@ apply_preset() {
             # leaves the prior turn unclosed → runaway to max_tokens=8192 → empty diff.
             # Override with GEMMA4_31B_CHAT_TEMPLATE="--chat-template <file>".
             CHAT_TEMPLATE="${GEMMA4_31B_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/gemma4_chat_template.jinja}"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs 1 --disable-piecewise-cuda-graph} --tool-call-parser gemma4 --swa-full-tokens-ratio 0.1"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs 1 --disable-piecewise-cuda-graph} --tool-call-parser gemma4 --swa-full-tokens-ratio 0.05"
             ;;
         gemma4-12b)
             # Gemma 4 12B unified omni (Gemma4UnifiedForConditionalGeneration) —

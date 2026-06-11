@@ -103,6 +103,7 @@ def _tag_to_slug(tag):
     if t.startswith("qwen3-ream"):   return "qwen3-30b-ream"
     if t.startswith("gemma4-12b"):   return "gemma4-12b"
     if t.startswith("gemma4-31b"):   return "gemma4-31b"
+    if t.startswith("gemma4-21b"):   return "gemma4-21b-reap"
     if t.startswith("gemma4"):       return "gemma4-26b-awq"   # incl. gemma4-swa*, gemma4-fp8e5
     if t.startswith("devstral"):     return "devstral-24b-awq"
     return None

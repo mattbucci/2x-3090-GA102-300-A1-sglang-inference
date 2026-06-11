@@ -49,6 +49,7 @@ FLEET=(
   "gemma4-31b|gemma4-31b|yes|hf-mattbucci/gemma-4-31B-AWQ"
   "gemma4|gemma4-26b-awq|yes|hf-mattbucci/gemma-4-26B-AWQ"
   "gemma4-12b|gemma4-12b|yes|gemma-4-12B-it-AWQ"
+  "gemma4-21b-reap|gemma4-21b-reap|yes|hf-mattbucci/gemma-4-21B-REAP-AWQ"
 )
 
 # Chart libs (matplotlib) live in the `quant` env, not the serving env.
