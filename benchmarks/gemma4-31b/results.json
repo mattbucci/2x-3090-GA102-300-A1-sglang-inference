@@ -3,58 +3,72 @@
   "engine": "SGLang",
   "hardware": "2x RTX 3090 TP=2",
   "benchmark_tool": "sglang.bench_serving",
-  "timestamp": "2026-06-10 10:46:11",
+  "timestamp": "2026-06-11 01:01:03",
   "output_tokens": 100,
-  "max_total_num_tokens": 109120,
+  "max_total_num_tokens": 260289,
   "context_sweep": [
     {
       "context": 1024,
       "throughput": 4.81,
-      "ttft_ms": 45.6,
-      "tpot_ms": 17.32,
-      "tok_per_sec": 57.7
+      "ttft_ms": 54.43,
+      "tpot_ms": 17.44,
+      "tok_per_sec": 57.3
     },
     {
       "context": 2048,
       "throughput": 4.81,
-      "ttft_ms": 47.44,
-      "tpot_ms": 18.34,
+      "ttft_ms": 51.53,
+      "tpot_ms": 18.36,
       "tok_per_sec": 54.5
     },
     {
       "context": 4096,
       "throughput": 4.81,
-      "ttft_ms": 41.67,
-      "tpot_ms": 18.31,
-      "tok_per_sec": 54.6
+      "ttft_ms": 48.91,
+      "tpot_ms": 18.34,
+      "tok_per_sec": 54.5
     },
     {
       "context": 8192,
       "throughput": 4.81,
-      "ttft_ms": 60.14,
+      "ttft_ms": 55.86,
       "tpot_ms": 19.33,
       "tok_per_sec": 51.7
     },
     {
       "context": 16384,
       "throughput": 4.81,
-      "ttft_ms": 93.06,
-      "tpot_ms": 21.3,
-      "tok_per_sec": 46.9
+      "ttft_ms": 86.0,
+      "tpot_ms": 21.14,
+      "tok_per_sec": 47.3
     },
     {
       "context": 32768,
       "throughput": 4.81,
-      "ttft_ms": 174.57,
-      "tpot_ms": 24.98,
-      "tok_per_sec": 40.0
+      "ttft_ms": 143.43,
+      "tpot_ms": 24.9,
+      "tok_per_sec": 40.2
     },
     {
       "context": 65536,
       "throughput": 4.81,
-      "ttft_ms": 279.97,
-      "tpot_ms": 32.36,
-      "tok_per_sec": 30.9
+      "ttft_ms": 275.87,
+      "tpot_ms": 31.97,
+      "tok_per_sec": 31.3
+    },
+    {
+      "context": 131072,
+      "throughput": 4.81,
+      "ttft_ms": 511.42,
+      "tpot_ms": 46.28,
+      "tok_per_sec": 21.6
+    },
+    {
+      "context": 196608,
+      "throughput": 4.81,
+      "ttft_ms": 505.23,
+      "tpot_ms": 46.3,
+      "tok_per_sec": 21.6
     }
   ]
 }
