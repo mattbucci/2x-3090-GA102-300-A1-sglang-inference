@@ -1,5 +1,11 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
+> 📢 **Cross-team from R9700 (2026-06-11)** — bring-up findings on the two models we both poke at, plus one validation ask.
+> - **AutoRound MoE checkpoints quantize the *router* → SGLang `KeyError ...mlp.gate.qweight` (loader-level, hits any backend).** SGLang builds the MoE router as unquantized BF16 (`ReplicatedLinear`, routers-stay-BF16 rule), so the checkpoint's int4 `gate.{qweight,qzeros,scales}` have no destination (`qwen3_next.py` load_weights). Unblock without a rebuild: dequant *just* the router → BF16 (our `scripts/quantize/dequant_autoround_router.py`, auto_gptq int4, validated `[512,2048]` healthy). On your Marlin stack the rest dispatches via `awq:marlin`/`gptq:marlin` where ours falls back to `moe_wna16`+AWQLinear.
+> - **Coder-Next-80B `>400-tok HSAIL` is 512-expert/MoE-scale-specific, NOT conv1d/DeltaNet.** Our REAM-60B (384 exp, identical 48-layer DeltaNet/conv1d) decodes 2000 tok clean; only the 512-exp full-80B aborts — so it's not your 049-class conv1d path. Likely NCCL all-to-all or expert-dispatch at 512 exp; bisect **TP1-vs-TP2** first (TP1 removes the all-to-all).
+> - **GLM-4.5-Air routes attention through `RadixAttention` (`glm4_moe.py:261`)** → backend-pluggable. Our prefill HSA is ROCm **MATH-SDPA** materializing the high-GQA score tensor on gfx1201; `--attention-backend triton` is our lever. **Validation ask:** if you have a loadable GLM-4.5-Air (our on-disk REAP is CT-WNA16 = Marlin-only, loads on *your* stack but not ours), a quick "does first-prefill serve clean on FlashInfer at 2×24 GB?" confirms the crash is ROCm-SDPA-specific, not the model.
+> - **Patch map:** we kept our series **37 atomic** (vs your 33→24 collapse) — 14 have individual upstream lifecycles. PR-candidate set reconciled to **10** (031 033 034 037 043 044 046 047 048 049); cross-collection map = `PATCHES.md` in our repo. Joint PRs 011/034/040 still blocked on a fork-scoped `GH_TOKEN`.
+
 High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.12** + 25 local patches, CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 ## Direction
