@@ -48,7 +48,7 @@ MODELS = {
 
 # Unified x-axis: 128 to 256K (matches R9700's chart format for cross-stack comparison).
 # Our presets serve at 256K natively; benchmark data sweeps will be re-run at this range.
-UNIFIED_XLIM = (96, 300_000)
+UNIFIED_XLIM = (1024, 300_000)
 UNIFIED_XTICKS = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144]
 
 # Standard concurrency levels for bar charts
@@ -81,9 +81,10 @@ def honest_sweep(model_key, results):
     """context_sweep filtered to points the model's real KV pool can actually
     hold, with a valid tok/s — drops the over-cap bench artifacts (see KV_CAP)."""
     cap = KV_CAP.get(model_key, 10 ** 12)
+    # Floor at 1K: sub-1K points are noise on a 256K x-axis and add nothing.
     return [p for p in (results.get("context_sweep") or [])
             if "error" not in p and (p.get("tok_per_sec") or 0) > 0
-            and p.get("context", 0) <= cap]
+            and 1024 <= p.get("context", 0) <= cap]
 
 
 def fmt_ctx(x, _):
