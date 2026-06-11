@@ -105,7 +105,7 @@ apply_preset() {
             # 217K text-only) is now redundant and was removed in the same
             # commit; if you need to override down, use CTX=131072 env or
             # use coder-30b/etc. presets that already have shorter caps.
-            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
+            CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=8192  # MEM 0.85->0.90 (A4): 172K->202K KV, gate 3/3 + tooluse 1.0@132K true
             CUDA_GRAPH="--cuda-graph-max-bs 1"
             CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/devstral2_chat_template.jinja}"
             WARMUP="--skip-server-warmup"
@@ -332,7 +332,7 @@ apply_preset() {
             # BF16 — Gemma 4 SigLIP vision tower NaNs in FP16 (attention softmax
             # overflows past 65504). Override DTYPE=float16 only for text-only use.
             DTYPE="${_ENV_DTYPE:-bfloat16}"
-            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
+            CTX=262144; MEM=0.92; MAX_RUNNING=1; CHUNKED=4096  # MEM 0.85->0.92 (A4): 24K->130K KV, gate 5/5 + tooluse 1.0@124K true
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             # 2026-05-31: ship R9700's gemma4_chat_template.jinja override (two fixes
             # vs the upstream embedded template: always close the model turn after
