@@ -43,6 +43,8 @@ MODELS = {
     "devstral-24b-awq":    {"label": "Devstral-24B AWQ (dense)",          "color": "#56d364"},
     "gemma4-31b":          {"label": "Gemma 4 31B AWQ (dense, think)",    "color": "#d2a8ff"},
     "gemma4-26b-awq":      {"label": "Gemma 4 26B AWQ (MoE, think)",      "color": "#bc8cff"},
+    "gemma4-21b-reap":     {"label": "Gemma 4 21B REAP AWQ (MoE, think)", "color": "#a371f7"},
+    "gemma4-12b":          {"label": "Gemma 4 12B AWQ (omni, think)",     "color": "#8957e5"},
     "coder-30b-awq":       {"label": "Coder-30B AWQ (MoE)",              "color": "#f0883e"},
     "qwen35-27b-awq":      {"label": "Qwen3.5-27B AWQ",                  "color": "#e3b341"},
 }
