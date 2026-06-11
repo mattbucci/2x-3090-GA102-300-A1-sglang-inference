@@ -289,6 +289,7 @@ Reusable rules for Gemma 4 on this rig:
 
 - **Use BF16, not FP16.** FP16 overflows at layer 2 (hidden_size=5376). The SigLIP vision tower NaNs in FP16 attention softmax above 65504 — BF16 is mandatory for vision.
 - **head_dim=512 is FlashInfer-unsupported on sm_86.** Route through `--attention-backend triton` or `--attention-backend torch_native`; both work, triton is faster.
+- **FP8 KV on the triton-forced path uses `fp8_e5m2`, NOT `fp8_e4m3`.** sm_86 triton can't emit `fp8e4nv` (= e4m3) — the compile error itself lists `fp8e5` (e5m2) as the supported FP8. The triton attention kernels carry no fp8-type hardcode (the type is inferred from the KV buffer), so `--kv-cache-dtype fp8_e5m2` compiles and halves KV where e4m3 fails. e5m2's 2-bit mantissa (vs e4m3's 3) held tool-use retrieval **1.0 to 258K true tokens** on gemma-4-31B (sprint A5), decode unchanged. This took the 31B 130K→260K KV pool = ~256K on 24 GB. (head_dim ≤ 256 models keep e4m3 via FlashInfer — higher quality, and they're not triton-bound.)
 - **Self-calibrate, don't ship community CT quants.** Cosine similarity vs BF16 base was 0.845 on q_proj for community CT — produces garbage.
 - **Embed chat template into `tokenizer_config.json`.** Community Gemma 4 weights ship with no template.
 - **MoE+dense parallel block:** `Gemma4DecoderLayer` MUST pass `quant_config=None` to the dense `Gemma4MLP` only when the recipe kept it BF16 (patch 023 detects this). Vision tower + image/audio projectors also stay BF16 via `modules_to_not_convert`.

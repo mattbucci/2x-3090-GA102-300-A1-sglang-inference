@@ -229,7 +229,7 @@ Full host-side scaffold + toolchain notes (opencode + little-coder + claw-code, 
 | **Qwen3.5-28B MoE REAP** | DeltaNet+MoE A3B (205 exp, VL) | **262K** | **138** | `qwen35-moe` | Cerebras REAP of Qwen3.5-28B-A3B; thinking+vision. |
 | **Qwen3-Coder-30B-A3B AWQ** | MoE A3B (128 exp) | **262K** | ~30 @256K | `coder-30b` or `coder-30b-eval` | [`mattbucci/Qwen3-Coder-30B-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-AWQ). Two presets serve the same model; for short-ctx batch-decode benchmarks override `CTX=16384 MAX_RUNNING=32 ./scripts/launch.sh coder-30b` (peaks ~187 tok/s @ 1K). |
 | Coder-REAP-30B AWQ-Marlin | MoE A3B (96 exp) | **262K** | 109 | `coder-reap-25b` | [`mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) (R9700 in-house). |
-| **Gemma 4 31B Dense AWQ** | Dense (VL) | **130K** | 57 (47 @16K, 31 @64K) | `gemma4-31b` | [`mattbucci/gemma-4-31B-AWQ`](https://huggingface.co/mattbucci/gemma-4-31B-AWQ). LM INT4, vision tower FP16. Tool-use 1.0 → 124K true tokens, 5/5 caps. KV 24K→130K 2026-06-10 (`--swa-full-tokens-ratio 0.1` + `MEM 0.92`; budget asymptote ~260K bars true 256K on 24 GB). |
+| **Gemma 4 31B Dense AWQ** | Dense (VL) | **~256K** (260K pool) | 57 (31 @64K, 21 @192K) | `gemma4-31b` | [`mattbucci/gemma-4-31B-AWQ`](https://huggingface.co/mattbucci/gemma-4-31B-AWQ). LM INT4, vision tower FP16, **KV fp8_e5m2**. Tool-use 1.0 → 258K true tokens, 5/5 caps incl. video. KV 24K→260K 2026-06-10 (`--swa-full-tokens-ratio 0.1` + `MEM 0.92` + e5m2 FP8 KV — e5m2 is the only FP8 that compiles on the triton-forced path, sm_86 rejects e4m3). |
 | **Gemma 4 26B MoE AWQ** | MoE A4B (103 exp, VL) | **262K** ✓ | 22 (31 @256K) | `gemma4` | [`mattbucci/gemma-4-26B-AWQ`](https://huggingface.co/mattbucci/gemma-4-26B-AWQ). **Tool-use 1.0 → 258K true tokens, 5/5 caps** incl. video. KV wall removed 2026-06-10: `--swa-full-tokens-ratio 0.0625` → 652K-token full pool (was 118K). |
 | **Gemma 4 12B Unified AWQ** | Omni, encoder-free | **262K** ✓ | 42 (31 @256K) | `gemma4-12b` | [`mattbucci/gemma-4-12B-AWQ`](https://huggingface.co/mattbucci/gemma-4-12B-AWQ). In-house int4 RTN-from-QAT. MMLU 77 / HE 93 / **tool-use 1.0 → 258K true tokens**, **5/5 omni** (vision + video ✓, patches 042–050). KV wall removed 2026-06-10: `--swa-full-tokens-ratio 0.0625` → 565K-token full pool (was 102K at the 0.8 default). |
 | **Qwen3.6-27B Dense AWQ** | Dense + DeltaNet (VL) | **262K** (657K KV) | 21 | `qwen36-dense` | [`mattbucci/Qwen3.6-27B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-27B-AWQ) (R9700 self-cal). |
@@ -305,7 +305,7 @@ Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimod
 | Qwen3.6-27B Dense AWQ | 8.8 GB (measured; sharded) | 24 KB | 262K |
 | Devstral-Small-2-24B AWQ | 7.0 GB | ~40 KB (fp8 KV) | **202K** ‡‡ (MEM 0.90) |
 | Gemma 4 26B A4B MoE AWQ | 6.5 GB | ~12 KB (SWA) | **652K full / 41K swa** (262K ✓ @ ratio 0.0625) |
-| Gemma 4 31B Dense AWQ | 7.7 GB | ~25 KB (SWA) | **130K full / 13K swa** (`--swa-full-tokens-ratio 0.1` + MEM 0.92; weights-bound) |
+| Gemma 4 31B Dense AWQ | 7.7 GB | ~12 KB (SWA, fp8_e5m2) | **260K full / 26K swa** (`--swa-full-tokens-ratio 0.1` + MEM 0.92 + e5m2 KV) |
 | Gemma 4 12B Unified AWQ | 5.4 GB | 15.3 KB full + 152.6 KB swa | **565K full / 35K swa** (262K ✓ @ ratio 0.0625) |
 | Qwen3-VL-32B Dense AWQ | 10.0 GB | 24 KB | 131K (model-card cap) |
 

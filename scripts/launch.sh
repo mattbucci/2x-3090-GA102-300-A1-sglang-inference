@@ -328,11 +328,11 @@ apply_preset() {
             # triton captures fine at bs=1 — the old head_dim concern was wrong).
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/gemma-4-31B-AWQ}"
             REASONING="--reasoning-parser gemma4"
-            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            KV_DTYPE="${_ENV_KV_DTYPE:-fp8_e5m2}"  # A5: e5m2 FP8 KV compiles on triton sm_86 (e4m3/fp8e4nv does not) -> 130K->260K pool, retrieval 1.0 to 258K true
             # BF16 — Gemma 4 SigLIP vision tower NaNs in FP16 (attention softmax
             # overflows past 65504). Override DTYPE=float16 only for text-only use.
             DTYPE="${_ENV_DTYPE:-bfloat16}"
-            CTX=262144; MEM=0.92; MAX_RUNNING=1; CHUNKED=4096  # MEM 0.85->0.92 (A4): 24K->130K KV, gate 5/5 + tooluse 1.0@124K true
+            CTX=262144; MEM=0.92; MAX_RUNNING=1; CHUNKED=4096  # MEM 0.92 + e5m2 FP8 KV (A4+A5): 24K->260K pool, 5/5 caps, tooluse 1.0@258K true
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             # 2026-05-31: ship R9700's gemma4_chat_template.jinja override (two fixes
             # vs the upstream embedded template: always close the model turn after
