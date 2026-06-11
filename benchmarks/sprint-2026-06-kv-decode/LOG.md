@@ -206,3 +206,13 @@ The variance is the story: **3.1× on the verbatim-copy prompt** (docstring inse
 | **ngram draft-6** | **230.6 (1.24×)** | 131 / 394 / 251 / 314 | len 3.0–3.45, rate 40–49% |
 
 Shallow drafts validated the mispredict-cost hypothesis (d12→d6: diff prompt 142→314, fresh 236→251, aggregate 1.01→1.24×) at the cost of capping copy-span wins (581→394). **Parked per the bar**: 1.24× aggregate with a −28% worst-case row isn't bake-off-safe as a default, and opt-in wiring was gated on ≥1.3×. On record for future use: **copy-heavy workloads (doc-gen, boilerplate, refactor bots) get 1.3–2.1× from one flag** (`--speculative-algorithm NGRAM --speculative-num-draft-tokens 6`, zero VRAM); receipts here. Spec-decode state after B4: hybrids gated on **patch-051 candidate** (conv1d spec-verify fp16/bf16, 003-class); the EAGLE3 pool-cap (+`--speculative-draft-window-size`) path remains the untested 24 GB option; filler-bench numbers under NGRAM are invalid as decode floors (repetitive filler = trie paradise — 1042 tok/s artifacts).
+
+### 2026-06-10 20:04 — A4: "all models to 256K?" boundary probes (boot-only, measured asymptotes)
+
+| probe | result |
+|---|---|
+| 31B @ mem 0.92 (ratio pinned 0.1 by preset — argparse last-wins over the sweep flag) | full **130,144** / swa 13,014 (vs 109,120 @0.85) |
+| devstral @ mem 0.92 | full **214,107** |
+| devstral @ mem 0.90 | full **202,093** |
+
+**Closed-form from the fitted cost model** (31B: S≈10F per token; B(0.85)=218,232F, B(0.92)=260,288F → ~6,008F per 0.01 mem): the ratio→0 asymptote at 0.92 is ~260K — *under* 262,144 — and any usable swa floor (≥~10K tokens) pushes the requirement to ~362,000F ≈ 1.4× the memory that exists. Sliding-only FP8 KV (the B6 idea) lands ~226K — still short; only **all-FP8 KV** clears it (~450K) and the 512-dim global layers can't take FP8 through sm_86 triton (patch-005 wall). **devstral**: +6,007 tokens per 0.01 mem → 262,144 needs mem ≈ 1.00. KV already FP8. **Verdict: gemma4-31b and devstral are structurally short of 256K on 24 GB cards; qwen3-vl-32b is model-card-capped at 131K.** Consolation bumps gating now (A4-gate): 31B 109K→130K @0.92, devstral 172K→202K @0.90 — wire on green.
