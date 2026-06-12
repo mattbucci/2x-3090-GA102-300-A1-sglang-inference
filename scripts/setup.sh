@@ -135,6 +135,18 @@ else
 fi
 
 # -------------------------------------------------------------------
+# Chat-template fix: accept the OpenAI `developer` role as `system`.
+# Newer OpenAI-compat scaffolds (little-coder/pi-ai) send the system prompt
+# with role `developer`; the Qwen3.5/3.6 templates raise on it -> 400 ->
+# scaffold exits the rollout in ~3 s. Idempotent; re-run after any model
+# re-download. (Root cause + receipts: patches/README.md.)
+# -------------------------------------------------------------------
+echo ""
+echo "[2b/3] Patching chat templates (developer-role -> system)..."
+python "$REPO_DIR/scripts/eval/patch_chat_templates_developer_role.py" || \
+    echo "  (warning: chat-template patch step failed; little-coder rollouts may 400 on thinking presets)"
+
+# -------------------------------------------------------------------
 # Step 3: Verify installation
 # -------------------------------------------------------------------
 echo ""
