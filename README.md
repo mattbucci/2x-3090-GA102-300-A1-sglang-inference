@@ -83,18 +83,19 @@ Items 2–3 are prerequisites for the MoE backlog. Detailed plan: [`scripts/quan
 
 ## Coding-eval bake-off (SWE-bench Lite, v2 Docker harness, 256K, single-user)
 
-Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **leads at 62.0%** on opencode — ahead of the A3B-MoE thinkers `qwen36` (59.0%) and `qwen36-ream` (58.7%). All three clear the coders. The dense 27B that already tops MMLU (98.2%) and holds 100% reasoning to true 256K is also the strongest agentic coder — the lifted-hold 256K bake-off (qwen35-moe in flight) is filling in the rest.
+Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **leads at 62.0%** on opencode — ahead of the A3B-MoE thinkers `qwen36` (59.0%) and `qwen36-ream` (58.7%). All three clear the coders. The dense 27B that already tops MMLU (98.2%) and holds 100% reasoning to true 256K is also the strongest agentic coder. Native `qwen36` is also the strongest non-coder on **claw** (49.3% — see ‡); the full 9-preset cycle is re-running to fill the remaining scaffold cells (currently on `coder-reap-25b`, cycle 3 of 9).
 
 | Preset | opencode | claw-code | little-coder |
 |--------|:--------:|:---------:|:------------:|
 | `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **186/300 = 62.0%** | — | — |
-| `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **177/300 = 59.0%** | (sweeping) | (sweeping) |
-| `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **176/300 = 58.7%** | 20/123 = 16.3% † | 0/10 = 0.0% † |
+| `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **177/300 = 59.0%** | 140/284 = 49.3% | 0/30 = 0.0% † |
+| `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **176/300 = 58.7%** | 20/123 = 16.3% ‡ | 0/10 = 0.0% † |
 | `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | 129/300 = 43.0% | 107/300 = 35.7% | 74/300 = 24.7% |
 | `coder-reap-25b` (Cerebras Qwen3-Coder-REAP-25B-A3B-AWQ) | 125/300 = 41.7% | 122/300 = 40.7% | 101/300 = 33.7% |
 | `coder-30b-ream` (Samsung SAIL Qwen3-Coder-30B-A3B-REAM-AWQ) | 116/300 = 38.7% | 109/300 = 36.3% | 73/300 = 24.3% |
 
-† Thinking-mode models exhaust their `<think>` budget before committing a `tool_call` on tool-call-heavy scaffolds (claw/little-coder) — they belong on opencode. Coder-tuned models match claw's tool registry and score similarly on claw vs opencode. `coder-reap-25b` is the most-rounded preset; `qwen36-ream` wins when the scaffold matches (opencode).
+† **little-coder** defeats thinking models specifically — its large tool registry + no-reasoning-budget framing makes the `<think>`-mode models exhaust the budget before committing a `tool_call` (qwen36 0/30, qwen36-ream 0/10). They belong on opencode.
+‡ **claw is NOT a thinking-model-killer** — this `qwen36-ream` 16.3% is a **REAM artifact**, not a thinking artifact: the un-merged `qwen36` scores **49.3%** on the same scaffold (cycle 2, full 284-prediction run), close to its 59.0% opencode and well above every coder's claw cell. The old "thinking models can't do claw" framing came from a 5-instance smoke (`qwen36 × claw = 0/5`) that didn't survive the full run. So REAM-merge degrades claw tool-use far more than opencode (−33 pp vs −0.3 pp) — a coder-vs-thinker-style scaffold-fit gap that's really a REAM-vs-native gap. `coder-reap-25b` stays the most-rounded preset; native `qwen36` is now a two-scaffold winner (opencode + claw).
 
 Failure-mode analysis (over-edit signature, per-repo skew, oracle-ensemble ceiling of 49% across opencode∪claw, rollout self-clean), methodology, and per-cell receipts: [`patches/README.md`](patches/README.md) + [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/). Every preset's `--tool-call-parser` matches its chat-template tool format (see Known Issues).
 
