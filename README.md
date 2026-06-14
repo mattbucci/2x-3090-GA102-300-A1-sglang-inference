@@ -85,7 +85,7 @@ Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **leads at 62.0%** on ope
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **177/300 = 59.0%** | **152/300 = 50.7%** | **177/300 = 59.0%** |
 | `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **177/300 = 59.0%** | 39/97 † (stale) | re-run † |
 | `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | 129/300 = 43.0% | 107/300 = 35.7% | 74/300 = 24.7% |
-| `coder-reap-25b` (Cerebras Qwen3-Coder-REAP-25B-A3B-AWQ) | 125/300 = 41.7% | 122/300 = 40.7% | re-run † |
+| `coder-reap-25b` (Cerebras Qwen3-Coder-REAP-25B-A3B-AWQ) | 125/300 = 41.7% | 122/300 = 40.7% | 107/300 = 35.7% |
 | `coder-30b-ream` (Samsung SAIL Qwen3-Coder-30B-A3B-REAM-AWQ) | 116/300 = 38.7% | 109/300 = 36.3% | re-run † |
 
 † **little-coder/claw × thinking cells are re-running with the `developer`-role chat-template fix.** little-coder's pi-ai sends its system prompt as role `developer`; the Qwen3.5/3.6 templates 400'd on it, so thinking rollouts exited empty (little-coder 0/30; claw stuck at partial prediction sets). Fix: `scripts/eval/patch_chat_templates_developer_role.py` (in `setup.sh`). Confirmed on the re-run — `qwen36` little-coder **0/30 → 177/300 = 59.0%**, claw **partial → 300/300 = 50.7%**. `qwen36-ream`/`qwen36-dense` claw cells still show stale partials until cycles 4/7 re-run. Root cause + the wrong earlier readings it overturned: `CLAUDE.md` + `git log`.
