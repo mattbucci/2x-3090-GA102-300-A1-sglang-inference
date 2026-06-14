@@ -256,3 +256,38 @@ Calibration intermediates are large. Discipline:
   `/data/calibration-tmp/` and is deleted at end.
 - Concurrent bake-off prediction files also write to `/data` — measure
   available space before starting.
+
+## R9700 cross-team calibration tips (hand-off 2026-06-01)
+
+R9700 was originally tasked with this AWQ build but hit a hard wall: the 62 GB
+BF16 model doesn't fit in their 64 GB RAM (full-CPU load OOMs; swap thrashes at
+559 s/sample, 39 h ETA), and device_map-GPU / disk-offload each hit
+compressed_tensors bugs. It moved to the 3090 box (more RAM headroom + our
+designated AWQ-calibration role). Reuse R9700's hard-won fixes (committed in the
+R9700 repo `scripts/quantize/`):
+
+- **group_size=64, NOT 128** — `moe_intermediate_size=1856 = 64×29` is not
+  divisible by 128, so group-128 GPTQ aborts on strict-division (hidden 2688 =
+  64×42 also clean). Convert with `--group-size 64`. Arch-level — applies here too.
+- **Calibrate `model.language_model` (the `NemotronHForCausalLM` backbone), NOT
+  the full Omni wrapper** — the wrapper's `forward(pixel_values, …,
+  image_flags=None)` does `image_flags.squeeze(-1)` and crashes on text-only
+  (drop_images) calibration. Quantize the backbone, save the full model
+  (compressed-tensors infers the config; vision/audio stay BF16).
+- **Env deps**: `timm`, `open_clip_torch`, `ftfy`, `wcwidth`, `librosa` to load
+  the Omni (CRADIO vision + Parakeet audio); `attn_implementation="eager"` if
+  flash-attn dispatch trips; transformers 5.x (`modeling` imports
+  `transformers.initialization`). R9700 env recipe: their
+  `scripts/quantize/setup_nemo_quant_env.sh`.
+- **llmcompressor 0.11.x** (newer than 0.10.1.dev92): all-expert MoE calibration
+  moved from `GPTQModifier(moe_calibrate_all_experts=)` into
+  `moe_calibration_context`, which (a) needs a registered MoE module for
+  `NemotronHMoE` (R9700 `nemotron_moe_calibration.py`) and (b) trips a
+  `functools.partial` forward bug in compressed_tensors `set_forward_quantized` +
+  `offload_module` (R9700 `patch_ct_set_forward.py`). The 0.10.1.dev92 kwarg path
+  likely avoids both.
+- **Heads-up**: all-expert calibration runs all 128 experts → very heavy;
+  router-only is far lighter but under-calibrates rare experts. Audio calib data
+  (`common_voice_17_0`, `covost2`) was gated from R9700 — audio encoder is BF16 so
+  capability is preserved; validate audio post-hoc. R9700 keeps the FP8 build at
+  256K and will do the AWQ-vs-FP8 comparison once our AWQ lands.
