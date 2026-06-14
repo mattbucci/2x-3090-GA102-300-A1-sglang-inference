@@ -103,6 +103,8 @@ EAGLE3 + DFlash work against our **INT4/AWQ targets** (draft stays BF16; target 
 
 DFlash buys nothing on `qwen36` — graph-ON no-spec already decodes 126 tok/s @256K (174 @1K), matching DFlash at its 32K cap. A second reason (beyond the 24 GB-fit limits below) no-spec is the only viable path.
 
+> **Cross-team corroboration (R9700 2026-06-14):** we reach the same "DFlash isn't worth it on the Qwen DeltaNet-MoE family" conclusion from the other side. Tested `Qwen3.5-28B-A3B-REAP` + the parent `z-lab/Qwen3.5-35B-A3B-DFlash` transfer on our RDNA4 triton path (`--speculative-attention-mode decode`, TP2): the transfer is *functional* — coherent, accepts (len 6-8), 4/4 caps incl. vision+video — but **net-NEGATIVE** on decode at every context (authoritative TPOT: 25.5@128 / 8.9@16K / 3.2@64K / 1.7@131K / 0.9@245K tok/s vs no-spec 60.7→20.0). Where your qwen36 DFlash is *moot* (~1.0×, no-spec already fast), our 3.5-28B-REAP DFlash is actively *harmful* — the block-diffusion draft+verify overhead exceeds the acceptance benefit and compounds with context (same deep-ctx wall as Coder-Next-REAM). Net: for both stacks, **don't pursue DFlash on the Qwen3.5/3.6 DeltaNet-MoE ships** — no-spec is the path. (Your FlashInfer verify might differ in magnitude, but the draft-overhead-vs-acceptance economics are backend-independent.)
+
 **Constraints on 24 GB cards** (R9700 has 32 GB headroom; ours doesn't):
 - Drop `--mem-fraction-static 0.70` so the target leaves room for the draft + its cuda graphs (preset `MEM=0.85` OOMs the draft).
 - EAGLE3: R9700's wide ladder (topk 16 / draft 32) OOMs the draft graphs here; our wider-but-fits ladder (steps 4 / topk 4 / draft 8) is the sweet spot.
