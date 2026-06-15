@@ -49,6 +49,14 @@ SERVER_TIMEOUT="${SERVER_TIMEOUT:-720}"
 LOG_DIR="${LOG_DIR:-/tmp/run-model-cycle-logs/$PRESET}"
 
 mkdir -p "$LOG_DIR"
+# Self-heal the score flock dir. run_all_cycles.sh creates /tmp/loop-bakeoff-logs
+# only once at queue start, so /tmp cleanup mid-run (or bake_off.sh never having
+# run) leaves the Phase-5 `flock /tmp/loop-bakeoff-logs/score.lock` opening a
+# missing path -> flock errors, score_docker.py never runs, and the cell JSON
+# silently keeps its stale content. Recreate it every cycle so scoring can't be
+# skipped. (Root-caused 2026-06-15: qwen36-ream DONE'd rc=0 carrying a fake
+# little-coder 0/40 cell after the dir had been cleaned away.)
+mkdir -p /tmp/loop-bakeoff-logs
 START=$(date +%s)
 
 log() { echo "[$PRESET $(date +%H:%M:%S)] $*"; }
