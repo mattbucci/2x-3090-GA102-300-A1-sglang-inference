@@ -754,8 +754,17 @@ CMD=(python -m sglang.launch_server
     --port "$PORT"
     --host 0.0.0.0
     --enable-metrics
-    --disable-custom-all-reduce
 )
+# Custom all-reduce stays OFF: it breaks cuda-graph capture on 3090 TP=2
+# (sm_86) and graphs are worth far more than the decode allreduce it would speed
+# up. Disabled 2026-04-12 (commit 45c4810, v0.5.11); RE-CONFIRMED still broken on
+# v0.5.12 2026-06-15 — `Capture cuda graph failed: invalid argument` at
+# custom_all_reduce.cuh:508. The ENABLE_CUSTOM_AR=1 toggle is kept so a future
+# sglang/driver bump can be re-tested in one flag (receipt:
+# benchmarks/allreduce-accel-null-2026-06-15.md). Don't ship it on until capture
+# survives. (symm-mem variants are a null result for decode — they touch only the
+# embedding allreduce, not the per-layer decode allreduce; same receipt.)
+[[ -z "${ENABLE_CUSTOM_AR:-}" ]] && CMD+=(--disable-custom-all-reduce)
 
 # Friendly model name for OpenAI-compatible API consumers (eg. opencode).
 # Defaults to the preset name; override with SERVED_NAME=foo.
