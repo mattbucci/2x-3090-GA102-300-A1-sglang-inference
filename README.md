@@ -81,18 +81,18 @@ Items 2–3 are prerequisites for the MoE backlog. Detailed plan: [`scripts/quan
 
 ## Coding-eval bake-off (SWE-bench Lite, v2 Docker harness, 256K, single-user)
 
-Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **leads at 62.0%** on opencode, ahead of the A3B-MoE thinkers `qwen36` and `qwen36-ream` (59.0%). `qwen36` is a strong, consistent three-scaffold performer — **opencode 59.0% / little-coder 59.0% / claw 50.7%** — with the `developer`-role chat-template fix (†) applied. REAM ties native on opencode (both 59.0%) but **trails ~9 pp on little-coder** (`qwen36-ream` 150/300 = 50.0% vs `qwen36` 59.0%, full-300 both, 64 empty patches in the REAM cell) — the merge is scaffold-sensitive on the thinking ships, so "REAM ties native" holds on opencode/claw but not uniformly. The fleet is re-running every little-coder cell with that fix (cycle 3 of 9).
+Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **leads at 62.0%** on opencode, ahead of the A3B-MoE thinkers `qwen36` and `qwen36-ream` (59.0%). `qwen36` is a strong, consistent three-scaffold performer — **opencode 59.0% / little-coder 59.0% / claw 51.7%** — with the `developer`-role chat-template fix (†) applied. REAM ties native on opencode (both 59.0%) but **trails ~9 pp on little-coder** (`qwen36-ream` 150/300 = 50.0% vs `qwen36` 59.0%, full-300 both, 64 empty patches in the REAM cell) — the merge is scaffold-sensitive on the thinking ships, so "REAM ties native" holds on opencode/claw but not uniformly. The fleet is re-running every little-coder cell with that fix (cycle 3 of 9).
 
 | Preset | opencode | claw-code | little-coder |
 |--------|:--------:|:---------:|:------------:|
 | `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **186/300 = 62.0%** | — | re-run † |
-| `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **177/300 = 59.0%** | **152/300 = 50.7%** | **177/300 = 59.0%** |
+| `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **177/300 = 59.0%** | **155/300 = 51.7%** | **177/300 = 59.0%** |
 | `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **177/300 = 59.0%** | 39/150 † (partial) | **150/300 = 50.0%** |
 | `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | 129/300 = 43.0% | 107/300 = 35.7% | 74/300 = 24.7% |
 | `coder-reap-25b` (Cerebras Qwen3-Coder-REAP-25B-A3B-AWQ) | 125/300 = 41.7% | 122/300 = 40.7% | 107/300 = 35.7% |
 | `coder-30b-ream` (Samsung SAIL Qwen3-Coder-30B-A3B-REAM-AWQ) | 116/300 = 38.7% | 109/300 = 36.3% | re-run † |
 
-† **little-coder/claw × thinking cells are re-running with the `developer`-role chat-template fix.** little-coder's pi-ai sends its system prompt as role `developer`; the Qwen3.5/3.6 templates 400'd on it, so thinking rollouts exited empty (little-coder 0/30; claw stuck at partial prediction sets). Fix: `scripts/eval/patch_chat_templates_developer_role.py` (in `setup.sh`). Confirmed on the re-run — `qwen36` little-coder **0/30 → 177/300 = 59.0%**, claw **partial → 300/300 = 50.7%**. `qwen36-ream`/`qwen36-dense` claw cells still show stale partials until cycles 4/7 re-run. Root cause + the wrong earlier readings it overturned: `CLAUDE.md` + `git log`.
+† **little-coder/claw × thinking cells are re-running with the `developer`-role chat-template fix.** little-coder's pi-ai sends its system prompt as role `developer`; the Qwen3.5/3.6 templates 400'd on it, so thinking rollouts exited empty (little-coder 0/30; claw stuck at partial prediction sets). Fix: `scripts/eval/patch_chat_templates_developer_role.py` (in `setup.sh`). Confirmed on the re-run — `qwen36` little-coder **0/30 → 177/300 = 59.0%**, claw **partial → 300/300 = 51.7%**. `qwen36-ream`/`qwen36-dense` claw cells still show stale partials until cycles 4/7 re-run. Root cause + the wrong earlier readings it overturned: `CLAUDE.md` + `git log`.
 
 Failure-mode analysis (over-edit signature, per-repo skew, oracle-ensemble ceiling of 49% across opencode∪claw, rollout self-clean), methodology, and per-cell receipts: [`patches/README.md`](patches/README.md) + [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/). Every preset's `--tool-call-parser` matches its chat-template tool format (see Known Issues).
 
