@@ -47,6 +47,24 @@ opt-in `NGRAM=1` on the coder preset (copy-heavy agentic coding is the 256K mand
 Caveat: neutral-to-slightly-negative for novel-text generation (overlap-scheduler overhead with low
 acceptance) — hence opt-in, not default.
 
-Open follow-ups: tune `--speculative-num-draft-tokens` down toward the observed accept len (8 over-drafts
-when accept len is ~2 on mixed spans); test `--speculative-ngram-external-corpus-path` seeded with the
-edited repo (should lift acceptance on the first touch of each file); measure on a real SWE-bench rollout.
+## Generalization across the coder fleet — the win is gated by COPY FIDELITY, not arch
+
+Same copy-heavy task @172K, same server-log method, on the REAP-pruned sibling (same Qwen3-Coder-30B-A3B
+base, 128→96 experts):
+
+| coder model @172K | no-spec | NGRAM accept len | NGRAM net (wall, same 1444-tok gen) |
+|---|---|---|---|
+| `coder-30b` (full 128e) | 89 t/s | 6.1–7.6 (copy spans) | **WIN ~2.6× on copy spans** |
+| `coder-reap-25b` (REAP 96e) | 88.4 t/s | ~2 (peak 3.0) | **NET-NEGATIVE** (153.6s vs no-spec 145.6s; draft=4 also worse, 156.1s) |
+
+So NGRAM's benefit tracks the model's **copy fidelity** (= n-gram acceptance), not architecture: the
+full coder copies code verbatim (high acceptance), but **REAP/REAM pruning degrades verbatim
+reproduction** → acceptance craters to ~2 → the verify overhead (and disabled overlap scheduler)
+dominates → net-negative. Lowering `NGRAM_DRAFT` 8→4 did **not** rescue it (accept ~2 is the ceiling,
+not over-drafting). **Ship: `NGRAM=1` allowlisted to the full coders only (`coder-30b` / `coder-30b-eval`
+= the 128-expert base); the pruned coders (`coder-reap-25b`, `coder-30b-ream`) are excluded** — the gate
+prints a WARN if `NGRAM=1` is set on them.
+
+Open follow-ups: test `--speculative-ngram-external-corpus-path` seeded with the edited repo (should lift
+acceptance on the first touch of each file — could even help the pruned models); measure NGRAM on a real
+SWE-bench rollout (mixed copy+novel output → the realistic net, between the 1.4× mixed and 2.6× pure-copy).

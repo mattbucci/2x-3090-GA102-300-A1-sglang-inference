@@ -213,20 +213,8 @@ apply_preset() {
                     --speculative-num-draft-tokens 8 \
                     --speculative-attention-mode decode"
             fi
-            # NGRAM=1 opt-in: draft-FREE n-gram spec-decode. Unlike EAGLE3/DFlash
-            # it needs no draft weights (no MEM/CTX cut → stays at 256K) and does
-            # NOT collapse at depth — the draft is a CPU trie lookup, not a model
-            # attending the deep KV every micro-step. On copy-heavy decode (agentic
-            # coding: edits reproduce existing code) it sustains ~2.6x no-spec at
-            # 172K (accept len 6-7.6; receipt benchmarks/ngram-copyheavy-at-depth-2026-06-15.md).
-            # Lossless (target verifies every token). Opt-in, not default: it
-            # disables the overlap scheduler, so novel-text decode goes neutral-to-
-            # slightly-negative. Tune draft tokens via NGRAM_DRAFT (default 8).
-            if [[ -n "${NGRAM:-}" ]]; then
-                EXTRA_ARGS="$EXTRA_ARGS \
-                    --speculative-algorithm NGRAM \
-                    --speculative-num-draft-tokens ${NGRAM_DRAFT:-8}"
-            fi
+            # NGRAM=1 spec-decode is wired once, post-preset, for the whole
+            # pure-attention coder fleet (see after the case) — not per-preset.
             ;;
         coder-30b-eval)
             # SWE-bench eval preset: 256K + single-batch CUDA graph, mirrors
@@ -711,6 +699,30 @@ apply_preset "$PRESET"
 [[ -n "$CHUNKED_OVERRIDE" ]] && CHUNKED="$CHUNKED_OVERRIDE"
 [[ -n "$WATCHDOG_OVERRIDE" ]] && WATCHDOG="$WATCHDOG_OVERRIDE"
 [[ -n "$TP_OVERRIDE" ]] && TP="$TP_OVERRIDE"
+
+# NGRAM=1 opt-in: draft-FREE n-gram spec-decode (CPU trie, no draft weights →
+# stays at 256K; lossless — target verifies every token). Does NOT collapse at
+# depth like model-draft spec; on the FULL coder-30b it's ~2.6x no-spec @172K
+# copy-heavy (receipt benchmarks/ngram-copyheavy-at-depth-2026-06-15.md). Disables
+# the overlap scheduler → opt-in (neutral-to-negative on novel-text decode).
+# FULL Qwen3-Coder-30B ONLY (coder-30b / coder-30b-eval = the 128-expert base).
+# The benefit is gated by the model's COPY FIDELITY (n-gram acceptance):
+#  - full coder-30b copies verbatim → accept len 6-7.6 → big win.
+#  - REAP/REAM-pruned coders (coder-reap-25b / coder-30b-ream, 96e) copy less
+#    faithfully → accept ~2 → NET-NEGATIVE (measured: slower than no-spec at BOTH
+#    draft=8 and draft=4), so they're excluded from the allowlist.
+#  - DeltaNet thinkers (qwen36*/qwen35-moe): recurrent verify is sequential in
+#    num-draft-tokens → net-negative regardless of acceptance (R9700 verify-wall).
+# Tune draft tokens via NGRAM_DRAFT (default 8; lower toward the accept len).
+if [[ -n "${NGRAM:-}" ]]; then
+    case "$PRESET" in
+        coder-30b|coder-30b-eval)
+            EXTRA_ARGS="$EXTRA_ARGS --speculative-algorithm NGRAM --speculative-num-draft-tokens ${NGRAM_DRAFT:-8}"
+            echo "NGRAM spec-decode ENABLED for $PRESET (draft tokens ${NGRAM_DRAFT:-8})" ;;
+        *)
+            echo "WARN: NGRAM=1 ignored for '$PRESET' — only the FULL Qwen3-Coder-30B presets (coder-30b/coder-30b-eval) benefit. Pruned coders (reap/ream) measure net-negative; DeltaNet (qwen36*/qwen35-moe) is incompatible." ;;
+    esac
+fi
 
 # Resolve chat template (deferred $MODEL expansion)
 CHAT_TEMPLATE=$(eval echo "$CHAT_TEMPLATE")
