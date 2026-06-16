@@ -16,9 +16,9 @@ This rules out three alternative optimization axes other 3090 stacks chase:
 
 **Active work** (full task queue in `git log` + the task tracker):
 
-1. **Gemma unlock completion** — 31B wired at `--swa-full-tokens-ratio 0.05` + e5m2 KV (347K pool; tool-use 1.0 @ 258K true); a single-preset instrument pass is re-recording its pool/decode receipts (systemd unit `fleet-gemma-unlock`), with **`gemma4-21b-reap` queued behind it** — preset just modernized with the sprint levers (CUDA graphs ON + ratio 0.0625) for its first-ever instrument receipts.
-2. **North-Mini-Code AWQ-int4 build** — calibration-device ask, top of the backlog (see [Unlocked models](#unlocked-models-user-signal-2026-06-11)); serving side is ready (patches 042+051).
-3. **SWE-bench bake-off resume** — the 9-preset queue (user-paused for the optimization sprint, now concluded) resumes once the gemma instrument frees the GPUs; the interrupted `qwen35-moe` cycle resumes via `--skip-existing`.
+1. **Single-user 256K decode optimization** — the standing mission. Per-model decode receipts are in [Performance](#performance--single-user-decode-at-256k); open levers (per-layer-type attention backend for Gemma, NGRAM for copy-heavy, symm-mem allreduce) in [Tooling → Decode ideas](#tooling). Worked as a continuous iteration loop — cadence + the experiment ledger live in [`CLAUDE.md`](CLAUDE.md).
+2. **SWE-bench bake-off resume** — the 9-preset queue (user-paused for the optimization sprint, now concluded; the gemma instrument pass that gated it is complete — 31B/21B-REAP receipts are in the [Performance](#performance--single-user-decode-at-256k) + [Model Support](#model-support) tables) resumes on the now-free GPUs; the interrupted `qwen35-moe` cycle resumes via `--skip-existing`.
+3. **North-Mini-Code AWQ-int4 build** — calibration-device ask, top of the calibration backlog (see [Unlocked models](#unlocked-models-user-signal-2026-06-11)); serving side is ready (patches 042+051).
 4. **MoE coverage matrix gaps** — every MoE base should ship in native + REAP + REAM AWQ flavors. Audit + 6 missing-variant ships in the [MoE coverage matrix](#moe-coverage-matrix--calibration-backlog) below.
 5. **Nemotron-3-Nano-Omni AWQ build** — prepped (62 GB BF16 base + script on disk, pre-flight done), queued on the calibration device behind North. R9700 already has the FP8 variant at 256K.
 
@@ -126,7 +126,10 @@ The `SPEC_DECODE=1` opt-in remains wired for short-prompt uses. For our 256K age
 
 ## Known Issues (open)
 
-None currently open. Resolved items live in `git log` + [`patches/README.md`](patches/README.md). One caveat carried forward: `check_awq_scales.py` reads native-AWQ format — CT-format checkpoints crash its tensor reader (use a native-AWQ mirror or HF Range-fetch mode for CT audits).
+- **`qwen36-ream` × claw-code is a partial cell (150/300 predictions).** The bake-off table reads it at `39/150` — discount it per the full-300 rule until a fresh rollout completes the set. little-coder (300 preds on disk) is being scored from complete predictions; opencode is full at 177/300.
+- **Host reboots every ~9–17 h under sustained docker rollout I/O (kernel BUG).** Predictions on disk survive; auto-resume is via `swebench-bakeoff.service` (the boot-ordering cycle that was silently dropping it at every boot is fixed — cooling oneshot now orders after `nvidia-persistenced`, not `multi-user.target`). Full forensic recipe in [`CLAUDE.md`](CLAUDE.md) → Operational Lessons.
+
+One caveat carried forward: `check_awq_scales.py` reads native-AWQ format — CT-format checkpoints crash its tensor reader (use a native-AWQ mirror or HF Range-fetch mode for CT audits). Resolved items live in `git log` + [`patches/README.md`](patches/README.md).
 
 ## Quick Start
 

@@ -39,6 +39,18 @@ Full preset list: `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scripts/launch.sh
 - **Primary:** single-user **256K context** performance (decode tok/s, TPOT). Measure at long context first.
 - **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win batch benchmarks.
 
+## Optimization Iteration Loop (the standing process)
+This is a **continuous loop**, not a one-shot. Each iteration (a wake-up, a finished background job, or a fresh session) runs these steps. Never stop to ask for confirmation — the user reads the README + everything we report and interjects with course-corrections.
+
+1. **Sync first.** `git fetch` BOTH repos (this one + R9700 `~/AI/rdna4-inference-triton36`); read new commits (`git log HEAD..origin/main`); `git pull --rebase` ours (the calibration device pushes here). New R9700 findings can re-prioritize the loop.
+2. **Read live state.** `nvidia-smi`, `sudo docker ps`, check for running serving/scoring/calibration. Honor **Rule 1** (no concurrent calibration + eval/serving) and **Rule 2** (no concurrent rollout + score) — only one GPU/docker workload at a time.
+3. **Pick the next lever.** Highest-value untried *serving/optimization or eval* item for a model in the perf table — README → [Tooling → Decode ideas], a bake-off cycle, or a 256K quality/throughput probe. **Stay in lane: this box owns evals + serving/256K-optimization + analysis + docs + cross-team sharing. Do NOT start calibrations here** — GPTQ→CT→AWQ, REAM/REAP rebuilds, and the MoE coverage backlog run on a separate same-repo device; we only `git pull --rebase` to pick up their commits. Note the chosen lever in the README *before* starting (user can redirect).
+4. **Baseline → apply → measure.** Single-user (M=1), at the model's real KV cap, fresh prefill. Harness: `scripts/eval/run_v0512_fleet_eval.sh` (quality + tok/s + 256K probe) or `scripts/bench/bench_long_context.py`. Record tok/s + TPOT.
+5. **Decide & document.** WIN → update the preset in `launch.sh` + the [Performance] / [Model Support] tables (these tables ARE the receipts). NULL/parked → one line in README "Decode ideas" with the receipt path under `benchmarks/`; negative results are findings, keep them. Either way, push portable findings to R9700's README.
+6. **Commit + push** at the clean boundary (small self-contained commits). Then **schedule the next iteration** (background-job completion re-invokes us; otherwise `ScheduleWakeup`).
+
+Capability guardrail on every iteration that touches a checkpoint: **preserve thinking + image + video + audio** (we have silently broken thinking and image during calibration — see Calibration Rules). Run the applicable probes before claiming a win.
+
 ## Calibration Rules
 - **Preserve thinking + image + video + audio.** Past calibrations on this rig broke thinking (Qwen3.5-28B REAP lost `<think>` tags) and image (community VL AWQs broke alignment). Gemma 4 and Qwen3.5/3.6 also support **video and audio** natively — both easy to miss if your calibration recipe is image+text only. See [Gemma video docs](https://ai.google.dev/gemma/docs/capabilities/vision/video); Qwen3.5/3.6 handle video via `<|vision_start|><|video_pad|><|vision_end|>` in the chat template.
 - **Calibration data requirements:**
