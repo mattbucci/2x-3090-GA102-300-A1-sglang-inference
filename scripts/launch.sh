@@ -213,6 +213,20 @@ apply_preset() {
                     --speculative-num-draft-tokens 8 \
                     --speculative-attention-mode decode"
             fi
+            # NGRAM=1 opt-in: draft-FREE n-gram spec-decode. Unlike EAGLE3/DFlash
+            # it needs no draft weights (no MEM/CTX cut → stays at 256K) and does
+            # NOT collapse at depth — the draft is a CPU trie lookup, not a model
+            # attending the deep KV every micro-step. On copy-heavy decode (agentic
+            # coding: edits reproduce existing code) it sustains ~2.6x no-spec at
+            # 172K (accept len 6-7.6; receipt benchmarks/ngram-copyheavy-at-depth-2026-06-15.md).
+            # Lossless (target verifies every token). Opt-in, not default: it
+            # disables the overlap scheduler, so novel-text decode goes neutral-to-
+            # slightly-negative. Tune draft tokens via NGRAM_DRAFT (default 8).
+            if [[ -n "${NGRAM:-}" ]]; then
+                EXTRA_ARGS="$EXTRA_ARGS \
+                    --speculative-algorithm NGRAM \
+                    --speculative-num-draft-tokens ${NGRAM_DRAFT:-8}"
+            fi
             ;;
         coder-30b-eval)
             # SWE-bench eval preset: 256K + single-batch CUDA graph, mirrors
