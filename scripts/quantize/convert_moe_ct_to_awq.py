@@ -238,7 +238,22 @@ def main():
                 print(f"  Q {base}: [{out_features}, {in_features}] -> "
                       f"qw{list(qweight.shape)} sc{list(scales.shape)}")
 
-            elif key.endswith(".weight_scale") or key.endswith(".weight_shape"):
+            elif (
+                key.endswith(".weight_scale")
+                or key.endswith(".weight_shape")
+                # compressed-tensors residue: GPTQModifier(scheme="W4A16") in
+                # llmcompressor 0.11 emits a per-tensor `.weight_zero_point`
+                # (int8, [out, num_groups]) alongside `.weight_scale`. The AWQ
+                # output should carry symmetric zero-point baked into `.qzeros`
+                # only — any stray `.weight_zero_point` is dead weight at best
+                # and breaks SGLang's MoE loader at worst (it maps the residue
+                # onto a `experts.w2_weight_zero_point` param that doesn't
+                # exist on the AWQ Linear → KeyError on model load).
+                # Caught on shipped Nemotron-3-Nano-Omni-AWQ 2026-06-16 after
+                # 5 SGLang load attempts across the kernel/TP matrix all
+                # crashed at this key. Strip here so future ships are clean.
+                or key.endswith(".weight_zero_point")
+            ):
                 continue
 
             else:
