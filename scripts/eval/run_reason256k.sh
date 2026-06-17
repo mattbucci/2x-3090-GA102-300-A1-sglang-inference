@@ -10,8 +10,8 @@
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$SCRIPT_DIR/../.." && pwd)"
-export ENV_NAME="${ENV_NAME:-sglang-v0512}"
-export SGLANG_DIR="${SGLANG_DIR:-/data/sglang-rebase-v0512}"
+export ENV_NAME="${ENV_NAME:-sglang-v0513}"   # default stack flipped to v0.5.13.post1 (2026-06-16)
+export SGLANG_DIR="${SGLANG_DIR:-/data/sglang-rebase-v0513}"
 export PATH="/home/letsrtfm/miniforge3/envs/$ENV_NAME/bin:$PATH"
 export CUDA_HOME="${CUDA_HOME:-/opt/cuda}"; export CUDA_PATH="${CUDA_PATH:-/opt/cuda}"
 source "$REPO/scripts/common.sh" 2>/dev/null || true
@@ -24,7 +24,8 @@ PRESETS="${PRESETS:-qwen36 qwen36-dense qwen36-ream qwen35-moe}"
 # 3000 gen = 259000 < 262144); 262144 itself overflows and the server fast-rejects.
 LENGTHS="${LENGTHS:-1024,32768,65536,131072,200000,256000}"
 PORT=23334
-SERVER_TIMEOUT="${SERVER_TIMEOUT:-720}"
+SUFFIX="${SUFFIX:-v0513}"   # JSON receipt suffix: benchmarks/quality/quality256k-<preset>-<SUFFIX>.json
+SERVER_TIMEOUT="${SERVER_TIMEOUT:-900}"   # Gemma boots at 262144 (triton attn + graph capture + big full pool) need >720s headroom
 OUT=/tmp/reason256k; mkdir -p "$OUT"; rm -f "$OUT/done"; : > "$OUT/result.txt"
 LOG_ROOT="/tmp/reason256k-logs"; mkdir -p "$LOG_ROOT"
 log(){ echo "[reason256k $(date +%H:%M:%S)] $*" | tee -a "$OUT/result.txt"; }
@@ -55,8 +56,8 @@ for P in $PRESETS; do
   wait_ready "$LOG" || { stop_server; log "  SKIP $P (boot failed)"; continue; }
   log "  256K reasoning probe @ $LENGTHS"
   python "$REPO/scripts/eval/probe_256k_quality.py" --port $PORT --tag "$P" \
-    --lengths "$LENGTHS" --out "benchmarks/quality/quality256k-$P-v0512.json" >> "$OUT/result.txt" 2>&1
-  log "  probe rc=$? -> benchmarks/quality/quality256k-$P-v0512.json"
+    --lengths "$LENGTHS" --out "benchmarks/quality/quality256k-$P-$SUFFIX.json" >> "$OUT/result.txt" 2>&1
+  log "  probe rc=$? -> benchmarks/quality/quality256k-$P-$SUFFIX.json"
   stop_server
   log "=== $P done ==="
 done
