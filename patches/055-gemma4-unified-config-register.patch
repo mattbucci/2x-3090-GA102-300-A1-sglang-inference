@@ -1341,10 +1341,10 @@ index 0000000..218f502
 +__all__ = ["Gemma4UnifiedProcessor"]
 diff --git a/python/sglang/srt/configs/video_processing_gemma4_unified.py b/python/sglang/srt/configs/video_processing_gemma4_unified.py
 new file mode 100644
-index 0000000..0c4818c
+index 0000000..be7a591
 --- /dev/null
 +++ b/python/sglang/srt/configs/video_processing_gemma4_unified.py
-@@ -0,0 +1,355 @@
+@@ -0,0 +1,361 @@
 +# VENDORED from huggingface/transformers main video_processing_gemma4_unified.py (2026-06-07).
 +# 3-dot imports rewritten to absolute; 1-dot sibling kept (resolves in this pkg). -MB
 +#                🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨
@@ -1680,7 +1680,13 @@ index 0000000..0c4818c
 +            # (num_frames, num_teacher_patches, 768) → (num_frames, num_model_patches, 6912)
 +            num_model_patches = patches.shape[1] // (pooling_kernel_size**2)
 +            merged_patches, merged_positions = patches_merge(patches, teacher_positions, num_model_patches)
-+            num_soft_tokens_per_video.append(merged_patches.shape[1])
++            # [3090 055, ex-050] total soft tokens across ALL frames: the unified model
++            # embeds every frame's merged non-padding patches — (num_frames, per_frame, ...) —
++            # but the upstream vendor declared only shape[1] (ONE frame). The undercount made
++            # __call__ expand 64 placeholders for a 12-frame video whose embedder emits
++            # 12*64=768 -> `split_with_sizes expects sum 768 ... got [64]` scheduler crash on
++            # the first video request (caught by the capability validator 2026-06-17).
++            num_soft_tokens_per_video.append(int(merged_patches.shape[0] * merged_patches.shape[1]))
 +
 +            # Step 6: Pad merged patches and positions to max_soft_tokens
 +            merged_patches, merged_positions = pad_to_max_patches(merged_patches, merged_positions, max_soft_tokens)
