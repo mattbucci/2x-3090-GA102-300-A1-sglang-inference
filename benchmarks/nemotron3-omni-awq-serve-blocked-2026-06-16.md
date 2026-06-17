@@ -54,3 +54,42 @@ Preset `nemotron3-omni` is wired in `launch.sh` (`--reasoning-parser nemotron_3 
 qwen3_coder --trust-remote-code --enable-multimodal`, mamba cache, chat_template). For caps-validation
 once it loads: TP=1 small-ctx if it fits, else TP=2; then `validate_capabilities.py` (basic + thinking
 + image + video + tool) + an audio probe (librosa installed).
+
+---
+
+## RE-CHECK — revision `4c98711` (2026-06-16, calib-device rebuild)
+
+The calib device re-uploaded (commit `4c98711`, was `9edacecf`). **The dual-zero-point format defect
+is FIXED**: `.weight_zero_point` tensors are gone (0, was 5934); quantized tensors are clean standard
+AWQ (`qweight`/`qzeros`/`scales`). `check_awq_scales` clean. But it **still does not serve** — two
+further blockers, now precisely diagnosed:
+
+### Blocker A — `modules_to_not_convert` is empty (config defect, calib must fix)
+The 10304-dim that broke awq_marlin TP=2 (5152/rank) is `language_model.backbone.layers.N.mixer.in_proj`
+— the **Mamba2 in_proj**, which is BF16 (`.weight`, not `.qweight`). SGLang applies the awq quant
+*method* per-module based on `quantization_config.modules_to_not_convert`, which is **`[]`** — so it
+tries to awq-wrap the BF16 Mamba/attention/vision/audio Linears → Marlin shape fail on the Mamba
+in_proj. The tensors are correct; only the config's exclusion list is empty (the calib quantize script
+didn't write its ignore list to the output config). **Fix (config-only, no re-quant): populate**
+`quantization_config.modules_to_not_convert` (and `ignore`) — verified to get past blocker A:
+`["sound_encoder","sound_projection","mlp1","vision_model","in_proj","out_proj","conv1d","q_proj","k_proj","v_proj","o_proj","gate","lm_head","embeddings"]`
+(leaves exactly `mixer.experts.N.{up,down}_proj` + `mixer.shared_experts.{up,down}_proj` quantized).
+
+### Blocker B — non-gated, 1856-intermediate MoE experts load on NO SGLang int4 MoE kernel
+Even with blocker A fixed, the experts fail on every int4 MoE path (NemotronH MoE is **non-gated**
+squared-ReLU, `moe_intermediate_size=1856`):
+- **awq_marlin**: expert down_proj `input_size_per_partition=1856` ∤ `min_thread_k=128` (1856=128×14.5) — a hard Marlin constraint, TP-independent.
+- **moe_wna16**: `RuntimeError: start(1856)+length(1856) exceeds dimension size(1856)` — moe_wna16 create_weights hardcodes a **gated** fused gate_up (`2*intermediate`); NemotronH has only `up_proj` (no gate), so the loader writes the up half at offset 1856 into an 1856-dim slot. (`moe_wna16.py` create_weights line ~277/302 + loader line ~510.)
+- **awq (gemm) / cpu-offload**: `KeyError: experts.w2_qweight` — expects fused w13/w2 expert naming; checkpoint has per-expert `up_proj`/`down_proj`.
+
+### Net + recommended path
+Serving this int4 ship on our SGLang needs BOTH: (1) calib populates `modules_to_not_convert`
+(necessary), AND (2) the expert MoE loads — for which the cleanest options are, in order:
+1. **Serving patch: add non-gated-MoE support to `moe_wna16`** (create gate_up at `1×intermediate`
+   when the model is non-gated, and load `up_proj` at offset 0). General fix; unblocks this + any
+   future non-gated AWQ MoE. Not Marlin → the 1856 shape is fine. (3090 serving lane.)
+2. **Re-build with expert `moe_intermediate_size` padded to a 128-multiple** (1856→1920 or 2048) so
+   `awq_marlin` works (fast, packed, sharded) — bigger calib change, changes the tensors.
+3. **Serve FP8** (R9700's path) — FP8 W8A16 avoids the int4 Marlin/wna16 shape+gating constraints.
+
+Capabilities (thinking/image/video/audio/tool) remain **unvalidated** — gated on the model loading.
