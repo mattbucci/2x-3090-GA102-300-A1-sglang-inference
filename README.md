@@ -1,6 +1,6 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
-High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.12** + 25 local patches, CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
+High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.13.post1** + 22 local patches (flipped from v0.5.12 on 2026-06-16 — fleet re-validated, old stack kept for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 ## Direction
 
@@ -140,7 +140,7 @@ One caveat carried forward: `check_awq_scales.py` reads native-AWQ format — CT
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # clone SGLang v0.5.12, apply patches, create conda env
+./scripts/setup.sh                          # clone SGLang v0.5.13.post1, apply patches, create conda env
 
 # TP=2 / 256K presets (matrix standard):
 ./scripts/launch.sh qwen3-ream              # 262K @ 107 tok/s — REAM merged MoE, 96 experts

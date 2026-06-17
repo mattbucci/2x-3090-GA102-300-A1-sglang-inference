@@ -1,57 +1,29 @@
-From: 3090 team <noreply@anthropic.com>
-Date: 2026-06-10
-Subject: [PATCH] gemma4: recipe-aware quant_config for dense MLP + mm towers
-
-Merged unit (2026-06-10) absorbing former 023-gemma4-moe-mlp-no-quant-config
-(2026-05-03, detection upgrade 2026-05-09) + 024-gemma4-mm-towers-no-quant-config
-(2026-05-03). One feature: respect what the calibration recipe actually
-quantized instead of hardcoding. gemma4_causal: parse
-config.quantization_config.ignore and pass quant_config=None to the
-MoE-block dense MLP only when the recipe kept it BF16 (covers both
-community BF16-MLP and our fully-quantized ships; wrong choice = <pad>
-spam from silently-unbound weights). gemma4_mm: vision tower, embed_vision,
-audio tower, embed_audio always BF16 per recipe ignore list — pass
-quant_config=None so their plain .weight tensors bind.
-NOTE (R9700 hardware test 2026-05-03): Ampere-specific — RDNA4's loader
-BF16-fallback makes this unnecessary there and the changed kernel path
-trips an HSAIL sampler bug. Do not apply on ROCm.
-Per-member narratives: patches/README.md.
-
 diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
-index 9c04746d2..bf73f4d92 100644
+index 9c2f9c2..b9d19ec 100644
 --- a/python/sglang/srt/models/gemma4_causal.py
 +++ b/python/sglang/srt/models/gemma4_causal.py
-@@ -469,11 +469,45 @@ class Gemma4DecoderLayer(nn.Module):
+@@ -556,11 +556,37 @@ class Gemma4DecoderLayer(nn.Module):
              2 if use_double_wide_mlp else 1
          )
  
-+        # On MoE-block layers (parallel dense+MoE Gemma 4 architecture, e.g.
-+        # 26B), the dense-MLP branch CAN ship as either:
-+        #   (a) PLAIN BF16 (mlp.{gate,up,down}_proj.weight) — original recipe
-+        #       expectation; quant_config must be None or the AWQ loader feeds
-+        #       the BF16 weight into the qweight slot and every matmul outputs
-+        #       garbage (15078 NaN + 3267 inf in layer 0 gate_up_proj alone,
-+        #       NaN cascades to lm_head → vocab-low <pad> spam).
-+        #   (b) AWQ-packed (mlp.{gate,up,down}_proj.qweight) — what
-+        #       mattbucci/gemma-4-26B-AWQ HF mirror + locally-built
-+        #       21B-REAP-AWQ-thinking-vision-v3b actually ship; here
-+        #       quant_config must be passed or the model creates BF16 .weight
-+        #       placeholders that never match the .qweight checkpoint keys
-+        #       and forward returns zeros → also <pad> spam.
-+        # On Dense-only Gemma 4 (e.g. 31B), the MLP is fully AWQ-packed
-+        # (mlp.*.weight_packed), so quant_config must always be passed.
-+        # Detection: parse quantization_config.ignore from the model config.
-+        # If a regex/string in ignore matches `mlp.*proj`, the calibration
-+        # recipe deliberately kept the dense MLP BF16 → use quant_config=None.
-+        # Otherwise the dense MLP was quantized → use quant_config.
-+        # Bug surfaced 2026-05-03 (SGLANG_GEMMA4_TRACE), expanded to handle
-+        # case (b) on 2026-05-09 after env upgrade to v0.5.11 surfaced it.
++        # On MoE-block layers (parallel dense+MoE Gemma 4, e.g. 26B), the dense
++        # MLP branch may ship PLAIN BF16 (mlp.{gate,up,down}_proj.weight) when
++        # the calibration recipe kept it BF16. Passing quant_config then makes
++        # the AWQ loader feed the BF16 weight into the qweight slot → NaN
++        # cascade → <pad> spam. Detect from quantization_config.ignore: if an
++        # entry matches `mlp.*proj`, the recipe kept the dense MLP BF16 → use
++        # quant_config=None. Otherwise (fully-quantized ship) keep quant_config.
 +        _enable_moe = getattr(config, "enable_moe_block", False)
 +        _mlp_quant_config = quant_config
 +        if _enable_moe and quant_config is not None:
 +            import re as _re
++
 +            qc = getattr(config, "quantization_config", None) or {}
-+            _ignore = qc.get("ignore", []) if isinstance(qc, dict) else getattr(qc, "ignore", []) or []
++            _ignore = (
++                qc.get("ignore", [])
++                if isinstance(qc, dict)
++                else getattr(qc, "ignore", []) or []
++            )
 +            _mlp_kept_bf16 = any(
 +                _re.search(r"\.mlp\.(gate|up|down)_proj", str(x))
 +                or _re.search(r"^mlp\.(gate|up|down)_proj", str(x))
@@ -59,6 +31,7 @@ index 9c04746d2..bf73f4d92 100644
 +            )
 +            if _mlp_kept_bf16:
 +                _mlp_quant_config = None
++
          self.mlp = Gemma4MLP(
              hidden_size=self.hidden_size,
              intermediate_size=layer_intermediate_size,
@@ -69,53 +42,76 @@ index 9c04746d2..bf73f4d92 100644
          )
  
 diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
-index 4ce8a5909..40e06f647 100644
+index 3629782..2d2c792 100644
 --- a/python/sglang/srt/models/gemma4_mm.py
 +++ b/python/sglang/srt/models/gemma4_mm.py
-@@ -175,16 +175,28 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
- 
-         prefix = add_prefix("model", prefix)
- 
-+        # Gemma 4 calibration recipes preserve the multimodal towers in BF16
-+        # (recipe.yaml ignore: re:.*vision_tower.*, re:.*embed_vision.*,
-+        # re:.*audio_tower.*, re:.*embed_audio.*).  The checkpoint stores them
-+        # as plain `.linear.weight` tensors with no qweight/scales/shapes.
-+        # If we pass quant_config here, the AWQ loader allocates weight_packed
-+        # parameter slots and the BF16 checkpoint keys silently fail to load
-+        # ("Some weights are not initialized: vision_tower.encoder.layers.*
-+        # .mlp.gate_up.gate_up_proj.weight_packed/scale/shape ..."), leaving
-+        # the vision tower at random init → vision PASSes round/circle but
-+        # hallucinates content.  Same shape as patch 023 (dense MLP on MoE
-+        # layers).  Bug surfaced 2026-05-03 via "Some weights not initialized"
-+        # log in the gemma4-26b-mm-arch-fix-May03 run.
-         self.vision_tower = Gemma4VisionEncoder(
-             config=config.vision_config,
--            quant_config=quant_config,
-+            quant_config=None,
-             prefix=add_prefix("vision_tower", prefix),
-         )
- 
-         self.embed_vision = Gemma4MultimodalEmbedder(
-             config.vision_config,
-             config.text_config,
--            quant_config=quant_config,
-+            quant_config=None,
-             prefix=add_prefix("embed_vision", prefix),
-         )
- 
-@@ -192,13 +204,13 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
-         if getattr(config, "audio_config", None) is not None:
-             self.audio_tower = Gemma4AudioEncoder(
-                 config=config.audio_config,
+@@ -191,27 +191,34 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+         # Vision/audio encoders + their projection embedders are only consumed
+         # at the input-embedding stage, so they live on the first PP rank only.
+         if self.pp_group.is_first_rank:
++            # Gemma 4 calibration recipes keep the multimodal towers in BF16
++            # (recipe ignore: re:.*vision_tower.*, re:.*embed_vision.*,
++            # re:.*audio_tower.*, re:.*embed_audio.*) — the checkpoint stores
++            # them as plain `.weight` tensors with no qweight/scales. Passing
++            # quant_config here makes the AWQ loader allocate weight_packed slots
++            # the BF16 keys silently fail to fill → tower stays at random init
++            # (vision PASSes round/circle but hallucinates content). Pass None.
+             self.vision_tower = Gemma4VisionEncoder(
+                 config=config.vision_config,
 -                quant_config=quant_config,
 +                quant_config=None,
-                 prefix=add_prefix("audio_tower", prefix),
+                 prefix=add_prefix("vision_tower", prefix),
              )
-             self.embed_audio = Gemma4MultimodalEmbedder(
-                 config.audio_config,
+             self.embed_vision = Gemma4MultimodalEmbedder(
+                 config.vision_config,
                  config.text_config,
 -                quant_config=quant_config,
 +                quant_config=None,
-                 prefix=add_prefix("embed_audio", prefix),
+                 prefix=add_prefix("embed_vision", prefix),
              )
-         else:
+             if getattr(config, "audio_config", None) is not None:
+                 self.audio_tower = Gemma4AudioEncoder(
+                     config=config.audio_config,
+-                    quant_config=quant_config,
++                    quant_config=None,
+                     prefix=add_prefix("audio_tower", prefix),
+                 )
+                 self.embed_audio = Gemma4MultimodalEmbedder(
+                     config.audio_config,
+                     config.text_config,
+-                    quant_config=quant_config,
++                    quant_config=None,
+                     prefix=add_prefix("embed_audio", prefix),
+                 )
+             else:
+@@ -495,10 +502,26 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+                 pv = pv.to(device=vt.device, dtype=self.language_model.dtype())
+                 pp = pp.to(device=vt.device)
+ 
+-                pooled, pooler_mask = vt(pv, pp)
+-
+-                for hs, mask in zip(pooled, pooler_mask):
+-                    real_tokens = hs[mask]
++                # Process frames one-at-a-time instead of as a single batch.
++                # The batched call (pv shape [num_frames, num_patches, ...])
++                # materializes a one_hot tensor of size num_frames *
++                # num_patches * 2 * position_embedding_size in
++                # Gemma4VisionPatchEmbedder._position_embeddings (~1.24 GB
++                # for 12 frames at pooling_kernel_size=3 / 10240 classes /
++                # bf16), which OOMs on Ampere TP=1 after the LM weights +
++                # KV pool are loaded. Per-frame keeps that allocation at
++                # 1/num_frames the size with the same total throughput
++                # cost (vt is the bottleneck either way at video time).
++                # Also avoids the bsz==1 assertion at attention/vision.py:
++                # 254 that the RDNA4 stack hit on the same model — single-
++                # batch calls satisfy both constraints. Validated 2026-05-04
++                # via gemma4 preset port 23355 — patch 026.
++                num_frames = pv.shape[0]
++                for f in range(num_frames):
++                    pooled_f, mask_f = vt(pv[f : f + 1], pp[f : f + 1])
++                    # pooled_f: [1, output_len, hidden]
++                    # mask_f:   [1, output_len]
++                    real_tokens = pooled_f[0][mask_f[0]]
+                     all_embeds.append(
+                         self.embed_vision(
+                             inputs_embeds=real_tokens.unsqueeze(0)

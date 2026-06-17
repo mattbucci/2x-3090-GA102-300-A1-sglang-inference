@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/quantization/moe_wna16.py b/python/sglang/srt/layers/quantization/moe_wna16.py
-index a7d87c6..214690d 100644
+index a7d87c6..b097195 100644
 --- a/python/sglang/srt/layers/quantization/moe_wna16.py
 +++ b/python/sglang/srt/layers/quantization/moe_wna16.py
 @@ -264,6 +264,13 @@ class MoeWNA16Method(FusedMoEMethodBase):
@@ -43,23 +43,24 @@ index a7d87c6..214690d 100644
                      hidden_size // group_size,
                      dtype=torch.uint8,
                  ),
-@@ -386,9 +393,13 @@ class MoeWNA16Method(FusedMoEMethodBase):
+@@ -386,9 +393,14 @@ class MoeWNA16Method(FusedMoEMethodBase):
          layer: torch.nn.Module,
          dispatch_output: StandardDispatchOutput,
      ) -> CombineInput:
-+        # Gated MoE: only SiLU is wired here. Non-gated MoE (is_gated=False, e.g.
-+        # NemotronH squared-ReLU) lets the Triton MoE runner handle the activation
-+        # (relu2/gelu) — added upstream for non-gated archs.
++        # Gated MoE: SiLU (Qwen/Mixtral) + GeLU (Gemma 4 gelu_pytorch_tanh) are
++        # wired here. Non-gated MoE (is_gated=False, e.g. NemotronH squared-ReLU)
++        # lets the Triton MoE runner handle the activation (relu2) — added
++        # upstream for non-gated archs.
          assert (
 -            self.moe_runner_config.activation == "silu"
 -        ), "Only SiLU activation is supported."
 +            not self.moe_runner_config.is_gated
-+            or self.moe_runner_config.activation == "silu"
-+        ), "Only SiLU activation is supported for gated MoE."
++            or self.moe_runner_config.activation in ("silu", "gelu")
++        ), "Only SiLU/GELU activation is supported for gated MoE."
  
          quant_info = self.get_triton_quant_info(layer)
          return self.runner.run(dispatch_output, quant_info)
-@@ -496,7 +507,10 @@ class MoeWNA16Method(FusedMoEMethodBase):
+@@ -496,7 +508,10 @@ class MoeWNA16Method(FusedMoEMethodBase):
                  tensor = loaded_weight.view(
                      layer.moe_tp_size, -1, loaded_weight.size(1)
                  )[tp_rank]

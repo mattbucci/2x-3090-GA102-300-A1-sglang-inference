@@ -1,19 +1,5 @@
-From: 3090 team <noreply@anthropic.com>
-Date: 2026-06-10
-Subject: [PATCH] MoE runners: accept gelu activation alongside silu (Gemma 4)
-
-Merged unit (2026-06-10) absorbing former 017-moe-wna16-gelu-activation
-(2026-04-30) + 021-marlin-moe-gelu-activation (2026-04-30). One feature:
-Gemma 4 MoE uses gelu_pytorch_tanh, but every fused-MoE chokepoint
-hard-asserted silu-only. Relax to silu|gelu and dispatch on
-runner_config.activation across: moe_wna16 Triton runner, fused_marlin_moe,
-the Marlin MoE runner, compressed_tensors_wNa16_moe, and marlin_utils.
-sgl_kernel.gelu_and_mul matches gelu_pytorch_tanh to 0.00012 in FP16.
-Loads clean across silu models (Qwen3 MoE/Coder/REAP) and gelu (Gemma 4).
-Per-member narratives: patches/README.md.
-
 diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
-index f62fe7278..0631212ad 100644
+index d48c7f6..ace02dd 100644
 --- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
 +++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
 @@ -11,7 +11,7 @@ _is_cuda = is_cuda()
@@ -25,128 +11,88 @@ index f62fe7278..0631212ad 100644
      from sglang.jit_kernel.moe_wna16_marlin import moe_wna16_marlin_gemm
  
  
-@@ -72,6 +72,7 @@ def fused_marlin_moe(
-     inplace: bool = False,
-     routed_scaling_factor: Optional[float] = None,
-     clamp_limit: Optional[float] = None,
-+    activation: str = "silu",
- ) -> torch.Tensor:
-     """
-     This function computes a Mixture of Experts (MoE) layer using two sets of
-@@ -219,7 +220,11 @@ def fused_marlin_moe(
-             clamp_limit,
+@@ -241,6 +241,10 @@ def fused_marlin_moe(
          )
-     else:
--        silu_and_mul(intermediate_cache1.view(-1, 2 * N), intermediate_cache2)
-+        # Gemma 4 MoE uses GeLU (gelu_pytorch_tanh); Qwen/Mixtral/etc. use SiLU.
-+        if activation == "gelu":
-+            gelu_and_mul(intermediate_cache1.view(-1, 2 * N), intermediate_cache2)
-+        else:
-+            silu_and_mul(intermediate_cache1.view(-1, 2 * N), intermediate_cache2)
- 
-     if expert_map is not None:
-         intermediate_cache3.zero_()
+     elif activation == "silu" and is_gated:
+         silu_and_mul(intermediate_cache1.view(-1, gemm1_n), intermediate_cache2)
++    elif activation == "gelu" and is_gated:
++        # Gemma 4 MoE uses gated gelu_pytorch_tanh; sgl_kernel.gelu_and_mul
++        # matches it to 0.00012 in FP16. Qwen/Mixtral/etc. use gated silu above.
++        gelu_and_mul(intermediate_cache1.view(-1, gemm1_n), intermediate_cache2)
+     elif activation == "silu" and not is_gated:
+         intermediate_cache2 = F.silu(intermediate_cache1.view(-1, N))
+     elif activation == "relu2" and not is_gated:
 diff --git a/python/sglang/srt/layers/moe/moe_runner/marlin.py b/python/sglang/srt/layers/moe/moe_runner/marlin.py
-index 4e335f330..a6a26583d 100644
+index bedf48f..6a261cc 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/marlin.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/marlin.py
-@@ -87,7 +87,11 @@ def fused_experts_none_to_marlin(
-     hidden_states = dispatch_output.hidden_states
+@@ -91,7 +91,12 @@ def fused_experts_none_to_marlin(
      topk_output = dispatch_output.topk_output
  
--    assert runner_config.activation == "silu", "Only SiLU activation is supported."
-+    # Gemma 4 MoE uses gelu (gelu_pytorch_tanh); Qwen/Mixtral/etc. use silu.
-+    # fused_marlin_moe dispatches to gelu_and_mul / silu_and_mul on this arg.
-+    assert runner_config.activation in ("silu", "gelu"), (
-+        f"Marlin MoE: unsupported activation {runner_config.activation!r}"
-+    )
- 
-     if (
-         MARLIN_MOE_WORKSPACE is None
-@@ -118,6 +122,7 @@ def fused_experts_none_to_marlin(
-     output = fused_marlin_moe(
-         hidden_states=marlin_hidden_states,
-         w1=quant_info.w13_qweight,
-+        activation=runner_config.activation,
-         w2=quant_info.w2_qweight,
-         w1_scale=quant_info.w13_scales,
-         w2_scale=quant_info.w2_scales,
+     if runner_config.is_gated:
+-        assert runner_config.activation == "silu", "Only gated SiLU is supported."
++        # Gemma 4 MoE uses gated gelu_pytorch_tanh; fused_marlin_moe dispatches
++        # gelu_and_mul / silu_and_mul on this arg. Qwen/Mixtral/etc. use silu.
++        assert runner_config.activation in (
++            "silu",
++            "gelu",
++        ), "Only gated SiLU/GELU is supported."
+     elif runner_config.activation not in {"silu", "relu2"}:
+         raise ValueError(
+             f"Unsupported Marlin MoE activation: {runner_config.activation}"
 diff --git a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
-index 0ac18784c..5fdb32d58 100644
+index 58562bb..57a034e 100644
 --- a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
 +++ b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
-@@ -382,9 +382,11 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
+@@ -388,9 +388,11 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
          )
          from sglang.srt.layers.moe.token_dispatcher import StandardCombineInput
  
 -        assert (
 -            self.moe_runner_config.activation == "silu"
 -        ), "Only SiLU activation is supported."
-+        # Gemma 4 MoE uses gelu_pytorch_tanh; Qwen/Mixtral/etc. use silu.
-+        # fused_marlin_moe dispatches gelu_and_mul / silu_and_mul on this arg.
++        # Gemma 4 MoE uses gated gelu_pytorch_tanh; fused_marlin_moe dispatches
++        # gelu_and_mul / silu_and_mul on the activation arg passed below.
 +        assert self.moe_runner_config.activation in ("silu", "gelu"), (
-+            f"CT WNA16 MoE: unsupported activation {self.moe_runner_config.activation!r}"
++            "Only SiLU/GELU activation is supported."
 +        )
  
          x = dispatch_output.hidden_states
          topk_output = dispatch_output.topk_output
-@@ -419,6 +421,7 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
+@@ -425,6 +427,7 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
              num_bits=self.num_bits,
              is_k_full=self.is_k_full,
              routed_scaling_factor=self.moe_runner_config.routed_scaling_factor,
 +            activation=self.moe_runner_config.activation,
+             workspace=layer.workspace,
          )
          return StandardCombineInput(hidden_states=output)
- 
-@@ -482,9 +485,12 @@ class CompressedTensorsWNA16TritonMoE(CompressedTensorsWNA16MoE):
+@@ -489,9 +492,11 @@ class CompressedTensorsWNA16TritonMoE(CompressedTensorsWNA16MoE):
          layer: torch.nn.Module,
          dispatch_output: "StandardDispatchOutput",
      ) -> "CombineInput":
 -        assert (
 -            self.moe_runner_config.activation == "silu"
 -        ), "Only SiLU activation is supported."
-+        # Triton fused MoE runner supports both silu and gelu (see
-+        # moe_runner/triton.py). The original SiLU-only assertion blocked
-+        # Gemma 4 (gelu). Runner still raises for unknown activations.
++        # Triton fused MoE runner dispatches silu/gelu internally on
++        # runner_config.activation; relax the SiLU-only assert for Gemma 4.
 +        assert self.moe_runner_config.activation in ("silu", "gelu"), (
-+            f"Only SiLU/GELU activation supported, got {self.moe_runner_config.activation!r}."
++            "Only SiLU/GELU activation is supported."
 +        )
  
          quant_info = self.get_triton_quant_info(layer)
          return self.runner.run(dispatch_output, quant_info)
 diff --git a/python/sglang/srt/layers/quantization/marlin_utils.py b/python/sglang/srt/layers/quantization/marlin_utils.py
-index 0c754b9b2..c58440d42 100644
+index 0cfc029..1d5ba18 100644
 --- a/python/sglang/srt/layers/quantization/marlin_utils.py
 +++ b/python/sglang/srt/layers/quantization/marlin_utils.py
-@@ -239,8 +239,8 @@ def check_moe_marlin_supports_layer(layer: FusedMoE, group_size: int) -> bool:
-     intermediate_size_per_partition = layer.intermediate_size_per_partition
+@@ -246,7 +246,8 @@ def check_moe_marlin_supports_layer(layer: FusedMoE, group_size: int) -> bool:
      # apply_router_weight_on_input is not supported for moe marlin
      supports_router_weight = not layer.moe_runner_config.apply_router_weight_on_input
--    # moe marlin requires the activation to be silu
--    supports_activation = layer.moe_runner_config.activation == "silu"
-+    # moe marlin supports silu and gelu (gelu added 2026-04-30 for Gemma 4 MoE).
-+    supports_activation = layer.moe_runner_config.activation in ("silu", "gelu")
- 
-     # gate-up: (n, k) = (intermediate_size_per_partition * 2, hidden_size)
-     # down: (n, k) = (hidden_size, intermediate_size_per_partition)
-diff --git a/python/sglang/srt/layers/quantization/moe_wna16.py b/python/sglang/srt/layers/quantization/moe_wna16.py
-index a7d87c638..367ceb887 100644
---- a/python/sglang/srt/layers/quantization/moe_wna16.py
-+++ b/python/sglang/srt/layers/quantization/moe_wna16.py
-@@ -386,9 +386,13 @@ class MoeWNA16Method(FusedMoEMethodBase):
-         layer: torch.nn.Module,
-         dispatch_output: StandardDispatchOutput,
-     ) -> CombineInput:
--        assert (
--            self.moe_runner_config.activation == "silu"
--        ), "Only SiLU activation is supported."
-+        # Triton fused MoE runner supports silu + gelu (moe_runner/triton.py
-+        # uses both via gate_up_proj + gate_act dispatch). Gemma 4 MoE uses
-+        # gelu_pytorch_tanh; relax the silu-only assertion so awq_marlin +
-+        # moe_wna16 fallback can serve Gemma 4.
-+        assert self.moe_runner_config.activation in ("silu", "gelu"), (
-+            "Only SiLU and GeLU activations are supported."
-+        )
- 
-         quant_info = self.get_triton_quant_info(layer)
-         return self.runner.run(dispatch_output, quant_info)
+     if layer.moe_runner_config.is_gated:
+-        supports_activation = layer.moe_runner_config.activation == "silu"
++        # gelu added 2026-04-30 for Gemma 4 MoE (gated gelu_pytorch_tanh).
++        supports_activation = layer.moe_runner_config.activation in {"silu", "gelu"}
+     else:
+         supports_activation = layer.moe_runner_config.activation in {
+             "silu",

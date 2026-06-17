@@ -1,11 +1,13 @@
 #!/bin/bash
 # SGLang setup for 2x RTX 3090
 #
-# Clones SGLang v0.5.12 and applies the local patches in patches/*.patch
-# (idempotent — git apply --check skips already-applied).
-# Requires torch 2.11 + transformers 5.6 + flashinfer 0.6.11.post1 +
-# compressed-tensors 0.15 (0.5.12 rebase 2026-05-26).
-# NB: 0.5.12 folds the serving runtime into the base package (no [srt] extra)
+# Clones SGLang v0.5.13.post1 and applies the local patches in patches/*.patch
+# (idempotent — git apply --check skips already-applied). 22 patches; verified
+# byte-identical to the live tree by the 3-gate pristine replay (2026-06-16).
+# Requires transformers 5.8.1 + flashinfer 0.6.12 + sgl-kernel 0.4.3 +
+# xgrammar 0.2.1 (0.5.13.post1 rebase 2026-06-16; env sglang-v0513 also has
+# librosa + accelerate for the Nemotron-Omni Parakeet audio path).
+# NB: 0.5.13 folds the serving runtime into the base package (no [srt] extra)
 # and adds a mandatory Rust gRPC ext that needs protoc; patch 037 drops that
 # ext (we serve over HTTP) so `pip install -e .` works without protoc.
 # See patches/README.md for per-patch narratives.
@@ -24,7 +26,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-SGLANG_TAG="v0.5.12"
+SGLANG_TAG="v0.5.13.post1"
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -64,14 +66,14 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     git clone --branch "$SGLANG_TAG" --depth 1 "$SGLANG_REPO" "$SGLANG_DIR"
 else
     echo "[1/3] Using existing SGLang source at $SGLANG_DIR"
-    # Stale-workspace guard (R9700 cross-team 2026-06-10): applying v0.5.12
+    # Stale-workspace guard (R9700 cross-team 2026-06-10): applying v0.5.13
     # patches onto a checkout at a different tag "succeeds" as a wall of
     # silent "Skipped (conflict)" lines. Abort instead.
     _have_tag="$(git -C "$SGLANG_DIR" describe --tags --exact-match 2>/dev/null || echo unknown)"
     if [ "$_have_tag" != "$SGLANG_TAG" ]; then
         echo "ERROR: $SGLANG_DIR is at '$_have_tag', expected $SGLANG_TAG."
         echo "       Point SGLANG_DIR at a $SGLANG_TAG checkout (live tree:"
-        echo "       /data/sglang-rebase-v0512) or remove the stale dir to re-clone."
+        echo "       /data/sglang-rebase-v0513) or remove the stale dir to re-clone."
         exit 1
     fi
 fi
