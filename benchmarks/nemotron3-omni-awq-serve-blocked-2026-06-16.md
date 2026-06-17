@@ -93,3 +93,32 @@ Serving this int4 ship on our SGLang needs BOTH: (1) calib populates `modules_to
 3. **Serve FP8** (R9700's path) — FP8 W8A16 avoids the int4 Marlin/wna16 shape+gating constraints.
 
 Capabilities (thinking/image/video/audio/tool) remain **unvalidated** — gated on the model loading.
+
+---
+
+## RE-TEST on SGLang v0.5.13.post1 (2026-06-16, after the upgrade)
+
+Per user direction, upgraded the stack to **v0.5.13.post1** (new tree `/data/sglang-rebase-v0513` + env
+`sglang-v0513`; 16 of 26 patches apply clean, 6 upstreamed drops, 4 Gemma/Cohere regenerates pending —
+none of the 4 affect Nemotron). Retested with the `modules_to_not_convert` config fix applied.
+
+**Still BLOCKED — the upgrade does not unblock the int4 MoE.** Root cause refined:
+- `moe_wna16` in v0.5.13 (and current upstream main) **still asserts `activation == "silu"` (line ~390) and
+  builds the gated `2 * intermediate` fused gate_up** — i.e. it has **no non-gated (relu2) support at all**.
+  NemotronH's non-gated experts → the same `start(1856)+length(1856) exceeds 1856` overflow as on 0.5.11/0.5.12.
+- SGLang issue **#21149's non-gated fix landed in the Marlin/CUTLASS/Triton MoE *runners*, NOT in
+  `moe_wna16`.** So `awq_marlin` *would* now handle non-gated activation — but it can't reach that runner:
+  the expert `down_proj` input (`moe_intermediate_size=1856`) fails Marlin's `min_thread_k=128`
+  divisibility check at create-weights time (1856 = 128×14.5), TP-independent.
+
+**So: not our implementation** (we never patched moe_wna16/marlin gating; `moe_wna16` is byte-identical
+0.5.11→0.5.13), and **not fixed by the upgrade** (the gap is moe_wna16-non-gated + the Marlin int4 expert
+shape, both unaddressed by #21149's runner-activation fix).
+
+### Cleanest paths to actually serve it (int4, our stack)
+1. **Re-build with `moe_intermediate_size` padded to a 128-multiple** (1856 → 1920 = 128×15, or 2048).
+   Then `awq_marlin` works on v0.5.13 — shape passes AND #21149 gives the marlin runner non-gated relu2.
+   This is the single cleanest unblock (a calib change; the experts are the only quantized weights).
+2. **Serving patch: add non-gated (relu2) support to `moe_wna16`** (relax the silu assert + build/load a
+   `1×intermediate` gate_up for non-gated). General fix but framework-level (FusedMoE w13 is gated-shaped).
+3. **FP8** (R9700's path) — sidesteps both int4 issues.
