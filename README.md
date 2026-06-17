@@ -42,18 +42,6 @@ What's queued, grouped by theme. Calibration work is gated on the bake-off sweep
 2. **`google/diffusiongemma-26B-A4B-it`** (2026-06-09): block-diffusion Gemma MoE (`DiffusionGemmaForBlockDiffusion`, multimodal, 51.6 GB BF16). **No serving stack implements it** — sglang main and vLLM have no model file; transformers main has the reference. v0.5.12's dllm subsystem (`low_confidence`/`joint_threshold`) targets full-seq diffusion LMs, not block diffusion, so this is a real port (days–weeks), not a graft. Phased: (a) transformers-native GPU probe (characterize block size, template, quality), (b) port scoping against the dllm scheduler mixins, (c) int4 build (shares the gemma-4 A4B lineage — tower/recipe knowledge transfers). **Phase-(a) attempted 2026-06-11, blocked at first touch:** tx-main's new loader leaves the model on meta (no dispatch; tried `device_map="auto"` ± `max_memory`, torch 2.11 + accelerate 1.13) — revisit with a torch-nightly env or the next tx release (BF16 is on disk at `/data/models/hf-google/`). Reference-code scoping stands: asymmetric encoder+decoder stacks, **self-conditioning** logits threaded between denoise steps, `canvas_length` 256 — a custom scheduler model, confirming the days–weeks port estimate. Queued behind the AWQ backlog unless prioritized.
 3. **Official Gemma QAT-W4A16-CT ships** (google, 2026-06-04/05: 31B / 12B / E2B): same QAT lineage as our RTN-from-QAT rebuilds (which only *beat* our AWQ on the 12B — already our shipped build). Low-priority compare: boot-smoke `gemma-4-31B-it-qat-w4a16-ct` vs our `gemma-4-31B-AWQ` on the standard instrument; adopt only if it wins.
 
-### Nemotron-3-Nano-Omni AWQ build chain
-
-NVIDIA Mamba2-Transformer hybrid MoE + AVLM (audio+video+vision+language) + thinking. Plan: [`scripts/quantize/nemotron3_nano_omni_plan.md`](scripts/quantize/nemotron3_nano_omni_plan.md). BF16 base + calibration script already on disk (62 GB + 267 LOC); pre-flight done.
-
-1. **Smoke** BF16 base on SGLang TP=2 — context sweep `8K → 32K → 64K → 128K → 256K` to verify Triton-NVIDIA doesn't hit the AMD-only `TritonAMDGPUCanonicalizePointers` compiler bug R9700 hit at ~13K. Single text + image + audio probe at each ctx.
-2. **Calibrate** GPTQ W4A16 via `scripts/quantize/quantize_nemotron3_nano_omni.py` (~12-20 h CPU, detached). Pre-flight ignore list already derived from `hybrid_override_pattern` (56% of layers stay BF16: 23 Mamba + 6 Attention; the other 23 MLP/MoE go INT4).
-3. **Convert** CT → AWQ-Marlin + `check_awq_scales.py` audit (non-zero exit = do NOT ship).
-4. **Validate** 6-modality probe (basic + thinking + image + video + audio + tool) via `validate_capabilities.py` (audio probe added in commit `ab7ab2c`).
-5. **Ship** to `mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ` + wire `nemotron3-omni` preset in `launch.sh` (`--reasoning-parser nemotron_3 --tool-call-parser qwen3_coder --trust-remote-code`).
-6. **NGRAM** spec-decode trial — CUDA-only, no training needed; if it clears 1.3× decode speedup on a coding probe, ship and skip EAGLE3 training. Plan: [`scripts/quantize/nemotron3_nano_omni_plan.md`](scripts/quantize/nemotron3_nano_omni_plan.md) Phase 1.
-7. **EAGLE3 draft training** — only if NGRAM is insufficient. SpecForge offline-mode against our shipped AWQ; user-authorized 2026-05-31 ("we can just make our own model"). ~1-3 day GPU job. Plan: [`scripts/specforge/eagle3_training_plan.md`](scripts/specforge/eagle3_training_plan.md). Note: EAGLE3 on Mamba2-hybrid is unproven — three hook-point options documented in the plan.
-
 ### MoE coverage gaps (every base needs native + REAP + REAM)
 
 Detailed matrix + rebuild paths in the [MoE coverage matrix](#moe-coverage-matrix--calibration-backlog) below. Six missing-variant builds, prioritized:
@@ -63,7 +51,7 @@ Detailed matrix + rebuild paths in the [MoE coverage matrix](#moe-coverage-matri
 3. **`Qwen3.6-VL-30B-A3B`** native + REAM + in-house REAP — rebuild VL trio with vision tensors retained (current REAP-26B is atbender pre-pruned, vision-broken). ⚠ pre-flight: SGLang's `Qwen3VLMoeForConditionalGeneration` loader was previously broken in v0.5.11 (no upstream fix found in v0.5.12 grep) — but main now ships the class with a registered EntryClass (2026-06-10 audit), making it a graft candidate like 042/043; smoke a community AWQ first before sinking calibration time.
 4. **`Qwen3-30B-Instruct-2507`** native + REAP — REAM exists (`qwen3-ream`, fastest preset at 107 tok/s); complete the trio.
 5. **`Qwen3.5-28B-A3B`** native + REAM — older DeltaNet+VL gen; only Cerebras REAP currently ships.
-6. **`Nemotron-3-Nano-Omni`** REAP + REAM — gated on native ship + EAGLE3 above.
+6. **`Nemotron-3-Nano-Omni`** REAP + REAM — native AWQ now ships (6/6 caps, 256K-verified); the REAP/REAM variants still need `run_reap.py` extended to the Mamba2-hybrid layout (only the 23 MLP/MoE layers prune per `hybrid_override_pattern`; the 23 Mamba + 6 attention layers stay BF16).
 
 ### Tooling
 
@@ -305,7 +293,7 @@ Each MoE base should ship in three flavors: **native** (no expert compression), 
 3. **`Qwen3.6-VL-30B-A3B-AWQ`** (native) + **`-REAM-AWQ`** + **in-house `-REAP-AWQ`** — multimodal A3B base. Current REAP (`Qwen3.6-VL-REAP-26B-A3B-AWQ`) was calibrated on atbender's pre-pruned BF16 which stripped the vision tower → vision broken. Need all three flavors from the upstream BF16 with vision tensors retained.
 4. **`Qwen3-30B-Instruct-2507-AWQ`** (native) + **`-REAP-AWQ`** — text generalist. REAM exists (the fastest preset, 107 tok/s); native + REAP complete the trio.
 5. **`Qwen3.5-28B-A3B-AWQ`** (native, DeltaNet+VL) + **`-REAM-AWQ`** — older-gen hybrid. Only the Cerebras REAP currently ships.
-6. **`Nemotron-3-Nano-Omni-30B-A3B-REAP-AWQ`** + **`-REAM-AWQ`** — gated on native ship completing (task #26). Note: EAGLE3 draft training (#27) takes priority once native lands, since spec-decode beats pruning for single-user decode wins on A3B-MoE.
+6. **`Nemotron-3-Nano-Omni-30B-A3B-REAP-AWQ`** + **`-REAM-AWQ`** — native AWQ ships (serves 6/6, 256K-verified); REAP/REAM are unblocked but need `run_reap.py` + the REAM merge extended to the Nemotron-H Mamba2-hybrid layout (only the 23 MLP/MoE layers are pruneable per `hybrid_override_pattern`).
 
 Each new ship is a 12-20 h CPU GPTQ calibration + CT→AWQ conversion + multimodal validation. Sequential under Rule 1 (no concurrent calibration + serving). Two pieces of tooling work the backlog reveals: (a) Samsung SAIL REAM merge script needs porting to Gemma 4 arch, (b) `run_reap.py` needs adapting for Gemma 4 + Nemotron-H families (currently Qwen3-only).
 
@@ -447,7 +435,6 @@ python scripts/eval/check_awq_scales.py <awq_dst> --base <bf16_base_dir>        
 ## Sister teams
 
 - **[R9700 (RDNA4, ROCm)](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference)** — FP8 calibration owner (native gfx1201 FP8); RDNA4 serving stack. Originated the FP32-softmax patch 011 and the CT→native AWQ converter; shipped the EAGLE3/DFlash spec-decode recipes; caught the cohere2_moe dense-layer NaN (042) and the little-coder `developer`-role 400. Both stacks publish under `mattbucci/*`.
-  - **Open hand-off:** the Nemotron-3-Nano-Omni AWQ build is ours to run (R9700's 64 GB RAM can't hold the 62 GB BF16 calibration). R9700's hard-won calibration fixes (group_size=64, calibrate the `NemotronHForCausalLM` backbone not the Omni wrapper, env deps, llmcompressor-version notes) are folded into [`scripts/quantize/nemotron3_nano_omni_plan.md`](scripts/quantize/nemotron3_nano_omni_plan.md). Gated on the calibration queue.
 - **[M4 (Apple Silicon, MLX)](https://github.com/mattbucci/m4-sglang-inference)** — MLX bridge; cross-checks chat-template + multimodal plumbing.
 
 ## Repo layout
