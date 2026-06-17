@@ -2,8 +2,8 @@
 # SGLang setup for 2x RTX 3090
 #
 # Clones SGLang v0.5.13.post1 and applies the local patches in patches/*.patch
-# (idempotent — git apply --check skips already-applied). 22 patches; verified
-# byte-identical to the live tree by the 3-gate pristine replay (2026-06-16). 23 patches.
+# (idempotent — git apply --check skips already-applied). 24 patches; verified
+# byte-identical to the live tree by the 3-gate pristine replay (056 added 2026-06-17).
 # Requires transformers 5.8.1 + flashinfer 0.6.12 + sgl-kernel 0.4.3 +
 # xgrammar 0.2.1 (0.5.13.post1 rebase 2026-06-16; env sglang-v0513 also has
 # librosa + accelerate for the Nemotron-Omni Parakeet audio path).
