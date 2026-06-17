@@ -1,23 +1,8 @@
 diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
-index 34798c3..0e20bc0 100644
+index c1841c0..0e20bc0 100644
 --- a/python/sglang/srt/configs/model_config.py
 +++ b/python/sglang/srt/configs/model_config.py
-@@ -293,7 +293,13 @@ class ModelConfig:
-                 or hasattr(self.hf_config, "audio_config")
-             )
-         )
--        self.is_multimodal = enable_multimodal and (
-+        # CausalLM architectures are text-only even if the config class has
-+        # vision/audio attributes (e.g. Gemma4ForCausalLM uses Gemma4Config
-+        # which always defines vision_config/audio_config as class defaults)
-+        is_causal_lm_only = any(
-+            "ForCausalLM" in arch for arch in self.hf_config.architectures
-+        ) and not is_multimodal_model(self.hf_config.architectures)
-+        self.is_multimodal = enable_multimodal and not is_causal_lm_only and (
-             is_multimodal_model(self.hf_config.architectures)
-             or has_multimodal_subconfig
-         )
-@@ -1695,6 +1701,13 @@ def is_hybrid_swa_model(
+@@ -1701,6 +1701,13 @@ def is_hybrid_swa_model(
          "Gemma4ForConditionalGeneration",
          "Gemma4UnifiedForConditionalGeneration",
          "LagunaForCausalLM",
@@ -31,7 +16,7 @@ index 34798c3..0e20bc0 100644
      }
      if any(arch in hybrid_swa_archs for arch in model_architectures):
          return True
-@@ -1725,6 +1738,20 @@ def get_hybrid_layer_ids(
+@@ -1731,6 +1738,20 @@ def get_hybrid_layer_ids(
          full_attention_layer_ids = [
              i for i, x in enumerate(layer_types) if x == "full_attention"
          ]
