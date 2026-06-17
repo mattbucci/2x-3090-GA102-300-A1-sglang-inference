@@ -63,24 +63,40 @@ def plant(body, facts):
     return out
 
 
+# Elicit reasoning fairly across model families. A terse "reply with just the
+# number" measured no-CoT mental arithmetic, which UNDERSTATES instruction-
+# following models (gemma4 obeys it and bungles the math at depth) while flattering
+# think-by-default models (qwen reasons regardless). Allowing step-by-step makes the
+# probe measure *reasoning* (its stated intent), and the explicit ANSWER: line gives
+# an unambiguous extraction point — gemma4 reasons in `content`, not `reasoning_content`,
+# so we cannot rely on a thinking channel. Verified 2026-06-17: gemma4 @32K vartrack
+# terse -> "156" (wrong); reasoning-allowed -> correct derivation -> 84.
+FORMAT = " Think step by step, then end your reply with a line formatted exactly as 'ANSWER: <value>'."
+
+
+def _ans(a):
+    """Text after the last 'ANSWER:' marker (the unambiguous final answer); whole reply as fallback."""
+    m = list(re.finditer(r"ANSWER:\s*(.+)", a, re.I))
+    return m[-1].group(1) if m else a
+
+
 def task_multikey(rng):
     ks = rng.sample(WORDS, 5)
     vs = [rng.randint(1000, 9999) for _ in ks]
     facts = [f"The access code for {k} is {v}." for k, v in zip(ks, vs)]
     ask = rng.sample(list(zip(ks, vs)), 3)
-    q = (f"What are the access codes for {', '.join(k for k, _ in ask)}? "
-         "Reply with just the numbers, comma-separated.")
+    q = (f"What are the access codes for {', '.join(k for k, _ in ask)}?" + FORMAT)
     want = [v for _, v in ask]
-    return facts, q, (lambda a: all(str(v) in re.findall(r"\d{3,5}", a) for v in want))
+    return facts, q, (lambda a: all(str(v) in re.findall(r"\d{3,5}", _ans(a)) for v in want))
 
 
 def task_vartrack(rng):
     a, b, c = rng.randint(10, 99), rng.randint(2, 9), rng.randint(2, 5)
     facts = [f"VAR_A is set to {a}.", f"VAR_B equals VAR_A plus {b}.", f"VAR_C equals VAR_B times {c}."]
     final = (a + b) * c
-    q = "What is the final numeric value of VAR_C? Reply with just the number."
+    q = "What is the final numeric value of VAR_C?" + FORMAT
     def chk(a_):
-        nums = re.findall(r"-?\d+", a_)
+        nums = re.findall(r"-?\d+", _ans(a_))
         return bool(nums) and int(nums[-1]) == final
     return facts, q, chk
 
@@ -89,8 +105,8 @@ def task_aggregate(rng):
     items = [(w, rng.randint(10, 99)) for w in rng.sample(WORDS, 5)]
     facts = [f"Item {w} costs {p} credits." for w, p in items]
     total = sum(p for _, p in items)
-    q = "What is the total cost in credits of all five items mentioned? Reply with just the number."
-    return facts, q, (lambda a: total in [int(n) for n in re.findall(r"\d+", a)])
+    q = "What is the total cost in credits of all five items mentioned?" + FORMAT
+    return facts, q, (lambda a: total in [int(n) for n in re.findall(r"\d+", _ans(a))])
 
 
 TASKS = {"multikey": task_multikey, "vartrack": task_vartrack, "aggregate": task_aggregate}
