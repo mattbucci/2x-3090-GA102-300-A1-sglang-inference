@@ -20,7 +20,7 @@ This rules out three alternative optimization axes other 3090 stacks chase:
 2. **SWE-bench bake-off (resuming 2026-06-15)** — the 9-preset queue is running again via `swebench-bakeoff.service` now that the optimization-sprint decode levers are characterized; idempotent `--skip-existing` no-ops finished cells (~45s each) and resumes the interrupted `qwen35-moe` cycle, then continues through `coder-30b-ream`/`qwen36-dense`/`devstral`/`gemma4`. Auto-resumes across the box's kernel-BUG reboots (the unit's boot-ordering cycle is fixed — the Jun-15 boots had been silently dropping it). `qwen36-ream`'s partial claw cell (150/300) needs a *targeted* reroll — a full-cycle replay no-ops it — tracked in Known Issues.
 3. **North-Mini-Code AWQ-int4 build** — calibration-device ask, top of the calibration backlog (see [Unlocked models](#unlocked-models-user-signal-2026-06-11)); serving side is ready (patches 042+051).
 4. **MoE coverage matrix gaps** — every MoE base should ship in native + REAP + REAM AWQ flavors. Audit + 6 missing-variant ships in the [MoE coverage matrix](#moe-coverage-matrix--calibration-backlog) below.
-5. **Nemotron-3-Nano-Omni AWQ build** — prepped (62 GB BF16 base + script on disk, pre-flight done), queued on the calibration device behind North. R9700 already has the FP8 variant at 256K.
+5. **Nemotron-3-Nano-Omni AWQ — serving done, 256K perf next.** The int4 AWQ ship (calib-device rev `4c98711`) now **serves on v0.5.13.post1 with 6/6 capabilities** (basic+thinking+tool+vision+video+audio) via two serving patches — 052 (non-gated squared-ReLU `moe_wna16`) + 053 (EVS video routing, cross-team port of R9700 057). Validated at CTX=32768. **Open lever:** single-user decode at the 256K KV cap (R9700 FP8 ref: 74.79 short / 49.22 @230K tok/s). Receipt: [`benchmarks/nemotron3-omni-awq-serve-2026-06-16.md`](benchmarks/nemotron3-omni-awq-serve-2026-06-16.md).
 
 What we **don't** ship: random community quants. Every `mattbucci/*-AWQ` is calibrated end-to-end from the upstream BF16 base via our own GPTQ → CT → AWQ-Marlin pipeline. When a model needs MoE expert pruning, we run REAP/REAM ourselves (`scripts/quantize/run_reap.py`, `scripts/quantize/run_ream_qwen3moe.sh`) on the upstream weights — no atbender / Cerebras / unsloth ships used as bases. Pre-quantized 3rd-party AWQ uploads are reference points only.
 
@@ -132,7 +132,6 @@ The `SPEC_DECODE=1` opt-in remains wired for short-prompt uses. For our 256K age
 
 ## Known Issues (open)
 
-- **`Nemotron-3-Nano-Omni-30B-A3B-AWQ` does NOT serve on 2×3090 yet — retested on v0.5.13.post1, still int4-MoE-blocked.** Rev `4c98711` fixed the dual-zero-point format defect; the empty `modules_to_not_convert` (blocker A) is fixable config-only (exact list in the receipt). The remaining blocker is the **non-gated (squared-ReLU) MoE experts** (`moe_intermediate_size=1856`): `moe_wna16` has **no non-gated support even in v0.5.13/upstream main** (asserts `silu` + builds gated `2×intermediate`), and `awq_marlin` can't take the non-gated path because the expert dim `1856 ∤ 128` (Marlin `min_thread_k`). SGLang #21149 added non-gated to the Marlin/CUTLASS *runners* but not to `moe_wna16` and not past the Marlin shape gate. **Not our code** (moe_wna16 byte-identical 0.5.11→0.5.13). **Cleanest fix: re-build with `moe_intermediate_size` padded to a 128-multiple (1856→1920/2048)** → `awq_marlin` then works on v0.5.13; alternatives = a `moe_wna16` non-gated serving patch, or FP8 (R9700's path). Preset `nemotron3-omni` wired. Full matrix + recipe: [`benchmarks/nemotron3-omni-awq-serve-blocked-2026-06-16.md`](benchmarks/nemotron3-omni-awq-serve-blocked-2026-06-16.md).
 - **`qwen36-ream` × claw-code is a partial cell (168/300 predictions = 74/168 = 44.0%).** Discount it per the full-300 rule. The 2026-06-16 resume reran the claw rollout but it stalled at 168 (`reroll rc=3` — the GLIBC-sensitive claw scaffold, a known rollout landmine, not a model issue); little-coder is full (150/300 = 50.0%), opencode full (177/300 = 59.0%). Only claw-code stays short.
 - **Host reboots every ~9–17 h under sustained docker rollout I/O (kernel BUG).** Predictions on disk survive; auto-resume is via `swebench-bakeoff.service` (the boot-ordering cycle that was silently dropping it at every boot is fixed — cooling oneshot now orders after `nvidia-persistenced`, not `multi-user.target`). Full forensic recipe in [`CLAUDE.md`](CLAUDE.md) → Operational Lessons.
 
@@ -295,7 +294,7 @@ Each MoE base should ship in three flavors: **native** (no expert compression), 
 | Qwen3.6-VL-30B-A3B (multimodal A3B) | ❌ | ⚠ atbender pre-pruned, vision broken | ❌ |
 | Gemma 4 26B A4B (103e MoE+VL) | ✅ | ✅ (21B-REAP, Cerebras) | ❌ |
 | Qwen3-Coder-Next-80B-A3B (512e) | — too big @ AWQ | — | ✅ ~60B effective |
-| Nemotron-3-Nano-Omni-30B-A3B (128e, AVLM) | ⏳ prepped, queued (Rule 1) | ❌ | ❌ |
+| Nemotron-3-Nano-Omni-30B-A3B (128e, AVLM) | ✅ serves (v0.5.13 + patches 052/053, 6/6 caps) | ❌ | ❌ |
 
 **Calibration backlog (prioritized):**
 

@@ -440,11 +440,12 @@ def check_audio(base_url: str, model: str) -> tuple[bool, str]:
     pitch, chime} (case-insensitive). The probe is a correctness gate, not a
     quality test — we want to know audio isn't silently dropped on the floor.
 
-    API shape: OpenAI-style `input_audio` (base64 + format), per the documented
-    multimodal Chat Completions spec. If the target server uses an `audio_url`
-    pattern instead (mirroring its `image_url` / `video_url` parts), this will
-    need a per-server override — but the OpenAI-compat layer in SGLang's recent
-    builds accepts the `input_audio` shape for Nemotron-3-Nano-Omni.
+    API shape: SGLang's native `audio_url` content part (a `data:` URI in
+    `audio_url.url`, mirroring its `image_url` / `video_url` parts) — confirmed
+    against v0.5.13 `protocol.py::ChatCompletionMessageContentAudioPart`. The
+    OpenAI-style `input_audio` shape is NOT accepted (it 400s with a pydantic
+    union-discriminator cascade — every content-part member fails to match,
+    surfacing a misleading 'role must be one of …' error). Use `audio_url`.
 
     Multimodal capability matrix (sources: model cards, M4 cross-team note):
       - Nemotron-3-Nano-Omni: yes (Parakeet tdt-0.6b-v2 encoder, 16 kHz mel)
@@ -459,8 +460,8 @@ def check_audio(base_url: str, model: str) -> tuple[bool, str]:
         "messages": [{
             "role": "user",
             "content": [
-                {"type": "input_audio",
-                 "input_audio": {"data": b64, "format": "wav"}},
+                {"type": "audio_url",
+                 "audio_url": {"url": f"data:audio/wav;base64,{b64}"}},
                 {"type": "text", "text": "What do you hear in this audio? One short sentence."},
             ],
         }],

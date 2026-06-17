@@ -1,9 +1,46 @@
-# Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ — does NOT serve on 2×3090 (2026-06-16)
+# Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ — SERVES on 2×3090, 6/6 capabilities (2026-06-16)
+
+> **✅ RESOLVED 2026-06-16.** The int4 AWQ ship now serves on our SGLang **v0.5.13.post1 + two
+> serving patches** (no re-build, no FP8 needed). **`validate_capabilities` 6/6 PASS**: basic,
+> thinking (reasoning_content via `nemotron_3`), tool_call (`get_weather`), vision (red circle),
+> **video** (red circle moving right — was crashing the scheduler), audio (Parakeet — synthetic
+> tone described as "sound"). Server stays alive through every modality; 0 reshape/EVS errors.
+> Receipt: `benchmarks/nemotron3-omni-v0513-caps.json`.
+>
+> **The two serving fixes (both byte-exact vs the live tree, both refuse re-apply):**
+> 1. **`patches/052-moe-wna16-nongated-moe.patch`** — non-gated (squared-ReLU) MoE support in
+>    `moe_wna16`: build the fused gate_up at `1×intermediate` (not the hardcoded gated `2×`) and
+>    load `up_proj` at offset 0 when `moe_runner_config.is_gated` is False; relax the
+>    `activation=="silu"` assert to gated-only. Unblocks the int4 expert load (NemotronH has
+>    `up_proj` only, no gate; `moe_intermediate_size=1856` — fine for wna16, not Marlin). **3090
+>    int4 lane; general fix for any future non-gated AWQ MoE.**
+> 2. **`patches/053-evs-video-combined-path-routing.patch`** — route EVS video items to the
+>    combined chunked-prefill path (which unwraps the `EVSEmbeddingResult` + redistributes
+>    per-frame placeholders) instead of the per-image path that `.reshape()`s the result object
+>    and aborts the scheduler. **Cross-team port of R9700's CANDIDATE 057** (generic `mm_utils`,
+>    not arch/FP8-specific → upstream-PR-worthy). Both stacks hit the identical EVS bug.
+>
+> **Plus the config-only fix that must ship in the checkpoint** (calib lane, applied locally to the
+> downloaded copy): `quantization_config.modules_to_not_convert` / `ignore` populated so only the
+> experts are int4-wrapped (see Blocker A below). And `librosa==0.11.0` in the env (Parakeet
+> audio extractor).
+>
+> **Serving config:** `launch.sh nemotron3-omni` on env `sglang-v0513` + tree
+> `/data/sglang-rebase-v0513`, `QUANT=moe_wna16`, TP=2, validated at CTX=32768 (5.25M-tok KV pool).
+> 256K-depth perf + the 262144 KV-pool check are the next measurement (R9700's FP8 ref:
+> 74.79 short / 49.22 @230K tok/s).
+>
+> Everything below is the **diagnostic journey** (kept as the receipt for how we got here).
+
+---
+
+## ORIGINAL DIAGNOSIS — did NOT serve on first builds (2026-06-16)
 
 **Ship under test:** `mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ` (calib-device build,
 commit `9edacecf`, pushed 2026-06-16 16:33 PDT). Downloaded clean (22 GB, 34 shards).
-**Verdict: BLOCKED on serving — needs a re-build (preferred) or a serving patch.** Capabilities
-could NOT be validated because the model never finished loading on any int4 kernel / TP config.
+**Verdict at the time: BLOCKED on serving — needs a re-build (preferred) or a serving patch.**
+Capabilities could NOT be validated because the model never finished loading on any int4 kernel /
+TP config. (The serving patches 052+053 above are the "serving patch" path, now done.)
 
 ## Pre-serve gates that PASSED
 - **Quant pattern correct.** Safetensors index: Mamba layers (0,2,…) qweight=0, attention layer (5)
