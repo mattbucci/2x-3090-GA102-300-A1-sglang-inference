@@ -635,6 +635,28 @@ apply_preset() {
             CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
+        nemotron3-omni)
+            # Nemotron-3-Nano-Omni-30B-A3B-Reasoning AWQ (mattbucci, calib-device
+            # build 2026-06-16). arch NemotronH_Nano_Omni_Reasoning_V3 = Mamba2-
+            # Transformer hybrid MoE (23 Mamba + 23 MoE + 6 attn, 128 routed +1
+            # shared expert, top-6) + CRADIO vision/video + Parakeet audio.
+            # Native AWQ gemm group_size=64; ONLY MoE/MLP quantized — Mamba2,
+            # attention, and the vision+audio towers stay BF16 (verified via the
+            # safetensors index: layers 0/2/5 qweight=0; vision/radio/encoder
+            # qweight=0; check_awq_scales 5934 scales 0-flagged). Thinking ON by
+            # default (<think>, reasoning parser nemotron_3). Richest modality set
+            # in the catalog — adds AUDIO. Audio needs librosa (installed).
+            # Mamba2-hybrid → keep a mamba cache; multimodal → --enable-multimodal
+            # + --trust-remote-code (custom processing.py/audio_model.py).
+            # ⚠ 256K-on-triton needs R9700 patch 047 (hybrid v_head_dim); trying
+            # FlashInfer (default) first — graft 047 if 256K OOMs/errs on triton.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ}"
+            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
+            MAMBA_CACHE="--max-mamba-cache-size 8"
+            REASONING="--reasoning-parser nemotron_3"
+            CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --tool-call-parser qwen3_coder --trust-remote-code"
+            ;;
         *)
             echo "Unknown model: $1"
             echo "Run with -h for available models."
