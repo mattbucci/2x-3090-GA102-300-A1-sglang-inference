@@ -26,9 +26,18 @@
 > audio extractor).
 >
 > **Serving config:** `launch.sh nemotron3-omni` on env `sglang-v0513` + tree
-> `/data/sglang-rebase-v0513`, `QUANT=moe_wna16`, TP=2, validated at CTX=32768 (5.25M-tok KV pool).
-> 256K-depth perf + the 262144 KV-pool check are the next measurement (R9700's FP8 ref:
-> 74.79 short / 49.22 @230K tok/s).
+> `/data/sglang-rebase-v0513`, `QUANT=moe_wna16`, TP=2. Boots at the full **262144** with
+> `max_total_num_tokens=5250973` (5.25M-tok KV pool, ~20× the context — only 6 of 52 layers are
+> attention; Mamba layers use the SSM-state cache), `MambaRadixCache hybrid_ssm=True`, fp8 KV.
+>
+> **✅ 256K decode perf (single-user M=1, cuda-graph ON, verified):** ~**98 tok/s flat 1K→255K**
+> — 102.7 @1K, 99.9 @32K, 97.9 @131K, **97.8 @255K** (~5% decay over 250× depth; the Mamba2 hybrid's
+> recurrent state is O(1), so deep decode barely costs more than short). **Beats R9700's FP8 ref**
+> (74.79 short / 49.22 @230K) on *both* ends — int4 weight bandwidth + FlashInfer on Ampere.
+> Prefill is also cheap at depth (TTFT ~1.1s @200K — Mamba layers are linear-time). Curve:
+> `benchmarks/nemotron-256k/decode-curve-2026-06-16.json`. **Open lever:** the int4 MoE runs an
+> *untuned* default Triton config (`E=128,N=464,…int4_w4a16.json` missing) — a tuned fused-MoE
+> config could lift decode further (next iteration).
 >
 > Everything below is the **diagnostic journey** (kept as the receipt for how we got here).
 
