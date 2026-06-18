@@ -30,6 +30,23 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# `Cohere2MoeExperts` stores its expert weights as fused 3-D `nn.Parameter`
+# tensors (gate_up_proj [E, 2*inter, hidden], down_proj [E, hidden, inter])
+# rather than `nn.Linear` modules. GPTQModifier targets Linear, so without an
+# unfuse step it skips all 48 MoE layers × 128 experts × 2 projections =
+# 12,288 quantize ops, leaving ~99% of the model bulk at BF16. Caught
+# 2026-06-17 mid-v3-run: only attention + L0 dense (199 Linears) were being
+# quantized. The unfuse helper (numerically validated: max abs diff 0.0 vs
+# fused forward) walks the model after from_pretrained and replaces each
+# Cohere2MoeExperts with a Cohere2MoeExpertsUnfused (nn.ModuleList of
+# per-expert nn.Linear). state_dict round-trips back to the standard fused
+# 3-D layout on save_pretrained, so the saved CT/AWQ checkpoint reloads
+# WITHOUT this patch.
+_REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PATCH_DIR = os.path.join(_REPO_DIR, "patches")
+sys.path.insert(0, _PATCH_DIR)
+from cohere2_moe_unfused_experts import unfuse_cohere2_moe_experts
+
 from calibration_datasets import (
     build_calibration_dataset,
     rows_to_text,
@@ -122,6 +139,14 @@ model = AutoModelForCausalLM.from_pretrained(
     trust_remote_code=False,  # Cohere2MoE is native in transformers ≥5.10
 )
 print(f"Model loaded in {time.time() - t0:.0f}s ({type(model).__name__})")
+
+# Convert fused Cohere2MoeExperts → per-expert ModuleList of nn.Linear in
+# place. Done AFTER from_pretrained because transformers 5.10's new loader
+# (`convert_and_load_state_dict_in_model`) does direct `getattr(experts,
+# "down_proj")` lookups during load and would AttributeError if we pre-unfuse.
+n_converted = unfuse_cohere2_moe_experts(model)
+print(f"Unfused {n_converted} Cohere2MoeExperts → per-expert ModuleList "
+      f"(GPTQ now sees {n_converted * model.config.num_experts * 2} expert Linears)")
 
 # --- 4. GPTQ calibration ---
 print("\n[4/4] Running GPTQ calibration...")
