@@ -35,7 +35,11 @@ REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # (kernel BUG ~9-17h uptime — see project_3090_kernel_bug_reboots memory).
 # Every cycle is idempotent via --skip-existing; replaying a finished
 # cycle is a ~45s no-op.
-QUEUE="${QUEUE:-coder-30b-eval qwen36 coder-reap-25b qwen36-ream qwen35-moe coder-30b-ream qwen36-dense devstral gemma4}"
+# nemotron3-omni added 2026-06-20: it's an AVLM omni/reasoning ship (thinking +
+# tool-call), NOT coding-tuned — included to TEST whether the Mamba2-hybrid can
+# also code (don't assume it can't; prove it). Runs last; --skip-existing no-ops
+# the others so a restart after the 9-preset run only does nemotron.
+QUEUE="${QUEUE:-coder-30b-eval qwen36 coder-reap-25b qwen36-ream qwen35-moe coder-30b-ream qwen36-dense devstral gemma4 nemotron3-omni}"
 POLL_SECS="${POLL_SECS:-60}"
 WAIT_FOR_PID="${WAIT_FOR_PID:-}"
 
