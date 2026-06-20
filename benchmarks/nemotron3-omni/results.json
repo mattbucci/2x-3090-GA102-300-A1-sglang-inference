@@ -1,0 +1,61 @@
+{
+  "model": "nemotron3-omni",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-06-16 20:03:43",
+  "output_tokens": 64,
+  "max_total_num_tokens": 5250973,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "throughput": 34.31,
+      "ttft_ms": 51.09,
+      "tpot_ms": 9.74,
+      "tok_per_sec": 102.7
+    },
+    {
+      "context": 16384,
+      "throughput": 34.29,
+      "ttft_ms": 178.48,
+      "tpot_ms": 9.87,
+      "tok_per_sec": 101.3
+    },
+    {
+      "context": 32768,
+      "throughput": 34.36,
+      "ttft_ms": 634.9,
+      "tpot_ms": 10.01,
+      "tok_per_sec": 99.9
+    },
+    {
+      "context": 65536,
+      "throughput": 34.42,
+      "ttft_ms": 822.16,
+      "tpot_ms": 10.01,
+      "tok_per_sec": 99.9
+    },
+    {
+      "context": 131072,
+      "throughput": 27.71,
+      "ttft_ms": 1138.01,
+      "tpot_ms": 10.21,
+      "tok_per_sec": 97.9
+    },
+    {
+      "context": 200000,
+      "throughput": 27.55,
+      "ttft_ms": 1148.09,
+      "tpot_ms": 10.2,
+      "tok_per_sec": 98.0
+    },
+    {
+      "context": 255000,
+      "throughput": 34.37,
+      "ttft_ms": 426.95,
+      "tpot_ms": 10.22,
+      "tok_per_sec": 97.8
+    }
+  ],
+  "notes": "Single-user M=1, TP=2, moe_wna16 int4, fp8_e4m3 KV, cuda-graph ON (verified). Mamba2-hybrid: 23 Mamba (O(1) recurrent state) + 6 attention layers, A3B MoE. Flat decode 1K-255K (~5% decay). int4 beats R9700 FP8 ref (74.79 short / 49.22 @230K) on both ends. KV pool max_total_num_tokens=5250973 at ctx 262144 (~20x context headroom). Known lever: int4 MoE runs untuned default Triton config (E=128,N=464,int4_w4a16.json missing) \u2014 a tuned config could lift decode further."
+}

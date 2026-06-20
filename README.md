@@ -69,6 +69,8 @@ Items 2–3 are prerequisites for the MoE backlog. Detailed plan: [`scripts/quan
 
 ## Coding-eval bake-off (SWE-bench Lite, v2 Docker harness, 256K, single-user)
 
+Scope: the 9 coding presets (the queue in `evals/swebench/run_all_cycles.sh`). **`nemotron3-omni` is intentionally excluded** — it's the AVLM omni/reasoning ship (audio+video+vision+thinking), not a coding-tuned model, so a SWE-bench cell would measure off-mission capability; its decode/256K receipts live in [Performance](#performance--single-user-decode-at-256k) + [Model Support](#model-support). (Add it to `QUEUE=` only if a coding datapoint is specifically wanted — ~+1 day.)
+
 Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **leads at 62.0%** on opencode, ahead of the A3B-MoE thinkers `qwen36` and `qwen36-ream` (59.0%). `qwen36` is a strong, consistent three-scaffold performer — **opencode 59.0% / little-coder 59.0% / claw 51.7%** — with the `developer`-role chat-template fix (†) applied. REAM ties native on opencode (both 59.0%) but **trails ~9 pp on little-coder** (`qwen36-ream` 150/300 = 50.0% vs `qwen36` 59.0%, full-300 both, 64 empty patches in the REAM cell) — the merge is scaffold-sensitive on the thinking ships, so "REAM ties native" holds on opencode/claw but not uniformly. The fleet is re-running every little-coder cell with that fix (cycle 3 of 9).
 
 | Preset | opencode | claw-code | little-coder |
