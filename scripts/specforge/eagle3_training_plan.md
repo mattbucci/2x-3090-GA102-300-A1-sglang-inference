@@ -190,3 +190,39 @@ When ship pair (AWQ, EAGLE3-draft) for a new model is being planned:
 That rule keeps us from committing irreversible GPU-days on a roll of the
 dice. Same risk register applies to any "first-of-its-class" arch (Mamba2,
 Jamba, etc.) where the hidden-state hook point is uncertain.
+
+---
+
+## Path A — EXECUTED env setup (2026-06-20, Devstral online)
+
+The SpecForge-pinned env (tx4.57.1/sglang0.5.9) CANNOT load Devstral (`ministral3`
+needs tx≥5). Fix: run SpecForge on OUR serving stack instead.
+
+1. **Env:** `conda create --clone sglang-v0513 -n specforge-cuda` (gets sglang 0.5.13
+   + tx 5.8.1 + our patches + `ministral3`). Then:
+   `pip install --no-deps -e /data/specforge/SpecForge` + `pip install --no-deps yunchang wandb tensorboard`.
+2. **One-line SpecForge port to sglang 0.5.13** (only break of ~20 sglang-internal
+   imports — the rest resolve): `specforge/modeling/target/eagle3_target_model.py`
+   `from sglang.srt.managers.scheduler_dp_attn_mixin import prepare_mlp_sync_batch_raw`
+   → `from sglang.srt.managers.scheduler_components.dp_attn import prepare_mlp_sync_batch_raw`.
+   Verified: `import specforge` OK + `ministral3` registered on this env.
+3. **Draft config:** `configs/devstral-24b-eagle3.json` (copy in `scripts/specforge/`):
+   hidden 5120, inter 32768, 32 heads / 8 kv / head_dim 128, 1 draft layer, vocab
+   131072, draft_vocab 32000, rope_theta 1e8, max_position 32768 (for long-ctx),
+   bf16. (Devstral `sliding_window: null` → plain full-attention decoder.)
+4. **Online command (target-as-our-sglang, no disk dump):**
+   ```
+   torchrun --standalone --nproc_per_node 2 scripts/train_eagle3.py \
+     --target-model-path $MODELS_DIR/hf-mattbucci/Devstral-Small-2-24B-AWQ \
+     --target-model-backend sglang --draft-model-config configs/devstral-24b-eagle3.json \
+     --train-data-path <code-weighted jsonl> --output-dir outputs/devstral-24b-eagle3 \
+     --num-epochs 10 --batch-size 1 --tp-size 2 --learning-rate 1e-4 \
+     --max-length 16384 --cache-dir cache --sglang-mem-fraction-static 0.25
+   ```
+5. **Data (code-weighted, amendment wants long-ctx):** SpecForge `prepare_data.py`
+   has code sets — `opencodeinstruct` / `magicoder-evol-instruct` / `opc` /
+   `codealpaca-20k` + general `sharegpt`/`ultrachat`. Curate a code-heavy mix.
+6. **Remaining gates:** (a) tiny smoke (1 epoch, max-length 2048, ~64 samples) to
+   confirm target loads + a step runs on our sglang 0.5.13; (b) correctness gate —
+   harvested hidden states match the serving stack; THEN the multi-day run at
+   max-length 16K→32K. Validate accept_len≥3.5 + coherent at ≤64K before ship.
