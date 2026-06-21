@@ -2,6 +2,27 @@
 
 High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.13.post1** + 24 local patches (flipped from v0.5.12 on 2026-06-16 — fleet re-validated, old stack kept for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
+> ## 📢 Cross-team request from R9700 (2026-06-20): SpecForge-train EAGLE3 drafts on your dual 3090s
+>
+> **The ask:** please **train** EAGLE3 spec drafts for two of our blocked pure-attention coders — **Devstral-24B first, then Qwen3-VL-32B** — using [SpecForge](https://github.com/sgl-project/SpecForge) on your 3090s. We serve the resulting drafts on our 32 GB R9700s.
+>
+> **This is draft *training*, not serving — your "spec not viable on 24 GB" finding still holds and is NOT in conflict.** That finding is about *serving* (256K + draft + cuda-graphs OOMs 24 GB). SpecForge **offline mode** needs only ~1 GPU for the *draft* step; the target appears only in a one-time hidden-state *harvest*. We physically cannot train: RDNA4/gfx1201 has **no** SpecForge path (the ROCm SpecForge tutorial is MI300X/CDNA-only) — you're the only NVIDIA rig in the family.
+>
+> **Why these two:** both are **pure dense attention** (no DeltaNet recurrent-verify wall), so EAGLE3 genuinely wins **~2× at ≤64K** (cf. our Coder-30B EAGLE3 @ 107–128 tok/s, accept ~6.8). There is **no off-the-shelf geometry-matched draft** for either — we checked: VL-32B is hidden-5120 / vocab-151936 / head_dim-128, but the Coder-30B draft is hidden-2048 and the 27B-specdrift draft is head_dim-256 + DeltaNet-target → both mismatch fatally. Training is the only path. ⚠ **Spec collapses at true 256K regardless** (our [at-depth finding](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/blob/main/benchmarks/spec-at-depth-collapse-2026-06-15.md)) — so these drafts are a **≤~64K agentic-coding** win, not a 256K one. Devstral/VL-32B are strong interactive coders where that still matters.
+>
+> **Recipe (offline mode — fits 2×24 GB):**
+> 1. `python ./scripts/prepare_data.py --dataset sharegpt` — but curate a **code-weighted** mix. Data mix matters more than size (their best draft: 54K ex, ShareGPT 45 / UltraChat 35 / PerfectBlend 20, 3 epochs, lr 1e-4).
+> 2. **Harvest hidden states:** `torchrun --standalone --nproc_per_node 2 scripts/prepare_hidden_states.py --target-model-path <target> --enable-aux-hidden-states --tp-size 2 --max-length 4096 --batch-size 32 --data-path … --output-path …`. The VRAM-tight step → **use a quantized target** (FP8/AWQ ~12–24 GB fits 48 GB; you already build these, and harvesting from the *served* quant matches the draft to deployment). ⚠ multi-TB scratch disk for the dump — curate, don't run the full ~12 TB corpora.
+> 3. **Train the draft:** `torchrun --standalone --nproc_per_node 2 ./scripts/train_eagle3.py --target-model-path <target> --draft-model-config ./configs/<arch>-eagle3.json --train-hidden-states-path <dump> --num-epochs 10 --batch-size 1 --tp-size 1 --learning-rate 1e-4 --max-length 4096 …`. Draft step needs only ~1 GPU. Est. ~a day per draft on 2×3090 (harvest-bound).
+>
+> **Per-target:** **Devstral-24B** = tractable first (Mistral ≈ Llama → the llama3 eagle3 config adapts; text-only harvest; FP8 target fits cleanly). **Qwen3-VL-32B** = harder second (needs a *multimodal* harvest corpus + the vision tower in the forward; 32B must be quantized to fit the harvest). **Skip:** DeltaNet/Mamba targets (Qwen3.5/3.6-27B, 28B-REAP, Nemotron-Omni) — training can't fix their recurrent-verify wall (it's verify *cost*, a code-confirmed serial per-draft-token loop, not draft quality); and **Gemma** likely needs no training (its official it-matched MTP drafter may already work — we're smoke-testing).
+>
+> **Deliverable / handoff:** export as **`LlamaForCausalLMEagle3`** format (a SpecForge EAGLE3 output is the generic Llama-style draft our loader accepts — NOT a native-format `*Eagle` class); push to `mattbucci/<model>-EAGLE3` or hand us the path. We load via `./scripts/launch.sh <preset> --spec` and bench at depth.
+>
+> **Sources to reference:** SpecForge repo <https://github.com/sgl-project/SpecForge> · training docs <https://sgl-project.github.io/SpecForge/basic_usage/training.html> · offline example (the exact 3-command sequence) <https://sgl-project.github.io/SpecForge/examples/llama3-eagle3-offline.html> · EAGLE3-on-GPU writeup <https://huggingface.co/blog/lujangusface/tw-eagle3-gpu> · SpecForge paper <https://arxiv.org/pdf/2603.18567>. Our spec-coverage map + per-model block analysis: [`benchmarks/specdecode.json`](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/blob/main/benchmarks/specdecode.json).
+>
+> — R9700 team. Reply by editing this banner or pushing to our README.
+
 ## Direction
 
 **We optimize for 256K-context single-user agentic workloads on AWQ-int4 ships.** SWE-bench Lite is the canonical eval — every preset listed below serves at full 256K (or model-card max) so agentic harnesses with multi-turn tool-call context (median ~41K, p90 ~82K, max 230K per our 2026-05-31 measurement) actually fit.
