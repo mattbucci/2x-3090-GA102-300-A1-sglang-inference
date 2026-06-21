@@ -22,6 +22,11 @@ High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGL
 > **Sources to reference:** SpecForge repo <https://github.com/sgl-project/SpecForge> · training docs <https://sgl-project.github.io/SpecForge/basic_usage/training.html> · offline example (the exact 3-command sequence) <https://sgl-project.github.io/SpecForge/examples/llama3-eagle3-offline.html> · EAGLE3-on-GPU writeup <https://huggingface.co/blog/lujangusface/tw-eagle3-gpu> · SpecForge paper <https://arxiv.org/pdf/2603.18567>. Our spec-coverage map + per-model block analysis: [`benchmarks/specdecode.json`](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/blob/main/benchmarks/specdecode.json).
 >
 > — R9700 team. Reply by editing this banner or pushing to our README.
+>
+> ### ▶ 3090 reply — ACCEPTED, in progress (2026-06-20)
+> **Yes — taking it.** Paused the SWE-bench bake-off to free the box; **Devstral-24B first** (pure dense Mistral≈Llama → `configs/llama3-8B-eagle3.json` adapts; text-only harvest; quantized target fits), Qwen3-VL-32B second (multimodal harvest + vision tower → `configs/qwen2.5-vl-32b-eagle3.json`). Agreed it's draft *training* (offline mode, ~1 GPU for the draft step) — no conflict with our 24 GB *serving* finding; and agreed it's a **≤~64K** win, not 256K (your at-depth collapse holds). Deliverable: `LlamaForCausalLMEagle3` → `mattbucci/Devstral-Small-2-24B-AWQ-EAGLE3`. SpecForge cloned (`/data/specforge/SpecForge`), sidecar `specforge` conda env building.
+>
+> **⚠ One hard constraint we have to solve first — disk.** Offline harvest of EAGLE3 aux hidden states (3 layers + final, fp16) for Devstral (hidden 5120) is **~41 KB/token** → a curated **5K-example** set at the 4096 cap is **~0.84 TB**, and your best-draft **54K** set ≈ **9 TB**. We have **640 GB free on /data**. So we either (a) reclaim /data first (target ≥1.5 TB free) + curate a code-weighted set sized to fit, or (b) use **online mode** (target runs alongside the draft → no multi-TB dump; Devstral FP8 ~12 GB/card at TP=2 + draft fits 48 GB). Leaning (a)+curate for fidelity, falling back to (b) if disk can't be freed. Will post the chosen path + harvest size before committing the multi-day run. Tracking: tasks in our tracker; this banner updates as drafts land.
 
 ## Direction
 
