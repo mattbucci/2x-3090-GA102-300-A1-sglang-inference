@@ -226,3 +226,37 @@ needs tx≥5). Fix: run SpecForge on OUR serving stack instead.
    confirm target loads + a step runs on our sglang 0.5.13; (b) correctness gate —
    harvested hidden states match the serving stack; THEN the multi-day run at
    max-length 16K→32K. Validate accept_len≥3.5 + coherent at ≤64K before ship.
+
+---
+
+## Path A — ONLINE pipeline WORKING on 2×24GB (2026-06-20)
+
+Online EAGLE3 training of the AWQ Devstral target on 2×3090 — the INFRA is solved
+(smoke trained real steps end-to-end). SpecForge 0.2.0 is pinned to sglang 0.5.9 +
+assumes target/draft co-located; running it on our sglang-0.5.13/tx5.8.1 stack with a
+2×24GB split took a series of fixes (full diff: `scripts/specforge/devstral-online-patches/`).
+
+**Env:** `conda create --clone sglang-v0513 -n specforge-cuda`; `pip install --no-deps -e
+/data/specforge/SpecForge` + `pip install --no-deps yunchang wandb tensorboard gptqmodel`.
+
+**Target:** text-only extraction (drops the VLM wrapper so it's a plain
+`Ministral3ForCausalLM` AWQ — `scripts/specforge/extract_devstral_text_only.py` →
+`/data/models/Devstral-Small-2-24B-AWQ-textonly`). Avoids the `Mistral3` VLM AutoModel
+rejection + the no-`outputs.logits` base-model issue.
+
+**SpecForge fixes (devstral-online-patches/specforge-0.2.0-devstral-online.diff):**
+1. `eagle3_target_model.py` import: `scheduler_dp_attn_mixin` → `scheduler_components.dp_attn` (0.5.13 move).
+2. `args.py`: ServerArgs `enable_piecewise_cuda_graph` → `disable_piecewise_cuda_graph` (inverted, 0.5.13).
+3. `eagle3_target_model.py` hf loader: VLM fallback (AutoModelForImageTextToText → `.language_model`) — now moot with the text-only target, kept harmless.
+4. `eagle3_target_model.py` device placement: `device_map` with `max_memory` cap on cuda:0 (`SPECFORGE_TARGET_GPU0_GIB`, default 5; use 1 to push the whole ~14GB AWQ target to cuda:1) — transformers `tp_plan="auto"` TENSOR-shards AWQ → Marlin-repack break; pipeline/whole-device placement keeps AWQ weights intact.
+5. `eagle3_target_model.py` cross-device: move forward INPUTS to the target's embedding device, and the target OUTPUTS (3 aux hidden + logits) back to the training device (`input_ids.device`) — SpecForge assumes co-location; the split needs explicit handoffs.
+6. `template.py`: registered `devstral` chat template (`assistant_header="[/INST]"`, `user_header="[INST]"`, `end_of_turn_token=""`) so the loss-mask regex captures Mistral `[/INST]…</s>` assistant spans (llama3 default → all-zero mask → loss=0/grad=0).
+
+**Working layout:** target wholly on cuda:1 (~14GB), draft+optimizer on cuda:0 (~23GB).
+Launch: `CUDA_VISIBLE_DEVICES=0,1 SPECFORGE_TARGET_GPU0_GIB=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+torchrun --nproc_per_node 1 scripts/train_eagle3.py --target-model-path <textonly> --target-model-backend hf
+--draft-model-config configs/devstral-24b-eagle3.json --chat-template devstral --tp-size 1 ...`
+
+**Remaining (data, not infra):** sharegpt convs break Devstral's strict chat template
+(`apply_chat_template` IndexError on non-alternating convs); use clean code-instruct data
+(magicoder / opencodeinstruct) — which is also the code-weighted long-ctx mix the real run wants.

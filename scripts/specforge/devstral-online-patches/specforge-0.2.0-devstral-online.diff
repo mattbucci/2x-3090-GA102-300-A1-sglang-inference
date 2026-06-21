@@ -1,0 +1,168 @@
+diff --git a/specforge/args.py b/specforge/args.py
+index 2cd5efc..1ad6d4d 100644
+--- a/specforge/args.py
++++ b/specforge/args.py
+@@ -210,7 +210,8 @@ class SGLangBackendArgs:
+             enable_torch_compile=self.sglang_enable_torch_compile,
+             enable_dp_attention=self.sglang_enable_dp_attention,
+             enable_dp_lm_head=self.sglang_enable_dp_lm_head,
+-            enable_piecewise_cuda_graph=self.sglang_enable_piecewise_cuda_graph,
++            # [3090 path-A] sglang 0.5.13 renamed enable_->disable_ (inverted); 0.5.9 used enable_.
++            disable_piecewise_cuda_graph=not self.sglang_enable_piecewise_cuda_graph,
+             piecewise_cuda_graph_max_tokens=self.sglang_piecewise_cuda_graph_max_tokens,
+             piecewise_cuda_graph_tokens=self.sglang_piecewise_cuda_graph_tokens,
+             ep_size=self.sglang_ep_size,
+diff --git a/specforge/data/template.py b/specforge/data/template.py
+index 0e50dda..7b8c510 100644
+--- a/specforge/data/template.py
++++ b/specforge/data/template.py
+@@ -109,6 +109,20 @@ TEMPLATE_REGISTRY.register(
+     ),
+ )
+ 
++# [3090 path-A] Devstral / Mistral-v3 format: `[INST] user [/INST] assistant</s>`.
++# loss-mask regex = `{end_of_turn}{assistant_header}(.*?)(?={end_of_turn}{user_header}|$)`.
++# With end_of_turn="" -> `[/INST](.*?)(?=[INST]|$)`, correctly capturing assistant spans.
++# Default llama3 headers match nothing here -> all-zero loss_mask -> loss=0/grad=0.
++TEMPLATE_REGISTRY.register(
++    name="devstral",
++    template=ChatTemplate(
++        assistant_header="[/INST]",
++        user_header="[INST]",
++        system_prompt="",
++        end_of_turn_token="",
++    ),
++)
++
+ TEMPLATE_REGISTRY.register(
+     name="qwen",
+     template=ChatTemplate(
+diff --git a/specforge/modeling/target/eagle3_target_model.py b/specforge/modeling/target/eagle3_target_model.py
+index 0b378bd..c4e8724 100644
+--- a/specforge/modeling/target/eagle3_target_model.py
++++ b/specforge/modeling/target/eagle3_target_model.py
+@@ -22,7 +22,9 @@ from sglang.srt.managers.schedule_batch import (
+ )
+ 
+ # - prepare_mlp_sync_batch_raw is now a module-level function, not a Scheduler method
+-from sglang.srt.managers.scheduler_dp_attn_mixin import prepare_mlp_sync_batch_raw
++# [3090 path-A] sglang 0.5.13 relocated this from managers.scheduler_dp_attn_mixin
++# to managers.scheduler_components.dp_attn (SpecForge 0.2.0 targets sglang 0.5.9).
++from sglang.srt.managers.scheduler_components.dp_attn import prepare_mlp_sync_batch_raw
+ from sglang.srt.mem_cache.cache_init_params import CacheInitParams
+ from sglang.srt.mem_cache.radix_cache import RadixCache
+ from sglang.srt.model_executor.forward_batch_info import CaptureHiddenMode, ForwardBatch
+@@ -133,24 +135,54 @@ class HFEagle3TargetModel(Eagle3TargetModel):
+         """
+         tp_size = get_tp_group().size()
+ 
+-        if tp_size > 1:
+-            device_kwargs = {
+-                "tp_plan": "auto",
+-                "tp_size": tp_size,
+-                "device_mesh": get_tp_device_mesh(),
+-            }
++        # [3090 path-A] transformers tp_plan="auto" TENSOR-parallel-shards the AWQ
++        # qweight (size_k/tp) -> gptqmodel Marlin repack fails ("size(0)=2560 != size_k=5120").
++        # device_map="auto" PIPELINE-splits whole layers across GPUs instead -> each
++        # layer's AWQ weights stay intact on one card (no repack break), and a 14GB
++        # AWQ target spreads ~7GB/card leaving room for the (frozen) forward + draft
++        # training. Use it whenever >1 GPU is visible (online, no offline dump).
++        import os as _os
++
++        import torch as _torch
++
++        if _torch.cuda.device_count() > 1:
++            # device_map="auto" fills cuda:0 first -> packs the target there, leaving
++            # no room for the draft + its optimizer states (also on cuda:0) -> OOM at
++            # optimizer.step(). Cap the target's share of cuda:0 (override via
++            # SPECFORGE_TARGET_GPU0_GIB) so training has headroom; spill the rest to
++            # the other GPUs. [3090 path-A]
++            _gpu0 = _os.environ.get("SPECFORGE_TARGET_GPU0_GIB", "5")
++            _mm = {0: f"{_gpu0}GiB"}
++            for _g in range(1, _torch.cuda.device_count()):
++                _mm[_g] = "22GiB"
++            device_kwargs = {"device_map": "auto", "max_memory": _mm}
+         else:
+-            device_kwargs = {
+-                "device_map": device,
+-            }
++            device_kwargs = {"device_map": device}
+ 
+-        target_model = AutoModelForCausalLM.from_pretrained(
+-            pretrained_model_name_or_path,
+-            torch_dtype=torch_dtype,
+-            cache_dir=cache_dir,
+-            **device_kwargs,
+-            **kwargs,
+-        )
++        try:
++            target_model = AutoModelForCausalLM.from_pretrained(
++                pretrained_model_name_or_path,
++                torch_dtype=torch_dtype,
++                cache_dir=cache_dir,
++                **device_kwargs,
++                **kwargs,
++            )
++        except ValueError:
++            # [3090 path-A] VLM-wrapped target (Devstral = Mistral3ForConditionalGeneration):
++            # AutoModelForCausalLM rejects the VLM config. Load the multimodal model and
++            # hand SpecForge the inner language model (ministral3 decoder) for text EAGLE3.
++            from transformers import AutoModelForImageTextToText
++
++            _vlm = AutoModelForImageTextToText.from_pretrained(
++                pretrained_model_name_or_path,
++                torch_dtype=torch_dtype,
++                cache_dir=cache_dir,
++                **device_kwargs,
++                **kwargs,
++            )
++            target_model = getattr(_vlm, "language_model", None)
++            if target_model is None:
++                target_model = _vlm.model.language_model
+         return cls(target_model)
+ 
+     def _get_transformer_layers(self):
+@@ -218,9 +250,18 @@ class HFEagle3TargetModel(Eagle3TargetModel):
+                 )
+ 
+         try:
++            # [3090 path-A] When the target is device_map'd onto another GPU (cuda:1)
++            # to leave cuda:0 for draft training, accelerate's dispatch does NOT
++            # auto-move the inputs here -> embedding index_select sees input_ids on
++            # cuda:0 but embed_tokens.weight on cuda:1. Move inputs to the target's
++            # embedding device for the forward (outputs are moved back to the training
++            # device below).
++            _emb_dev = self.model.get_input_embeddings().weight.device
+             outputs = self.model(
+-                input_ids=input_ids,
+-                attention_mask=attention_mask,
++                input_ids=input_ids.to(_emb_dev),
++                attention_mask=attention_mask.to(_emb_dev)
++                if attention_mask is not None
++                else None,
+                 output_hidden_states=False,
+                 output_attentions=False,
+                 output_router_logits=False,
+@@ -243,12 +284,19 @@ class HFEagle3TargetModel(Eagle3TargetModel):
+         hidden_states1 = captured_states[target_indices[1]]
+         hidden_states2 = captured_states[target_indices[2]]
+ 
++        # [3090 path-A] The AWQ target lives on a different GPU than the draft/training
++        # (device_map puts it on cuda:1; the draft + loss + vocab-mapping index_select
++        # run on the TRAINING device = where the input batch lives, cuda:0). Move ALL
++        # target outputs (the 3 aux hidden states + logits) onto the training device so
++        # downstream draft ops don't hit cross-device mismatches.
++        _dev = input_ids.device
+         hidden_states = torch.cat(
+-            (hidden_states0, hidden_states1, hidden_states2), dim=-1
++            (hidden_states0.to(_dev), hidden_states1.to(_dev), hidden_states2.to(_dev)),
++            dim=-1,
+         )
+ 
+         # apply pading
+-        target = outputs.logits
++        target = outputs.logits.to(_dev)
+         target = padding(target, left=False)
+         input_ids = padding(input_ids, left=False)
+         loss_mask = loss_mask[..., None].to(target.device)
