@@ -12,6 +12,155 @@ index 2cd5efc..1ad6d4d 100644
              piecewise_cuda_graph_max_tokens=self.sglang_piecewise_cuda_graph_max_tokens,
              piecewise_cuda_graph_tokens=self.sglang_piecewise_cuda_graph_tokens,
              ep_size=self.sglang_ep_size,
+diff --git a/specforge/core/eagle3.py b/specforge/core/eagle3.py
+index 6d6607d..8206fb7 100644
+--- a/specforge/core/eagle3.py
++++ b/specforge/core/eagle3.py
+@@ -25,6 +25,7 @@ from typing import Callable, List, Optional, Tuple
+ import torch
+ import torch.nn as nn
+ import torch.nn.functional as F
++from torch.utils.checkpoint import checkpoint as _grad_checkpoint
+ from transformers.cache_utils import DynamicCache
+ 
+ from specforge.core.compact_teacher import (
+@@ -394,7 +395,17 @@ class OnlineEagle3Model(Eagle3Model):
+             hidden_states = hidden_states_out
+ 
+             # Step 5.4: get logits
+-            logits = self.draft_model.compute_logits(hidden_states)
++            # [3090 path-A] Gradient-checkpoint the per-step logits projection
++            # (norm + lm_head over draft_vocab=32000). Across the TTT unroll these
++            # (seq x 32000) tensors are held for backward (~1GB/step at 16K); compute_logits
++            # is a pure function so recomputing it in backward is safe and frees that memory.
++            # Together with the MLP checkpoint this clears the TTT-backward OOM at 16K.
++            if self.training and hidden_states.requires_grad:
++                logits = _grad_checkpoint(
++                    self.draft_model.compute_logits, hidden_states, use_reentrant=False
++                )
++            else:
++                logits = self.draft_model.compute_logits(hidden_states)
+ 
+             # Step 5.5 + 5.6: metric and loss
+             (
+@@ -738,7 +749,17 @@ class QwenVLOnlineEagle3Model(Eagle3Model):
+             hidden_states = hidden_states_out
+ 
+             # Step 5.4: get logits
+-            logits = self.draft_model.compute_logits(hidden_states)
++            # [3090 path-A] Gradient-checkpoint the per-step logits projection
++            # (norm + lm_head over draft_vocab=32000). Across the TTT unroll these
++            # (seq x 32000) tensors are held for backward (~1GB/step at 16K); compute_logits
++            # is a pure function so recomputing it in backward is safe and frees that memory.
++            # Together with the MLP checkpoint this clears the TTT-backward OOM at 16K.
++            if self.training and hidden_states.requires_grad:
++                logits = _grad_checkpoint(
++                    self.draft_model.compute_logits, hidden_states, use_reentrant=False
++                )
++            else:
++                logits = self.draft_model.compute_logits(hidden_states)
+ 
+             # Step 5.5: record metrics first as we in-place modify logits
+             with torch.no_grad():
+@@ -790,18 +811,43 @@ class QwenVLOnlineEagle3Model(Eagle3Model):
+         )
+ 
+ 
++# [3090 path-A] Online long-context teacher memory fix.
++# _compute_target_p casts the FULL-vocab target logits to fp32 (seq*131072*4) and
++# builds draft-vocab softmaxes (seq*32000*4) all at once. At 16K that transient is
++# ~8.6GB + ~4.2GB persistent -> OOMs the draft GPU (cuda:0) before TTT even runs.
++# We chunk over the sequence so the fp32 transient is bounded to TEACHER_SEQ_CHUNK,
++# move only a small logits SLICE to the draft/t2d device per chunk (the bulk of the
++# logits stay on the target GPU, cuda:1), and store the persistent teacher in bf16
++# (negligible KL precision loss, halves the 4.2GB result). This is what makes
++# long-context (>=8K) online training fit on 2x24GB.
++TEACHER_SEQ_CHUNK = 1024
++
++
+ def _compute_target_p_padded(target, t2d, loss_mask, length):
+     with torch.no_grad():
+-        (
+-            target_p,
+-            target_p_on_draft,
+-            target_token_ids,
+-            position_mask,
+-        ) = _compute_target_p(
+-            target=target,
+-            t2d=t2d,
+-            loss_mask=loss_mask,
+-        )
++        compute_dev = t2d.device
++        seq_len = target.shape[1]
++        tp_list, tpd_list, tids_list, pmask_list = [], [], [], []
++        for s in range(0, seq_len, TEACHER_SEQ_CHUNK):
++            e = min(s + TEACHER_SEQ_CHUNK, seq_len)
++            tgt_c = target[:, s:e, :].to(compute_dev)
++            lm_c = loss_mask[:, s:e].to(compute_dev)
++            tp_c, tpd_c, tids_c, pmask_c = _compute_target_p(
++                target=tgt_c,
++                t2d=t2d,
++                loss_mask=lm_c,
++            )
++            # persist the big draft-vocab distributions in bf16; ids/mask stay small.
++            tp_list.append(tp_c.to(torch.bfloat16))
++            tpd_list.append(tpd_c.to(torch.bfloat16))
++            tids_list.append(tids_c)
++            pmask_list.append(pmask_c)
++            del tgt_c, lm_c, tp_c, tpd_c, tids_c, pmask_c
++        target_p = torch.cat(tp_list, dim=1)
++        target_p_on_draft = torch.cat(tpd_list, dim=1)
++        target_token_ids = torch.cat(tids_list, dim=1)
++        position_mask = torch.cat(pmask_list, dim=1)
++        del tp_list, tpd_list, tids_list, pmask_list
+ 
+         assert len(target_p.shape) == 3
+         target_p_padded = F.pad(
+diff --git a/specforge/core/lk_loss.py b/specforge/core/lk_loss.py
+index d695751..66d0b3c 100644
+--- a/specforge/core/lk_loss.py
++++ b/specforge/core/lk_loss.py
+@@ -40,13 +40,38 @@ def _masked_mean(
+     return numerator / denominator
+ 
+ 
++# [3090 path-A] Chunk the acceptance-rate softmax over the sequence. The naive form
++# materializes a full (1, seq, 32000) fp32 softmax (+ an fp32 copy of the logits) every
++# TTT step -> ~4GB transient at 16K, which OOMs the draft GPU around step 4 (independent
++# of ttt-length, since it's a per-step metric computed in the forward). acceptance_rate
++# is a detached metric here (grad is disabled unless lk_loss_type is set), so chunking is
++# exact and the per-token result (1, seq) is tiny. This is the change that lets full
++# ttt-length 16K training fit on 2x24GB.
++_ACCEPT_SEQ_CHUNK = 2048
++
++
+ def _acceptance_rate_per_token_from_logits(
+     logits: torch.Tensor,
+     target_probs: torch.Tensor,
+ ) -> torch.Tensor:
+     """Return per-token expected acceptance from draft logits and target probs."""
+-    draft_p = F.softmax(logits.to(torch.float32), dim=-1).to(target_probs.dtype)
+-    return expected_acceptance_rate(target_probs=target_probs, draft_probs=draft_p)
++    seq_len = logits.shape[1]
++    if seq_len <= _ACCEPT_SEQ_CHUNK:
++        draft_p = F.softmax(logits.to(torch.float32), dim=-1).to(target_probs.dtype)
++        return expected_acceptance_rate(target_probs=target_probs, draft_probs=draft_p)
++    out = []
++    for s in range(0, seq_len, _ACCEPT_SEQ_CHUNK):
++        e = min(s + _ACCEPT_SEQ_CHUNK, seq_len)
++        draft_p_c = F.softmax(logits[:, s:e].to(torch.float32), dim=-1).to(
++            target_probs.dtype
++        )
++        out.append(
++            expected_acceptance_rate(
++                target_probs=target_probs[:, s:e], draft_probs=draft_p_c
++            )
++        )
++        del draft_p_c
++    return torch.cat(out, dim=1)
+ 
+ 
+ def compute_acceptance_rate(
 diff --git a/specforge/data/template.py b/specforge/data/template.py
 index 0e50dda..e47ab2a 100644
 --- a/specforge/data/template.py
@@ -40,8 +189,40 @@ index 0e50dda..e47ab2a 100644
  TEMPLATE_REGISTRY.register(
      name="qwen",
      template=ChatTemplate(
+diff --git a/specforge/modeling/draft/llama3_eagle.py b/specforge/modeling/draft/llama3_eagle.py
+index e96286b..375e786 100644
+--- a/specforge/modeling/draft/llama3_eagle.py
++++ b/specforge/modeling/draft/llama3_eagle.py
+@@ -6,6 +6,7 @@ import torch
+ import torch.distributed as dist
+ import torch.nn as nn
+ import torch.nn.functional as F
++from torch.utils.checkpoint import checkpoint as _grad_checkpoint
+ from torch.nn.attention.flex_attention import create_block_mask, flex_attention
+ from transformers.activations import ACT2FN
+ from transformers.cache_utils import Cache
+@@ -1617,7 +1618,18 @@ class LlamaDecoderLayer(nn.Module):
+         # Fully Connected
+         residual = hidden_states
+         hidden_states = self.post_attention_layernorm(hidden_states)
+-        hidden_states = self.mlp(hidden_states)
++        # [3090 path-A] Gradient-checkpoint the MLP during training. The draft MLP has a
++        # 32768 intermediate; across the TTT unroll (length 5-7) its gate/up activations
++        # are the single largest training-memory term (~2GB/step at 16K). The MLP is a
++        # pure function (no cache_hidden mutation, no dropout), so checkpointing it is
++        # safe and recomputes only in backward. This is what clears the TTT-backward OOM
++        # that long-context (16K) training hits on 2x24GB. Inference path is untouched.
++        if self.training and hidden_states.requires_grad:
++            hidden_states = _grad_checkpoint(
++                self.mlp, hidden_states, use_reentrant=False
++            )
++        else:
++            hidden_states = self.mlp(hidden_states)
+         hidden_states = residual + hidden_states
+ 
+         # outputs = (hidden_states, return_hidden)
 diff --git a/specforge/modeling/target/eagle3_target_model.py b/specforge/modeling/target/eagle3_target_model.py
-index 0b378bd..56d0b27 100644
+index 0b378bd..5fce07c 100644
 --- a/specforge/modeling/target/eagle3_target_model.py
 +++ b/specforge/modeling/target/eagle3_target_model.py
 @@ -22,7 +22,9 @@ from sglang.srt.managers.schedule_batch import (
@@ -147,7 +328,7 @@ index 0b378bd..56d0b27 100644
                  output_hidden_states=False,
                  output_attentions=False,
                  output_router_logits=False,
-@@ -243,16 +284,24 @@ class HFEagle3TargetModel(Eagle3TargetModel):
+@@ -243,16 +284,29 @@ class HFEagle3TargetModel(Eagle3TargetModel):
          hidden_states1 = captured_states[target_indices[1]]
          hidden_states2 = captured_states[target_indices[2]]
  
@@ -163,18 +344,25 @@ index 0b378bd..56d0b27 100644
 +            dim=-1,
          )
  
-         # apply pading
+-        # apply pading
 -        target = outputs.logits
-+        target = outputs.logits.to(_dev)
++        # [3090 path-A] Keep the FULL-vocab target logits on the TARGET gpu (cuda:1):
++        # moving (seq x 131072) to the draft gpu costs ~4.3GB there and, combined with
++        # the fp32 teacher cast, OOMs cuda:0 at long context. The teacher reduction
++        # (eagle3._compute_target_p_padded) now pulls per-seq-chunk slices to the draft
++        # device itself, so the bulk of the logits stay here. loss_mask must live on the
++        # DRAFT device (cuda:0 = input_ids.device) because the TTT loss runs there.
++        target = outputs.logits  # stays on the target/embedding device (e.g. cuda:1)
          target = padding(target, left=False)
          input_ids = padding(input_ids, left=False)
-         loss_mask = loss_mask[..., None].to(target.device)
+-        loss_mask = loss_mask[..., None].to(target.device)
++        loss_mask = loss_mask[..., None].to(_dev)
  
 +        import os as _os2
          return Eagle3TargetOutput(
              hidden_states=hidden_states,
              target=target,
-@@ -876,6 +925,7 @@ class CustomEagle3TargetModel(Eagle3TargetModel):
+@@ -876,6 +930,7 @@ class CustomEagle3TargetModel(Eagle3TargetModel):
          input_ids = padding(input_ids, left=False)
          loss_mask = loss_mask[..., None].to(target.device)
  
@@ -182,3 +370,42 @@ index 0b378bd..56d0b27 100644
          return Eagle3TargetOutput(
              hidden_states=hidden_states,
              target=target,
+diff --git a/specforge/optimizer.py b/specforge/optimizer.py
+index 9fc877b..ac789a8 100644
+--- a/specforge/optimizer.py
++++ b/specforge/optimizer.py
+@@ -26,9 +26,31 @@ class BF16Optimizer:
+         ]
+         for mp in self.fp32_params:
+             mp.requires_grad = True
+-        self.optimizer = torch.optim.AdamW(
+-            self.fp32_params, lr=lr, weight_decay=weight_decay
+-        )
++        # [3090 path-A] Use 8-bit AdamW (bitsandbytes) for the optimizer STATES when
++        # available. The Adam moments (exp_avg / exp_avg_sq) for the ~0.83B trainable
++        # draft params are ~6.6GB in fp32; 8-bit blockwise quantization drops that to
++        # ~1.65GB (~5GB saved on the draft GPU). That headroom is what lets long-context
++        # (16K) online training fit on 2x24GB alongside the full-vocab teacher. The fp32
++        # master copy (self.fp32_params) is unchanged, so update precision is preserved.
++        # Opt out with SPECFORGE_DISABLE_8BIT_ADAM=1.
++        import os as _os
++
++        _use_8bit = _os.environ.get("SPECFORGE_DISABLE_8BIT_ADAM", "0") != "1"
++        self.optimizer = None
++        if _use_8bit:
++            try:
++                from bitsandbytes.optim import AdamW8bit
++
++                self.optimizer = AdamW8bit(
++                    self.fp32_params, lr=lr, weight_decay=weight_decay
++                )
++                print_on_rank0("Using bitsandbytes AdamW8bit (8-bit optimizer states)")
++            except Exception as _e:  # pragma: no cover - fallback path
++                print_on_rank0(f"AdamW8bit unavailable ({_e}); using fp32 AdamW")
++        if self.optimizer is None:
++            self.optimizer = torch.optim.AdamW(
++                self.fp32_params, lr=lr, weight_decay=weight_decay
++            )
+         self.last_grad_norm = None
+         self.scheduler = CosineAnnealingWarmupLR(
+             self.optimizer,

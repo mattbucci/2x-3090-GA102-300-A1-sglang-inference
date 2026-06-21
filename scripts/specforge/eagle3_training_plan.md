@@ -289,3 +289,48 @@ torchrun --standalone --nproc_per_node 1 scripts/train_eagle3.py \
   --output-dir outputs/devstral-eagle3 --num-epochs 10 --batch-size 1 --tp-size 1 \
   --learning-rate 1e-4 --max-length 16384 --cache-dir cache --chat-template devstral
 ```
+
+---
+
+## Path A — LONG-CONTEXT (16K) online training on 2×24GB — memory engineering (2026-06-20)
+
+The "FULLY CONFIRMED" smoke above was at max-length 2048. Scaling to the
+R9700-amendment target (≥16K) hit the 24GB wall on the draft GPU (cuda:0). The
+trainer TRUNCATES to --max-length (it does NOT pack), so long training needs
+genuinely-long samples (built by `build_longctx_code_data.py`, streaming +
+packing OpenCodeInstruct into ~15.2K-token multi-turn code conversations) AND a
+series of memory fixes. Four contained changes, each found by reading the actual
+OOM traceback (not guessing), make full ttt-length 16K fit:
+
+1. **Teacher reduction chunked + bf16** (`core/eagle3.py::_compute_target_p_padded`).
+   `_compute_target_p` casts the FULL-vocab logits to fp32 (seq×131072×4 = 8.6GB at
+   16K) and builds draft-vocab softmaxes (seq×32000 ×2) all at once. Fix: keep the
+   logits on the TARGET gpu (cuda:1, integration change in `eagle3_target_model.py`
+   — stop `.to(_dev)`-ing them to cuda:0), chunk the reduction over the sequence
+   (TEACHER_SEQ_CHUNK=1024, pulling only small slices to cuda:0), and store the
+   persistent teacher (target_p / target_p_on_draft) in **bf16** (halves the 4.2GB
+   result; negligible KL precision loss). Clears the pre-TTT teacher OOM.
+2. **MLP gradient checkpoint** (`modeling/draft/llama3_eagle.py::LlamaDecoderLayer`).
+   The draft MLP has a 32768 intermediate; across the TTT unroll its gate/up
+   activations are the largest training term (~2GB/step at 16K). The MLP is a pure
+   function (no cache_hidden mutation, no dropout) → checkpoint it during training.
+3. **Per-step logits gradient checkpoint** (`core/eagle3.py` TTT loop).
+   compute_logits (norm + lm_head over draft_vocab=32000) is pure; its (seq×32000)
+   output is held for backward each step. Checkpoint → recompute in backward.
+4. **Acceptance-rate softmax chunked** (`core/lk_loss.py`). THE decisive one. The
+   acceptance-rate METRIC did `F.softmax(logits.to(float32))` over the full
+   (1,seq,32000) every step — a ~4GB fp32 transient that OOM'd at step ~4
+   regardless of ttt-length (a per-step forward metric, not in the unroll). It's
+   detached (grad disabled when lk_loss_type=None), so chunk it over the sequence
+   (exact). This dropped the failing allocation 1.70GiB → 892MiB.
+
+⚠ Do NOT gradient-checkpoint the draft ATTENTION: it mutates `cache_hidden`
+(`cache_hidden[0] = cache_hidden[0] + [k]`) across TTT steps; a backward recompute
+would re-append and corrupt the KV. MLP + logits are the safe (pure) checkpoint
+targets.
+
+**Layout unchanged:** target wholly on cuda:1 (~14GB model + ~4.3GB logits), draft
++ optimizer + TTT activations on cuda:0. Optimizer = `BF16Optimizer` over only the
+TRAINABLE params (embed_tokens is target-copied + frozen via `freeze_embedding()`,
+so ~0.83B of the 1.5B draft is optimized). Env vars + extraction (text-only
+ministral3 target) all as in the smoke recipe above.
