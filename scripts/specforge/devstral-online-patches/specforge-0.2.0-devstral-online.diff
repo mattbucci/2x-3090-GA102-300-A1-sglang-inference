@@ -13,24 +13,27 @@ index 2cd5efc..1ad6d4d 100644
              piecewise_cuda_graph_tokens=self.sglang_piecewise_cuda_graph_tokens,
              ep_size=self.sglang_ep_size,
 diff --git a/specforge/data/template.py b/specforge/data/template.py
-index 0e50dda..7b8c510 100644
+index 0e50dda..e47ab2a 100644
 --- a/specforge/data/template.py
 +++ b/specforge/data/template.py
-@@ -109,6 +109,20 @@ TEMPLATE_REGISTRY.register(
+@@ -109,6 +109,23 @@ TEMPLATE_REGISTRY.register(
      ),
  )
  
 +# [3090 path-A] Devstral / Mistral-v3 format: `[INST] user [/INST] assistant</s>`.
-+# loss-mask regex = `{end_of_turn}{assistant_header}(.*?)(?={end_of_turn}{user_header}|$)`.
-+# With end_of_turn="" -> `[/INST](.*?)(?=[INST]|$)`, correctly capturing assistant spans.
-+# Default llama3 headers match nothing here -> all-zero loss_mask -> loss=0/grad=0.
++# The ACTIVE parser (GeneralParser, parse.py) builds the assistant-span regex as
++# `{assistant_header}([\s\S]*?(?:{end_of_turn_token}|$))` — end_of_turn is the span
++# TERMINATOR (not a separator). So end_of_turn MUST be "</s>" (the real assistant
++# turn-end): pattern = `\[/INST\]([\s\S]*?(?:</s>|$))` captures the answer up to </s>.
++# (end_of_turn="" makes the terminator match empty -> zero-length span -> loss=0/grad=0;
++# llama3 default markers match nothing at all -> same zero mask.)
 +TEMPLATE_REGISTRY.register(
 +    name="devstral",
 +    template=ChatTemplate(
 +        assistant_header="[/INST]",
 +        user_header="[INST]",
 +        system_prompt="",
-+        end_of_turn_token="",
++        end_of_turn_token="</s>",
 +    ),
 +)
 +
@@ -38,7 +41,7 @@ index 0e50dda..7b8c510 100644
      name="qwen",
      template=ChatTemplate(
 diff --git a/specforge/modeling/target/eagle3_target_model.py b/specforge/modeling/target/eagle3_target_model.py
-index 0b378bd..c4e8724 100644
+index 0b378bd..56d0b27 100644
 --- a/specforge/modeling/target/eagle3_target_model.py
 +++ b/specforge/modeling/target/eagle3_target_model.py
 @@ -22,7 +22,9 @@ from sglang.srt.managers.schedule_batch import (
@@ -144,7 +147,7 @@ index 0b378bd..c4e8724 100644
                  output_hidden_states=False,
                  output_attentions=False,
                  output_router_logits=False,
-@@ -243,12 +284,19 @@ class HFEagle3TargetModel(Eagle3TargetModel):
+@@ -243,16 +284,24 @@ class HFEagle3TargetModel(Eagle3TargetModel):
          hidden_states1 = captured_states[target_indices[1]]
          hidden_states2 = captured_states[target_indices[2]]
  
@@ -166,3 +169,16 @@ index 0b378bd..c4e8724 100644
          target = padding(target, left=False)
          input_ids = padding(input_ids, left=False)
          loss_mask = loss_mask[..., None].to(target.device)
+ 
++        import os as _os2
+         return Eagle3TargetOutput(
+             hidden_states=hidden_states,
+             target=target,
+@@ -876,6 +925,7 @@ class CustomEagle3TargetModel(Eagle3TargetModel):
+         input_ids = padding(input_ids, left=False)
+         loss_mask = loss_mask[..., None].to(target.device)
+ 
++        import os as _os2
+         return Eagle3TargetOutput(
+             hidden_states=hidden_states,
+             target=target,

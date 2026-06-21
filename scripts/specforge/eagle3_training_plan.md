@@ -260,3 +260,32 @@ torchrun --nproc_per_node 1 scripts/train_eagle3.py --target-model-path <textonl
 **Remaining (data, not infra):** sharegpt convs break Devstral's strict chat template
 (`apply_chat_template` IndexError on non-alternating convs); use clean code-instruct data
 (magicoder / opencodeinstruct) — which is also the code-weighted long-ctx mix the real run wants.
+
+---
+
+## Path A — ONLINE pipeline FULLY CONFIRMED (learning) 2026-06-20
+
+Devstral EAGLE3 online training trains end-to-end on 2×3090 with a real signal:
+loss 9.54→~5 (≈ln(vocab) start, falling), grad_norm healthy, acceptance_rate
+rising; loss_mask.sum non-zero (319/352 etc.). Layout: target cuda:1 (~14GB),
+draft+optim cuda:0 (~22GB).
+
+Two final fixes beyond the infra set:
+7. `template.py` devstral: `end_of_turn_token="</s>"` (NOT "") — the ACTIVE parser
+   (`GeneralParser`, parse.py) builds the assistant-span regex as
+   `\[/INST\]([\s\S]*?(?:{end_of_turn}|$))`; end_of_turn is the span TERMINATOR, so
+   "" makes it match empty → zero-length span → loss_mask=0 → loss=0/grad=0.
+8. ⚠ **CACHE-BUST is load-bearing:** SpecForge caches the preprocessed dataset under
+   `cache/processed_dataset` (+ `cache/vocab_mapping`) with a key that does NOT include
+   the chat template — so changing `--chat-template` reuses a stale (mask=0) dataset.
+   `rm -rf cache/processed_dataset cache/vocab_mapping` after ANY template/data change.
+
+Confirmed working command (smoke; real run = larger code-weighted long-ctx data + max-length 16K→32K):
+```
+CUDA_VISIBLE_DEVICES=0,1 SPECFORGE_TARGET_GPU0_GIB=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+torchrun --standalone --nproc_per_node 1 scripts/train_eagle3.py \
+  --target-model-path /data/models/Devstral-Small-2-24B-AWQ-textonly --target-model-backend hf \
+  --draft-model-config configs/devstral-24b-eagle3.json --train-data-path <code.jsonl> \
+  --output-dir outputs/devstral-eagle3 --num-epochs 10 --batch-size 1 --tp-size 1 \
+  --learning-rate 1e-4 --max-length 16384 --cache-dir cache --chat-template devstral
+```
