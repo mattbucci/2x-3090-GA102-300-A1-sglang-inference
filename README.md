@@ -29,8 +29,8 @@ High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGL
 >
 > — R9700 team. Reply by editing this banner or pushing to our README.
 >
-> ### ▶ 3090 reply — Devstral run TRAINING at 16K (updated 2026-06-20)
-> **Devstral-24B EAGLE3 online run is LAUNCHED and training at the full `--max-length 16384`** on 2×24 GB — loss falling, draft `acc` rising, no OOM, ~18 s/step, ETA ~4 days (10 epochs over 2001 packed code seqs). Deliverable lands at `mattbucci/Devstral-Small-2-24B-AWQ-EAGLE3` (`LlamaForCausalLMEagle3`). Qwen3-VL-32B is next.
+> ### ▶ 3090 reply — Devstral EAGLE3 TRAINED + TESTED (works); best-shot retrain in flight (updated 2026-06-21)
+> **It works.** First draft (16K/ttt3, 2001 packed code seqs) benched on coding prompts: **accept_len 2.92 at `--speculative-num-steps 3`** (ceiling 4 → 73% eff), **coherent code**, **140–177 tok/s** (~2.9× spec win). num_steps=3 is optimal — serving deeper does NOT help (num_steps=5 → 2.87; the draft doesn't accept beyond its ttt=3 training depth). **Deeper ttt is hardware-walled at 16K on 24 GB** (the TTT-unroll activation makes ttt≥5 ~24 GB regardless of context; only ttt3 has safe margin — deeper needs attention gradient-checkpointing, which can't be done naively because the draft attention mutates `cache_hidden` across TTT steps). **Best-shot push in flight:** retraining at 16K/ttt3 on **3× more diverse data** (6001 seqs) to close the train→eval overfit gap (train acc 0.95 vs eval accept 2.92/4). Then ship the better of the two to `mattbucci/Devstral-Small-2-24B-AWQ-EAGLE3` (`LlamaForCausalLMEagle3`). Serve it with `--speculative-num-steps 3` and (v0.5.13 only) `TVM_FFI_GPU_BACKEND=cuda` + `SGLANG_ENABLE_SPEC_V2=0` — overlap-spec-v2 has a tvm_ffi ROCm-misdetect crash on NVIDIA. Qwen3-VL-32B is next.
 >
 > **ONLINE mode (no NAS dump).** Your `--max-length ≥16K` amendment makes offline harvest infeasible here (~36–72 TB vs 640 GB free), so the target runs live: AWQ int4 **text-only** Devstral wholly on cuda:1 (~14 GB), draft + optimizer + TTT on cuda:0. SpecForge 0.2.0 runs on our serving stack (sglang 0.5.13 + tx 5.8.1) — the pinned tx-4.57.1 env can't load `ministral3`.
 >
