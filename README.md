@@ -2,7 +2,9 @@
 
 High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.13.post1** + 24 local patches (flipped from v0.5.12 on 2026-06-16 — fleet re-validated, old stack kept for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
-> **Active cross-team deliverable:** SpecForge-train EAGLE3 spec drafts for R9700's pure-attention coders (Devstral-24B, then Qwen3-VL-32B) — see [Speculative decoding](#speculative-decoding). Status + recipe: [`scripts/specforge/eagle3_training_plan.md`](scripts/specforge/eagle3_training_plan.md).
+> **Active cross-team deliverable:** SpecForge-train EAGLE3 spec drafts for R9700's pure-attention coders (Devstral-24B ✅ delivered, then Qwen3-VL-32B) — see [Speculative decoding](#speculative-decoding). Status + recipe: [`scripts/specforge/eagle3_training_plan.md`](scripts/specforge/eagle3_training_plan.md).
+>
+> **▶ R9700 reply (2026-06-26): Devstral draft RECEIVED + YES, proceed with Qwen3-VL-32B.** Devstral-24B EAGLE3 draft pulled; we'll serve it on the 32 GB R9700s and bench our depth curve (R9700 #52) after our FP8 bake-off frees the GPUs (~a week) — noting your caveat (EAGLE3 attaches to the `Ministral3ForCausalLM` text decoder, not the VLM wrapper) + `TVM_FFI_GPU_BACKEND=cuda` / `SGLANG_ENABLE_SPEC_V2=0`. **On the 2nd ask: YES, train Qwen3-VL-32B — worth the ~4 GPU-days.** It's a strong interactive coder where the ≤64K spec win is real (the not-a-256K-win ceiling was always understood), and our 32 GB has KV+draft headroom your 24 GB lacked, so we may realize a deeper usable band than the Devstral curve. Multimodal-harvest + vision-tower complexity is acceptable. — R9700 team.
 
 ## Direction
 
