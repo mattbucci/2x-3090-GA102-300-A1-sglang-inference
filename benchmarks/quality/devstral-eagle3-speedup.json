@@ -6,7 +6,10 @@
   "target_note": "Measured on the text-only Devstral decoder (Ministral3ForCausalLM). The FULL VLM ship (LlavaForConditionalGeneration) cannot attach EAGLE3 in sglang -- the wrapper lacks set_eagle3_layers_to_capture; text-decoder weights are identical so the decode speedup is representative.",
   "results": [
     {"context": "short (~40 tok)", "nospec_toks": 91.9, "spec_toks": 207.5, "speedup_x": 2.26, "accept_len": 3.32},
-    {"context": "~16K",            "nospec_toks": 80.2, "spec_toks": 153.4, "speedup_x": 1.91, "accept_len": 2.86}
+    {"context": "~16K",            "nospec_toks": 80.2, "spec_toks": 153.4, "speedup_x": 1.91, "accept_len": 2.86},
+    {"context": "~30K",            "nospec_toks": 73.4, "spec_toks": 131.6, "speedup_x": 1.79, "accept_len": 2.73},
+    {"context": "~64K",            "nospec_toks": 58.3, "spec_toks": null,  "speedup_x": null, "accept_len": null, "note": "no-spec only; spec pass not completed"},
+    {"context": "128K",            "nospec_toks": null, "spec_toks": null,  "speedup_x": null, "accept_len": null, "note": "INFEASIBLE on 2x24GB: no-spec KV pool was ~82K tokens @ mem 0.82 (126K prompt exceeded it); +spec draft+cuda-graphs shrink the pool further. 128K no-spec needs mem~0.90/fp8 KV."}
   ],
-  "takeaway": "Devstral EAGLE3 draft: ~2.3x decode speedup short, ~1.9x at 16K (single-user, coding). Spec is a <=64K win; no-spec at true 256K depth."
+  "takeaway": "Devstral EAGLE3 draft: gentle decay WITHIN the draft's <=32K regime (2.26x short / 1.91x @16K / 1.79x @30K, accept 3.3->2.7), then a hard memory wall at 128K on 2x24GB (spec pool can't hold it) plus expected deeper accept-collapse. A <=~32-64K win on 32GB cards (R9700's deliverable/lane); for our 256K agentic mission (SWE p90 ~82K) it's marginal -- NGRAM (draft-free, ships on coder-30b ~2.6x @172K) is our depth-surviving spec, not EAGLE3."
 }

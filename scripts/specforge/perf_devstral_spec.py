@@ -32,9 +32,10 @@ N0, N1 = 16, 272  # decode window = N1-N0 = 256 tokens
 
 def build(target, draft, num_steps, spec):
     import sglang as sgl
-    # 32768 = the draft's max_position_embeddings; the spec engine caps context to it.
-    kw = dict(model_path=target, quantization="awq_marlin", mem_fraction_static=0.80,
-              context_length=32768, tp_size=2, cuda_graph_max_bs=1,
+    import os as _os
+    ctx = int(_os.environ.get("PERF_CTX_LEN", "32768"))  # raise + set SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 for deep
+    kw = dict(model_path=target, quantization="awq_marlin", mem_fraction_static=0.82,
+              context_length=ctx, tp_size=2, cuda_graph_max_bs=1,
               disable_radix_cache=True, disable_overlap_schedule=True)
     if spec:
         kw.update(speculative_algorithm="EAGLE3", speculative_draft_model_path=draft,
@@ -66,7 +67,13 @@ def main():
     ap.add_argument("--draft", required=True)
     ap.add_argument("--num-steps", type=int, default=3)
     args = ap.parse_args()
-    ctxs = [("short", ""), ("~16K", FILLER * 200 + "\n\nNow answer:\n")]
+    import os as _os
+    if _os.environ.get("PERF_DEEP") == "1":
+        ctxs = [("~30K", FILLER * 360 + "\n\nNow answer:\n")]  # near the draft's 32K cap, fits the spec pool
+        global PROMPTS
+        PROMPTS = PROMPTS[:2]
+    else:
+        ctxs = [("short", ""), ("~16K", FILLER * 200 + "\n\nNow answer:\n")]
     res = {}
     for spec in (False, True):
         lab = "spec" if spec else "nospec"
