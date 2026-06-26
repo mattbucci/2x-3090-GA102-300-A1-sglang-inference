@@ -521,7 +521,11 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.5-28B-A3B-REAP-AWQ}"
             QUANT="awq_marlin"
             CTX=262144; MEM=0.80; MAX_RUNNING=4; CHUNKED=8192; DECODE_STEPS=4
-            MAMBA_CACHE="--max-mamba-cache-size 4"
+            # v0.5.13 default = 4. v0.5.14's extra_buffer mamba-radix cache
+            # reserves `mamba_ratio` (=5) slots/req, so max_num_reqs =
+            # max_mamba_cache_size // 5; size 4 -> 0 servable (boot RuntimeError).
+            # Override QWEN35_MAMBA_CACHE>=5 on the v0.5.14 stack (8 -> 1 req).
+            MAMBA_CACHE="--max-mamba-cache-size ${QWEN35_MAMBA_CACHE:-4}"
             REASONING="--reasoning-parser qwen3"
             # 2026-06-07: CUDA graph ENABLED — same stale-disable fix as the
             # qwen36 family (DeltaNet+MoE hybrid; ~4x single-user 256K decode,

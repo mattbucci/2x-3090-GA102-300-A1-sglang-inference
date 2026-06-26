@@ -26,7 +26,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-SGLANG_TAG="v0.5.13.post1"
+# Default stack = v0.5.13.post1. Override SGLANG_TAG + PATCH_DIR (+ ENV_NAME /
+# SGLANG_DIR from common.sh) to build the staged v0.5.14 stack, e.g.:
+#   SGLANG_TAG=v0.5.14 PATCH_DIR="$REPO_DIR/patches/v0.5.14" \
+#   ENV_NAME=sglang-v0514 SGLANG_DIR=/data/sglang-rebase-v0514 ./scripts/setup.sh
+SGLANG_TAG="${SGLANG_TAG:-v0.5.13.post1}"
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -79,7 +83,7 @@ else
 fi
 
 # Apply local patches (idempotent — skips already-applied)
-PATCH_DIR="$REPO_DIR/patches"
+PATCH_DIR="${PATCH_DIR:-$REPO_DIR/patches}"
 if [ -d "$PATCH_DIR" ] && ls "$PATCH_DIR"/*.patch &>/dev/null; then
     echo ""
     echo "Applying patches from $PATCH_DIR..."

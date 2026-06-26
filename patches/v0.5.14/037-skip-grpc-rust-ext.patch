@@ -1,0 +1,18 @@
+diff --git a/python/pyproject.toml b/python/pyproject.toml
+index 7ec785be5..f51e01ec1 100755
+--- a/python/pyproject.toml
++++ b/python/pyproject.toml
+@@ -208,10 +208,9 @@ git_describe_command = ["python3", "python/tools/get_version_tag.py"]
+ # Allow editable installs even when .git metadata is not available.
+ fallback_version = "0.0.0.dev0"
+ 
+-[[tool.setuptools-rust.ext-modules]]
+-target = "sglang.srt.grpc._core"
+-path = "../rust/sglang-grpc/Cargo.toml"
+-binding = "PyO3"
++# [3090 0.5.12 rebuild] gRPC Rust ext (sglang.srt.grpc._core) removed — this rig
++# serves over HTTP only (grpc._core has zero imports on that path) and building it
++# needs protoc, which isn't installed here. Restore this TOML table for gRPC serving.
+ 
+ [tool.kernels.dependencies]
+ "kernels-community/sgl-flash-attn3" = 1

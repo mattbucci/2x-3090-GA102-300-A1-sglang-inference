@@ -1,0 +1,74 @@
+diff --git a/python/sglang/srt/layers/quantization/moe_wna16.py b/python/sglang/srt/layers/quantization/moe_wna16.py
+index a7d87c6..b097195 100644
+--- a/python/sglang/srt/layers/quantization/moe_wna16.py
++++ b/python/sglang/srt/layers/quantization/moe_wna16.py
+@@ -264,6 +264,13 @@ class MoeWNA16Method(FusedMoEMethodBase):
+         layer.group_size = group_size
+         layer.group_size_div_factor = group_size_div_factor
+ 
++        # Non-gated MoE (e.g. NemotronH squared-ReLU) has only up_proj, no gate,
++        # so the fused gate_up param is 1x intermediate (not 2x). The base
++        # FusedMoE layer already carries is_gated on moe_runner_config; respect it
++        # here too (moe_wna16 previously hardcoded the gated 2x layout).
++        is_gated = getattr(layer.moe_runner_config, "is_gated", True)
++        gate_up_mult = 2 if is_gated else 1
++
+         strategy = FusedMoeWeightScaleSupported.GROUP.value
+         extra_weight_attrs.update({"quant_method": strategy, "is_transposed": False})
+ 
+@@ -276,7 +283,7 @@ class MoeWNA16Method(FusedMoEMethodBase):
+         w13_qweight = torch.nn.Parameter(
+             torch.empty(
+                 num_experts,
+-                2 * intermediate_size_per_partition,
++                gate_up_mult * intermediate_size_per_partition,
+                 hidden_size // bit8_pack_factor,
+                 dtype=torch.uint8,
+             ),
+@@ -301,7 +308,7 @@ class MoeWNA16Method(FusedMoEMethodBase):
+         w13_scales = torch.nn.Parameter(
+             torch.zeros(
+                 num_experts,
+-                2 * intermediate_size_per_partition,
++                gate_up_mult * intermediate_size_per_partition,
+                 hidden_size // group_size,
+                 dtype=params_dtype,
+             ),
+@@ -326,7 +333,7 @@ class MoeWNA16Method(FusedMoEMethodBase):
+             w13_qzeros = torch.nn.Parameter(
+                 torch.zeros(
+                     num_experts,
+-                    2 * intermediate_size_per_partition // bit8_pack_factor,
++                    gate_up_mult * intermediate_size_per_partition // bit8_pack_factor,
+                     hidden_size // group_size,
+                     dtype=torch.uint8,
+                 ),
+@@ -386,9 +393,14 @@ class MoeWNA16Method(FusedMoEMethodBase):
+         layer: torch.nn.Module,
+         dispatch_output: StandardDispatchOutput,
+     ) -> CombineInput:
++        # Gated MoE: SiLU (Qwen/Mixtral) + GeLU (Gemma 4 gelu_pytorch_tanh) are
++        # wired here. Non-gated MoE (is_gated=False, e.g. NemotronH squared-ReLU)
++        # lets the Triton MoE runner handle the activation (relu2) — added
++        # upstream for non-gated archs.
+         assert (
+-            self.moe_runner_config.activation == "silu"
+-        ), "Only SiLU activation is supported."
++            not self.moe_runner_config.is_gated
++            or self.moe_runner_config.activation in ("silu", "gelu")
++        ), "Only SiLU/GELU activation is supported for gated MoE."
+ 
+         quant_info = self.get_triton_quant_info(layer)
+         return self.runner.run(dispatch_output, quant_info)
+@@ -496,7 +508,10 @@ class MoeWNA16Method(FusedMoEMethodBase):
+                 tensor = loaded_weight.view(
+                     layer.moe_tp_size, -1, loaded_weight.size(1)
+                 )[tp_rank]
+-                if shard_id == "w1":
++                if not getattr(layer.moe_runner_config, "is_gated", True):
++                    # Non-gated: single up_proj fills the whole (1x) w13_qzeros.
++                    param.data[expert_id] = tensor
++                elif shard_id == "w1":
+                     param.data[expert_id, : shard_size // 2] = tensor
+                 else:
+                     param.data[expert_id, shard_size // 2 :] = tensor
