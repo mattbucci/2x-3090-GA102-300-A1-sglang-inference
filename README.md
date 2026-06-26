@@ -15,7 +15,7 @@ This rules out three alternative optimization axes other 3090 stacks chase:
 | Their focus | Why not ours |
 |---|---|
 | Short-ctx multi-stream throughput (vLLM-style 80-140 TPS @ <32K) | We need the full prompt of an agentic instance in context; truncating mid-conversation loses correctness. |
-| FP8 quantization | R9700's gfx1201 has native FP8 WMMA acceleration; Ampere sm_86 doesn't. FP8 is half the weight bytes of INT4 → less of our 48 GB total VRAM is left for KV at 256K. |
+| FP8 quantization | **FP8 W8A8 MoE doesn't even compile on sm_86** (measured 2026-06-26): the Triton fused-MoE kernel needs e4m3 (`fp8e4nv`), which Ampere Triton rejects — only e5m2/`fp8e5` exists (same wall as our FP8-KV-must-be-e5m2 rule). The engine quantizes weights then SIGQUITs on the first forward. Even where FP8 *is* native (R9700 gfx1201), AWQ-int4 still wins single-user M=1 decode (Coder-30B AWQ 56 vs FP8 38 tok/s — decode is weight-byte-bound, FP8 is 2× int4). FP8 is the R9700 RDNA4 lane. Receipt: [`benchmarks/fp8-vs-awq-coder-reap.json`](benchmarks/fp8-vs-awq-coder-reap.json). |
 | Spec-decode (EAGLE3 / DFlash / MTP) | At 256K + AWQ-int4 + draft + cuda graphs we OOM on 24 GB cards. R9700's 32 GB cards have the headroom we don't. Closed as "not viable on 24 GB"; see [Speculative decoding](#speculative-decoding). |
 
 **Active work** (full task queue in `git log` + the task tracker):
@@ -101,6 +101,10 @@ Below is the **serving** picture (draft stays BF16; target quant is independent)
 | `qwen36` AWQ | DFlash, `z-lab/Qwen3.6-35B-A3B-DFlash` (`--dtype bfloat16` + spec-v2) | 126 tok/s | 126 tok/s | **~1.0× (moot)** |
 
 DFlash buys nothing on `qwen36` — graph-ON no-spec already decodes 126 tok/s @256K (174 @1K), matching DFlash at its 32K cap. A second reason (beyond the 24 GB-fit limits below) no-spec is the only viable path.
+
+![Single-user decode — AWQ int4 vs FP8 vs +draft (spec-decode) on 2×3090 sm_86](benchmarks/specdec_comparison.png)
+
+**FP8 is not a lever on this hardware** (measured 2026-06-26, the orange `✗` bars above): runtime `--quantization fp8` on a 96-expert MoE (Qwen3-Coder-30B-REAP) quantizes the weights and boots, then SIGQUITs on the *first* forward — the Triton fused-MoE kernel can't JIT e4m3 (`fp8e4nv`) on sm_86 (only e5m2/`fp8e5` compiles, same wall as our FP8-KV-must-be-e5m2 rule). Same-weights control: AWQ-int4 decodes **210 tok/s short / 179 @16K** where FP8 won't run at all. And even where FP8 *is* native (R9700 gfx1201), AWQ-int4 still wins single-user M=1 decode (Coder-30B 56 vs 38) since decode is weight-byte-bound and FP8 is 2× int4. FP8 is the R9700 lane. Receipt: [`benchmarks/fp8-vs-awq-coder-reap.json`](benchmarks/fp8-vs-awq-coder-reap.json).
 
 **Spec collapses at true 256K depth** (draft acceptance craters + the draft re-attends the full deep KV every micro-step) — confirmed for both EAGLE3 and DFlash, pure-attention and DeltaNet alike. So the documented `@256K` spec bars are short-depth-on-a-256K-server; **at depth, no-spec is the path** and spec is a ≤~64K optimization.
 

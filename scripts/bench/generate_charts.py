@@ -329,11 +329,12 @@ def make_specdec_comparison_chart():
     if not models:
         return
     x = np.arange(len(models))
-    w = 0.36
-    AWQC, SPECC = "#58a6ff", "#3fb950"
+    w = 0.27  # three bars per model: AWQ int4 | FP8 | +draft
+    AWQC, FP8C, SPECC = "#58a6ff", "#d29922", "#3fb950"
     xlabels = [f'{m["name"]}\n{m["kind"]}  •  ctx {m["ctx_k"]}K' for m in models]
 
     fig, ax = plt.subplots(1, 1, figsize=(11, 6))
+    y_top = max(m["spec_toks"] for m in models) * 1.30
 
     seen = set()
     def _lbl(key, text):
@@ -343,24 +344,42 @@ def make_specdec_comparison_chart():
 
     for i, m in enumerate(models):
         awq = m["awq_toks"]; spec = m["spec_toks"]
-        ax.bar(x[i] - w / 2, awq, w, color=AWQC, zorder=5,
+        # AWQ int4 (left)
+        ax.bar(x[i] - w, awq, w, color=AWQC, zorder=5,
                label=_lbl("awq", "AWQ int4 (no spec)"))
-        ax.text(x[i] - w / 2, awq + 2.0, f'{awq:.0f}',
+        ax.text(x[i] - w, awq + 2.0, f'{awq:.0f}',
                 ha="center", fontsize=9, color=AWQC, fontweight="bold")
-        ax.bar(x[i] + w / 2, spec, w, color=SPECC, zorder=5,
+        # FP8 (middle). fp8_toks is null on sm_86 — the FP8 W8A8 MoE kernel won't
+        # compile (Triton rejects e4m3/fp8e4nv), so draw a hatched stub + "✗" label
+        # rather than a misleading number.
+        fp8 = m.get("fp8_toks")
+        if fp8 is not None:
+            ax.bar(x[i], fp8, w, color=FP8C, zorder=5,
+                   label=_lbl("fp8", "FP8 W8A8 (no spec)"))
+            ax.text(x[i], fp8 + 2.0, f'{fp8:.0f}', ha="center", fontsize=9,
+                    color=FP8C, fontweight="bold")
+        else:
+            stub = y_top * 0.06
+            ax.bar(x[i], stub, w, color=FP8C, alpha=0.35, hatch="xxx",
+                   edgecolor=FP8C, zorder=5,
+                   label=_lbl("fp8", "FP8 W8A8 — ✗ won't compile on sm_86"))
+            ax.text(x[i], stub + 2.0, f'✗ FP8\n{m.get("fp8_note", "sm_86")}',
+                    ha="center", va="bottom", fontsize=7.5, color=FP8C,
+                    fontweight="bold")
+        # +draft spec-decode (right)
+        ax.bar(x[i] + w, spec, w, color=SPECC, zorder=5,
                label=_lbl("spec", "+ draft (spec-decode)"))
-        ax.text(x[i] + w / 2, spec + 2.0,
+        ax.text(x[i] + w, spec + 2.0,
                 f'{spec:.0f}\n{m["spec_draft"]}\n{m["speedup_x"]:.2f}×',
                 ha="center", fontsize=8, color=SPECC, fontweight="bold")
 
     ax.set_xticks(x); ax.set_xticklabels(xlabels, fontsize=9)
     ax.set_ylabel("tok/s (single user)")
-    ax.set_title("Single-user decode — AWQ vs +draft (spec-decode)",
-                 fontsize=13, fontweight="bold", pad=10)
+    ax.set_title("Single-user decode — AWQ int4 vs FP8 vs +draft (spec-decode), 2×3090 sm_86",
+                 fontsize=12.5, fontweight="bold", pad=10)
     ax.legend(loc="upper left", framealpha=0.5, edgecolor="#30363d",
               facecolor="#161b22", fontsize=9)
     ax.grid(True, axis="y", linestyle="--")
-    y_top = max(m["spec_toks"] for m in models) * 1.30
     ax.set_ylim(bottom=0, top=y_top)
 
     fig.suptitle(f'{data["title"]}\n{data["subtitle"]}',

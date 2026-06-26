@@ -1,7 +1,7 @@
 {
   "title": "Speculative decoding on our AWQ targets",
   "subtitle": "2x RTX 3090 (24GB), SGLang v0.5.12 / TP=2 — measured 2026-05-29 — drafts: lmsys EAGLE3 + z-lab DFlash, BF16 (--speculative-draft-model-quantization unquant)",
-  "footnote": "FP8 panel omitted: this rig is 2x24GB; FP8 W8A8 doesn't accelerate on Ampere sm_86 and most of the relevant models don't fit at FP8 here. FP8 lives with the R9700 RDNA4 stack.",
+  "footnote": "FP8 bars are MEASURED-unavailable (2026-06-26): FP8 W8A8 MoE does NOT compile on Ampere sm_86 — the Triton fused-MoE kernel rejects e4m3 (fp8e4nv); sm_86 Triton only supports e5m2/fp8e5. The engine quantizes weights fine, then SIGQUITs on the first forward. Same-weights control on Qwen3-Coder-30B-REAP: AWQ-int4 decodes 211 tok/s short where FP8 crashes. Even where FP8 IS native (R9700 gfx1201) AWQ-int4 still wins single-user M=1 decode (Coder-30B AWQ 56 vs FP8 38 tok/s) — decode is weight-byte-bound and FP8 is 2x int4. FP8 is the R9700 RDNA4 lane. Receipt: benchmarks/fp8-vs-awq-coder-reap.json.",
   "models": [
     {
       "name": "Qwen3-Coder-30B-A3B",
@@ -9,6 +9,8 @@
       "preset": "coder-30b (QUANT=awq_marlin)",
       "ctx_k": 16,
       "awq_toks": 185.5,
+      "fp8_toks": null,
+      "fp8_note": "sm_86 e4m3",
       "spec_toks": 306.0,
       "spec_draft": "EAGLE3",
       "spec_draft_repo": "lmsys/SGLang-EAGLE3-Qwen3-Coder-30B-A3B-Instruct-SpecForge",
@@ -22,6 +24,8 @@
       "preset": "qwen36 (--dtype bfloat16 + SGLANG_ENABLE_SPEC_V2=1 + --mamba-scheduler-strategy extra_buffer)",
       "ctx_k": 32,
       "awq_toks": 30.6,
+      "fp8_toks": null,
+      "fp8_note": "sm_86 e4m3",
       "spec_toks": 126.3,
       "spec_draft": "DFlash",
       "spec_draft_repo": "z-lab/Qwen3.6-35B-A3B-DFlash",

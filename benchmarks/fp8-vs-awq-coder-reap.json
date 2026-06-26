@@ -1,0 +1,29 @@
+{
+  "hardware": "2x RTX 3090 (GA102, sm_86, Ampere \u2014 no FP8 tensor cores)",
+  "engine": "SGLang v0.5.13.post1 TP=2, cuda graphs, disable_piecewise",
+  "method": "pure-decode tok/s via short/long delta, ignore_eos, temp 0, 3 coding prompts",
+  "note": "Same-weights A/B on Qwen3-Coder-30B-A3B-REAP (96-expert MoE): AWQ-int4 ship vs runtime FP8 (--quantization fp8 over BF16 base). FP8 weights are 8-bit vs AWQ 4-bit -> ~2x bytes/step at M=1 weight-bound decode.",
+  "results": [
+    {
+      "label": "AWQ-int4",
+      "quant": "awq_marlin",
+      "model": "/data/models/hf-mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ",
+      "ctx": 16384,
+      "boot": "OK",
+      "build_sec": 38.4,
+      "short": 210.0,
+      "~16K": 178.6
+    },
+    {
+      "label": "FP8-runtime",
+      "quant": "fp8",
+      "model": "/data/models/Qwen3-Coder-30B-A3B-REAP-BF16",
+      "boot": "WEIGHTS-OK / FORWARD-CRASH",
+      "error": "triton.compiler.errors.CompilationError in fused_moe_kernel: ValueError('type fp8e4nv not supported in this architecture. The supported fp8 dtypes are (fp8e4b15, fp8e5)')",
+      "crash_site": "sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_kernels.py::invoke_fused_moe_kernel -> triton JIT of fused_moe_kernel",
+      "finding": "FP8 W8A8 MoE does NOT run on sm_86. --quantization fp8 quantizes the weights and the engine boots, but the FIRST forward SIGQUITs the TP scheduler when the Triton fused-MoE kernel JITs with e4m3 (fp8e4nv), which Ampere Triton cannot compile (supports only fp8e5/e5m2 and fp8e4b15). Same root cause as the e5m2-only FP8-KV rule on this box. Reproduced twice (2026-06-26).",
+      "short": null,
+      "~16K": null
+    }
+  ]
+}
