@@ -1,0 +1,12 @@
+{
+  "model": "Devstral-Small-2-24B-AWQ + mattbucci/Devstral-Small-2-24B-AWQ-EAGLE3",
+  "hardware": "2x RTX 3090 TP=2",
+  "engine": "SGLang v0.5.13.post1 (TVM_FFI_GPU_BACKEND=cuda, SGLANG_ENABLE_SPEC_V2=0, num_steps=3 topk=4 draft=8)",
+  "method": "scripts/specforge/perf_devstral_spec.py — pure-decode tok/s via short/long delta (prefill cancels), warmup, ignore_eos, temp 0, 3 coding prompts",
+  "target_note": "Measured on the text-only Devstral decoder (Ministral3ForCausalLM). The FULL VLM ship (LlavaForConditionalGeneration) cannot attach EAGLE3 in sglang -- the wrapper lacks set_eagle3_layers_to_capture; text-decoder weights are identical so the decode speedup is representative.",
+  "results": [
+    {"context": "short (~40 tok)", "nospec_toks": 91.9, "spec_toks": 207.5, "speedup_x": 2.26, "accept_len": 3.32},
+    {"context": "~16K",            "nospec_toks": 80.2, "spec_toks": 153.4, "speedup_x": 1.91, "accept_len": 2.86}
+  ],
+  "takeaway": "Devstral EAGLE3 draft: ~2.3x decode speedup short, ~1.9x at 16K (single-user, coding). Spec is a <=64K win; no-spec at true 256K depth."
+}
