@@ -1,13 +1,13 @@
 #!/bin/bash
 # SGLang setup for 2x RTX 3090
 #
-# Clones SGLang v0.5.13.post1 and applies the local patches in patches/*.patch
-# (idempotent — git apply --check skips already-applied). 24 patches; verified
-# byte-identical to the live tree by the 3-gate pristine replay (056 added 2026-06-17).
-# Requires transformers 5.8.1 + flashinfer 0.6.12 + sgl-kernel 0.4.3 +
-# xgrammar 0.2.1 (0.5.13.post1 rebase 2026-06-16; env sglang-v0513 also has
-# librosa + accelerate for the Nemotron-Omni Parakeet audio path).
-# NB: 0.5.13 folds the serving runtime into the base package (no [srt] extra)
+# Clones SGLang v0.5.14 and applies the local patches in patches/*.patch
+# (idempotent — git apply --check skips already-applied). 25 patches; verified
+# byte-identical to the live tree by the 3-gate pristine replay (flipped from
+# v0.5.13.post1 2026-06-26; +056 gdn conv-state dtype cast).
+# Requires transformers 5.8.1 + flashinfer 0.6.12 [cu13] + xgrammar 0.2.1
+# (env sglang-v0514 also has librosa + accelerate for the Parakeet audio path).
+# NB: 0.5.14 folds the serving runtime into the base package (no [srt] extra)
 # and adds a mandatory Rust gRPC ext that needs protoc; patch 037 drops that
 # ext (we serve over HTTP) so `pip install -e .` works without protoc.
 # See patches/README.md for per-patch narratives.
@@ -26,11 +26,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-# Default stack = v0.5.13.post1. Override SGLANG_TAG + PATCH_DIR (+ ENV_NAME /
-# SGLANG_DIR from common.sh) to build the staged v0.5.14 stack, e.g.:
-#   SGLANG_TAG=v0.5.14 PATCH_DIR="$REPO_DIR/patches/v0.5.14" \
-#   ENV_NAME=sglang-v0514 SGLANG_DIR=/data/sglang-rebase-v0514 ./scripts/setup.sh
-SGLANG_TAG="${SGLANG_TAG:-v0.5.13.post1}"
+# Default stack = v0.5.14 (flipped 2026-06-26). The retained v0.5.13.post1 tree
+# (/data/sglang-rebase-v0513, env sglang-v0513) still serves via ENV_NAME/SGLANG_DIR
+# overrides; to REBUILD an older stack from scratch, revert the flip commit (restores
+# the v0.5.13 patch set + this tag) or override SGLANG_TAG + PATCH_DIR + ENV_NAME.
+SGLANG_TAG="${SGLANG_TAG:-v0.5.14}"
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -119,8 +119,11 @@ if [ "$SKIP_ENV" = false ]; then
     cd "$SGLANG_DIR/python"
     pip install -e .   # 0.5.12 folded srt deps into base; patch 037 dropped the gRPC Rust ext (no protoc needed)
 
-    echo "Upgrading transformers..."
-    pip install --no-deps "transformers>=5.0" gguf
+    # v0.5.14 hard-pins transformers==5.8.1 (the version the fleet is validated on,
+    # and the one 055 depends on — tx 5.8.1 lacks gemma4_unified). Pin it, do NOT use
+    # >=5.0 which can drift past 5.8.1 and silently change the gemma4_unified path.
+    echo "Pinning transformers 5.8.1 + gguf..."
+    pip install --no-deps "transformers==5.8.1" gguf
 
     # Eval/validator deps — pillow already comes in via SGLang's [srt] extras,
     # but imageio[ffmpeg] is needed for the validate_capabilities.py video

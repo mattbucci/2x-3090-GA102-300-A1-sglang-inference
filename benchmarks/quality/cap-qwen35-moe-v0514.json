@@ -1,0 +1,30 @@
+{
+  "qwen35-moe-v0514": {
+    "tag": "qwen35-moe-v0514",
+    "model": "qwen35-moe",
+    "timestamp": "2026-06-26 11:26",
+    "elapsed_sec": 42.5,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen answer_ok TRUNCATED (8192 tok, finish=length)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=\"(reasoning)the user wants a short description of the image.\\n1.  **identify the main subject:** it's a circle.\\n2.  **identify the co\""
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  }
+}

@@ -1,12 +1,12 @@
 {
   "tag": "qwen35-moe-v0514",
-  "timestamp": "2026-06-26 03:38",
+  "timestamp": "2026-06-26 11:04",
   "max_context": 262144,
   "thinking": {
     "results": [
       {
         "name": "simple_mc",
-        "tokens": 166,
+        "tokens": 195,
         "finish": "stop",
         "has_think_tags": false,
         "clean_answer": true,
@@ -30,7 +30,7 @@
       },
       {
         "name": "code",
-        "tokens": 279,
+        "tokens": 275,
         "finish": "stop",
         "has_think_tags": false,
         "clean_answer": true,
@@ -38,68 +38,68 @@
       },
       {
         "name": "hard_mc",
-        "tokens": 2560,
-        "finish": "length",
+        "tokens": 2220,
+        "finish": "stop",
         "has_think_tags": false,
         "clean_answer": true,
-        "truncated": true
+        "truncated": false
       }
     ],
     "think_tags_rate": 0.0,
     "clean_answer_rate": 1.0,
-    "truncation_rate": 0.4,
-    "avg_tokens": 1144.4
+    "truncation_rate": 0.2,
+    "avg_tokens": 1081.4
   },
   "mmlu": {
-    "correct": 16,
-    "total": 20,
-    "accuracy": 0.8
+    "correct": 26,
+    "total": 30,
+    "accuracy": 0.8666666666666667
   },
   "humaneval": {
-    "passed": 8,
-    "total": 8,
+    "passed": 25,
+    "total": 25,
     "pass_rate": 1.0
   },
   "labbench": {
     "LitQA2": {
-      "correct": 1,
-      "total": 3,
-      "accuracy": 0.3333333333333333
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
     },
     "DbQA": {
-      "correct": 0,
-      "total": 3,
-      "accuracy": 0.0
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
     },
     "SuppQA": {
-      "correct": 0,
-      "total": 3,
-      "accuracy": 0.0
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
     },
     "TableQA": {
-      "correct": 0,
-      "total": 3,
-      "accuracy": 0.0
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
     },
     "ProtocolQA": {
-      "correct": 1,
-      "total": 3,
-      "accuracy": 0.3333333333333333
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
     },
     "SeqQA": {
       "correct": 0,
-      "total": 3,
+      "total": 8,
       "accuracy": 0.0
     },
     "CloningScenarios": {
       "correct": 0,
-      "total": 3,
+      "total": 8,
       "accuracy": 0.0
     },
     "_overall": {
-      "correct": 2,
-      "total": 21,
-      "accuracy": 0.09523809523809523
+      "correct": 5,
+      "total": 56,
+      "accuracy": 0.08928571428571429
     }
   },
   "needle": {
@@ -131,6 +131,21 @@
       },
       {
         "context": 16384,
+        "depth": 0.9,
+        "found": true
+      },
+      {
+        "context": 65536,
+        "depth": 0.1,
+        "found": true
+      },
+      {
+        "context": 65536,
+        "depth": 0.5,
+        "found": true
+      },
+      {
+        "context": 65536,
         "depth": 0.9,
         "found": true
       },

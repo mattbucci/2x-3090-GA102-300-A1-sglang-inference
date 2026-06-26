@@ -1,6 +1,6 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
-High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.13.post1** + 24 local patches (flipped from v0.5.12 on 2026-06-16 — fleet re-validated, old stack kept for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
+High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.14** + 25 local patches (flipped from v0.5.13.post1 on 2026-06-26 — full fleet + capability probes re-validated, no regressions, gemma4-31b/12b 256K-needle *improved* 0.4/0.6→1.0; old stack kept for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 > **Active cross-team deliverable:** SpecForge-train EAGLE3 spec drafts for R9700's pure-attention coders (Devstral-24B ✅ delivered, then Qwen3-VL-32B) — see [Speculative decoding](#speculative-decoding). Status + recipe: [`scripts/specforge/eagle3_training_plan.md`](scripts/specforge/eagle3_training_plan.md).
 >
@@ -135,7 +135,7 @@ One caveat carried forward: `check_awq_scales.py` reads native-AWQ format — CT
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # clone SGLang v0.5.13.post1, apply patches, create conda env
+./scripts/setup.sh                          # clone SGLang v0.5.14, apply patches, create conda env
 
 # TP=2 / 256K presets (matrix standard):
 ./scripts/launch.sh qwen3-ream              # 262K @ 107 tok/s — REAM merged MoE, 96 experts
@@ -237,7 +237,7 @@ Full host-side scaffold + toolchain notes (opencode + little-coder + claw-code, 
 | **Qwen3.6-REAM-A3B AWQ** | DeltaNet+MoE A3B (192 exp, VL) | **262K** | **139** | `qwen36-ream` | [`mattbucci/Qwen3.6-REAM-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-REAM-A3B-AWQ). Vision tower grafted. Bake-off 176/300 = 58.7% × opencode. |
 | **Qwen3-30B-Instruct-2507 REAM AWQ** | MoE A3B (96 exp) | **262K** | **107** | `qwen3-ream` | [`mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ`](https://huggingface.co/mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ). REAM 128→96; text-only generalist; fastest preset (183→107 tok/s @ 1K/250K). |
 | **Qwen3.5-28B MoE REAP** | DeltaNet+MoE A3B (205 exp, VL) | **262K** | **138** | `qwen35-moe` | Cerebras REAP of Qwen3.5-28B-A3B; thinking+vision. |
-| **Nemotron-3-Nano-Omni-30B-A3B AWQ** | Mamba2-hybrid MoE A3B (128 exp, AVLM) | **262K** ✓ (5.25M pool) | 103 (**98 @256K**) | `nemotron3-omni` | [`mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ`](https://huggingface.co/mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ). int4; **6/6 caps** (basic+thinking+tool+vision+**video**+**audio** — the only audio ship). Serves on v0.5.13.post1 via **patches 052** (non-gated squared-ReLU `moe_wna16`) + **053** (EVS video routing, ex-R9700 057). Mamba2 O(1) recurrent → decode ~flat (102.7→97.8 @255K); beats R9700 FP8 (74.79/49.22). |
+| **Nemotron-3-Nano-Omni-30B-A3B AWQ** | Mamba2-hybrid MoE A3B (128 exp, AVLM) | **262K** ✓ (5.25M pool) | 103 (**98 @256K**) | `nemotron3-omni` | [`mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ`](https://huggingface.co/mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ). int4; **6/6 caps** (basic+thinking+tool+vision+**video**+**audio** — the only audio ship). ⚠ **Does NOT boot on the v0.5.14 default** (shared-expert down_proj intermediate 1856 fails AWQ-Marlin `min_thread_k=128`; v0.5.14's AWQ-scheme refactor lost the non-marlin fallback for that shape). Serve via the **v0.5.13.post1 rollback** (`ENV_NAME=sglang-v0513 SGLANG_DIR=/data/sglang-rebase-v0513`) — where **patches 052** (non-gated squared-ReLU `moe_wna16`) + **053** (EVS video routing, ex-R9700 057) make it 6/6 — until a per-layer marlin-fallback fix lands. Mamba2 O(1) recurrent → decode ~flat (102.7→97.8 @255K); beats R9700 FP8 (74.79/49.22). |
 | **Qwen3-Coder-30B-A3B AWQ** | MoE A3B (128 exp) | **262K** | ~30 @256K | `coder-30b` or `coder-30b-eval` | [`mattbucci/Qwen3-Coder-30B-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-AWQ). Two presets serve the same model; for short-ctx batch-decode benchmarks override `CTX=16384 MAX_RUNNING=32 ./scripts/launch.sh coder-30b` (peaks ~187 tok/s @ 1K). |
 | Coder-REAP-30B AWQ-Marlin | MoE A3B (96 exp) | **262K** | 109 | `coder-reap-25b` | [`mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) (R9700 in-house). |
 | **Gemma 4 31B Dense AWQ** | Dense (VL) | **262K** ✓ (347K pool) | 57 (31 @64K, **22 @256K**) | `gemma4-31b` | [`mattbucci/gemma-4-31B-AWQ`](https://huggingface.co/mattbucci/gemma-4-31B-AWQ). LM INT4, vision tower FP16, **KV fp8_e5m2**. Tool-use 1.0 → 258K true tokens, 5/5 caps incl. video. KV 24K→347K 2026-06-10/11 (`--swa-full-tokens-ratio 0.05` + `MEM 0.92` + e5m2 FP8 KV — e5m2 is the only FP8 that compiles on the triton-forced path, sm_86 rejects e4m3; declared 262,144 now fits the pool with 32% headroom). |
@@ -290,7 +290,7 @@ Each MoE base should ship in three flavors: **native** (no expert compression), 
 | Qwen3.6-VL-30B-A3B (multimodal A3B) | ❌ | ⚠ atbender pre-pruned, vision broken | ❌ |
 | Gemma 4 26B A4B (103e MoE+VL) | ✅ | ✅ (21B-REAP, Cerebras) | ❌ |
 | Qwen3-Coder-Next-80B-A3B (512e) | — too big @ AWQ | — | ✅ ~60B effective |
-| Nemotron-3-Nano-Omni-30B-A3B (128e, AVLM) | ✅ serves (v0.5.13 + patches 052/053, 6/6 caps) | ❌ | ❌ |
+| Nemotron-3-Nano-Omni-30B-A3B (128e, AVLM) | ⚠ v0.5.13 rollback only (6/6 caps; v0.5.14 AWQ-marlin 1856 boot fail) | ❌ | ❌ |
 
 **Calibration backlog (prioritized):**
 
@@ -397,26 +397,26 @@ Early low rates (gemma 0.2–0.4, devstral 0.6, dense 0.8) were **KV-pool / over
 
 ```bash
 ./scripts/setup.sh
-# or manually ($SGLANG_DIR defaults to components/sglang; the live tree is /data/sglang-rebase-v0513):
-cd "$SGLANG_DIR" && git checkout v0.5.13.post1
+# or manually (the live tree is /data/sglang-rebase-v0514):
+cd "$SGLANG_DIR" && git checkout v0.5.14
 for p in "$REPO_DIR"/patches/*.patch; do git apply "$p"; done
 cd python && pip install -e .
 ```
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.13.post1 + 24 local patches |
+| SGLang | v0.5.14 + 25 local patches |
 | PyTorch | 2.11.0 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
-| transformers | 5.8.1 (v0.5.13 pin) |
-| FlashInfer | 0.6.11.post1 |
+| transformers | 5.8.1 (v0.5.14 pin) |
+| FlashInfer | 0.6.12 [cu13] |
 | compressed-tensors | 0.15.0.1 (serving env); 0.15.1.dev (`quant` calibration env) |
 
-The serving tree lives at `/data/sglang-rebase-v0513` (env `sglang-v0513`); launch with `ENV_NAME`/`SGLANG_DIR` overrides (v0.5.12 kept as rollback). Calibration uses the separate `quant` env.
+The serving tree lives at `/data/sglang-rebase-v0514` (env `sglang-v0514`); launch with `ENV_NAME`/`SGLANG_DIR` overrides (v0.5.13.post1 / `/data/sglang-rebase-v0513` / env `sglang-v0513` kept as rollback — and the path for `nemotron3-omni`, which doesn't boot on v0.5.14). Calibration uses the separate `quant` env.
 
 ## Patches
 
-**24 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang **v0.5.13.post1** — cover AWQ/CT int4 weight loading, Qwen3.5/3.6 enablement, Gemma 4 bring-up (26B MoE / 31B dense / 12B unified omni), Nemotron-3-Nano-Omni serving (052/053), MoE gelu coverage, kernel correctness & precision, sm_86 enablement, and serving/agentic robustness. The v0.5.12→v0.5.13 flip (2026-06-16) dropped 6 as upstreamed, regenerated 4, and added 052/054; the 3-gate pristine replay is green (applies clean on pristine v0.5.13.post1, byte-identical to the live tree, rerun-safe). Per-patch narratives, the upstream-PR ledger, and the patch-hygiene gates live in [`patches/README.md`](patches/README.md); the flip receipt is [`patches/v0.5.13-rebase-status.md`](patches/v0.5.13-rebase-status.md).
+**25 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang **v0.5.14** — cover AWQ/CT int4 weight loading, Qwen3.5/3.6 enablement, Gemma 4 bring-up (26B MoE / 31B dense / 12B unified omni), Nemotron-3-Nano-Omni serving (052/053), MoE gelu coverage, kernel correctness & precision, sm_86 enablement, and serving/agentic robustness. The v0.5.13.post1→v0.5.14 flip (2026-06-26) was the smallest yet — 21 clean, 3 regenerated (017/051/053), 0 upstreamed, +1 new (**056** gdn conv-state dtype cast for v0.5.14's mamba-track radix path); the 3-gate pristine replay is green (applies clean on pristine v0.5.14, byte-identical to the live tree, rerun-safe). Per-patch narratives, the upstream-PR ledger, and the patch-hygiene gates live in [`patches/README.md`](patches/README.md); the flip receipt + full-probe results are [`patches/v0.5.14-rebase-status.md`](patches/v0.5.14-rebase-status.md).
 
 ## Quantization
 
@@ -443,7 +443,7 @@ python scripts/eval/check_awq_scales.py <awq_dst> --base <bf16_base_dir>        
 ## Repo layout
 
 ```
-patches/                  # SGLang v0.5.12 patches — narratives in patches/README.md
+patches/                  # SGLang v0.5.14 patches (25) — narratives in patches/README.md
 benchmarks/               # per-model JSON; quality/ = MMLU/HumanEval/LAB-Bench/Needle + capability matrix
 scripts/
   launch.sh / common.sh / setup.sh
