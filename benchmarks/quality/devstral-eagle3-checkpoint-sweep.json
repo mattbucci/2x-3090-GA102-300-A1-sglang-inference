@@ -1,0 +1,22 @@
+{
+  "model": "Devstral-Small-2-24B-AWQ-EAGLE3",
+  "target": "mattbucci/Devstral-Small-2-24B-AWQ (text-only)",
+  "hardware": "2x RTX 3090 TP=2",
+  "engine": "SGLang v0.5.13.post1 (TVM_FFI_GPU_BACKEND=cuda, SGLANG_ENABLE_SPEC_V2=0)",
+  "eval": "scripts/specforge/eval_devstral_eagle3.py, 3 coding prompts, temp 0, num_steps=3, <=64K",
+  "metric": "mean accept_len (ceiling = num_steps+1 = 4)",
+  "training": "SpecForge online EAGLE3, 16K max-length, ttt=3, 8-bit AdamW, ~6000 packed OpenCodeInstruct code seqs",
+  "baseline_2001seq": {"checkpoint": "epoch_1_step_4000 (2 ep over 2001 seqs)", "accept_len": 2.92},
+  "sweep_6001seq": [
+    {"checkpoint": "epoch_0_step_6000",  "passes": 1, "accept_len": 2.79},
+    {"checkpoint": "epoch_1_step_12000", "passes": 2, "accept_len": 3.33, "SHIPPED": true},
+    {"checkpoint": "epoch_2_step_18003", "passes": 3, "accept_len": 2.95, "note": "overfit regression"}
+  ],
+  "shipped": "epoch_1_step_12000 -> mattbucci/Devstral-Small-2-24B-AWQ-EAGLE3 (accept_len 3.33, 83% of ttt=3 ceiling)",
+  "findings": [
+    "2 epochs over 6K diverse seqs is the sweet spot; 1 epoch undertrains (2.79), 3 epochs overfit (2.95)",
+    "more+diverse data beat the 2001-seq baseline (2.92 -> 3.33, +14%)",
+    "ttt/num_steps capped at 3 by 24GB training memory; 3.5 gate unreachable at ttt=3 (ceiling 4)",
+    "serve at num_steps=3 (deeper serving does not help; num_steps=5 measured 2.87)"
+  ]
+}
