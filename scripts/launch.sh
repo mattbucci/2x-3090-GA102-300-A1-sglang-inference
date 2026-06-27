@@ -656,6 +656,16 @@ apply_preset() {
             # ⚠ 256K-on-triton needs R9700 patch 047 (hybrid v_head_dim); trying
             # FlashInfer (default) first — graft 047 if 256K OOMs/errs on triton.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ}"
+            # MUST force moe_wna16 — the auto-detected awq_marlin path FAILS on this
+            # model on BOTH v0.5.13 and v0.5.14: the int4 MoE doesn't TP-shard under
+            # awq/marlin (22.6 GB/card OOM) and the shared-expert down_proj intermediate
+            # 3712 shards to 1856 @TP=2, which is not divisible by Marlin min_thread_k=128.
+            # moe_wna16 TP-shards the packed int4 MoE and accepts the 1856 shape (patches
+            # 052 non-gated squared-ReLU + 053 EVS video). This was the QUANT=moe_wna16
+            # override used for the 6/6 validation, now baked in (was missing from the
+            # preset → plain `launch.sh nemotron3-omni` always 1856'd). See
+            # benchmarks/nemotron3-omni-awq-serve-2026-06-16.md.
+            QUANT="${QUANT:-moe_wna16}"
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser nemotron_3"

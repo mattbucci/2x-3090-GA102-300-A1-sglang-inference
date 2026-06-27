@@ -237,7 +237,7 @@ Full host-side scaffold + toolchain notes (opencode + little-coder + claw-code, 
 | **Qwen3.6-REAM-A3B AWQ** | DeltaNet+MoE A3B (192 exp, VL) | **262K** | **139** | `qwen36-ream` | [`mattbucci/Qwen3.6-REAM-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3.6-REAM-A3B-AWQ). Vision tower grafted. Bake-off 176/300 = 58.7% × opencode. |
 | **Qwen3-30B-Instruct-2507 REAM AWQ** | MoE A3B (96 exp) | **262K** | **107** | `qwen3-ream` | [`mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ`](https://huggingface.co/mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ). REAM 128→96; text-only generalist; fastest preset (183→107 tok/s @ 1K/250K). |
 | **Qwen3.5-28B MoE REAP** | DeltaNet+MoE A3B (205 exp, VL) | **262K** | **138** | `qwen35-moe` | Cerebras REAP of Qwen3.5-28B-A3B; thinking+vision. |
-| **Nemotron-3-Nano-Omni-30B-A3B AWQ** | Mamba2-hybrid MoE A3B (128 exp, AVLM) | **262K** ✓ (5.25M pool) | 103 (**98 @256K**) | `nemotron3-omni` | [`mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ`](https://huggingface.co/mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ). int4; **6/6 caps** (basic+thinking+tool+vision+**video**+**audio** — the only audio ship). ⚠ **Does NOT boot on the v0.5.14 default** (shared-expert down_proj intermediate 1856 fails AWQ-Marlin `min_thread_k=128`; v0.5.14's AWQ-scheme refactor lost the non-marlin fallback for that shape). Serve via the **v0.5.13.post1 rollback** (`ENV_NAME=sglang-v0513 SGLANG_DIR=/data/sglang-rebase-v0513`) — where **patches 052** (non-gated squared-ReLU `moe_wna16`) + **053** (EVS video routing, ex-R9700 057) make it 6/6 — until a per-layer marlin-fallback fix lands. Mamba2 O(1) recurrent → decode ~flat (102.7→97.8 @255K); beats R9700 FP8 (74.79/49.22). |
+| **Nemotron-3-Nano-Omni-30B-A3B AWQ** | Mamba2-hybrid MoE A3B (128 exp, AVLM) | **262K** ✓ (5.25M pool) | 103 (**98 @256K**) | `nemotron3-omni` | [`mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ`](https://huggingface.co/mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ). int4; **6/6 caps** (basic+thinking+tool+vision+**video**+**audio** — the only audio ship). Serves on v0.5.14 (and v0.5.13) via **`--quantization moe_wna16`** — now baked into the `nemotron3-omni` preset (`QUANT=moe_wna16`). The auto-detected `awq_marlin` path fails on this model on BOTH versions (the int4 MoE doesn't TP-shard under marlin → 22.6 GB/card OOM, and the shared-expert down_proj 3712 shards to 1856 @TP=2, not divisible by `min_thread_k=128`); moe_wna16 TP-shards the packed int4 MoE and accepts the 1856 shape. Made 6/6 by **patches 052** (non-gated squared-ReLU `moe_wna16`) + **053** (EVS video routing, ex-R9700 057). Mamba2 O(1) recurrent → decode ~flat (102.7→97.8 @255K); beats R9700 FP8 (74.79/49.22). |
 | **Qwen3-Coder-30B-A3B AWQ** | MoE A3B (128 exp) | **262K** | ~30 @256K | `coder-30b` or `coder-30b-eval` | [`mattbucci/Qwen3-Coder-30B-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-AWQ). Two presets serve the same model; for short-ctx batch-decode benchmarks override `CTX=16384 MAX_RUNNING=32 ./scripts/launch.sh coder-30b` (peaks ~187 tok/s @ 1K). |
 | Coder-REAP-30B AWQ-Marlin | MoE A3B (96 exp) | **262K** | 109 | `coder-reap-25b` | [`mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) (R9700 in-house). |
 | **Gemma 4 31B Dense AWQ** | Dense (VL) | **262K** ✓ (347K pool) | 57 (31 @64K, **22 @256K**) | `gemma4-31b` | [`mattbucci/gemma-4-31B-AWQ`](https://huggingface.co/mattbucci/gemma-4-31B-AWQ). LM INT4, vision tower FP16, **KV fp8_e5m2**. Tool-use 1.0 → 258K true tokens, 5/5 caps incl. video. KV 24K→347K 2026-06-10/11 (`--swa-full-tokens-ratio 0.05` + `MEM 0.92` + e5m2 FP8 KV — e5m2 is the only FP8 that compiles on the triton-forced path, sm_86 rejects e4m3; declared 262,144 now fits the pool with 32% headroom). |
@@ -290,7 +290,7 @@ Each MoE base should ship in three flavors: **native** (no expert compression), 
 | Qwen3.6-VL-30B-A3B (multimodal A3B) | ❌ | ⚠ atbender pre-pruned, vision broken | ❌ |
 | Gemma 4 26B A4B (103e MoE+VL) | ✅ | ✅ (21B-REAP, Cerebras) | ❌ |
 | Qwen3-Coder-Next-80B-A3B (512e) | — too big @ AWQ | — | ✅ ~60B effective |
-| Nemotron-3-Nano-Omni-30B-A3B (128e, AVLM) | ⚠ v0.5.13 rollback only (6/6 caps; v0.5.14 AWQ-marlin 1856 boot fail) | ❌ | ❌ |
+| Nemotron-3-Nano-Omni-30B-A3B (128e, AVLM) | ✅ serves (v0.5.14, moe_wna16 + patches 052/053, 6/6 caps) | ❌ | ❌ |
 
 **Calibration backlog (prioritized):**
 
@@ -412,7 +412,7 @@ cd python && pip install -e .
 | FlashInfer | 0.6.12 [cu13] |
 | compressed-tensors | 0.15.0.1 (serving env); 0.15.1.dev (`quant` calibration env) |
 
-The serving tree lives at `/data/sglang-rebase-v0514` (env `sglang-v0514`); launch with `ENV_NAME`/`SGLANG_DIR` overrides (v0.5.13.post1 / `/data/sglang-rebase-v0513` / env `sglang-v0513` kept as rollback — and the path for `nemotron3-omni`, which doesn't boot on v0.5.14). Calibration uses the separate `quant` env.
+The serving tree lives at `/data/sglang-rebase-v0514` (env `sglang-v0514`); launch with `ENV_NAME`/`SGLANG_DIR` overrides (v0.5.13.post1 / `/data/sglang-rebase-v0513` / env `sglang-v0513` kept as rollback). Calibration uses the separate `quant` env.
 
 ## Patches
 

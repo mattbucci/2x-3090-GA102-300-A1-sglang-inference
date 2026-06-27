@@ -32,8 +32,7 @@ export CONDA_BASE
 # (/data/sglang-rebase-v0513, env `sglang-v0513`), v0.5.12 (/data/sglang-rebase-v0512,
 # env `sglang-v0512`) and v0.5.11 (components/sglang, env `sglang`) trees are retained
 # untouched for one-revert rollback — revert this commit to fall back. Override
-# ENV_NAME/SGLANG_DIR to run an older stack (e.g. nemotron3-omni, which does NOT serve
-# on v0.5.14 — AWQ-marlin 1856 shared-expert — needs the v0.5.13 override).
+# ENV_NAME/SGLANG_DIR to run an older stack.
 ENV_NAME="${ENV_NAME:-sglang-v0514}"
 SGLANG_DIR="${SGLANG_DIR:-/data/sglang-rebase-v0514}"
 MODELS_DIR="${MODELS_DIR:-$HOME/AI/models}"
