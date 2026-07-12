@@ -1,0 +1,129 @@
+diff --git a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
+index b35490a..de276ca 100644
+--- a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
++++ b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
+@@ -195,7 +195,8 @@ def _fwd_kernel_stage1(
+                 mask=(offs_n[:, None] < split_kv_end) & (mask_d[None, :]),
+                 other=0.0,
+             )
+-            qk = tl.sum(q[None, :] * k, 1)
++            # FP32 QK computation to avoid BF16 precision loss over many KV tokens
++            qk = tl.sum(q[None, :].to(tl.float32) * k.to(tl.float32), 1)
+             qk *= sm_scale_withk
+ 
+             if logit_cap > 0:
+@@ -225,11 +226,12 @@ def _fwd_kernel_stage1(
+                 other=0.0,
+             )
+ 
++            # Online softmax in FP32 — BF16 exp/rescaling compounds errors catastrophically
+             n_e_max = tl.maximum(tl.max(qk, 0), e_max)
+             re_scale = tl.exp(e_max - n_e_max)
+             p = tl.exp(qk - n_e_max)
+             acc *= re_scale
+-            acc += tl.sum(p[:, None] * v, 0)
++            acc += tl.sum(p[:, None] * v.to(tl.float32), 0)
+ 
+             e_sum = e_sum * re_scale + tl.sum(p, 0)
+             e_max = n_e_max
+@@ -516,11 +518,13 @@ def _fwd_grouped_kernel_stage1(
+                     other=0.0,
+                 )
+ 
++            # Online softmax in FP32
+             n_e_max = tl.maximum(tl.max(qk, 1), e_max)
+             re_scale = tl.exp(e_max - n_e_max)
+             p = tl.exp(qk - n_e_max[:, None])
+             acc *= re_scale[:, None]
+-            acc += tl.dot(p.to(v.dtype), v)
++            # FP32 value accumulation — cast v to FP32 to preserve p's FP32 precision
++            acc += tl.dot(p.to(tl.float32), v.to(tl.float32))
+ 
+             e_sum = e_sum * re_scale + tl.sum(p, 1)
+             e_max = n_e_max
+@@ -715,8 +719,8 @@ def _fwd_kernel_stage2(
+         if split_kv_end > split_kv_start:
+             tv = tl.load(
+                 Mid_O + offs_v + split_kv_id * stride_mid_os, mask=mask_d, other=0.0
+-            )
+-            tlogic = tl.load(Mid_O_1 + offs_logic + split_kv_id * stride_mid_os // Lv)
++            ).to(tl.float32)
++            tlogic = tl.load(Mid_O_1 + offs_logic + split_kv_id * stride_mid_os // Lv).to(tl.float32)
+             n_e_max = tl.maximum(tlogic, e_max)
+ 
+             old_scale = tl.exp(e_max - n_e_max)
+diff --git a/python/sglang/srt/layers/attention/triton_ops/extend_attention.py b/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
+index 37d96d3..f6b914b 100644
+--- a/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
++++ b/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
+@@ -421,7 +421,8 @@ def _fwd_kernel(
+                 mask=(mask_n[None, :]) & (mask_d[:, None]),
+                 other=0.0,
+             )
+-            qk = tl.dot(q.to(k.dtype), k)
++            # FP32 QK dot product — preserve q precision, cast k to q dtype
++            qk = tl.dot(q, k.to(q.dtype))
+             if BLOCK_DPE > 0:
+                 if PAGE_SIZE == 1:
+                     offs_kpe = (
+@@ -441,7 +442,7 @@ def _fwd_kernel(
+                     mask=mask_n[None, :],
+                     other=0.0,
+                 )
+-                qk += tl.dot(qpe.to(kpe.dtype), kpe)
++                qk += tl.dot(qpe, kpe.to(qpe.dtype))
+             qk *= sm_scale * k_scale
+ 
+             if logit_cap > 0:
+@@ -478,8 +479,8 @@ def _fwd_kernel(
+                 mask=mask_n[:, None] & mask_dv[None, :],
+                 other=0.0,
+             )
+-            p = p.to(v.dtype)
+-            acc = acc * re_scale[:, None] + tl.dot(p, v) * v_scale
++            # FP32 value accumulation — keep p in FP32, cast v to FP32 (256K precision)
++            acc = acc * re_scale[:, None] + tl.dot(p.to(tl.float32), v.to(tl.float32)) * v_scale
+ 
+             e_max = n_e_max
+ 
+@@ -583,8 +584,8 @@ def _fwd_kernel(
+             v = tl.load(
+                 V_Extend + offs_v, mask=mask_n[:, None] & mask_dv[None, :], other=0.0
+             )
+-            p = p.to(v.dtype)
+-            acc = acc * re_scale[:, None] + tl.dot(p, v)
++            # FP32 value accumulation (256K precision)
++            acc = acc * re_scale[:, None] + tl.dot(p.to(tl.float32), v.to(tl.float32))
+ 
+             e_max = n_e_max
+ 
+@@ -996,7 +997,8 @@ def _fwd_kernel_unified(
+                 other=0.0,
+             )
+ 
+-            qk = tl.dot(q.to(k.dtype), k)
++            # FP32 QK dot product — preserve q precision, cast k to q dtype
++            qk = tl.dot(q, k.to(q.dtype))
+             if BLOCK_DPE > 0:
+                 if PAGE_SIZE == 1:
+                     offs_kpe = (
+@@ -1016,7 +1018,7 @@ def _fwd_kernel_unified(
+                     mask=mask_n[None, :],
+                     other=0.0,
+                 )
+-                qk += tl.dot(qpe.to(kpe.dtype), kpe)
++                qk += tl.dot(qpe, kpe.to(qpe.dtype))
+ 
+             qk *= sm_scale_withk
+ 
+@@ -1056,8 +1058,8 @@ def _fwd_kernel_unified(
+                 mask=mask_n[:, None] & mask_dv[None, :],
+                 other=0.0,
+             )
+-            p = p.to(v.dtype)
+-            acc = acc * re_scale[:, None] + tl.dot(p, v)
++            # FP32 value accumulation (256K precision)
++            acc = acc * re_scale[:, None] + tl.dot(p.to(tl.float32), v.to(tl.float32))
+ 
+             e_max = n_e_max
+ 
