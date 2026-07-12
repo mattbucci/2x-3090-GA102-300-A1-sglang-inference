@@ -58,10 +58,14 @@ def main():
         row = [f"{preset:<16}"]
 
         def cell(get, tol, name, fmt="{:.2f}"):
-            ov = get(old) if old else None
-            nv = get(new)
+            def safe(d):
+                try:
+                    return get(d) if d else None
+                except (KeyError, TypeError):
+                    return None
+            ov, nv = safe(old), safe(new)
             s = f"{fmt.format(ov) if ov is not None else '—'}→{fmt.format(nv) if nv is not None else '—'}"
-            if ov is not None and nv is not None and nv < ov - tol:
+            if ov is not None and nv is not None and nv < ov - tol - 1e-9:
                 regressions.append(f"{preset}: {name} {ov:.3f}->{nv:.3f}")
                 s += " ⚠"
             return s

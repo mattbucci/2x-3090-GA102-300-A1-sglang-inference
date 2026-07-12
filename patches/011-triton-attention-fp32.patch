@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
-index b42ffa433..1028d8310 100644
+index b35490a..de276ca 100644
 --- a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
 +++ b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
-@@ -123,7 +123,8 @@ def _fwd_kernel_stage1(
+@@ -195,7 +195,8 @@ def _fwd_kernel_stage1(
                  mask=(offs_n[:, None] < split_kv_end) & (mask_d[None, :]),
                  other=0.0,
              )
@@ -12,7 +12,7 @@ index b42ffa433..1028d8310 100644
              qk *= sm_scale_withk
  
              if logit_cap > 0:
-@@ -145,11 +146,12 @@ def _fwd_kernel_stage1(
+@@ -225,11 +226,12 @@ def _fwd_kernel_stage1(
                  other=0.0,
              )
  
@@ -26,7 +26,7 @@ index b42ffa433..1028d8310 100644
  
              e_sum = e_sum * re_scale + tl.sum(p, 0)
              e_max = n_e_max
-@@ -388,11 +390,13 @@ def _fwd_grouped_kernel_stage1(
+@@ -516,11 +518,13 @@ def _fwd_grouped_kernel_stage1(
                      other=0.0,
                  )
  
@@ -41,7 +41,7 @@ index b42ffa433..1028d8310 100644
  
              e_sum = e_sum * re_scale + tl.sum(p, 1)
              e_max = n_e_max
-@@ -571,8 +575,8 @@ def _fwd_kernel_stage2(
+@@ -715,8 +719,8 @@ def _fwd_kernel_stage2(
          if split_kv_end > split_kv_start:
              tv = tl.load(
                  Mid_O + offs_v + split_kv_id * stride_mid_os, mask=mask_d, other=0.0
@@ -53,10 +53,10 @@ index b42ffa433..1028d8310 100644
  
              old_scale = tl.exp(e_max - n_e_max)
 diff --git a/python/sglang/srt/layers/attention/triton_ops/extend_attention.py b/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
-index e6a353e9b..17eea3732 100644
+index 37d96d3..f6b914b 100644
 --- a/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
 +++ b/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
-@@ -382,7 +382,8 @@ def _fwd_kernel(
+@@ -421,7 +421,8 @@ def _fwd_kernel(
                  mask=(mask_n[None, :]) & (mask_d[:, None]),
                  other=0.0,
              )
@@ -64,9 +64,9 @@ index e6a353e9b..17eea3732 100644
 +            # FP32 QK dot product — preserve q precision, cast k to q dtype
 +            qk = tl.dot(q, k.to(q.dtype))
              if BLOCK_DPE > 0:
-                 offs_kpe = (
-                     offs_kv_loc[None, :] * stride_buf_kbs
-@@ -394,7 +395,7 @@ def _fwd_kernel(
+                 if PAGE_SIZE == 1:
+                     offs_kpe = (
+@@ -441,7 +442,7 @@ def _fwd_kernel(
                      mask=mask_n[None, :],
                      other=0.0,
                  )
@@ -75,7 +75,7 @@ index e6a353e9b..17eea3732 100644
              qk *= sm_scale * k_scale
  
              if logit_cap > 0:
-@@ -423,8 +424,8 @@ def _fwd_kernel(
+@@ -478,8 +479,8 @@ def _fwd_kernel(
                  mask=mask_n[:, None] & mask_dv[None, :],
                  other=0.0,
              )
@@ -86,7 +86,7 @@ index e6a353e9b..17eea3732 100644
  
              e_max = n_e_max
  
-@@ -527,8 +528,8 @@ def _fwd_kernel(
+@@ -583,8 +584,8 @@ def _fwd_kernel(
              v = tl.load(
                  V_Extend + offs_v, mask=mask_n[:, None] & mask_dv[None, :], other=0.0
              )
@@ -97,7 +97,7 @@ index e6a353e9b..17eea3732 100644
  
              e_max = n_e_max
  
-@@ -886,7 +887,8 @@ def _fwd_kernel_unified(
+@@ -996,7 +997,8 @@ def _fwd_kernel_unified(
                  other=0.0,
              )
  
@@ -105,9 +105,9 @@ index e6a353e9b..17eea3732 100644
 +            # FP32 QK dot product — preserve q precision, cast k to q dtype
 +            qk = tl.dot(q, k.to(q.dtype))
              if BLOCK_DPE > 0:
-                 offs_kpe = (
-                     offs_kv_loc[None, :] * stride_buf_kbs
-@@ -898,7 +900,7 @@ def _fwd_kernel_unified(
+                 if PAGE_SIZE == 1:
+                     offs_kpe = (
+@@ -1016,7 +1018,7 @@ def _fwd_kernel_unified(
                      mask=mask_n[None, :],
                      other=0.0,
                  )
@@ -116,7 +116,7 @@ index e6a353e9b..17eea3732 100644
  
              qk *= sm_scale_withk
  
-@@ -930,8 +932,8 @@ def _fwd_kernel_unified(
+@@ -1056,8 +1058,8 @@ def _fwd_kernel_unified(
                  mask=mask_n[:, None] & mask_dv[None, :],
                  other=0.0,
              )

@@ -1,0 +1,38 @@
+{
+  "nemotron3-omni-v0515": {
+    "tag": "nemotron3-omni-v0515",
+    "model": "nemotron3-omni",
+    "timestamp": "2026-07-12 00:32",
+    "elapsed_sec": 8.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='\\nparis'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (133 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)the user wants a short description of the image.\\n1.  **analyze the image:** i see a single geometric shape on a white ba'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'across', 'circle', 'red']  response=\"(reasoning)the user wants a one-sentence summary of the video's content.\\n\\n1.  **analyze the video:**\\n    *   the video starts with \""
+      },
+      "audio": {
+        "passed": true,
+        "message": "saw=['sound']  response='(reasoning)the sound of opening a box of tea'"
+      }
+    },
+    "summary": {
+      "passed": 6,
+      "total": 6
+    }
+  }
+}

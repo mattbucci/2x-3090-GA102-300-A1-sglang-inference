@@ -1,14 +1,15 @@
 #!/bin/bash
 # SGLang setup for 2x RTX 3090
 #
-# Clones SGLang v0.5.14 and applies the local patches in patches/*.patch
-# (idempotent — git apply --check skips already-applied). 25 patches; verified
-# byte-identical to the live tree by the 3-gate pristine replay (flipped from
-# v0.5.13.post1 2026-06-26; +056 gdn conv-state dtype cast).
-# Requires transformers 5.8.1 + flashinfer 0.6.12 [cu13] + xgrammar 0.2.1
-# (env sglang-v0514 also has librosa + accelerate for the Parakeet audio path).
-# NB: 0.5.14 folds the serving runtime into the base package (no [srt] extra)
-# and adds a mandatory Rust gRPC ext that needs protoc; patch 037 drops that
+# Clones SGLang v0.5.15 and applies the local patches in patches/*.patch
+# (idempotent — git apply --check skips already-applied). 24 patches; verified
+# byte-identical to the live tree by the 3-gate pristine replay — now scripted,
+# scripts/test_patch_gates.sh (flipped from v0.5.14 2026-07-12; 054/055 dropped
+# as upstreamed, +057 MistralCommonBackend opt-out for the tx 5.12 bump).
+# Requires transformers 5.12.1 + flashinfer 0.6.12 [cu13] + xgrammar 0.2.1
+# (env sglang-v0515 also has librosa + accelerate for the Parakeet audio path).
+# NB: the serving runtime is in the base package (no [srt] extra) and upstream
+# adds a mandatory Rust gRPC ext that needs protoc; patch 037 drops that
 # ext (we serve over HTTP) so `pip install -e .` works without protoc.
 # See patches/README.md for per-patch narratives.
 #
@@ -26,11 +27,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-# Default stack = v0.5.14 (flipped 2026-06-26). The retained v0.5.13.post1 tree
-# (/data/sglang-rebase-v0513, env sglang-v0513) still serves via ENV_NAME/SGLANG_DIR
+# Default stack = v0.5.15 (flipped 2026-07-12). The retained v0.5.14 tree
+# (/data/sglang-rebase-v0514, env sglang-v0514) still serves via ENV_NAME/SGLANG_DIR
 # overrides; to REBUILD an older stack from scratch, revert the flip commit (restores
-# the v0.5.13 patch set + this tag) or override SGLANG_TAG + PATCH_DIR + ENV_NAME.
-SGLANG_TAG="${SGLANG_TAG:-v0.5.14}"
+# the v0.5.14 patch set + this tag) or override SGLANG_TAG + PATCH_DIR + ENV_NAME.
+SGLANG_TAG="${SGLANG_TAG:-v0.5.15}"
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -77,7 +78,7 @@ else
     if [ "$_have_tag" != "$SGLANG_TAG" ]; then
         echo "ERROR: $SGLANG_DIR is at '$_have_tag', expected $SGLANG_TAG."
         echo "       Point SGLANG_DIR at a $SGLANG_TAG checkout (live tree:"
-        echo "       /data/sglang-rebase-v0513) or remove the stale dir to re-clone."
+        echo "       /data/sglang-rebase-v0515) or remove the stale dir to re-clone."
         exit 1
     fi
 fi
@@ -119,11 +120,13 @@ if [ "$SKIP_ENV" = false ]; then
     cd "$SGLANG_DIR/python"
     pip install -e .   # 0.5.12 folded srt deps into base; patch 037 dropped the gRPC Rust ext (no protoc needed)
 
-    # v0.5.14 hard-pins transformers==5.8.1 (the version the fleet is validated on,
-    # and the one 055 depends on — tx 5.8.1 lacks gemma4_unified). Pin it, do NOT use
-    # >=5.0 which can drift past 5.8.1 and silently change the gemma4_unified path.
-    echo "Pinning transformers 5.8.1 + gguf..."
-    pip install --no-deps "transformers==5.8.1" gguf
+    # v0.5.15 hard-pins transformers==5.12.1 (the version the fleet is validated
+    # on). 5.12.1 ships gemma4_unified natively (former patch 055's vendored stack,
+    # retired at this flip) but also routes Mistral checkpoints to the
+    # MistralCommonBackend tokenizer (fixed by patch 057). Pin exactly — do NOT
+    # let it drift: newer tx changes both of those paths under our feet.
+    echo "Pinning transformers 5.12.1 + gguf..."
+    pip install --no-deps "transformers==5.12.1" gguf
 
     # Eval/validator deps — pillow already comes in via SGLang's [srt] extras,
     # but imageio[ffmpeg] is needed for the validate_capabilities.py video

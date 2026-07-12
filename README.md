@@ -1,14 +1,10 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
-High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.14** + 25 local patches (flipped from v0.5.13.post1 on 2026-06-26 — full fleet + capability probes re-validated, no regressions, gemma4-31b/12b 256K-needle *improved* 0.4/0.6→1.0; old stack kept for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
+High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.15** + 24 local patches (flipped from v0.5.14 on 2026-07-12 — full 11-preset fleet + capability probes re-validated, no regressions; 2 patches retired as upstreamed incl. the gemma4_unified vendor stack now native in transformers 5.12.1, +1 new: the tx-5.12 MistralCommonBackend opt-out that un-corrupted devstral prompts; old stack kept for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 > **Active cross-team deliverable:** SpecForge-train EAGLE3 spec drafts for R9700's pure-attention coders (Devstral-24B ✅ delivered, then Qwen3-VL-32B) — see [Speculative decoding](#speculative-decoding). Status + recipe: [`scripts/specforge/eagle3_training_plan.md`](scripts/specforge/eagle3_training_plan.md).
 >
 > **▶ R9700 reply (2026-06-26): Devstral draft RECEIVED + YES, proceed with Qwen3-VL-32B.** Devstral-24B EAGLE3 draft pulled; we'll serve it on the 32 GB R9700s and bench our depth curve (R9700 #52) after our FP8 bake-off frees the GPUs (~a week) — noting your caveat (EAGLE3 attaches to the `Ministral3ForCausalLM` text decoder, not the VLM wrapper) + `TVM_FFI_GPU_BACKEND=cuda` / `SGLANG_ENABLE_SPEC_V2=0`. **On the 2nd ask: YES, train Qwen3-VL-32B — worth the ~4 GPU-days.** It's a strong interactive coder where the ≤64K spec win is real (the not-a-256K-win ceiling was always understood), and our 32 GB has KV+draft headroom your 24 GB lacked, so we may realize a deeper usable band than the Devstral curve. Multimodal-harvest + vision-tower complexity is acceptable. — R9700 team.
->
-> **📢 Cross-team heads-up from R9700 (2026-07-11): v0.5.15 rebase intel for when you jump forward.** We promoted **SGLang v0.5.15** today (rebased our 47-patch series from v0.5.14; upstream delta 547 commits / 1789 files but only **4 conflicts** + 1 upstreamed). The non-obvious ones you'll hit whenever you rebase past v0.5.14 (you're on v0.5.13.post1): **(1)** the mamba-radix-cache `auto`→`extra_buffer`/`no_buffer` resolution **MOVED** out of `ServerArgs._handle_mamba_radix_cache` into a post-process pass `arg_groups/overrides.py:_mamba_radix_cache_resolution(view)` — relocate any device guard there (our 073 falls back to `no_buffer` on non-CUDA). **(2)** `moe/topk.py` gained an `elif _is_cuda and SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK` unified-Triton-router branch at the exact spot device-specific topk fallbacks insert — add/add, keep both. **(3)** `quantization/fp8_utils.py` gained `materialize_bpreshuffle_fp8_scale*` at the device-guard insertion point — add/add. **(4)** `configs/model_config.py` added `UnlimitedOCRForCausalLM` to the `hybrid_swa_archs` set **and** a `get_hybrid_layer_ids` branch — add/add ×2 if you carry a hybrid-SWA arch (our cohere2_moe/062). **Upstreamed → drop:** `ministral3.py` `super().__init__` keyword-binding + `start_layer` is now native (v0.5.15 adopted our fix as a superset) — any Devstral/ministral3 keyword-init graft is redundant on v0.5.15. Full receipt: R9700 `patches/v0515-rebase-2026-07-11.md`. — R9700 team.
->
-> **▶ Update (2026-07-11, post-push): saw your same-day parallel v0.5.15 rebase (`209e511`) — convergent on every shared point.** Both stacks independently DROPPED **ministral3 keyword-init** (upstreamed) and hit the **`hybrid_swa_archs` growth** (your 051 regen / our 062 — Cohere2Moe hybrid-SWA still absent upstream, graft still load-bearing). And we confirmed your **gemma4_unified-config drop from the RDNA4 side**: on the tx-5.12.1 pin, `AutoConfig.from_pretrained(gemma-4-12B-AWQ)` resolves to the **native** `Gemma4UnifiedConfig`; our vendored **072** is a dup-tolerant no-op (native wins via "already registered" + `exist_ok=True`), so gemma4-12b config loads clean → your 055-drop is safe on our stack too, and our 072 is now a drop-candidate. Clean parallel landing. — R9700 team.
 
 ## Direction
 
@@ -64,7 +60,7 @@ Detailed matrix + rebuild paths in the [MoE coverage matrix](#moe-coverage-matri
 
 Items 2–3 are prerequisites for the MoE backlog. Detailed plan: [`scripts/quantize/ream_gemma4_port_plan.md`](scripts/quantize/ream_gemma4_port_plan.md).
 
-1. **Upstream-PR sweep** — 12 of our 25 patches fix bugs still present in sglang main as of 2026-06-10 (see the patch map in [`patches/README.md`](patches/README.md)): the Qwen3.5/3.6 AWQ + CausalLM family (002 / 018 / 031 / 035), kernel correctness (003 / 011 — 011 also bites RDNA4 + Blackwell SM12.x), MoE gelu routing (017), Gemma 4 (004 / 026 + 025's `masked_fill` half), agentic robustness (034 / 041 — R9700-originated, coordinate the PRs with them). Upstreaming erases carry cost at every future rebase; the next rebase already drops 012 / 028 / 030 / 042 + most of 043 (fixed or native in main).
+1. **Upstream-PR sweep** — refreshed against sglang main 2026-07-12 at the v0.5.15 flip (which itself retired 054/055 as upstreamed). Priority order: **056** (gdn conv-state dtype crash — still live on main; any fp16 DeltaNet user with mamba-track crashes on first decode; smallest, most obvious PR), **011** (FP32 attention — upstream is converging on it themselves: v0.5.15 moved one extend QK dot to `out_dtype=tl.float32`, 5 extend + 3 decode sites remain; PR in THEIR idiom, and note main moved the kernels to `python/sglang/kernels/ops/attention/` so the next rebase re-ports 011 regardless), **017** (gelu MoE — both silu-only asserts still on main), **049** (PR an env-var override for the hardcoded 480s `UNBALANCED_MODEL_LOADING_TIMEOUT_S`; acceptance retires the patch), **030** (upstream has `use_presharded_weights` plumbing at exactly our narrow sites but only Quark sets it — PR wiring it through compressed-tensors MoE, or our format-agnostic shape-guard), plus the Qwen3.5/3.6 AWQ + CausalLM family (002 / 018 / 031 / 035), Gemma 4 (004 / 026 + 025's `masked_fill` half), agentic robustness (041, R9700-originated — coordinate). **057** (MistralCommonBackend opt-out) is upstream-PR-worthy too: any render-then-encode consumer of tx ≥5.12 Mistral checkpoints is corrupted.
 2. **Port Samsung SAIL REAM merge to Gemma 4 arch** — current `run_ream_qwen3moe.sh` + the upstream `merge.py` are Qwen3-family-only (5 hardcoded assumptions identified). Port unblocks the gemma-4-26B REAM build. Est. 40-60 h dev.
 3. **Patch-052 candidate** — extend patch 003's dtype cast to the conv1d `KERNEL_WIDTH` spec-verify branches (`matrix_x` fp16/bf16 Triton assert); blocks ALL speculative decoding on the DeltaNet hybrids. Receipt: sprint-2 B4 bootfail logs. (051 is now the Cohere2Moe 256K enablement.)
 4. **Decode ideas (receipts in the sprint log):**
@@ -139,7 +135,7 @@ One caveat carried forward: `check_awq_scales.py` reads native-AWQ format — CT
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # clone SGLang v0.5.14, apply patches, create conda env
+./scripts/setup.sh                          # clone SGLang v0.5.15, apply patches, create conda env
 
 # TP=2 / 256K presets (matrix standard):
 ./scripts/launch.sh qwen3-ream              # 262K @ 107 tok/s — REAM merged MoE, 96 experts
@@ -401,26 +397,26 @@ Early low rates (gemma 0.2–0.4, devstral 0.6, dense 0.8) were **KV-pool / over
 
 ```bash
 ./scripts/setup.sh
-# or manually (the live tree is /data/sglang-rebase-v0514):
-cd "$SGLANG_DIR" && git checkout v0.5.14
+# or manually (the live tree is /data/sglang-rebase-v0515):
+cd "$SGLANG_DIR" && git checkout v0.5.15
 for p in "$REPO_DIR"/patches/*.patch; do git apply "$p"; done
 cd python && pip install -e .
 ```
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.14 + 25 local patches |
+| SGLang | v0.5.15 + 24 local patches |
 | PyTorch | 2.11.0 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
-| transformers | 5.8.1 (v0.5.14 pin) |
+| transformers | 5.12.1 (v0.5.15 pin; ships gemma4_unified natively — retired patch 055; routes Mistral ckpts to MistralCommonBackend — countered by patch 057) |
 | FlashInfer | 0.6.12 [cu13] |
 | compressed-tensors | 0.15.0.1 (serving env); 0.15.1.dev (`quant` calibration env) |
 
-The serving tree lives at `/data/sglang-rebase-v0514` (env `sglang-v0514`); launch with `ENV_NAME`/`SGLANG_DIR` overrides (v0.5.13.post1 / `/data/sglang-rebase-v0513` / env `sglang-v0513` kept as rollback). Calibration uses the separate `quant` env.
+The serving tree lives at `/data/sglang-rebase-v0515` (env `sglang-v0515`); launch with `ENV_NAME`/`SGLANG_DIR` overrides (v0.5.14 / `/data/sglang-rebase-v0514` / env `sglang-v0514` kept as rollback). Calibration uses the separate `quant` env.
 
 ## Patches
 
-**25 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang **v0.5.14** — cover AWQ/CT int4 weight loading, Qwen3.5/3.6 enablement, Gemma 4 bring-up (26B MoE / 31B dense / 12B unified omni), Nemotron-3-Nano-Omni serving (052/053), MoE gelu coverage, kernel correctness & precision, sm_86 enablement, and serving/agentic robustness. The v0.5.13.post1→v0.5.14 flip (2026-06-26) was the smallest yet — 21 clean, 3 regenerated (017/051/053), 0 upstreamed, +1 new (**056** gdn conv-state dtype cast for v0.5.14's mamba-track radix path); the 3-gate pristine replay is green (applies clean on pristine v0.5.14, byte-identical to the live tree, rerun-safe). Per-patch narratives, the upstream-PR ledger, and the patch-hygiene gates live in [`patches/README.md`](patches/README.md); the flip receipt + full-probe results are [`patches/v0.5.14-rebase-status.md`](patches/v0.5.14-rebase-status.md).
+**24 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang **v0.5.15** — cover AWQ/CT int4 weight loading, Qwen3.5/3.6 enablement, Gemma 4 bring-up (26B MoE / 31B dense / 12B unified omni), Nemotron-3-Nano-Omni serving (052/053), MoE gelu coverage, kernel correctness & precision, sm_86 enablement, and serving/agentic robustness. The v0.5.14→v0.5.15 flip (2026-07-12) is the first with a net patch-count reduction — 21 clean, 2 regenerated (011 extend-kernel paging drift / 051 hybrid-SWA set drift), **2 retired as upstreamed** (054 ministral3 keyword-init now native; 055's vendored gemma4_unified stack now ships in transformers 5.12.1), +1 new (**057** MistralCommonBackend opt-out — tx 5.12 silently re-routes Mistral checkpoints to a tokenizer that treats `[INST]`/`[TOOL_CALLS]` as plain text on sglang's render-then-encode path; caught by the fleet probe as devstral needle 0.0 + HE 48% + dead tool-calls, restored to parity by the patch). The 3-gate pristine replay is green and now scripted (`scripts/test_patch_gates.sh`). Per-patch narratives, the upstream-PR ledger, and the patch-hygiene gates live in [`patches/README.md`](patches/README.md); the flip receipt + full-probe results are [`patches/v0.5.15-rebase-status.md`](patches/v0.5.15-rebase-status.md).
 
 ## Quantization
 
@@ -447,7 +443,7 @@ python scripts/eval/check_awq_scales.py <awq_dst> --base <bf16_base_dir>        
 ## Repo layout
 
 ```
-patches/                  # SGLang v0.5.14 patches (25) — narratives in patches/README.md
+patches/                  # SGLang v0.5.15 patches (24) — narratives in patches/README.md
 benchmarks/               # per-model JSON; quality/ = MMLU/HumanEval/LAB-Bench/Needle + capability matrix
 scripts/
   launch.sh / common.sh / setup.sh
