@@ -24,8 +24,8 @@ REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$REPO/scripts/common.sh" 2>/dev/null || true
 
 PATCH_DIR="${PATCH_DIR:-$REPO/patches}"
-[ -d "$PATCH_DIR" ] || { echo "FATAL: PATCH_DIR $PATCH_DIR missing"; exit 2; }
 case "$PATCH_DIR" in /*) ;; *) PATCH_DIR="$REPO/$PATCH_DIR" ;; esac
+[ -d "$PATCH_DIR" ] || { echo "FATAL: PATCH_DIR $PATCH_DIR missing"; exit 2; }
 SGLANG_DIR="${SGLANG_DIR:?set SGLANG_DIR (live serving tree)}"
 SGLANG_TAG="${SGLANG_TAG:-$(git -C "$SGLANG_DIR" describe --tags --abbrev=0 2>/dev/null)}"
 [ -n "$SGLANG_TAG" ] || { echo "FATAL: cannot infer SGLANG_TAG from $SGLANG_DIR"; exit 2; }

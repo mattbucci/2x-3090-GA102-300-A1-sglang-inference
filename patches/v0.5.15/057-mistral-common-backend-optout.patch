@@ -1,0 +1,40 @@
+diff --git a/python/sglang/srt/utils/hf_transformers/tokenizer.py b/python/sglang/srt/utils/hf_transformers/tokenizer.py
+index 40b1693..2f41296 100644
+--- a/python/sglang/srt/utils/hf_transformers/tokenizer.py
++++ b/python/sglang/srt/utils/hf_transformers/tokenizer.py
+@@ -500,12 +500,35 @@ def get_tokenizer(
+             tokenizer_name, *args, **common_kwargs
+         )
+ 
++        # transformers >=5.12 routes Mistral-family checkpoints that ship a
++        # tekken.json to MistralCommonBackend, which by design never parses
++        # special tokens out of text. SGLang's chat path renders the jinja
++        # template to a STRING and then encodes it, so under that backend
++        # [INST] / [/INST] / [TOOL_CALLS] enter the prompt as plain text —
++        # every turn boundary and tool marker is lost (v0.5.15 devstral:
++        # needle 0.0 at ALL depths, HumanEval 80%->48%, tool_call dead,
++        # generation blows past turn ends). The documented escape is the
++        # fix_mistral_regex kwarg: its PRESENCE reroutes AutoTokenizer to
++        # TokenizersBackend (transformers models/auto/tokenization_auto.py,
++        # the `"fix_mistral_regex" not in kwargs` gate). False loads
++        # tokenizer.json verbatim — token ids verified bit-identical to the
++        # tx 5.8.1 fast tokenizer ([INST]->3, [TOOL_CALLS]->9). [3090 057]
++        mistral_common_rerouted = False
++        if type(tokenizer).__name__ == "MistralCommonBackend":
++            tokenizer = _auto_tokenizer_from_pretrained(
++                tokenizer_name, *args, fix_mistral_regex=False, **common_kwargs
++            )
++            mistral_common_rerouted = True
++
+         # With fastokens, the patched TokenizersBackend.from_pretrained already
+         # returned a tokenizer whose backend is a fastokens shim. Re-resolving via
+         # the declared class (e.g. Qwen2Tokenizer) would discard that work.
++        # (Same for a 057-rerouted Mistral tokenizer: re-resolving would take the
++        # MistralCommonBackend route again and crash on its strict kwargs.)
+         if (
+             type(tokenizer).__name__ == _TOKENIZERS_BACKEND
+             and tokenizer_backend != "fastokens"
++            and not mistral_common_rerouted
+         ):
+             tokenizer = _resolve_tokenizers_backend(
+                 tokenizer_name, *args, **common_kwargs
