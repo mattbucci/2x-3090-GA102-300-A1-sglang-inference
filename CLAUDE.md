@@ -17,14 +17,14 @@ scripts/setup.sh                       # Full setup (clones SGLang v0.5.15, appl
 scripts/launch.sh devstral             # Devstral 24B AWQ (Dense, Mistral)
 scripts/launch.sh coder-30b-eval       # Qwen3-Coder-30B-A3B AWQ CT (256K, bake-off 43.0% opencode)
 scripts/launch.sh coder-reap-25b       # Qwen3-Coder-REAP-25B-A3B AWQ (256K, 40.7% claw)
-scripts/launch.sh qwen36               # Qwen3.6-35B-A3B-AWQ-CT (thinking+vision, 256K)
+scripts/launch.sh qwen36               # Qwen3.6-35B-A3B-AWQ (thinking+vision, 256K)
 scripts/launch.sh qwen36-dense         # Qwen3.6-27B Dense AWQ
 scripts/launch.sh qwen35-moe           # Qwen3.5-28B-A3B-REAP-AWQ (DeltaNet+MoE, thinking+vision)
 scripts/launch.sh qwen3-ream           # Qwen3-30B Instruct REAM AWQ (96 experts, 107 tok/s @ 256K)
 scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ (thinking+image+video+audio)
 scripts/launch.sh gemma4-31b           # Gemma 4 31B Dense AWQ
 ```
-Full preset list: `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scripts/launch.sh` (21 currently). Every preset carries an explicit `--tool-call-parser` matching its chat-template's tool format (qwen3_coder / qwen25 / mistral / gemma4 — see Critical Rules below).
+Full preset list: `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scripts/launch.sh` (24 currently). Every preset carries an explicit `--tool-call-parser` matching its chat-template's tool format (qwen3_coder / qwen25 / mistral / gemma4 — see Critical Rules below).
 
 ## Critical Rules
 - **SGLang only** — uses AWQ_Marlin kernels (sm_80+), patches may be needed for tuning
@@ -69,7 +69,7 @@ Capability guardrail on every iteration that touches a checkpoint: **preserve th
   ```
   Any job expected to run > 30 minutes (calibrations, long benches, downloads of 50 GB+) must use this pattern.
 
-## Current Hardware State (2026-05-13)
+## Current Hardware State (2026-07-12)
 - **Both 3090s online.** TP=2 / 256K is the matrix-standard configuration. No TP=1 fallback presets exist — every preset in launch.sh is tuned for TP=2 / 256K. Default `--tp 2 --context-length 262144 --max-running 1`. Cooling profile (260W power cap + gpu-fan-curve.service) is load-bearing for sustained bake-off runs.
 
 ## Workflow (RECONFIRMED 2026-05-31)
@@ -95,10 +95,10 @@ Capability guardrail on every iteration that touches a checkpoint: **preserve th
 - **Rule 2 — no concurrent rollout + score.** Both spin per-instance docker containers. Concurrent VFS pressure triggers the kernel BUG (above). `run_model_cycle.sh` sequences them; don't bypass.
 - **Cooling profile is load-bearing.** 260 W power cap + `gpu-fan-curve.service` keeps DDR5 below ALARM HIGH and prevents thermal-Python-heap corruption (separate failure from Rule 1/2). Don't disable.
 
-### Conda env split — `quant` vs `sglang`
-- **`sglang`** — serving. Has SGLang + CUDA + `compressed_tensors==0.15.0.1` (lacks `.distributed`). Use for `launch.sh`, `validate_capabilities.py`, `probe_*.py`.
+### Conda env split — `quant` vs the serving env
+- **`sglang-v0515`** (current serving env; version-suffixed per stack, resolved by `common.sh` ENV_NAME) — SGLang + CUDA + `compressed_tensors==0.15.0.1` (lacks `.distributed`). Use for `launch.sh`, `validate_capabilities.py`, `probe_*.py`.
 - **`quant`** — calibration. Has `compressed_tensors==0.15.1.dev6+g077e752` with `.distributed`, llmcompressor importable. Use for `quantize_*.py`, GPTQ, CT→AWQ conversion.
-- Wrong env on quantize gives `ModuleNotFoundError: compressed_tensors.distributed`. Don't try to upgrade `sglang` env — use `quant`. Pattern: `conda activate quant` (NOT sglang) before any llmcompressor work.
+- Wrong env on quantize gives `ModuleNotFoundError: compressed_tensors.distributed`. Don't try to upgrade the serving env — use `quant`. Pattern: `conda activate quant` (NOT the serving env) before any llmcompressor work.
 
 ### README discipline (public-facing surface)
 - **README is live state + planning ONLY (user directive 2026-06-10).** ALWAYS remove completed/solved tasks from the main README — don't mark them DONE/CONCLUDED and leave them ("CONCLUDED" in the README is the violation tell). `patches/README.md` is the historical log: fold durable outcomes into the live sections they changed (model tables, perf narrative, presets), move the narrative to patches/README.md (or the lab LOG it links), DELETE the roadmap/sprint entry.
@@ -114,7 +114,9 @@ Capability guardrail on every iteration that touches a checkpoint: **preserve th
 ### SWE-bench rollout details
 - **Three scaffold landmines that silently produce empty diffs.** (a) little-coder ignores `OPENAI_BASE_URL` — use `--model llamacpp/<served-name>` and sed-patch the packaged `models.json`. (b) claw binary GLIBC mismatch — build inside `rust:bullseye` (Debian 11, GLIBC 2.31) in `scripts/build_claw.sh`, not host Arch. (c) per-instance rollout images cached by tag — Dockerfile/opencode.json edits do NOT propagate; nuke `swebench-rollout/*` after every scaffold-config edit.
 - **`--tool-call-parser` is per-preset and load-bearing.** Without the right parser, the model's `<tool_call><function=NAME>...` XML is served as `content` plain text, harness drops it, diff is empty. Family→parser mapping audited 2026-05-13: Qwen3-Coder + every Qwen3.5/3.6 (incl. dense, MoE, VL-REAP, REAM) → `qwen3_coder`; Qwen3-VL non-coder + Qwen3-30B-Instruct REAM → `qwen25`; Devstral → `mistral`; Gemma 4 → `gemma4`. Reasoning + tool-call parsers compose correctly when thinking is enabled.
-- **Bake-off numbers are only trustworthy at the FULL 300 — partial prediction sets lie, in BOTH directions (corrected 2026-06-12).** Two over-claims died on the full cycle this week, both from sub-300 data: (1) "qwen36 × claw smoke = 0/5 → thinking models don't fit claw" — wrong, the full run is ~49%; (2) my own "REAM degrades claw −33 pp (qwen36-ream 16.3 vs qwen36 49.3)" — also wrong, qwen36-ream claw re-ran to 40.2 % and BOTH are partial (qwen36 claw 284/300, qwen36-ream 97/300), so the gap was noise between two incomplete sets. **Rule: only compare cells at 300/300 predictions; show `resolved/n_pred` and discount any cell under 300.** What IS solid: (a) **little-coder × thinking was a `developer`-role chat-template 400, NOT a capability/architecture limit (corrected again 2026-06-12, cross-team R9700).** pi-ai sends its system prompt as role `developer`; the Qwen3.5/3.6 templates `raise_exception('Unexpected message role')` → SGLang 400 → pi exits ~3 s empty. **My earlier "architecturally incompatible / can't consume reasoning_content / n/a / version-bump-won't-fix" reading was WRONG** — I couldn't see pi's request and mis-attributed the 3 s exit. Fix: `developer`→`system` in the templates (`scripts/eval/patch_chat_templates_developer_role.py`, wired into setup); validated on our v1.1.0 (qwen36 smoke ~3 s/empty → 41 s median + real patches). **Lesson: when a scaffold exits suspiciously fast with no model output, suspect a server-side 4xx (template/role/param reject) BEFORE theorizing about model capability — capture the actual HTTP request/response.** Coders were unaffected only because the Qwen3-Coder template doesn't validate roles. **Confirmed by the full live re-run: qwen36 little-coder 0/30→177/300=59.0%** (tied with opencode). (b) **The claw "partials" for thinking ships were the SAME developer-400, not an inherent claw limit** — pre-fix `qwen36` claw was 284/300 (16 instances 400'd); post-fix skip-existing retried them and claw is now a full **300/300 = 50.7%**. So "claw under-runs thinking ships" is ALSO retired. Net: thinking ships are full-300 on all three scaffolds once the template accepts `developer`. (c) On the stable scaffold **REAM ties native** (qwen36 = qwen36-ream = 177/300 = 59.0 %) → REAM-merge does NOT degrade A3B-MoE agentic coding (distinct from the *coder*-REAM finding below, full-300 receipts). qwen3-ream (Instruct, non-thinking) failed opencode+claw on full runs → genuine model gap.
+- **Bake-off numbers are only trustworthy at the FULL 300 — partial prediction sets lie, in BOTH directions.** Rule: only compare cells at 300/300 predictions; show `resolved/n_pred` and discount any cell under 300 (two plausible-looking over-claims from sub-300 data both died on full cycles).
+- **When a scaffold exits suspiciously fast with no model output, suspect a server-side 4xx (template/role/param reject) BEFORE theorizing about model capability — capture the actual HTTP request/response.** Canonical case: pi-ai/little-coder sends its system prompt as role `developer`; Qwen3.5/3.6 templates raised on it → SGLang 400 → ~3 s empty exits that looked like an architecture limit. Fix: `developer`→`system` in the templates (`scripts/eval/patch_chat_templates_developer_role.py`, wired into setup.sh); thinking ships then run full-300 on all three scaffolds. Coder templates don't validate roles, which is why coders never showed it.
+- **REAM ties native on A3B-MoE agentic coding** (qwen36 = qwen36-ream on opencode, full-300 both) — REAM-merge does not degrade it; qwen3-ream (Instruct, non-thinking) failing opencode+claw is a genuine model gap, not infra.
 - **Common failure mode for 30B-class on SWE-bench Lite: incomplete fix, not silence.** Thinking IS engaged in production (opencode under-reports because SGLang returns `usage.reasoning_tokens` FLAT, but opencode parses OpenAI's nested `completion_tokens_details.reasoning_tokens` path). 40% on Lite is competitive for 30B-class; failures are "model patched the symptom but missed the root cause", not infra. Don't treat 40% as broken.
 
 ### Project hygiene
