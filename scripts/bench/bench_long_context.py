@@ -77,6 +77,19 @@ def server_model(base_url):
     return r.json()["data"][0]["id"]
 
 
+def server_context_length(base_url):
+    """Declared --context-length from the live server. A point at exactly this
+    value leaves no room for output tokens: input+output overflows the window,
+    the request degenerates (TTFT 0.0) and reports artifact tok/s (the 2026-07-14
+    second depth bug — surfaced once range_ratio=1 made prompts hit full length)."""
+    try:
+        with urllib.request.urlopen(f"{base_url}/get_server_info", timeout=5) as r:
+            j = json.load(r)
+        return j.get("context_length") or j.get("max_context_len")
+    except Exception:
+        return None
+
+
 def server_max_tokens(base_url):
     """Real KV-pool capacity (max_total_num_tokens) from the live server, so we
     never bench a context the pool can't hold. An over-cap prompt is rejected /
@@ -119,9 +132,13 @@ def main():
     model = server_model(base)
     requested = args.contexts or [c for c in DEFAULT_CONTEXTS if c <= args.max_context]
     max_kv = server_max_tokens(base)
+    ctx_len = server_context_length(base)
     if max_kv:
         usable = max_kv - args.output_tokens - 256   # headroom: output + scaffolding
-        contexts = [c for c in requested if c <= usable]
+        if ctx_len:
+            # input + output must fit the declared context window too
+            usable = min(usable, ctx_len - args.output_tokens - 128)
+        contexts = sorted({min(c, usable) for c in requested if min(c, usable) > 0})
         dropped = [c for c in requested if c > usable]
         if dropped:
             print(f"NOTE: KV pool max_total_num_tokens={max_kv}; capping input sweep "
@@ -143,6 +160,10 @@ def main():
     for ctx in contexts:
         print(f"  ctx={ctx:>6}: ", end="", flush=True)
         m = run_bench(base, model, ctx, args.output_tokens, tokenizer=args.tokenizer)
+        if m.get("ttft_ms", 1) == 0.0 or "tpot_ms" not in m:
+            print(f"  WARN: ctx={ctx} produced a degenerate measurement (ttft=0 / "
+                  f"no TPOT) — marking invalid", flush=True)
+            m["invalid"] = True
         actual = m.get("actual_input_tokens")
         if actual is not None and actual < 0.95 * ctx:
             print(f"  WARN: requested ctx={ctx} but server saw {actual} input tokens "
