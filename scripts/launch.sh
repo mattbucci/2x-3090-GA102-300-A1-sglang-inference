@@ -842,6 +842,10 @@ fi
 [[ -n "$CUDA_GRAPH" ]] && CMD+=($CUDA_GRAPH)
 # EXTRA_ARGS lets callers append/override flags (e.g. --disable-cuda-graph,
 # --enable-multimodal) without editing the script. Honor it from env.
+# NB: presets APPEND to a caller-provided EXTRA_ARGS, so a caller flag that a
+# preset also pins (e.g. --attention-backend) loses argparse last-wins. Use
+# OVERRIDE_ARGS for those — it lands after everything.
 [[ -n "${EXTRA_ARGS:-}" ]] && CMD+=(${EXTRA_ARGS})
+[[ -n "${OVERRIDE_ARGS:-}" ]] && CMD+=(${OVERRIDE_ARGS})
 
 exec "${CMD[@]}"
