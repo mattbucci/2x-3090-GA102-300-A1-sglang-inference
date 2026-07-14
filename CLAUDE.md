@@ -20,7 +20,7 @@ scripts/launch.sh coder-reap-25b       # Qwen3-Coder-REAP-25B-A3B AWQ (256K, 40.
 scripts/launch.sh qwen36               # Qwen3.6-35B-A3B-AWQ (thinking+vision, 256K)
 scripts/launch.sh qwen36-dense         # Qwen3.6-27B Dense AWQ
 scripts/launch.sh qwen35-moe           # Qwen3.5-28B-A3B-REAP-AWQ (DeltaNet+MoE, thinking+vision)
-scripts/launch.sh qwen3-ream           # Qwen3-30B Instruct REAM AWQ (96 experts, 107 tok/s @ 256K)
+scripts/launch.sh qwen3-ream           # Qwen3-30B Instruct REAM AWQ (96 experts, 69 tok/s @ 255K)
 scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ (thinking+image+video+audio)
 scripts/launch.sh gemma4-31b           # Gemma 4 31B Dense AWQ
 ```

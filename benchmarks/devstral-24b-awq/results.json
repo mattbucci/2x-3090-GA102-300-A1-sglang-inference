@@ -3,72 +3,89 @@
   "engine": "SGLang",
   "hardware": "2x RTX 3090 TP=2",
   "benchmark_tool": "sglang.bench_serving",
-  "timestamp": "2026-06-11 03:31:36",
+  "timestamp": "2026-07-14 05:36:38",
   "output_tokens": 100,
-  "max_total_num_tokens": 202093,
+  "max_total_num_tokens": 202043,
   "context_sweep": [
     {
       "context": 1024,
-      "throughput": 4.81,
-      "ttft_ms": 34.03,
-      "tpot_ms": 10.84,
-      "tok_per_sec": 92.3
+      "actual_input_tokens": 1023,
+      "throughput": 85.21,
+      "ttft_ms": 30.79,
+      "tpot_ms": 11.41,
+      "tok_per_sec": 87.6
     },
     {
       "context": 2048,
-      "throughput": 4.81,
-      "ttft_ms": 37.59,
-      "tpot_ms": 10.95,
-      "tok_per_sec": 91.3
+      "actual_input_tokens": 2047,
+      "throughput": 84.91,
+      "ttft_ms": 28.58,
+      "tpot_ms": 11.46,
+      "tok_per_sec": 87.3
     },
     {
       "context": 4096,
-      "throughput": 4.81,
-      "ttft_ms": 37.37,
-      "tpot_ms": 10.95,
-      "tok_per_sec": 91.3
-    },
-    {
-      "context": 8192,
-      "throughput": 4.81,
-      "ttft_ms": 43.21,
-      "tpot_ms": 11.15,
-      "tok_per_sec": 89.7
-    },
-    {
-      "context": 16384,
-      "throughput": 4.81,
-      "ttft_ms": 58.96,
+      "actual_input_tokens": 4095,
+      "throughput": 83.06,
+      "ttft_ms": 42.76,
       "tpot_ms": 11.59,
       "tok_per_sec": 86.3
     },
     {
-      "context": 32768,
-      "throughput": 4.81,
-      "ttft_ms": 82.65,
+      "context": 8192,
+      "actual_input_tokens": 8191,
+      "throughput": 81.01,
+      "ttft_ms": 46.18,
+      "tpot_ms": 11.86,
+      "tok_per_sec": 84.3
+    },
+    {
+      "context": 16384,
+      "actual_input_tokens": 16383,
+      "throughput": 76.34,
+      "ttft_ms": 62.44,
       "tpot_ms": 12.45,
       "tok_per_sec": 80.3
     },
     {
+      "context": 32768,
+      "actual_input_tokens": 32767,
+      "throughput": 70.07,
+      "ttft_ms": 89.71,
+      "tpot_ms": 13.35,
+      "tok_per_sec": 74.9
+    },
+    {
       "context": 65536,
-      "throughput": 4.81,
-      "ttft_ms": 132.96,
-      "tpot_ms": 14.07,
-      "tok_per_sec": 71.1
+      "actual_input_tokens": 65535,
+      "throughput": 60.34,
+      "ttft_ms": 136.02,
+      "tpot_ms": 15.2,
+      "tok_per_sec": 65.8
     },
     {
       "context": 131072,
-      "throughput": 4.81,
-      "ttft_ms": 200.65,
-      "tpot_ms": 17.66,
-      "tok_per_sec": 56.6
+      "actual_input_tokens": 131071,
+      "throughput": 47.92,
+      "ttft_ms": 173.43,
+      "tpot_ms": 19.12,
+      "tok_per_sec": 52.3
     },
     {
       "context": 196608,
-      "throughput": 4.81,
-      "ttft_ms": 203.14,
-      "tpot_ms": 17.43,
-      "tok_per_sec": 57.4
+      "actual_input_tokens": 196607,
+      "throughput": 37.99,
+      "ttft_ms": 266.35,
+      "tpot_ms": 23.66,
+      "tok_per_sec": 42.3
+    },
+    {
+      "context": 201687,
+      "actual_input_tokens": 201686,
+      "throughput": 37.92,
+      "ttft_ms": 253.17,
+      "tpot_ms": 23.84,
+      "tok_per_sec": 41.9
     }
   ]
 }
