@@ -82,12 +82,15 @@ def server_context_length(base_url):
     value leaves no room for output tokens: input+output overflows the window,
     the request degenerates (TTFT 0.0) and reports artifact tok/s (the 2026-07-14
     second depth bug — surfaced once range_ratio=1 made prompts hit full length)."""
-    try:
-        with urllib.request.urlopen(f"{base_url}/get_server_info", timeout=5) as r:
-            j = json.load(r)
-        return j.get("context_length") or j.get("max_context_len")
-    except Exception:
-        return None
+    for ep in ("/server_info", "/get_server_info"):
+        try:
+            j = requests.get(f"{base_url}{ep}", timeout=10).json()
+            v = j.get("context_length") or j.get("max_context_len")
+            if isinstance(v, int) and v > 0:
+                return v
+        except Exception:
+            continue
+    return None
 
 
 def server_max_tokens(base_url):
