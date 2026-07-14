@@ -33,6 +33,11 @@ def run_bench(base_url, model, input_len, output_len, tokenizer=None):
         "--random-output-len", str(output_len),
         "--num-prompts", "1",
         "--request-rate", "1",
+        # range_ratio=0 (upstream default) draws the prompt length UNIFORM in
+        # [1, input_len] — a "250K" point can silently measure 60K. Pin exact.
+        # (Found 2026-07-14: server-side prefill ground truth showed 121,922
+        # total tokens across a 2048+131072+250000 sweep.)
+        "--random-range-ratio", "1",
         "--disable-tqdm",
     ]
     if tokenizer:
@@ -46,7 +51,11 @@ def run_bench(base_url, model, input_len, output_len, tokenizer=None):
     # bench_serving prints lines like "Mean TPOT (ms):                 11.26"
     NUM = r"([\d.]+)"
     for line in text.splitlines():
-        if "Mean TPOT" in line:
+        if "Total input tokens" in line:
+            m = re.search(NUM + r"\s*$", line)
+            if m:
+                metrics["actual_input_tokens"] = int(float(m.group(1)))
+        elif "Mean TPOT" in line:
             m = re.search(NUM + r"\s*$", line)
             if m:
                 metrics["tpot_ms"] = float(m.group(1))
@@ -134,6 +143,11 @@ def main():
     for ctx in contexts:
         print(f"  ctx={ctx:>6}: ", end="", flush=True)
         m = run_bench(base, model, ctx, args.output_tokens, tokenizer=args.tokenizer)
+        actual = m.get("actual_input_tokens")
+        if actual is not None and actual < 0.95 * ctx:
+            print(f"  WARN: requested ctx={ctx} but server saw {actual} input tokens "
+                  f"({100*actual/ctx:.0f}%) — depth label unreliable", flush=True)
+            m["depth_shortfall"] = True
         if "error" in m:
             print(f"ERROR ({m.get('error')})")
             results.append({"context": ctx, **m})
