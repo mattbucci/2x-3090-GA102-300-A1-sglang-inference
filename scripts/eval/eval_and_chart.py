@@ -273,7 +273,11 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
     needle_budget = min(max_tokens, 512)
     results = []
     for ctx in lengths:
-        body = (filler * (ctx * 4 // len(filler) + 1))[:ctx * 4]  # ~ctx tokens of filler
+        # 4.5 chars/token measured for this filler across Qwen/Gemma/Mistral
+        # tokenizers (2026-07-14 audit: the old 4.0 assumption under-filled all
+        # labels to 89% — "250K" cells were ~222K actual). usage.prompt_tokens
+        # is recorded per cell below as the server-verified depth.
+        body = (filler * (int(ctx * 4.5) // len(filler) + 1))[:int(ctx * 4.5)]
         for depth in depths:
             pos = int(len(body) * depth)
             prompt = (body[:pos] + "\n" + needle + "\n" + body[pos:]
@@ -283,9 +287,12 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
                     {"role": "user", "content": prompt}
                 ], "max_tokens": needle_budget, "temperature": 0}, timeout=max(600, ctx // 150)).json()
                 found = "BANANA42" in (_answer_text(r["choices"][0]["message"]) or "")
+                actual = r.get("usage", {}).get("prompt_tokens")
             except Exception:
                 found = False
-            results.append({"context": ctx, "depth": depth, "found": found})
+                actual = None
+            results.append({"context": ctx, "depth": depth, "found": found,
+                            "actual_prompt_tokens": actual})
     return {"results": results, "score": sum(r["found"] for r in results) / len(results) if results else 0}
 
 
