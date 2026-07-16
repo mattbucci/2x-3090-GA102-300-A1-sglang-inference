@@ -77,7 +77,7 @@ Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **leads at 62.0%** on ope
 |--------|:--------:|:---------:|:------------:|
 | `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **186/300 = 62.0%** | — | re-run † |
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **177/300 = 59.0%** | **161/300 = 53.7%** | **177/300 = 59.0%** |
-| `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **177/300 = 59.0%** | 74/168 † (partial) | **150/300 = 50.0%** |
+| `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **177/300 = 59.0%** | 122/270 (partial) | **150/300 = 50.0%** |
 | `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | 129/300 = 43.0% | 107/300 = 35.7% | 74/300 = 24.7% |
 | `coder-reap-25b` (Cerebras Qwen3-Coder-REAP-25B-A3B-AWQ) | 125/300 = 41.7% | 122/300 = 40.7% | 107/300 = 35.7% |
 | `coder-30b-ream` (Samsung SAIL Qwen3-Coder-30B-A3B-REAM-AWQ) | 116/300 = 38.7% | 109/300 = 36.3% | re-run † |
@@ -122,7 +122,7 @@ The `SPEC_DECODE=1` opt-in remains wired for short-prompt uses. For our 256K age
 
 ## Known Issues (open)
 
-- **`qwen36-ream` × claw-code is a partial cell (74/168 = 44.0%)** — discount per the full-300 rule. The claw reroll stalls at 168 (`rc=3`, the GLIBC-sensitive claw scaffold — a rollout landmine, not a model issue); opencode + little-coder are full-300.
+- **`qwen36-ream` × claw-code is a partial cell (122/270 = 45.2% of scored)** — discount per the full-300 rule. The 2026-07-16 reroll recovered 102 predictions (168→270); the last ~30 instances hard-fail in the GLIBC-sensitive claw scaffold (`rc=3` rollout landmine, not a model issue) and resist retry; opencode + little-coder are full-300.
 - **Host reboots every ~9–17 h under sustained docker rollout I/O (kernel BUG).** Predictions on disk survive; auto-resume is via `swebench-bakeoff.service` (the boot-ordering cycle that was silently dropping it at every boot is fixed — cooling oneshot now orders after `nvidia-persistenced`, not `multi-user.target`). Full forensic recipe in [`CLAUDE.md`](CLAUDE.md) → Operational Lessons.
 
 One caveat carried forward: `check_awq_scales.py` reads native-AWQ format — CT-format checkpoints crash its tensor reader (use a native-AWQ mirror or HF Range-fetch mode for CT audits). Resolved items live in `git log` + [`patches/README.md`](patches/README.md).
