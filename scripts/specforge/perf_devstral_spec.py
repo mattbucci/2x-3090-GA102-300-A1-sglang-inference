@@ -35,7 +35,7 @@ def build(target, draft, num_steps, spec):
     import os as _os
     ctx = int(_os.environ.get("PERF_CTX_LEN", "32768"))  # raise + set SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 for deep
     kw = dict(model_path=target, quantization="awq_marlin", mem_fraction_static=0.82,
-              context_length=ctx, tp_size=2, cuda_graph_max_bs=1,
+              context_length=ctx, tp_size=2, cuda_graph_max_bs_decode=1,
               disable_radix_cache=True, disable_overlap_schedule=True)
     if spec:
         kw.update(speculative_algorithm="EAGLE3", speculative_draft_model_path=draft,

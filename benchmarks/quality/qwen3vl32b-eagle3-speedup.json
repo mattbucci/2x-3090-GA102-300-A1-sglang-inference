@@ -1,0 +1,32 @@
+{
+ "tag": "qwen3vl32b-eagle3-speedup",
+ "date": "2026-07-15",
+ "target": "mattbucci/Qwen3-VL-32B-AWQ (text-only extraction)",
+ "draft": "mattbucci/Qwen3-VL-32B-AWQ-EAGLE3 (epoch_1_step_4002)",
+ "training": {
+  "max_length": 6144,
+  "epochs": 2,
+  "data": "longcode 2001 convs",
+  "final_loss": 0.25,
+  "train_accept": 0.88,
+  "train_acceptance_rate": 0.82,
+  "note": "19GB 32B target on 24GB cards caps trainable ctx at 6144 (Devstral-16K recipe OOMs both GPUs); zero-copy reduction-shift refactor queued for 16K-class"
+ },
+ "serving": {
+  "ladder": "steps 3 / topk 4 / draft 8, draft unquant",
+  "hardware": "2x3090 TP=2",
+  "short": {
+   "no_spec": 60.4,
+   "eagle3": 112.2,
+   "speedup": 1.86,
+   "accept_len": 2.47
+  },
+  "16K": {
+   "no_spec": 52.1,
+   "eagle3": 83.2,
+   "speedup": 1.6,
+   "accept_len": 2.16
+  }
+ },
+ "comparison": "Devstral-24B draft: 2.26x short (accept 3.32) / 1.91x @16K (2.86) \u2014 trained at 16K vs this 6144"
+}
