@@ -71,11 +71,11 @@ Items 2–3 are prerequisites for the MoE backlog. Detailed plan: [`scripts/quan
 
 Scope: 10 presets (the queue in `evals/swebench/run_all_cycles.sh`), including `nemotron3-omni` — an AVLM omni ship measured because "it can't code" is an unproven assumption (it has thinking + tool-call); it runs last via `--skip-existing`.
 
-Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **leads at 62.0%** on opencode, ahead of the A3B-MoE thinkers `qwen36` and `qwen36-ream` (59.0%). `qwen36` is a strong, consistent three-scaffold performer — **opencode 59.0% / little-coder 59.0% / claw 53.7%** — with the `developer`-role chat-template fix (†) applied. REAM ties native on opencode (both 59.0%) but **trails ~9 pp on little-coder** (`qwen36-ream` 150/300 = 50.0% vs `qwen36` 59.0%, full-300 both, 64 empty patches in the REAM cell) — the merge is scaffold-sensitive on the thinking ships, so "REAM ties native" holds on opencode/claw but not uniformly. The fleet is re-running every little-coder cell with that fix (cycle 3 of 9).
+Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **leads on opencode at 62.3% AND claw at 55.0%** (full-300 both, 2026-07-17 cycle), ahead of the A3B-MoE thinkers `qwen36` and `qwen36-ream` (59.0% opencode; qwen36 claw 53.7%). `qwen36` is a strong, consistent three-scaffold performer — **opencode 59.0% / little-coder 59.0% / claw 53.7%** — with the `developer`-role chat-template fix (†) applied. REAM ties native on opencode (both 59.0%) but **trails ~9 pp on little-coder** (`qwen36-ream` 150/300 = 50.0% vs `qwen36` 59.0%, full-300 both, 64 empty patches in the REAM cell) — the merge is scaffold-sensitive on the thinking ships, so "REAM ties native" holds on opencode/claw but not uniformly. The fleet is re-running every little-coder cell with that fix (cycle 3 of 9).
 
 | Preset | opencode | claw-code | little-coder |
 |--------|:--------:|:---------:|:------------:|
-| `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **186/300 = 62.0%** | — | re-run † |
+| `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **187/300 = 62.3%** | **165/300 = 55.0%** | re-run † |
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **177/300 = 59.0%** | **161/300 = 53.7%** | **177/300 = 59.0%** |
 | `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **177/300 = 59.0%** | 122/270 (partial) | **150/300 = 50.0%** |
 | `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | 129/300 = 43.0% | 107/300 = 35.7% | 74/300 = 24.7% |
