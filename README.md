@@ -71,18 +71,18 @@ Items 2–3 are prerequisites for the MoE backlog. Detailed plan: [`scripts/quan
 
 Scope: 10 presets (the queue in `evals/swebench/run_all_cycles.sh`), including `nemotron3-omni` — an AVLM omni ship measured because "it can't code" is an unproven assumption (it has thinking + tool-call); it runs last via `--skip-existing`.
 
-Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **leads on opencode at 62.3% AND claw at 55.0%** (full-300 both, 2026-07-17 cycle), ahead of the A3B-MoE thinkers `qwen36` and `qwen36-ream` (59.0% opencode; qwen36 claw 53.7%). `qwen36` is a strong, consistent three-scaffold performer — **opencode 59.0% / little-coder 59.0% / claw 53.7%** — with the `developer`-role chat-template fix (†) applied. REAM ties native on opencode (both 59.0%) but **trails ~9 pp on little-coder** (`qwen36-ream` 150/300 = 50.0% vs `qwen36` 59.0%, full-300 both, 64 empty patches in the REAM cell) — the merge is scaffold-sensitive on the thinking ships, so "REAM ties native" holds on opencode/claw but not uniformly. The fleet is re-running every little-coder cell with that fix (cycle 3 of 9).
+Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **sweeps all three scaffolds — opencode 62.3% / claw 55.0% / little-coder 62.3%** (full-300 cells, 2026-07-17 cycle): the dense thinker is the outright bake-off leader. `qwen36` is second and consistent — 59.0 / 53.7 / 59.0. REAM ties native on opencode (both 59.0%) but **trails ~9 pp on little-coder** (`qwen36-ream` 150/300 = 50.0% vs `qwen36` 59.0%, full-300 both, 64 empty patches in the REAM cell) — the merge is scaffold-sensitive on the thinking ships, so "REAM ties native" holds on opencode/claw but not uniformly.
 
 | Preset | opencode | claw-code | little-coder |
 |--------|:--------:|:---------:|:------------:|
-| `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **187/300 = 62.3%** | **165/300 = 55.0%** | re-run † |
+| `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **187/300 = 62.3%** | **165/300 = 55.0%** | **187/300 = 62.3%** |
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **177/300 = 59.0%** | **161/300 = 53.7%** | **177/300 = 59.0%** |
-| `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **177/300 = 59.0%** | 122/270 (partial) | **150/300 = 50.0%** |
+| `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **177/300 = 59.0%** | 122/270 (partial †) | **150/300 = 50.0%** |
 | `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | 129/300 = 43.0% | 107/300 = 35.7% | 74/300 = 24.7% |
 | `coder-reap-25b` (Cerebras Qwen3-Coder-REAP-25B-A3B-AWQ) | 125/300 = 41.7% | 122/300 = 40.7% | 107/300 = 35.7% |
 | `coder-30b-ream` (Samsung SAIL Qwen3-Coder-30B-A3B-REAM-AWQ) | 116/300 = 38.7% | 109/300 = 36.3% | 76/300 = 25.3% |
 
-† **little-coder/claw × thinking cells are re-running with the `developer`-role chat-template fix** (pi-ai sends its system prompt as role `developer`; the Qwen3.5/3.6 templates 400'd on it → empty thinking rollouts; fix wired into `setup.sh` via `patch_chat_templates_developer_role.py`). `qwen36-ream`/`qwen36-dense` claw cells show stale partials until cycles 4/7 re-run. Full story: `CLAUDE.md`.
+† **`qwen36-ream` claw is the one remaining partial cell** (122/270 shown; ~30 instances resist the claw GLIBC-landmine reroll — Known Issues). Every other little-coder/claw thinking cell is a full-300 re-run with the `developer`-role chat-template fix applied (pi-ai sends its system prompt as role `developer`; the Qwen3.5/3.6 templates 400'd on it → empty thinking rollouts; fix wired into `setup.sh` via `patch_chat_templates_developer_role.py`).
 
 Queued next: **`qwen3-ream` re-enters the bake-off for a v0.5.15 cycle** — it was dropped in June as "failed opencode+claw / non-tool-trained", but its June tool-use 0.0 was stack-era (1.0/1.0 to 148K on v0.5.15 — probe table below), so those failures are suspect infra; no June rollouts survive to contaminate a fresh run.
 
