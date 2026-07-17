@@ -1,9 +1,11 @@
 #!/bin/bash
-# run_v0512_fleet_eval.sh — v0.5.12 fleet re-eval for the README Quality table +
+# run_v0512_fleet_eval.sh — fleet re-eval for the README Quality table +
 # long-context tok/s charts + the 256K tool-reliability probe. One model served at
 # a time (Rule 1). Per preset: launch@256K -> quality eval -> tok/s sweep -> 256K
 # tool-use probe -> stop. Resumable (eval_and_chart caches; --skip-existing logic
-# via on-disk receipts).
+# via on-disk receipts). Tool-use receipts are stamped with STACK_TAG (default
+# v0515) so a re-run on a new stack never clobbers a prior stack's receipts.
+# (Script name keeps its historical v0512 for muscle memory / old docs.)
 #
 # Usage:
 #   ./scripts/eval/run_v0512_fleet_eval.sh                 # full fleet
@@ -96,7 +98,7 @@ log "fleet: $PRESETS_RUN"
 # Leave FRESH unset to RESUME a crashed fleet (completed presets skip instantly).
 if [ "${FRESH:-0}" = "1" ]; then
   for P in $PRESETS_RUN; do
-    rm -f "benchmarks/quality/$P.json" "benchmarks/quality/tooluse256k-$P-v0512.json"
+    rm -f "benchmarks/quality/$P.json" "benchmarks/quality/tooluse256k-$P-${STACK_TAG:-v0515}.json"
   done
   log "FRESH=1: cleared prior quality + probe JSONs for $PRESETS_RUN"
 fi
@@ -134,10 +136,10 @@ for ENTRY in "${FLEET[@]}"; do
     --tokenizer "$MODELPATH" > "$LOG/tokps.log" 2>&1
   log "    tok/s rc=$?"
 
-  log "  256K tool-use probe -> benchmarks/quality/tooluse256k-$PRESET-v0512.json"
+  log "  256K tool-use probe -> benchmarks/quality/tooluse256k-$PRESET-${STACK_TAG:-v0515}.json"
   python "$REPO/scripts/eval/probe_256k_tooluse.py" --port $PORT --tag "$PRESET" \
     --lengths "$TOOLUSE_LENGTHS" \
-    --out "$REPO/benchmarks/quality/tooluse256k-$PRESET-v0512.json" \
+    --out "$REPO/benchmarks/quality/tooluse256k-$PRESET-${STACK_TAG:-v0515}.json" \
     > "$LOG/tooluse.log" 2>&1
   log "    probe rc=$?"
 

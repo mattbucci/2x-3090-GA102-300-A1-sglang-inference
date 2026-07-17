@@ -53,14 +53,35 @@ TASK = ("\n\nNow use the lookup_record tool to fetch the record. Use exactly the
         "specified in the CRITICAL INSTRUCTION above. Call the tool — do not answer in prose.")
 
 
-def build_prompt(approx_tokens: int, depth: float = 0.5) -> str:
+# Measured on the actual FILLER_UNIT: qwen3/gemma4 tokenizers all give 6.59
+# chars/token (simple common words ≈ 1 token each; the old 3.8 guess under-filled
+# every rung to ~58% of its label). Self-calibrated per model from usage after
+# each rung, so tekken/other tokenizers converge by rung 2.
+CHARS_PER_TOKEN_INIT = 6.6
+
+
+def build_prompt(approx_tokens: int, depth: float = 0.5,
+                 chars_per_token: float = CHARS_PER_TOKEN_INIT) -> str:
     """~approx_tokens of filler with the needle instruction planted at `depth` (0..1
     through the filler) — vary depth to probe lost-in-the-middle tool-calling."""
-    target_chars = int(approx_tokens * 3.8)  # rough chars/token for this filler
+    target_chars = int(approx_tokens * chars_per_token)
     n = (target_chars // len(FILLER_UNIT)) + 1
     body = (FILLER_UNIT * n)[:target_chars]
     pos = int(len(body) * depth)
     return body[:pos] + NEEDLE + body[pos:] + TASK
+
+
+def server_context_length(port: int):
+    """Read the server's --context-length so deep rungs can be capped instead of 400ing."""
+    for ep in ("server_info", "get_server_info"):
+        try:
+            info = requests.get(f"http://localhost:{port}/{ep}", timeout=10).json()
+            ctx = info.get("context_length") or (info.get("model_config") or {}).get("context_len")
+            if ctx:
+                return int(ctx)
+        except Exception:
+            continue
+    return None
 
 
 def extract_toolcall(msg: dict):
@@ -79,8 +100,9 @@ def extract_toolcall(msg: dict):
     return True, args
 
 
-def probe_one(url, approx_tokens, max_tokens=2048, timeout=900, depth=0.5):
-    prompt = build_prompt(approx_tokens, depth)
+def probe_one(url, approx_tokens, max_tokens=2048, timeout=900, depth=0.5,
+              chars_per_token=CHARS_PER_TOKEN_INIT):
+    prompt = build_prompt(approx_tokens, depth, chars_per_token)
     t0 = time.time()
     try:
         r = requests.post(url, json={
@@ -93,6 +115,9 @@ def probe_one(url, approx_tokens, max_tokens=2048, timeout=900, depth=0.5):
         }, timeout=max(timeout, approx_tokens // 150)).json()
     except Exception as e:
         return {"approx_tokens": approx_tokens, "error": str(e)[:120]}
+    if "error" in r:  # e.g. prompt overflowed the server window — caller may retry smaller
+        return {"approx_tokens": approx_tokens,
+                "error": str(r["error"].get("message", r["error"]))[:120]}
     choice = (r.get("choices") or [{}])[0]
     msg = choice.get("message") or {}
     finish = choice.get("finish_reason")
@@ -124,16 +149,36 @@ def main():
 
     url = f"http://localhost:{args.port}/v1/chat/completions"
     lengths = [int(x) for x in args.lengths.split(",")]
+    ctx_len = server_context_length(args.port)
+    usable = (ctx_len - args.max_tokens - 512) if ctx_len else None
+    if usable:
+        capped = [L for L in lengths if L > usable]
+        lengths = sorted({min(L, usable) for L in lengths})
+        if capped:
+            print(f"server context_length={ctx_len}: capped {capped} -> {usable}")
     print(f"256K tool-use probe: {args.tag}")
     print(f"{'approx':>8} {'actual':>8} {'finish':>12} {'valid':>6} {'correct':>8} {'id':>10} {'s':>5}")
     results = []
+    cpt = CHARS_PER_TOKEN_INIT
     for L in lengths:
-        res = probe_one(url, L, max_tokens=args.max_tokens, depth=args.depth)
+        res = probe_one(url, L, max_tokens=args.max_tokens, depth=args.depth,
+                        chars_per_token=cpt)
+        if "error" in res and usable:  # likely window overflow from cpt overshoot
+            cpt *= 0.9
+            res = probe_one(url, L, max_tokens=args.max_tokens, depth=args.depth,
+                            chars_per_token=cpt)
         results.append(res)
         if "error" in res:
             print(f"{L:>8} {'—':>8} {'ERROR':>12} {res['error']}")
         else:
-            print(f"{L:>8} {str(res['actual_prompt_tokens']):>8} {str(res['finish_reason']):>12} "
+            actual = res["actual_prompt_tokens"]
+            if actual:  # converge chars/token from the server's own count
+                cpt = max(2.0, min(12.0, cpt * L / actual))
+                if actual < 0.95 * L:
+                    res["depth_shortfall"] = True
+                    print(f"WARN: rung {L} landed at {actual} actual (<95%) — "
+                          f"recalibrated to {cpt:.2f} chars/token")
+            print(f"{L:>8} {str(actual):>8} {str(res['finish_reason']):>12} "
                   f"{str(res['valid_toolcall']):>6} {str(res['correct_action']):>8} "
                   f"{str(res['got_id']):>10} {res['elapsed_s']:>5}")
 
