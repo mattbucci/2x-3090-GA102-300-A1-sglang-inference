@@ -157,6 +157,9 @@ echo ""
 echo "[2b/3] Patching chat templates (developer-role -> system)..."
 python "$REPO_DIR/scripts/eval/patch_chat_templates_developer_role.py" || \
     echo "  (warning: chat-template patch step failed; little-coder rollouts may 400 on thinking presets)"
+echo "[2c/3] Patching chat templates (OpenAI list-content -> text join)..."
+python "$REPO_DIR/scripts/eval/patch_chat_templates_list_content.py" --scan || \
+    echo "  (warning: list-content template patch failed; string-only templates blank structured content — agents run blind)"
 
 # -------------------------------------------------------------------
 # Step 3: Verify installation
