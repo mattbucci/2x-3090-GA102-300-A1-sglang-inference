@@ -547,7 +547,11 @@ apply_preset() {
             CTX=262144; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             REASONING="--reasoning-parser qwen3"
             # Qwen3-30B-Instruct uses qwen25 JSON-in-<tool_call> format (vs qwen3-coder XML).
-            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen25"
+            # --sampling-defaults model: checkpoint ships temp 0.7/top_k 20/top_p 0.8;
+            # without it SGLang generic defaults apply and agentic sessions fall into
+            # the int4 degenerate-repeat trap (116x identical glob calls, 2026-07-17) —
+            # same anti-repetition lever the thinking presets carry.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen25 --sampling-defaults model"
             ;;
         qwen36)
             # Qwen3.6-35B-A3B (thinking + vision): 256-expert hybrid DeltaNet
