@@ -80,7 +80,7 @@ Top tier: `qwen36-dense` (Qwen3.6-27B dense, thinking) **leads at 62.0%** on ope
 | `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | **177/300 = 59.0%** | 122/270 (partial) | **150/300 = 50.0%** |
 | `coder-30b-eval` (Qwen3-Coder-30B-A3B-AWQ CT) | 129/300 = 43.0% | 107/300 = 35.7% | 74/300 = 24.7% |
 | `coder-reap-25b` (Cerebras Qwen3-Coder-REAP-25B-A3B-AWQ) | 125/300 = 41.7% | 122/300 = 40.7% | 107/300 = 35.7% |
-| `coder-30b-ream` (Samsung SAIL Qwen3-Coder-30B-A3B-REAM-AWQ) | 116/300 = 38.7% | 109/300 = 36.3% | re-run † |
+| `coder-30b-ream` (Samsung SAIL Qwen3-Coder-30B-A3B-REAM-AWQ) | 116/300 = 38.7% | 109/300 = 36.3% | 76/300 = 25.3% |
 
 † **little-coder/claw × thinking cells are re-running with the `developer`-role chat-template fix** (pi-ai sends its system prompt as role `developer`; the Qwen3.5/3.6 templates 400'd on it → empty thinking rollouts; fix wired into `setup.sh` via `patch_chat_templates_developer_role.py`). `qwen36-ream`/`qwen36-dense` claw cells show stale partials until cycles 4/7 re-run. Full story: `CLAUDE.md`.
 
