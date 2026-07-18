@@ -100,8 +100,57 @@ def extract_toolcall(msg: dict):
     return True, args
 
 
+FOLLOWUP_SENTINEL = "KIWI77"
+
+
+def followup_one(url, prompt, assistant_msg, max_tokens=1024, timeout=900):
+    """Multi-turn rung: send the model's own tool call back with a synthetic
+    RESULT carrying a sentinel fact, and check the final answer uses it.
+
+    Single-turn probes score only the call; if the serving path blanks tool
+    responses (template list-content class — the qwen3-ream June mis-verdict),
+    calls score 1.0 while agents run blind. This rung closes that blind spot:
+    the sentinel is only knowable from the tool response.
+    """
+    tc = (assistant_msg.get("tool_calls") or [{}])[0]
+    clean_assistant = {
+        "role": "assistant",
+        "content": assistant_msg.get("content") or "",
+        "tool_calls": [{
+            "id": tc.get("id", "call_0"),
+            "type": "function",
+            "function": {
+                "name": (tc.get("function") or {}).get("name", "lookup_record"),
+                "arguments": (tc.get("function") or {}).get("arguments", "{}"),
+            },
+        }],
+    }
+    result_text = (f'{{"id": "{NEEDLE_ID}", "status": "ARCHIVED", '
+                   f'"access_code": "{FOLLOWUP_SENTINEL}"}}')
+    messages = [
+        {"role": "user", "content": prompt},
+        clean_assistant,
+        {"role": "tool", "content": result_text,
+         "tool_call_id": clean_assistant["tool_calls"][0]["id"]},
+        {"role": "user", "content": "State the record's access_code exactly."},
+    ]
+    try:
+        r = requests.post(url, json={
+            "model": "default", "messages": messages, "tools": TOOLS,
+            "max_tokens": max_tokens, "temperature": 0,
+        }, timeout=timeout).json()
+    except Exception as e:
+        return {"followup_error": str(e)[:120]}
+    if "error" in r:
+        return {"followup_error": str(r["error"].get("message", r["error"]))[:120]}
+    msg = (r.get("choices") or [{}])[0].get("message") or {}
+    text = (msg.get("content") or "") + (msg.get("reasoning_content") or "")
+    return {"used_tool_response": FOLLOWUP_SENTINEL in text,
+            "followup_text": (msg.get("content") or "")[:120]}
+
+
 def probe_one(url, approx_tokens, max_tokens=2048, timeout=900, depth=0.5,
-              chars_per_token=CHARS_PER_TOKEN_INIT):
+              chars_per_token=CHARS_PER_TOKEN_INIT, multi_turn=False):
     prompt = build_prompt(approx_tokens, depth, chars_per_token)
     t0 = time.time()
     try:
@@ -124,7 +173,7 @@ def probe_one(url, approx_tokens, max_tokens=2048, timeout=900, depth=0.5,
     prompt_tokens = (r.get("usage") or {}).get("prompt_tokens")
     valid, args = extract_toolcall(msg)
     correct = bool(args) and str(args.get("id", "")).strip() == NEEDLE_ID
-    return {
+    res = {
         "approx_tokens": approx_tokens,
         "actual_prompt_tokens": prompt_tokens,
         "finish_reason": finish,
@@ -133,6 +182,9 @@ def probe_one(url, approx_tokens, max_tokens=2048, timeout=900, depth=0.5,
         "got_id": (args or {}).get("id") if args else None,
         "elapsed_s": round(time.time() - t0, 1),
     }
+    if multi_turn and valid:
+        res.update(followup_one(url, prompt, msg, timeout=timeout))
+    return res
 
 
 def main():
@@ -144,6 +196,10 @@ def main():
     ap.add_argument("--max-tokens", type=int, default=2048)
     ap.add_argument("--depth", type=float, default=0.5,
                     help="needle depth 0..1 through the filler (sweep externally for lost-in-the-middle)")
+    ap.add_argument("--multi-turn", action="store_true",
+                    help="after each valid call, feed back a synthetic tool RESULT "
+                         "with a sentinel and verify the model uses it (closes the "
+                         "response-path blind spot)")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -162,11 +218,11 @@ def main():
     cpt = CHARS_PER_TOKEN_INIT
     for L in lengths:
         res = probe_one(url, L, max_tokens=args.max_tokens, depth=args.depth,
-                        chars_per_token=cpt)
+                        chars_per_token=cpt, multi_turn=args.multi_turn)
         if "error" in res and usable:  # likely window overflow from cpt overshoot
             cpt *= 0.9
             res = probe_one(url, L, max_tokens=args.max_tokens, depth=args.depth,
-                            chars_per_token=cpt)
+                            chars_per_token=cpt, multi_turn=args.multi_turn)
         results.append(res)
         if "error" in res:
             print(f"{L:>8} {'—':>8} {'ERROR':>12} {res['error']}")
@@ -190,6 +246,10 @@ def main():
         "correct_rate": round(sum(r["correct_action"] for r in ok) / len(ok), 3) if ok else None,
         "max_ctx_correct": max([r["actual_prompt_tokens"] for r in ok if r["correct_action"]], default=0),
     }
+    if args.multi_turn:
+        ft = [r for r in ok if "used_tool_response" in r]
+        summary["tool_response_used_rate"] = (
+            round(sum(r["used_tool_response"] for r in ft) / len(ft), 3) if ft else None)
     print(f"\nvalid_toolcall: {summary['valid_rate']}  correct_action: {summary['correct_rate']}  "
           f"max-ctx-correct: {summary['max_ctx_correct']}")
     if args.out:
