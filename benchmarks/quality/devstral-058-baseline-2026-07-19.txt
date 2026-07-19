@@ -1,0 +1,27 @@
+Patch 058 (mistral multi-token tool-name prefix hold-back) — pre-058 mechanism baseline
+Fleet-audit lane 3090-A, kill-gate (spec step 3). Captured 2026-07-19 on letsrtfm-amd,
+env sglang-v0515, against the live tree /data/sglang-rebase-v0515 (v0.5.15 + 24 patches,
+pre-058). Instrument: scripts/eval/test_mistral_detector_prefix_holdback.py (offline, no GPU).
+
+KILL-GATE VERDICT: defect CONFIRMED → proceed with the port (not already fixed by 057/upstream).
+
+  [FAIL] 1 multitoken todowrite (no leak)   calls=[] normal='todowrite[ARGS{"path": "NOTES.md"}'
+  [FAIL] 2 multitoken webfetch (no leak)   calls=[] normal='webfetch[ARGS{"url": "http://site.test"}'
+  [PASS] 3 single-token task recovered   calls=['task'] normal=''
+  [PASS] 4 canonical [TOOL_CALLS] parsed   calls=['read'] normal=''
+  [PASS] 5 prose 'todo ...' flushed verbatim   calls=[] normal='todo list of things'
+  [PASS] 6 prose full name no [ARGS] flushed   calls=[] normal='please read the file'
+  [PASS] 7 unknown ident before [ARGS] -> 0 calls   calls=[] normal='frobnicate[ARGS{"x": 1}'
+  [PASS] 8 non-streaming omission recovery   calls=['todowrite']
+
+  6/8 passed (exit 1)
+
+Reading: cases 1-2 are the defect — a multi-token tool name (todowrite → 'todo'+'write')
+has its first token flushed as content by 041's EXACT-match hold-back, splitting the name
+across the flush boundary; [TOOL_CALLS]-omission recovery then never fires (0 calls) and the
+whole 'name[ARGS]{json}' leaks as assistant content → silent empty diff. Case 3 proves the
+single-token path (041 behavior) is preserved — a name that arrives as one token is held.
+
+Post-058 (prefix-match hold-back) target: 8/8. That run + the 3-gate + live probe land
+atomically in the next bake-off gap (patch 058 modifies the live serving tree, which must
+not be touched while the in-flight devstral bake-off cell is being generated).
