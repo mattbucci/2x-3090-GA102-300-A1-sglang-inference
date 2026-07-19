@@ -15,89 +15,92 @@ All inference MUST use SGLang. No vLLM, no llama.cpp unless explicitly for compa
 source scripts/common.sh
 activate_conda
 setup_nvidia_env
-./scripts/launch.sh <model>
+./scripts/launch.sh <preset>
 ```
 
 Always source `common.sh` + `activate_conda` + `setup_nvidia_env` before launching.
+**`scripts/launch.sh` presets are the single source of truth for per-model flags** — read
+the preset, don't restate flags here (duplication is what made earlier versions of this
+doc rot).
 
-### Launch flags
-- `--disable-cuda-graph --disable-custom-all-reduce` — required, CUDA graph capture OOMs with TP=2 on 24GB GPUs
-- `--quantization compressed-tensors` — for cyankiwi community checkpoints
-- `--quantization awq` — for our self-calibrated AWQ checkpoints (auto-promotes to `awq_marlin`)
+### CUDA graphs: ON — never disable without an A/B receipt
+- Graphs run **ON by default**: the launch.sh default is `CUDA_GRAPH=""` (launch.sh:66 —
+  no flag appended, SGLang's own graphs-on default applies). Several presets additionally
+  pin `--cuda-graph-max-bs 1` for single-user bs=1 capture.
+- `qwen36-vl-reap` (launch.sh:444) is the ONE preset that disables graphs, via
+  `--disable-cuda-graph --disable-piecewise-cuda-graph`.
+- Receipt for why graphs stay on: enabling them took qwen36 single-user decode
+  **31 → 129 tok/s @262K (4.15×, TPOT 32.1 → 7.8 ms)** with 5/5 capabilities under
+  graph replay (launch.sh:589-599 preset comment, 2026-06-07).
+- `--disable-custom-all-reduce` is a SEPARATE flag and a launch.sh **global default**
+  (launch.sh:808): custom AR breaks graph capture on sm_86 TP=2. Retest only via
+  `ENABLE_CUSTOM_AR=1`. Receipt: `benchmarks/allreduce-accel-null-2026-06-15.md`.
 
-## VRAM Budget
+### Quantization flags
+- `--quantization awq` for our self-calibrated native-AWQ checkpoints (auto-promotes to
+  `awq_marlin`); some presets pin `awq_marlin` or `moe_wna16` explicitly — the preset knows.
+- `--quantization compressed-tensors` only for our own CT-format checkpoints
+  (e.g. the `qwen36-dense-ct` preset, launch.sh:482).
 
-48GB total (2x 24GB). Model weights + KV cache must fit.
+## Context & VRAM
 
-| Model | Weight VRAM | Max practical context |
-|-------|-------------|----------------------|
-| Devstral-24B AWQ | ~14 GB | 32K |
-| Coder-30B MoE AWQ | ~16 GB | 16K |
-| Qwen3.5-27B AWQ | ~15 GB | 32K |
-| Coder-Next-REAM-60B AWQ | ~33 GB | 4K (very tight) |
-| GLM-4.5-Air-REAP-82B AWQ | ~34 GB | 4K (very tight) |
-| Coder-Next-80B AWQ | ~44 GB | DOES NOT FIT |
+Matrix standard: **TP=2, `--context-length 262144`, MAX_RUNNING=1** (CLAUDE.md, Current
+Hardware State). 17 presets serve 262144; the rest are capped by KV pool or model
+card, not by preference. Per-model **server-verified** depth caps and decode tok/s live in
+the README section "Performance — single-user decode at 256K" — copy caps from there, not
+from memory. Two examples of the framing:
+- `devstral`: 202K real KV pool (42 tok/s @196K) — full-attention-bound.
+- `qwen3-vl-32b`: **131K model-card cap** (35 tok/s @127K measured — 127K is the measured
+  decode depth, not the cap).
+
+The one hard rule that survives from the old table: **80B+ models do NOT fit in 48 GB.**
 
 ## Quantization Pipeline
 
-All models use **AWQ 4-bit** format. The pipeline:
+All ships use **AWQ 4-bit** (native AWQ format). The pipeline:
 
 ```
-BF16 model → GPTQ calibration (llmcompressor) → compressed-tensors → CT→AWQ conversion → native AWQ
+upstream BF16 → GPTQ calibration (llmcompressor) → compressed-tensors → CT→AWQ conversion → native AWQ
 ```
 
-### CRITICAL: Use a clean conda env for calibration
+### Division of labor — calibrations do NOT run on this box
+Since 2026-05-19, **all calibrations run on the separate same-repo calibration device**;
+this eval box only `git pull --rebase`s to pick up its commits. **Rule 1: never run a
+calibration concurrently with serving/eval on the same box** (host OOM + crash receipt in
+CLAUDE.md). The pipeline notes below are reference for the calibration device.
 
-**llmcompressor MUST run in a separate conda env from sglang.** The two have conflicting
-dependencies (transformers, compressed-tensors, torch versions). Mixing them breaks both.
+### Own-builds only — no community quants as ships or bases
+Every `mattbucci/*-AWQ` ship is calibrated end-to-end from the upstream BF16 base
+(prune-ourselves rule, README Direction). Pre-quantized 3rd-party AWQ uploads are
+reference points only — never ships, never calibration bases.
 
-```bash
-# Create clean quant env (one-time)
-conda create -n quant python=3.12 -y
-conda activate quant
-pip install llmcompressor transformers compressed-tensors accelerate datasets
-```
-
-- Calibration runs on **CPU only** (`CUDA_VISIBLE_DEVICES=""`): the BF16 model is too large for 48GB VRAM
-- CPU calibration takes ~6 hours for a 27B model (memory-mapped from safetensors)
-- The `sglang` conda env is for inference only — never install llmcompressor into it
-
-### Step 1: GPTQ calibration (quant env, CPU)
-```bash
-conda activate quant
-CUDA_VISIBLE_DEVICES="" python scripts/quantize/quantize_qwen35_llmcompressor.py
-```
-- Output: compressed-tensors format (`.weight_packed` + `.weight_scale` per layer)
-- 256 samples × 512 tokens for dense models
-- 512+ samples for MoE models (expert balance)
-
-### Step 2: CT → AWQ conversion (quant env)
-```bash
-python scripts/quantize/convert_qwen35_ct_to_awq.py
-```
-- Repacks weights from CT sequential to AWQ interleaved format
-- Transposes weight layout for Marlin kernel compatibility
-- Clamp scales to [-65504, 65504] before FP16 cast (prevents inf overflow)
-
-### Step 3: Inference (sglang env)
-```bash
-conda activate sglang
-MODEL=~/AI/models/Qwen3.5-27B-AWQ-4bit-calibrated ./scripts/launch.sh qwen35
-```
+### Conda env split (calibration device)
+**llmcompressor MUST run in the `quant` env, never the serving env** — conflicting
+transformers/compressed-tensors/torch pins break both. The serving env
+(version-suffixed, e.g. `sglang-v0515`, resolved by `common.sh`) is for inference only.
 
 ### DeltaNet/Mamba/SSM layers — DO NOT quantize to INT4
 Models with recurrent state accumulate quantization error: `S(t) = gating * S(t-1) + delta`.
-- **Qwen3.5-27B**: Exclude `in_proj_a`, `in_proj_b` (dim 48, DeltaNet gates) from GPTQ
-- **Coder-Next**: DeltaNet + attention layers kept BF16
-- Community AWQ checkpoints that quantize these layers produce garbage output or
-  Triton kernel dtype mismatches (bf16 vs fp16 in conv_state branches)
+- Qwen3.5/3.6 DeltaNet: exclude ONLY `in_proj_a$` / `in_proj_b$` (narrow regex ignore) —
+  broad `linear_attn` excludes break the loader; see CLAUDE.md Calibration recipe specifics.
+- Community AWQ checkpoints that quantize these layers produce garbage output or Triton
+  kernel dtype mismatches (bf16 vs fp16 in conv_state branches).
 
 ### MoE calibration — CRITICAL
 Standard GPTQ fails for MoE due to expert routing imbalance:
-- Use **at least 512 calibration samples** with sequence length ≥1024
-- Verify all experts receive calibration data — check scales for inf/nan/zero
-- For fused expert Parameters: monkey-patch to per-expert nn.Linear before calibration
-- Consider GPTQModel with MoE.Routing FailSafe mode
+- Use **at least 512 calibration samples** with sequence length ≥1024.
+- Verify all experts receive calibration data — check scales for inf/nan/zero.
+- For fused expert Parameters: unfuse to per-expert nn.Linear before calibration
+  (`patches/qwen3_5moe_unfused_experts.py` pattern).
+
+### Scale audit gate — run after EVERY CT→AWQ conversion
+Run `scripts/eval/check_awq_scales.py` on every converted checkpoint before ship:
+it scans every `*.scales` / `*.weight_scale` tensor for all-zero / NaN / Inf / extreme
+values. `validate_capabilities.py` cannot catch silent zero-scales (model boots, NaN
+logits masked). **Pass `--base <bf16_base_dir>` for MoE ships** so the dead-channel
+comparator downgrades benign structural-sparsity zeros while still flagging live-block
+defects. Non-zero exit = do NOT ship. (CLAUDE.md Critical Rules; the forensic method that
+caught the 16h Gemma v3 loss.)
 
 ### Chat templates — ALWAYS verify
 SGLang reads chat templates from the tokenizer, NOT from standalone jinja files.
@@ -116,20 +119,35 @@ If `chat_template` is None:
 3. Or pass `--chat-template path/to/template.jinja` to SGLang launch
 
 Without a chat template, SGLang falls back to a generic format that produces
-wrong outputs (no system prompt handling, wrong special tokens, etc.).
+wrong outputs (no system prompt handling, wrong special tokens, etc.). Also verify the
+template handles list-content and the roles your scaffold sends (see
+`scripts/eval/patch_chat_templates_list_content.py` / `patch_chat_templates_developer_role.py`,
+both wired into setup.sh — each guards against a receipted silent-blindness failure).
 
 ### AWQ checkpoint format
 - Marlin requires: output dim divisible by 64, input dim divisible by 128
-- Layers that don't meet alignment fall back to torch dequant (now upstream in v0.5.11 — was the v0.5.10-era patch 002 `nvidia-model-fixes` + 006 `awq-bf16-activation-support` + 008 `awq-moe-wna16-fallback`, all dropped post-rebase 2026-05-07)
-- Expert naming: SGLang loader expects `experts.{id}.{proj}.{suffix}` (expert-first). llmcompressor's CT save format puts proj first as `experts.{proj}.{id}.{suffix}` — `convert_gemma4_26b_ct_to_awq.py` normalizes to expert-first via `_normalize_expert_key()`. Mismatch silently drops every per-expert key (see 21B-REAP-v3 saga 2026-05-08, 3090 commit `839e44b`).
-- quant_method: "awq", version: "gemm", zero_point: true, group_size: 128 (group_size=32 for Gemma 4 family)
+- Layers that don't meet alignment fall back to torch dequant (upstream since v0.5.11)
+- Expert naming: SGLang loader expects `experts.{id}.{proj}.{suffix}` (expert-first).
+  llmcompressor's CT save format puts proj first as `experts.{proj}.{id}.{suffix}` —
+  the CT→AWQ converters normalize to expert-first via `_normalize_expert_key()`.
+  Mismatch silently drops every per-expert key (21B-REAP-v3 saga, commit `839e44b`).
+- quant_method: "awq", version: "gemm", zero_point: true, group_size: 128
+  (the Gemma 4 family ships group-32 — the receipted cause of its Marlin fallback;
+  README Tooling / Performance narrative)
 
 ## Benchmarking
 
-- Always measure **TPOT** with `sglang.bench_serving` — never wall-clock time
-- Concurrency sweep: 1/2/4/8/16/32
-- Context sweep: powers of 2 from 128 to model max
-- Save to `benchmarks/{model}/results.json`
-- Regenerate charts: `python scripts/bench/generate_charts.py`
-- Run regression test before committing: `./scripts/bench/bench_regression.sh <model>`
-- Regression threshold: >10% deviation triggers alert
+- Primary target: **single-user (M=1) decode at TRUE depth** (CLAUDE.md Optimization
+  Target). Multi-user throughput is secondary — never sacrifice M=1 latency for it.
+- Decode tok/s comes from **server-log gen-throughput or server-verified
+  `actual_input_tokens`** — never client-side TPOT (client TPOT under-measures), and
+  never `bench_serving --dataset-name random` without `--random-range-ratio 1`
+  (the default draws prompt lengths uniform in [1, N]; receipt:
+  `benchmarks/bench-depth-bug-2026-07-14.md`).
+- Instruments: `scripts/bench/bench_long_context.py` (depth sweep, server-verified) and
+  `scripts/eval/run_v0512_fleet_eval.sh` (quality + tok/s + 256K probes; name is
+  historical, harness is current).
+- Receipts land under `benchmarks/`; regenerate charts with
+  `python scripts/bench/generate_charts.py`.
+- `scripts/bench/bench_regression.sh` exists but `benchmarks/baselines.json` is not yet
+  armed — do not claim a regression tripwire until the fleet-audit item arms it.
