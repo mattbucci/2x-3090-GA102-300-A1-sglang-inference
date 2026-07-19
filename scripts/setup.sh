@@ -2,7 +2,7 @@
 # SGLang setup for 2x RTX 3090
 #
 # Clones SGLang v0.5.15 and applies the local patches in patches/*.patch
-# (idempotent — git apply --check skips already-applied). 24 patches; verified
+# (idempotent — git apply --check skips already-applied). 25 patches; verified
 # byte-identical to the live tree by the 3-gate pristine replay — now scripted,
 # scripts/test_patch_gates.sh (flipped from v0.5.14 2026-07-12; 054/055 dropped
 # as upstreamed, +057 MistralCommonBackend opt-out for the tx 5.12 bump).

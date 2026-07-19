@@ -25,3 +25,27 @@ single-token path (041 behavior) is preserved — a name that arrives as one tok
 Post-058 (prefix-match hold-back) target: 8/8. That run + the 3-gate + live probe land
 atomically in the next bake-off gap (patch 058 modifies the live serving tree, which must
 not be touched while the in-flight devstral bake-off cell is being generated).
+
+--- POST-058 RESULT (2026-07-19, same tree + patch 058) ---
+
+Patch generated against the committed pristine-v0.5.15+24 baseline worktree (donor:
+R9700 patches/056-devstral-multitoken-toolname-omission-recovery.patch; one comment
+adjusted 040->041 for our numbering). 3-gate: (a) 25/25 apply clean on pristine
+v0.5.15, (b) live tree byte-identical to pristine+patches, (c) 25/25 correctly
+rejected on the patched tree.
+
+  [PASS] 1 multitoken todowrite (no leak)   calls=['todowrite'] normal=''
+  [PASS] 2 multitoken webfetch (no leak)   calls=['webfetch'] normal=''
+  [PASS] 3 single-token task recovered   calls=['task'] normal=''
+  [PASS] 4 canonical [TOOL_CALLS] parsed   calls=['read'] normal=''
+  [PASS] 5 prose 'todo ...' flushed verbatim   calls=[] normal='todo list of things'
+  [PASS] 6 prose full name no [ARGS] flushed   calls=[] normal='please read the file'
+  [PASS] 7 unknown ident before [ARGS] -> 0 calls   calls=[] normal='frobnicate[ARGS{"x": 1}'
+  [PASS] 8 non-streaming omission recovery   calls=['todowrite']
+
+  8/8 passed (exit 0)
+
+Cases 1-2 flipped FAIL->PASS with zero content leak; all six guard cases held
+(prose flushing, unknown identifiers, canonical parse, non-streaming recovery).
+Live devstral probe (turn-2 multi-token tool trials + capability/256K regression)
+recorded separately below when run.
