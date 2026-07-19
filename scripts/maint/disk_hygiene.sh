@@ -81,6 +81,9 @@ gc_bases() {
   local apply=0; [ "$FLAG" = "--apply" ] && apply=1
   echo "scanning $MODELS_DIR/*-BF16 (rule: delete only HF-re-downloadable public originals)"
   for path in "$MODELS_DIR"/*-BF16; do
+    # A BF16-named symlink is an alias, never a re-downloadable base — skip it so
+    # it is never classified as GC-able (fleet-audit 3090-H).
+    [ -L "$path" ] && { echo "  SKIP (symlink) $(basename "$path")"; continue; }
     [ -d "$path" ] || continue
     local d; d=$(basename "$path"); local sz; sz=$(du -sh "$path" 2>/dev/null | cut -f1)
     local repo; repo=$(candidate_repo "$d")

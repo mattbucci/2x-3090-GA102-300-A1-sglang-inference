@@ -44,6 +44,29 @@ from collections import OrderedDict
 # Force CPU — 49 GB BF16 model fits in 64 GB RAM with memory-mapped safetensors
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
+# Resolve the BF16 calibration base early (stdlib only) so the double-quant guard
+# can abort BEFORE the heavy torch import + 49 GB weight load.
+BF16_MODEL = os.environ.get(
+    "BF16_MODEL", os.path.expanduser("~/AI/models/gemma-4-26B-A4B-it-BF16")
+)
+
+# --- Double-quantization guard (fleet-audit 3090-H) -------------------------
+# gemma-4-26B-A4B-it-BF16 has historically been a symlink to AWQ-int4 weights on
+# some hosts; calibrating over a quantized checkpoint silently double-quantizes
+# and destroys the model (16h-loss class). Abort loudly if the base is quantized.
+_bf16_cfg = os.path.join(BF16_MODEL, "config.json")
+if os.path.isfile(_bf16_cfg):
+    with open(_bf16_cfg) as _f:
+        if "quantization_config" in json.load(_f):
+            sys.stderr.write(
+                f"\nFATAL: BF16 base {BF16_MODEL} is already quantized "
+                "(config.json carries quantization_config).\n"
+                "Calibrating over a quantized checkpoint double-quantizes and "
+                "silently destroys the model (16h-loss class).\n"
+                "Point BF16_MODEL at a true BF16 base (no quantization_config).\n"
+            )
+            sys.exit(1)
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import torch
@@ -57,9 +80,6 @@ from calibration_datasets import (
 )
 from expert_utilization import ExpertUtilizationTracker
 
-BF16_MODEL = os.environ.get(
-    "BF16_MODEL", os.path.expanduser("~/AI/models/gemma-4-26B-A4B-it-BF16")
-)
 CT_OUTPUT = os.environ.get(
     "CT_OUTPUT",
     os.path.expanduser("~/AI/models/gemma-4-26B-A4B-it-CT-thinking-vision"),

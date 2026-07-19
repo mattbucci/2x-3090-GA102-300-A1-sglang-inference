@@ -81,6 +81,22 @@ run_one() {
     echo "  log:          $log"
     echo "=============================================="
 
+    # --- Double-quantization guard (fleet-audit 3090-H) -------------------
+    # field 7 (BF16_BASE) must be a true BF16 base, never a quantized checkpoint.
+    # Scope so valid rows are not false-aborted: empty field 7 -> skip
+    # (qwen36-moe, coder-30b); a non-local path -> skip (devstral's
+    # mistralai/Devstral-Small-2507 HF id); only a local dir whose config.json
+    # carries quantization_config aborts the row (the BF16->AWQ trap class).
+    if [[ -n "$bf16_base" ]]; then
+        local bf16_guard; bf16_guard=$(eval echo "$bf16_base")
+        if [[ -d "$bf16_guard" && -f "$bf16_guard/config.json" ]] \
+           && python3 -c "import json,sys; sys.exit(0 if 'quantization_config' in json.load(open('$bf16_guard/config.json')) else 1)" 2>/dev/null; then
+            echo "[$key] FATAL: BF16_BASE $bf16_guard is already quantized (config.json has quantization_config)."
+            echo "[$key] Calibrating over a quantized base double-quantizes (16h-loss class). Skipping this row."
+            return 4
+        fi
+    fi
+
     # 1. Stop SGLang
     pkill -9 -f sglang 2>/dev/null || true
     sleep 10

@@ -9,6 +9,31 @@ All inference MUST use SGLang. No vLLM, no llama.cpp unless explicitly for compa
 - 24 GB GDDR6X each, 48 GB total
 - NCCL over PCIe for TP=2
 
+### Host filesystem layout
+Two 2 TB NVMe drives (Crucial P5 Plus, `CT2000P5PSSD8`), mirroring the fleet standard:
+
+| Drive | Partition | Mount | Holds |
+|---|---|---|---|
+| **nvme0n1** (OS) | p1 vfat / p2 ext4 / p3 swap | `/efi` · `/` · swap | OS + `/var/lib/docker` (SWE-bench rollout images — the drive that fills) |
+| **nvme1n1** (data) | p1 ext4, `noatime`, whole-disk | `/data` | `/data/models`, `/data/cache/huggingface`, `/data/sglang-rebase-v05*` |
+
+- **Models:** `/data/models`, reached via the `~/AI/models → /data/models` symlink. That link *is* the fleet
+  `MODELS_DIR=$HOME/AI/models` convention (identical default across all three rigs' `common.sh`). **Keep it a
+  symlink** — root-free, portable, and safer than a bind mount (`rm -rf ~/AI/models` removes only the link, not
+  the store). The top-level dir symlink is a convenience, not a footgun.
+- **HF cache:** `HF_HOME=/data/cache/huggingface`; `~/.cache/huggingface` also symlinks there. Snapshot links
+  under `/data/models/*` and `/data/models/hf-mattbucci/*` resolve into `…/hub/models--*/snapshots/*` — resolvable,
+  benign.
+- **The one hard rule (the trap that cost the fleet 16h):** a model directory name must never lie about its
+  content. A `*-BF16` name must resolve to a *genuine* BF16 base (real dir, or a symlink to real BF16) — **never**
+  to AWQ/GPTQ/CT/Int4 weights, because `run_all_calibrations.sh` feeds `$MODELS_DIR/<name>-BF16` as a calibration
+  base and a quantized target silently double-quantizes. Names that *advertise* a quant stage (`…-BF16-v1-AWQ-CT`)
+  are honest and fine. `scripts/maint/models_manifest.py` audits every entry per host (flags `TRAP` /
+  `COLLISION` / `DANGLING`) and the calibration entry points abort loudly on a quantized BF16 base — see
+  `experiments/04-models-manifest-bf16-symlink-defuse.md`.
+- **Disk headroom is per-host, not a shared convention** — don't copy another rig's purge list. Check `df -h /data`
+  (models) and `df -h /` (docker images) on *this* box; `scripts/maint/disk_hygiene.sh report` classifies both.
+
 ## Server Launch
 
 ```bash
