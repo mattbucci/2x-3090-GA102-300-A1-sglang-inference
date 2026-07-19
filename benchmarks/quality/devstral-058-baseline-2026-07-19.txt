@@ -49,3 +49,34 @@ Cases 1-2 flipped FAIL->PASS with zero content leak; all six guard cases held
 (prose flushing, unknown identifiers, canonical parse, non-streaming recovery).
 Live devstral probe (turn-2 multi-token tool trials + capability/256K regression)
 recorded separately below when run.
+
+--- LIVE PROBE (2026-07-19, devstral preset, port 23334, post-058 tree) ---
+
+Instrument: scripts/eval/devstral2_toolprobe.py (R9700 port, +trials mode).
+2-turn shape: turn 1 single-token call (read), turn 2 MULTI-token call
+(todowrite) after a fed-back tool result — the exact leak shape.
+
+  10-trial gate (temperature 0.3):
+    turn1 10/10   turn2(multi-token) 10/10   leaks 0/10   => PASS (gate: >=9/10, 0 leaks)
+
+  validate_capabilities.py: 3/3 (basic + tool_call + vision) in 1.5s.
+
+  probe_256k_tooluse.py (non-streaming path — 058-independent, regression guard):
+     approx   actual       finish  valid  correct         id     s
+      16384    16551   tool_calls   True     True   BANANA42   7.8
+      65536    65040   tool_calls   True     True   BANANA42  36.1
+     131072   130905   tool_calls   True     True   BANANA42  89.9
+     196608   196524   tool_calls  False    False       None 160.8
+     256000   255951   tool_calls   True     True   BANANA42 240.1
+    valid 0.8 / correct 0.8 / max-ctx-correct 255951
+    vs pre-058 receipt tooluse256k-devstral-v0515.json: same 0.8/0.8 aggregate,
+    but that run's rungs under-measured depth (actual 9.6K/37.9K/75.6K/113.4K/147.6K,
+    max-correct 113K). Post-058 run hits true depth and devstral is CORRECT at
+    255,951 actual prompt tokens — deepest correct tool-call recorded for it.
+    The 196K miss is depth-sensitivity on the non-streaming path (untouched by
+    058; unit case 8 pre==post). No regression.
+
+LANE VERDICT: 058 SHIPPED — offline 8/8 + 3-gate 25/25 + live 10/10 struct
+0/10 leak + capabilities 3/3 + long-context guard clean. Remaining (rides the
+bake-off resume): observational full-300 opencode devstral cell to observe the
+empty-diff-rate change under a real harness.
