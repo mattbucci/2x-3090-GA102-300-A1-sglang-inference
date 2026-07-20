@@ -59,6 +59,8 @@ Two latent defects surfaced while consolidating — both invisible on the live t
 
 **Gate for any new patch (all three, in order):** (a) full glob-order sequence applies on the pristine target tag; (b) the resulting tree is byte-identical to the live serving tree; (c) on the *patched* tree, `git apply --check` **fails** for every patch (rerun safety — a pass means your patch can mis-target a second site). **Scripted since the v0.5.15 flip: `scripts/test_patch_gates.sh`** (`SGLANG_TAG=… SGLANG_DIR=… [PATCH_DIR=…]`) — run it before committing any patch change.
 
+**Stack-flip gate (extends the boot-smoke + per-modality quality probes):** `scripts/bench/bench_regression.sh` compare must PASS on all 7 tripwire presets before the FLIP commit — >10% `tok_per_sec` drop at 1024/32768/deep is a blocker, not a footnote (the b09882f mis-diagnosis is what shipping a flip without a throughput tripwire costs). Re-run affected presets after any patch touching the serving hot path; `BASELINE=save` only after a receipted WIN or verified flip (schema v2: `scripts/bench/README.md`).
+
 **Graft-validation addendum (learned 2026-06-11 via 042):** an AST constructor-kwarg drift check does NOT catch **missing enum members** — `RoutingMethodType.Sigmoid` parsed fine and died only at first boot. For any graft from a newer tree, additionally grep the graft for `SomeEnum.Member` attribute references and verify each member exists in the v0.5.12 target module.
 
 ---
