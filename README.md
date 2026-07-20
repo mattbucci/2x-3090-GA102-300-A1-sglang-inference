@@ -159,6 +159,18 @@ python scripts/eval/validate_capabilities.py --port 23334    # auto-skips thinki
 python scripts/bench/bench_long_context.py --port 23334 --name "Model" --contexts 1024 16384 131072 250000
 ```
 
+**Ports:** `launch.sh` (and every eval/bench harness driven by `common.sh`) defaults to **23334**. For a **persistent production endpoint**, use the serving script, which stands a preset up on **30000** (the SGLang-standard port the `probe_*.py` scripts default to) — detached so it survives a session exit, health-checked, with `start`/`stop`/`status`/`restart`:
+
+```bash
+./scripts/serve_production.sh gemma4-31b     # start on :30000, detached + health-checked
+./scripts/serve_production.sh status         # UP/DOWN, pid, model, log path
+./scripts/serve_production.sh stop
+EXTRA='--decode-topk-pages 256 --decode-topk-page-size 64' \
+  ./scripts/serve_production.sh gemma4-31b   # deep-context topk lever (patch 059) — see Decode ideas
+```
+
+Production on 30000 and the eval harness on 23334 don't collide, so a capability/bench sweep can run against 23334 while 30000 serves. (The script refuses to start if another sglang server already holds the GPUs.)
+
 Use `temperature >= 0.3` on Qwen3 family models — greedy decode at `temp=0` triggers a token-repetition loop.
 
 ## Prerequisites
