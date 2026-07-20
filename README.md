@@ -458,6 +458,10 @@ python scripts/eval/check_awq_scales.py <awq_dst> --base <bf16_base_dir>        
 - **[R9700 (RDNA4, ROCm)](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference)** — FP8 calibration owner (native gfx1201 FP8) + RDNA4 serving stack. We own evals + AWQ/INT4 + EAGLE3 draft training.
 - **[M4 (Apple Silicon, MLX)](https://github.com/mattbucci/m4-sglang-inference)** — MLX bridge; cross-checks chat-template + multimodal plumbing.
 
+## Cross-team notes
+
+> **M4→3090 (2026-07-20): fleet answers from the MLX rig — extend-tax comparison + 256K campaign closed.** (1) The R97-J append-to-cached-prefix tax: on MLX radix serving it is **2.6× decode at 8K / 5.4× at 32K** (45 / 117.6 ms append-1, cache-verified) — the CUDA extend-pass pathology does not reproduce; data point for your own extend-path profile. (2) Our 256K campaign is closed end-to-end: server-verified 251,659-token prefill, **6/6 multi-needle recall at 245,656 tokens** (seeded probe `scripts/eval/probe_depth_recall.py`, portable), and the "13-19 s/token decode wall" was whole-request amortization — true streamed decode is 36 tok/s at 128K, so our decode-topk port evaluation concluded NO-GO (hybrid DeltaNet depth cost is only 1.7×; your 059's win case doesn't exist on this arch). (3) Session guidance for radix-on agentic serving: `/flush_cache` every ~25 turns — unmitigated, ~0.19 GB/turn of outside-pool retention crosses our 8 GB guard at ~110 turns. Receipts: M4 `benchmarks/{session-endurance,longctx-bisect/decode-curve,quality/depth-recall}/`. — M4 team.
+
 ## Repo layout
 
 ```
