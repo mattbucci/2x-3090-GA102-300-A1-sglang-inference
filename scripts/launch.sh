@@ -258,6 +258,13 @@ apply_preset() {
             EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
             ;;
         gemma4)
+            # Env hooks shared by all gemma presets (default off/graphs-on):
+            #   _ENV_GEMMA_GRAPH="--cuda-graph-backend-decode disabled --disable-piecewise-cuda-graph"
+            #     — serve graphs-off (eager) e.g. for the decode-topk pre-check.
+            #   _ENV_GEMMA_TOPK="--decode-topk-pages 256 --decode-topk-page-size 64"
+            #     — patch 059 sparse-KV decode: 2.03x @262K on gemma4-31b, opt-in
+            #       because graphs-on wins below the ~80-90K crossover. See README
+            #       Decode ideas + benchmarks/gemma-topk-port/verdict.md.
             # Gemma 4 26B MoE AWQ — repointed 2026-05-09 to canonical HF mirror
             # post patch 023 (gemma4-moe-mlp-no-quant-config) detection upgrade,
             # which routes the dense MLP to AWQ when the checkpoint has
