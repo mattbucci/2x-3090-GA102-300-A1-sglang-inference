@@ -1,6 +1,6 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
-High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.15** + 25 local patches (default since 2026-07-12; flip receipt + fleet re-validation: [`patches/v0.5.15-rebase-status.md`](patches/v0.5.15-rebase-status.md); prior stacks retained for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
+High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.15** + 26 local patches (default since 2026-07-12; flip receipt + fleet re-validation: [`patches/v0.5.15-rebase-status.md`](patches/v0.5.15-rebase-status.md); prior stacks retained for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 ## Fleet-audit action queue (2026-07-18)
 
@@ -411,7 +411,7 @@ cd python && pip install -e .
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.15 + 25 local patches |
+| SGLang | v0.5.15 + 26 local patches |
 | PyTorch | 2.11.0 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
 | transformers | 5.12.1 (v0.5.15 pin; ships gemma4_unified natively — retired patch 055; routes Mistral ckpts to MistralCommonBackend — countered by patch 057) |
@@ -422,7 +422,7 @@ The serving tree lives at `/data/sglang-rebase-v0515` (env `sglang-v0515`); laun
 
 ## Patches
 
-**25 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang **v0.5.15** — cover AWQ/CT int4 weight loading, Qwen3.5/3.6 enablement, Gemma 4 bring-up (26B MoE / 31B dense / 12B unified omni), Nemotron-3-Nano-Omni serving (052/053), MoE gelu coverage, kernel correctness & precision, sm_86 enablement, and serving/agentic robustness. The v0.5.14→v0.5.15 flip (2026-07-12) is the first with a net patch-count reduction — 21 clean, 2 regenerated (011 extend-kernel paging drift / 051 hybrid-SWA set drift), **2 retired as upstreamed** (054 ministral3 keyword-init now native; 055's vendored gemma4_unified stack now ships in transformers 5.12.1), +1 new (**057** MistralCommonBackend opt-out — tx 5.12 silently re-routes Mistral checkpoints to a tokenizer that treats `[INST]`/`[TOOL_CALLS]` as plain text on sglang's render-then-encode path; caught by the fleet probe as devstral needle 0.0 + HE 48% + dead tool-calls, restored to parity by the patch). Post-flip: **058** (2026-07-19) upgrades 041's streaming tool-name hold-back from exact- to trailing-prefix match (R9700 056 port) — multi-token tool names (`todowrite` → `todo`+`write`) no longer leak their first token as assistant content. The 3-gate pristine replay is green and now scripted (`scripts/test_patch_gates.sh`). Per-patch narratives, the upstream-PR ledger, and the patch-hygiene gates live in [`patches/README.md`](patches/README.md); the flip receipt + full-probe results are [`patches/v0.5.15-rebase-status.md`](patches/v0.5.15-rebase-status.md).
+**26 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang **v0.5.15** — cover AWQ/CT int4 weight loading, Qwen3.5/3.6 enablement, Gemma 4 bring-up (26B MoE / 31B dense / 12B unified omni), Nemotron-3-Nano-Omni serving (052/053), MoE gelu coverage, kernel correctness & precision, sm_86 enablement, and serving/agentic robustness. The v0.5.14→v0.5.15 flip (2026-07-12) is the first with a net patch-count reduction — 21 clean, 2 regenerated (011 extend-kernel paging drift / 051 hybrid-SWA set drift), **2 retired as upstreamed** (054 ministral3 keyword-init now native; 055's vendored gemma4_unified stack now ships in transformers 5.12.1), +1 new (**057** MistralCommonBackend opt-out — tx 5.12 silently re-routes Mistral checkpoints to a tokenizer that treats `[INST]`/`[TOOL_CALLS]` as plain text on sglang's render-then-encode path; caught by the fleet probe as devstral needle 0.0 + HE 48% + dead tool-calls, restored to parity by the patch). Post-flip: **058** (2026-07-19) upgrades 041's streaming tool-name hold-back from exact- to trailing-prefix match (R9700 056 port) — multi-token tool names (`todowrite` → `todo`+`write`) no longer leak their first token as assistant content. The 3-gate pristine replay is green and now scripted (`scripts/test_patch_gates.sh`). Per-patch narratives, the upstream-PR ledger, and the patch-hygiene gates live in [`patches/README.md`](patches/README.md); the flip receipt + full-probe results are [`patches/v0.5.15-rebase-status.md`](patches/v0.5.15-rebase-status.md).
 
 ## Quantization
 
