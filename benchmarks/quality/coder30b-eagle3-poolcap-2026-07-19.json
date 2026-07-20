@@ -1,0 +1,261 @@
+{
+  "experiment": "3090-E EAGLE3-at-24GB pool-cap on coder-30b (experiments/08)",
+  "date": "2026-07-19",
+  "engine": "sglang-v0.5.15 + 25 patches",
+  "target": "$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ (native AWQ, awq_marlin, fp8_e4m3 KV)",
+  "draft": "$MODELS_DIR/drafts/eagle3-coder30b (LlamaForCausalLMEagle3, steps4/topk4/draft8, unquant)",
+  "instrument": "scripts/specforge/perf_coder30b_poolcap.py (server-log gen tput authoritative; iterative server-verified depth sizing)",
+  "launch_commands": {
+    "armA": "QUANT=awq_marlin MODEL=<native-awq> launch.sh coder-30b  (256K production preset)",
+    "armB": "SPEC_DECODE=1 QUANT=awq_marlin MODEL=<native-awq> launch.sh coder-30b  (16K lane, MEM=0.70)",
+    "armC": "... + OVERRIDE_ARGS='--max-total-tokens 18432' --mem-fraction 0.80",
+    "armD-32k": "... OVERRIDE_ARGS='--max-total-tokens 34816'  --context-length 32768  --mem-fraction 0.80",
+    "armD-64k": "... OVERRIDE_ARGS='--max-total-tokens 67584'  --context-length 65536  --mem-fraction 0.80",
+    "armD-96k": "... OVERRIDE_ARGS='--max-total-tokens 100352' --context-length 98304  --mem-fraction 0.80",
+    "armD-256k": "... OVERRIDE_ARGS='--max-total-tokens 264192' --context-length 262144 --mem-fraction 0.80",
+    "armE": "armD-96k + '--speculative-draft-window-size 8192'  -> BLOCKED (boot assert)"
+  },
+  "nospec_baseline": [
+    {
+      "actual_tokens": 2486,
+      "tok_s": 196.4,
+      "vram_mib": [
+        21426,
+        21281
+      ]
+    },
+    {
+      "actual_tokens": 13768,
+      "tok_s": 176.5,
+      "vram_mib": [
+        21570,
+        21425
+      ]
+    },
+    {
+      "actual_tokens": 39648,
+      "tok_s": 152.6,
+      "vram_mib": [
+        21574,
+        21429
+      ]
+    },
+    {
+      "actual_tokens": 61239,
+      "tok_s": 136.9,
+      "vram_mib": [
+        21576,
+        21431
+      ]
+    },
+    {
+      "actual_tokens": 91897,
+      "tok_s": 119.3,
+      "vram_mib": [
+        21578,
+        21433
+      ]
+    },
+    {
+      "actual_tokens": 261916,
+      "tok_s": 69.6,
+      "note": "from armed benchmarks/baselines.json deep point (same preset, bench_long_context instrument)"
+    }
+  ],
+  "spec_points": [
+    {
+      "arm": "armB-spec16k",
+      "actual_tokens": 2486,
+      "spec_tok_s": 300.6,
+      "nospec_tok_s": 196.4,
+      "ratio": 1.53,
+      "accept_len": 3.76,
+      "vram_mib": [
+        17950,
+        17805
+      ]
+    },
+    {
+      "arm": "armB-spec16k",
+      "actual_tokens": 13768,
+      "spec_tok_s": 167.3,
+      "nospec_tok_s": 176.5,
+      "ratio": 0.95,
+      "accept_len": 3.32,
+      "vram_mib": [
+        17970,
+        17825
+      ]
+    },
+    {
+      "arm": "armC-cap16k",
+      "actual_tokens": 2486,
+      "spec_tok_s": 318.2,
+      "nospec_tok_s": 196.4,
+      "ratio": 1.62,
+      "accept_len": 3.51,
+      "vram_mib": [
+        10506,
+        10361
+      ]
+    },
+    {
+      "arm": "armC-cap16k",
+      "actual_tokens": 13768,
+      "spec_tok_s": 152.5,
+      "nospec_tok_s": 176.5,
+      "ratio": 0.86,
+      "accept_len": 2.71,
+      "vram_mib": [
+        10688,
+        10543
+      ]
+    },
+    {
+      "arm": "armD-ctx256k",
+      "actual_tokens": 252458,
+      "spec_tok_s": 33.9,
+      "nospec_tok_s": 69.6,
+      "ratio": 0.49,
+      "accept_len": 1.58,
+      "vram_mib": [
+        16774,
+        16629
+      ],
+      "nospec_match_note": "nearest baseline point 261916"
+    },
+    {
+      "arm": "armD-ctx32k",
+      "actual_tokens": 2486,
+      "spec_tok_s": 345.5,
+      "nospec_tok_s": 196.4,
+      "ratio": 1.76,
+      "accept_len": 3.62,
+      "vram_mib": [
+        10886,
+        10741
+      ]
+    },
+    {
+      "arm": "armD-ctx32k",
+      "actual_tokens": 13768,
+      "spec_tok_s": 152.9,
+      "nospec_tok_s": 176.5,
+      "ratio": 0.87,
+      "accept_len": 2.77,
+      "vram_mib": [
+        11068,
+        10923
+      ]
+    },
+    {
+      "arm": "armD-ctx32k",
+      "actual_tokens": 27083,
+      "spec_tok_s": 142.6,
+      "nospec_tok_s": null,
+      "ratio": null,
+      "accept_len": 2.5,
+      "vram_mib": [
+        11076,
+        10931
+      ]
+    },
+    {
+      "arm": "armD-ctx64k",
+      "actual_tokens": 2486,
+      "spec_tok_s": 322.1,
+      "nospec_tok_s": 196.4,
+      "ratio": 1.64,
+      "accept_len": 3.62,
+      "vram_mib": [
+        11706,
+        11561
+      ]
+    },
+    {
+      "arm": "armD-ctx64k",
+      "actual_tokens": 13768,
+      "spec_tok_s": 152.3,
+      "nospec_tok_s": 176.5,
+      "ratio": 0.86,
+      "accept_len": 2.72,
+      "vram_mib": [
+        11888,
+        11743
+      ]
+    },
+    {
+      "arm": "armD-ctx64k",
+      "actual_tokens": 39648,
+      "spec_tok_s": 129.1,
+      "nospec_tok_s": 152.6,
+      "ratio": 0.85,
+      "accept_len": 2.51,
+      "vram_mib": [
+        11932,
+        11787
+      ]
+    },
+    {
+      "arm": "armD-ctx64k",
+      "actual_tokens": 61239,
+      "spec_tok_s": 103.4,
+      "nospec_tok_s": 136.9,
+      "ratio": 0.76,
+      "accept_len": 2.38,
+      "vram_mib": [
+        11936,
+        11791
+      ]
+    },
+    {
+      "arm": "armD-ctx96k",
+      "actual_tokens": 39659,
+      "spec_tok_s": 135.5,
+      "nospec_tok_s": 152.6,
+      "ratio": 0.89,
+      "accept_len": 2.21,
+      "vram_mib": [
+        12714,
+        12569
+      ],
+      "nospec_match_note": "nearest baseline point 39648"
+    },
+    {
+      "arm": "armD-ctx96k",
+      "actual_tokens": 91897,
+      "spec_tok_s": 74.5,
+      "nospec_tok_s": 119.3,
+      "ratio": 0.62,
+      "accept_len": 2.03,
+      "vram_mib": [
+        12720,
+        12575
+      ]
+    }
+  ],
+  "memory_findings": {
+    "cap_on_vram_per_card_gib": {
+      "18k": 10.5,
+      "35k": 10.9,
+      "68k": 11.9,
+      "100k": 12.7,
+      "264k": 16.3
+    },
+    "cap_off_at_ctx98304_mem080": "profiler allocates 418,956-token pool (4.3x context), 19.9 GiB/card -> reclaim ~7.2 GiB/card",
+    "full_256k_boot": "CTX=262144 + cap 264192 BOOTS, 16.3 GiB/card, 7.75 GB avail \u2014 the 16K lane cap was a profiler artifact"
+  },
+  "armE_blocker": {
+    "flag": "--speculative-draft-window-size 8192",
+    "symptom": "Scheduler AssertionError at boot",
+    "root_cause": "FlashInferMultiStepDraftBackend passes a shared kv_indptr_buf into each per-step FlashInferAttnBackend; that path asserts num_wrappers==1, but a draft sliding window forces num_wrappers=2 (WrapperDispatch.SLIDING_WINDOW). flashinfer_backend.py ~L414 on v0.5.15.",
+    "portability": "R9700's window win is on a different (ROCm) attention backend \u2014 does not transfer to FlashInfer.",
+    "upstream": "issue-worthy: flag validates at arg-parse, sets draft layers, then asserts at boot"
+  },
+  "verdict": {
+    "memory": "WIN \u2014 pool-cap frees the profiler over-provision (4.3x at 98K/0.80); spec+graphs boot at every CTX incl. full 256K",
+    "perf": "NULL at depth \u2014 spec win is 1.5-1.76x only at ~2.5K; crossover ~8-10K; 0.85-0.87x at 14-40K, 0.76x at 61K, 0.62x at 92K (accept 3.8 -> 2.0)",
+    "receipt_correction": "the v0.5.12 '1.65x @16K' was delta-method with unverified depth; server-verified: spec loses by 13.8K actual",
+    "task17_implication": "the dynamic fallback threshold is a DEPTH crossover (~8-10K), not a VRAM band; only ~2.7% of SWE-bench prompts sit under it -> EAGLE3 stays off the mission workload; NGRAM remains the depth spec"
+  }
+}
