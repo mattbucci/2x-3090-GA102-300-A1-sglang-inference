@@ -1,0 +1,271 @@
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index 0be715ac..33c221b6 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -5,6 +5,38 @@ from typing import TYPE_CHECKING, List, Optional
+ 
+ import torch
+ import triton
++import triton.language as tl
++
++
++# R9700 069 port (their #43 v3): fused bbox-criticality scorer for top-K sparse-KV decode.
++# Replaces the eager `where(q>=0,q*pmax,q*pmin).sum((1,2))` (fp32 reps + multiple passes)
++# with ONE fused pass. Donor-validated numerically identical ranking, ~11x faster at 256K
++# scale (0.152->0.014 ms/call, n=3828). One program per page; reduces Hkv*D in-register.
++@triton.jit
++def _bbox_crit_kernel(pmin_ptr, pmax_ptr, q_ptr, score_ptr, HD, BLOCK: tl.constexpr):
++    pid = tl.program_id(0)
++    offs = tl.arange(0, BLOCK)
++    mask = offs < HD
++    q = tl.load(q_ptr + offs, mask=mask, other=0.0).to(tl.float32)
++    base = pid * HD
++    pmn = tl.load(pmin_ptr + base + offs, mask=mask, other=0.0).to(tl.float32)
++    pmx = tl.load(pmax_ptr + base + offs, mask=mask, other=0.0).to(tl.float32)
++    crit = tl.where(q >= 0, q * pmx, q * pmn)
++    s = tl.sum(tl.where(mask, crit, 0.0), axis=0)
++    tl.store(score_ptr + pid, s)
++
++
++def fused_bbox_score(pmin, pmax, q_kv):
++    """pmin/pmax [n, Hkv, D], q_kv [Hkv, D] -> criticality score [n] fp32 (one fused pass)."""
++    n, Hkv, D = pmin.shape
++    HD = Hkv * D
++    score = torch.empty(n, device=pmin.device, dtype=torch.float32)
++    _bbox_crit_kernel[(n,)](
++        pmin.reshape(n, HD), pmax.reshape(n, HD), q_kv.reshape(HD).float(),
++        score, HD, BLOCK=triton.next_power_of_2(HD),
++    )
++    return score
++
+ 
+ from sglang.srt.configs.model_config import AttentionArch
+ from sglang.srt.distributed.device_communicators.pynccl_allocator import (
+@@ -140,6 +172,29 @@ class TritonAttnBackend(AttentionBackend):
+ 
+         # Parse args
+         self.skip_prefill = skip_prefill
++        # R9700 069 port: --decode-topk-pages K — recall-preserving sparse-KV decode. The
++        # DECODE path reads the K most query-relevant KV pages (Quest bounding-box
++        # criticality) + sink + recent page, on full-attention layers only (SWA layers are
++        # already windowed). Leaves full kv_indices in the metadata and SELECTS in
++        # forward_decode. Default -1 (off); decode cuda-graph auto-disabled in server_args.
++        self.decode_topk_pages = (
++            getattr(model_runner.server_args, "decode_topk_pages", -1) or -1
++        )
++        self.decode_topk_page_size = (
++            getattr(model_runner.server_args, "decode_topk_page_size", 8) or 8
++        )
++        self.decode_topk_scorer = getattr(
++            model_runner.server_args, "decode_topk_scorer", "bbox"
++        )
++        # v2: cached per-layer page reps (bbox min/max) for the bs==1 fast path. Built
++        # incrementally — a page's rep is computed once when the page COMPLETES, so
++        # steady-state maintenance is O(page) not O(ctx). Lazily rebuilt on any structural
++        # mismatch (worst case = v1 O(ctx)). Identical per-page min/max to v1.
++        self._topk_pmin = {}
++        self._topk_pmax = {}
++        self._topk_n = {}       # layer_id -> #pages currently repped
++        self._topk_len = {}     # layer_id -> seq_len at last update (staleness detect)
++        self._topk_slot0 = {}   # layer_id -> first physical slot (request identity)
+         max_bs = model_runner.req_to_token_pool.size
+         self.sliding_window_size = model_runner.sliding_window_size
+         self.req_to_token_pool = model_runner.req_to_token_pool
+@@ -1638,6 +1693,122 @@ class TritonAttnBackend(AttentionBackend):
+ 
+         return o
+ 
++    def _build_topk_kv_indices_v2(self, q, layer, kv_indptr, kv_indices):
++        """R9700 069 v2 fast path (bs==1, bbox): same Quest selection as v1 but page reps are
++        CACHED and extended incrementally — a page's min/max is computed once when it completes
++        (every page_size steps), so per-step cost is O(reps)+O(page) instead of v1's O(ctx).
++        Per-page reps are bit-identical to v1 -> identical selection/recall. Falls back to v1 on
++        any structural mismatch. Caller guarantees bs==1 and scorer=='bbox'."""
++        page = self.decode_topk_page_size
++        K_total = self.decode_topk_pages
++        budget = K_total * page
++        L = int(kv_indptr[1] - kv_indptr[0])
++        slots = kv_indices[int(kv_indptr[0]):int(kv_indptr[1])]
++        if L <= budget or L < 2 * page:
++            return kv_indptr, kv_indices  # within budget — keep all
++        n = L // page
++        lid = layer.layer_id
++        k_buffer = self.token_to_kv_pool.get_key_buffer(layer.layer_id)
++        Hkv, D = k_buffer.shape[1], k_buffer.shape[2]
++        Hq = q.shape[1]
++        group = max(1, Hq // Hkv)
++        pmin = self._topk_pmin.get(lid)
++        old_n = self._topk_n.get(lid, 0)
++        tracked = self._topk_len.get(lid, -1)
++        slot0 = int(slots[0])
++        # Rebuild fully if no state, fewer pages stored than needed, the sequence shrank or
++        # jumped, OR a DIFFERENT request now occupies this layer's cache (slot0 changed) —
++        # seq_len alone would let a back-to-back same-length request reuse stale reps.
++        rebuild = (
++            pmin is None or old_n > n or tracked > L or tracked < 0
++            or (L - tracked) > 4 * page
++            or self._topk_slot0.get(lid) != slot0
++        )
++        # Reps stored bf16 (fp32 reps OOM at depth); min/max computed in native KV dtype,
++        # fp8 KV gathers cast to bf16 for amin/amax.
++        def _pagereps(seg_slots, npg):
++            kb = k_buffer[seg_slots].view(npg, page, Hkv, D)
++            if kb.dtype not in (torch.float16, torch.bfloat16, torch.float32):
++                kb = kb.to(torch.bfloat16)
++            return kb.amin(1).to(torch.bfloat16), kb.amax(1).to(torch.bfloat16)
++        if rebuild:
++            pmin, pmax = _pagereps(slots[:n * page], n)
++        else:
++            pmax = self._topk_pmax[lid]
++            if n > old_n:  # one or more pages completed since last step — rep just those
++                nmin, nmax = _pagereps(slots[old_n * page:n * page], n - old_n)
++                pmin = torch.cat([pmin[:old_n], nmin], dim=0)
++                pmax = torch.cat([pmax[:old_n], nmax], dim=0)
++        self._topk_pmin[lid] = pmin; self._topk_pmax[lid] = pmax
++        self._topk_n[lid] = n; self._topk_len[lid] = L; self._topk_slot0[lid] = slot0
++        qb = q[0].view(Hkv, group, D).mean(1).float()
++        # Fused criticality scorer (identical ranking, ~11x faster than eager where/sum).
++        # Eager fallback on any kernel error.
++        try:
++            score = fused_bbox_score(pmin, pmax, qb)  # [n] fp32
++        except Exception:
++            qv = qb.unsqueeze(0)
++            score = torch.where(qv >= 0, qv * pmax.float(), qv * pmin.float()).sum(dim=(1, 2))
++        ksel = max(1, K_total - 2)
++        # Vectorized gather: topk -> +sink/+recent -> page token positions -> gather.
++        top = torch.topk(score, min(ksel, n)).indices  # [m]
++        extra = torch.tensor([0, n - 1], device=top.device, dtype=top.dtype)
++        keep = torch.unique(torch.cat([top, extra]))  # sorted+dedup [M]
++        offs = torch.arange(page, device=slots.device)
++        sel_pos = (keep.unsqueeze(1) * page + offs.unsqueeze(0)).reshape(-1)  # [M*page]
++        if n * page < L:  # recent partial page (newest tokens beyond last complete page)
++            sel_pos = torch.cat([sel_pos, torch.arange(n * page, L, device=slots.device)])
++        sel = slots[sel_pos]
++        out_indptr = torch.tensor([0, sel.numel()], dtype=kv_indptr.dtype, device=kv_indptr.device)
++        return out_indptr, sel.to(kv_indices.dtype)
++
++    def _build_topk_kv_indices(self, q, layer, kv_indptr, kv_indices):
++        """R9700 069 v1 (eager, correctness-first): for each request, score KV pages by Quest
++        bounding-box criticality against the decode query and keep the top-K pages (+ page-0
++        sink + the most-recent partial page), returning a shortened (kv_indptr, kv_indices)
++        that the existing decode kernel consumes unchanged. O(ctx) per layer per step."""
++        page = self.decode_topk_page_size
++        K_total = self.decode_topk_pages
++        budget = K_total * page
++        k_buffer = self.token_to_kv_pool.get_key_buffer(layer.layer_id)  # [slots, Hkv, D]
++        Hkv, D = k_buffer.shape[1], k_buffer.shape[2]
++        Hq = q.shape[1]
++        group = max(1, Hq // Hkv)
++        bs = kv_indptr.shape[0] - 1
++        out_indptr = torch.zeros_like(kv_indptr)
++        chunks = []
++        for b in range(bs):
++            s = int(kv_indptr[b]); e = int(kv_indptr[b + 1])
++            slots = kv_indices[s:e]
++            L = slots.numel()
++            if L <= budget or L < 2 * page:
++                sel = slots  # already within budget — keep all
++            else:
++                n = L // page
++                usable = n * page
++                Kb = k_buffer[slots[:usable]]
++                if Kb.dtype not in (torch.float16, torch.bfloat16, torch.float32):
++                    Kb = Kb.to(torch.bfloat16)
++                Kb = Kb.view(n, page, Hkv, D).float()
++                qb = q[b].view(Hkv, group, D).mean(1).float()  # GQA-avg query [Hkv, D]
++                if self.decode_topk_scorer == "centroid":
++                    score = torch.einsum("nhd,hd->n", Kb.mean(1), qb)
++                else:  # bbox (Quest bounding-box criticality)
++                    kmin = Kb.amin(1); kmax = Kb.amax(1)
++                    qv = qb.unsqueeze(0)
++                    score = torch.where(qv >= 0, qv * kmax, qv * kmin).sum(dim=(1, 2))
++                ksel = max(1, K_total - 2)  # reserve a slot for sink + recent pages
++                top = torch.topk(score, min(ksel, n)).indices
++                keep = set(top.tolist()); keep.add(0); keep.add(n - 1)
++                parts = [slots[p * page:(p + 1) * page] for p in sorted(keep)]
++                if usable < L:
++                    parts.append(slots[usable:])  # recent partial page (newest tokens)
++                sel = torch.cat(parts)
++            chunks.append(sel)
++            out_indptr[b + 1] = out_indptr[b] + sel.numel()
++        out_indices = torch.cat(chunks).to(kv_indices.dtype)
++        return out_indptr, out_indices
++
+     def forward_decode(
+         self,
+         q: torch.Tensor,
+@@ -1694,6 +1865,24 @@ class TritonAttnBackend(AttentionBackend):
+             kv_indptr = self.forward_metadata.kv_indptr
+             kv_indices = self.forward_metadata.kv_indices
+ 
++        # R9700 069: top-K sparse-KV decode. On full-attention layers, replace the full
++        # kv_indices with the K most query-relevant pages (+ sink + recent) so decode reads
++        # a criticality-selected budget instead of the whole context.
++        if (
++            self.decode_topk_pages > 0
++            and (layer.sliding_window_size is None or layer.sliding_window_size <= -1)
++        ):
++            qv = q.view(-1, layer.tp_q_head_num, layer.qk_head_dim)
++            bs = kv_indptr.shape[0] - 1
++            if bs == 1 and self.decode_topk_scorer == "bbox":
++                kv_indptr, kv_indices = self._build_topk_kv_indices_v2(
++                    qv, layer, kv_indptr, kv_indices
++                )
++            else:  # v1 fallback (bs>1 or centroid): correct, slower (O(ctx)/step)
++                kv_indptr, kv_indices = self._build_topk_kv_indices(
++                    qv, layer, kv_indptr, kv_indices
++                )
++
+         if layer.k_scale is not None and layer.v_scale is not None:
+             k_descale = layer.k_scale_float
+             v_descale = layer.v_scale_float
+diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
+index ac774b82..2e422318 100644
+--- a/python/sglang/srt/server_args.py
++++ b/python/sglang/srt/server_args.py
+@@ -780,6 +780,27 @@ class ServerArgs:
+             resolvable=True,
+         ),
+     ] = False
++    decode_topk_pages: A[
++        int,
++        "[R9700 069 port, experimental] Top-K sparse-KV decode: the DECODE path reads the K "
++        "most query-relevant KV pages (Quest bounding-box criticality) + a sink page + the "
++        "recent page, on full-attention layers only (SWA layers are already windowed). Decode "
++        "KV read budget = decode-topk-pages * decode-topk-page-size tokens; scale the budget "
++        "with context (>=6% of tokens at 256K). -1 (default) = off. Data-dependent per-step "
++        "selection cannot be cuda-graph captured: decode cuda-graph is auto-disabled.",
++    ] = -1
++    decode_topk_page_size: A[
++        int,
++        "[R9700 069] KV page granularity for top-K selection (default 32). Larger pages are "
++        "faster (less rep-scan bandwidth) at slightly lower recall. Donor sweep @128K: page8 "
++        "0.75x, page32 1.15x, page64 1.24x. Recommend 32-64.",
++    ] = 32
++    decode_topk_scorer: A[
++        str,
++        "[R9700 069] Page-relevance scorer: 'bbox' = Quest bounding-box criticality (default, "
++        "best real-key recall, 2 reps/page); 'centroid' = mean-pooled page dot query (cheaper, "
++        "1 rep/page, no bs==1 fast path).",
++    ] = "bbox"
+     num_continuous_decode_steps: A[
+         int,
+         "Run multiple continuous decoding steps to reduce scheduling overhead. This can potentially increase throughput but may also increase time-to-first-token latency. The default value is 1, meaning only run one decoding step at a time.",
+@@ -2690,6 +2711,17 @@ class ServerArgs:
+         self._validate_prefill_only_disable_kv_cache_args()
+         self._handle_dcp_validation()
+ 
++        # R9700 069: --decode-topk-pages selects KV pages per-step with data-dependent
++        # shapes (eager), which decode cuda-graph capture cannot represent. Auto-disable the
++        # decode graph so the mode works without the user also passing the graph flag.
++        if getattr(self, "decode_topk_pages", -1) and self.decode_topk_pages > 0:
++            if not self.disable_decode_cuda_graph:
++                logger.warning(
++                    "Decode CUDA graph is disabled because --decode-topk-pages (069 sparse-KV "
++                    "decode) uses data-dependent per-step page selection."
++                )
++                self.disable_decode_cuda_graph = True
++
+         self._handle_cuda_graph_config()
+ 
+         # Handle device-specific backends.
