@@ -78,6 +78,21 @@
           "name": "Devstral-24B-AWQ (long ctx)",
           "limit": { "context": 217088, "output": 4096 },
           "tool_call": true
+        },
+        "gemma4": {
+          "name": "Gemma 4 26B MoE AWQ (thinking+multimodal)",
+          "limit": { "context": 262144, "output": 8192 },
+          "tool_call": true
+        },
+        "gemma4-31b": {
+          "name": "Gemma 4 31B Dense AWQ",
+          "limit": { "context": 262144, "output": 8192 },
+          "tool_call": true
+        },
+        "nemotron3-omni": {
+          "name": "Nemotron-3-Nano-Omni-30B-A3B AWQ (agentic cap 131K per depth receipts)",
+          "limit": { "context": 131072, "output": 8192 },
+          "tool_call": true
         }
       }
     }

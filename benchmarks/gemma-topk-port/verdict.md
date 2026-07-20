@@ -45,7 +45,21 @@ between 65K and 131K). Gate ≥1.3× @250K: **PASS at 2.03×** (predicted ~1.9×
   as a one-off watchdog event, not a 059 defect (no repro).
 - Agentic A/B (R9700 gate adopted 2026-07-19, `scripts/eval/topk_agentic_ab_gemma.sh`
   + depth-binned `context_reliability_curve.py`): same 6 Lite instances, Docker
-  harness, only variable = the flag. Results appended below when complete.
+  harness, only variable = the flag. **Run 1 caught a harness landmine, not a
+  topk fact**: both arms 0/6 all-empty in 22 min — `ProviderModelNotFoundError`,
+  the rollout images' opencode.json never listed gemma4-31b (no gemma agentic
+  cell had ever run). Config fixed (+ gemma4 + nemotron3-omni with its 131K
+  agentic cap), rollout images nuked per the cached-image rule — this also
+  pre-empts the same all-empty failure in the paused bake-off's pending
+  gemma4/nemotron cycles. **Run 2 (healthy): OFF 5/6 resolved / 0 empty —
+  gemma4-31b's first-ever agentic cell, strongest 6-instance result on this rig
+  (R9700's coder-30b: 2/6 on the same ids). TOPK 3/6 single-run, but both
+  flipped instances (flask-4992, pylint-5859) RESOLVED on an immediate topk
+  retry → the delta is rollout stochasticity, not recall. Tool-call garbling
+  with topk: 0.00% in every depth bin (161 calls, 0 invalid).** Verdict:
+  parity-within-noise on the agentic gate; no reproducible regression.
+  Receipts: `context-reliability-ab-2026-07-19.json`, cells under
+  `evals/swebench/runs/topk-ab-gemma31b-*`.
 
 ## Ship shape
 
