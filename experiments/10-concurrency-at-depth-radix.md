@@ -21,11 +21,11 @@ On pool-roomy presets (coder-30b, ~900K-token pool) the deep prefix survives any
 ## Background & receipts
 
 - The repo's ONLY concurrency surface is short-context: bench_all_unified.py `bench_throughput()` = 256-in/256-out random at conc 1-32 (scripts/bench/bench_all_unified.py:99-119), context sweep capped at --context-max 32768 default (line 127) → benchmarks/all_models_concurrency.png. Nothing under benchmarks/ measures multi-request interaction at depth.
-- Every quality/agentic/perf receipt is M=1: CLAUDE.md loop step 4 mandates it; the 256K presets hardcode MAX_RUNNING=1 (launch.sh:790 consumes it; devstral :108, coder-30b :192, gemma4-31b :339).
+- Every quality/agentic/perf receipt is M=1: CLAUDE.md loop step 4 mandates it; the 256K presets hardcode MAX_RUNNING=1 (launch.sh:797 consumes it; devstral :108, coder-30b :192, gemma4-31b :346).
 - Commit 89d0b62 (2026-07-20) exposed serve_production.sh on :30000, `--host 0.0.0.0`, validated on gemma4-31b — any client can now issue overlapping side-requests, and agent harnesses do exactly that (short title/summary calls against the same base URL): the intruder class this experiment prices.
 - Warm receipts hide the cost-at-risk: benchmarks/baselines.json deep rows are all sub-second TTFT at 261,916 actual (coder-30b 378.61ms, devstral 281.76ms @201,686, gemma4 850.02ms) — radix-warm numbers (bench_serving's deterministic prompt seed). A COLD 262K prefill has never been measured on the fixed instrument; the cold-minus-warm delta IS what an eviction costs.
-- Pool geometry decides the regime (README "Max context" ‡‡ note + serve logs): coder-30b ~900K-token pool (two 262K-capped requests co-fit — wall unreachable, pure queueing regime); gemma4-31b 347K full-attn pool via `--swa-full-tokens-ratio 0.05` (launch.sh:348) + a small SWA sub-pool with its own SWARadixCache eviction structure; devstral 202K pool, ~196K-capped (launch.sh:108) — the one preset where D+I arithmetic guarantees a wall.
-- True overlap needs exactly one override: `OVERRIDE_ARGS='--max-running-requests 2'` lands after everything, argparse last-wins (launch.sh:847-853). Preset otherwise AS SHIPPED; must NOT edit presets.
+- Pool geometry decides the regime (README "Max context" ‡‡ note + serve logs): coder-30b ~900K-token pool (two 262K-capped requests co-fit — wall unreachable, pure queueing regime); gemma4-31b 347K full-attn pool via `--swa-full-tokens-ratio 0.05` (launch.sh:355) + a small SWA sub-pool with its own SWARadixCache eviction structure; devstral 202K pool, ~196K-capped (launch.sh:108) — the one preset where D+I arithmetic guarantees a wall.
+- True overlap needs exactly one override: `OVERRIDE_ARGS='--max-running-requests 2'` lands after everything, argparse last-wins (launch.sh:854-860). Preset otherwise AS SHIPPED; must NOT edit presets.
 - 059 interaction: patch 059's v2 rep-cache is bs==1-only, keyed on slot-0 request identity — any concurrency drops it to the v1 O(ctx)/step scorer (doc 09 risk list; README:74). README Quick Start recommends the `_ENV_GEMMA_TOPK` EXTRA on the production endpoint (README:169), so the production-recommended config has an unmeasured intruder path.
 - Fleet lesson (CLAUDE.md invariants + spec-decode forensics): client-side TPOT under-measures ~2x — every TPOT claim here must cross-check server-log gen-throughput.
 
@@ -74,7 +74,7 @@ Solo controls measured by the same instrument in the same serve session: cold 26
 ## Constraints
 
 - Rule 1 / Rule 2 (CLAUDE.md): no concurrent calibration/rollout/scoring; this occupies the eval box — the bake-off queue holds priority, slot into gaps.
-- Measurement ONLY on harness port 23334, presets AS SHIPPED via launch.sh; the ONLY serve-config change allowed is `OVERRIDE_ARGS='--max-running-requests 2'` (launch.sh:853, argparse last-wins) — must NOT edit presets, must NOT use or perturb the :30000 production endpoint during measurement.
+- Measurement ONLY on harness port 23334, presets AS SHIPPED via launch.sh; the ONLY serve-config change allowed is `OVERRIDE_ARGS='--max-running-requests 2'` (launch.sh:860, argparse last-wins) — must NOT edit presets, must NOT use or perturb the :30000 production endpoint during measurement.
 - Must NOT write any M=2 cell into benchmarks/baselines.json — the tripwire is M=1-only; receipts live under benchmarks/concurrency-at-depth/.
 - Every TPOT claim server-log cross-checked (client TPOT under-measures ~2x); flush-isolate cells via POST /flush_cache only when the server is idle; setsid-detach any >30min batch of cells.
 - 260W cap + gpu-fan-curve.service stay active. Read-only courtesy to the R9700 tree (README push only).
