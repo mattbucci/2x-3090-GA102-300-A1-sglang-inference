@@ -1,2 +1,157 @@
 {
+  "_meta": {
+    "hardware": "2x RTX 3090 TP=2",
+    "instrument": "scripts/bench/bench_long_context.py",
+    "output_tokens": 100,
+    "saved": "2026-07-19",
+    "schema": 2,
+    "stack": "sglang-v0.5.15"
+  },
+  "coder-30b": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 200.8,
+      "tpot_ms": 4.98,
+      "ttft_ms": 52.96
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 155.8,
+      "tpot_ms": 6.42,
+      "ttft_ms": 107.76
+    },
+    "deep": {
+      "actual_input_tokens": 261916,
+      "label": 261916,
+      "tok_per_sec": 69.6,
+      "tpot_ms": 14.37,
+      "ttft_ms": 378.61
+    }
+  },
+  "devstral": {
+    "1024": {
+      "actual_input_tokens": 1023,
+      "tok_per_sec": 87.7,
+      "tpot_ms": 11.4,
+      "ttft_ms": 36.53
+    },
+    "32768": {
+      "actual_input_tokens": 32767,
+      "tok_per_sec": 75.0,
+      "tpot_ms": 13.33,
+      "ttft_ms": 76.01
+    },
+    "deep": {
+      "actual_input_tokens": 201686,
+      "label": 201687,
+      "tok_per_sec": 42.7,
+      "tpot_ms": 23.4,
+      "ttft_ms": 281.76
+    }
+  },
+  "gemma4": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 82.2,
+      "tpot_ms": 12.17,
+      "ttft_ms": 42.32
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 64.2,
+      "tpot_ms": 15.58,
+      "ttft_ms": 136.02
+    },
+    "deep": {
+      "actual_input_tokens": 261916,
+      "label": 261916,
+      "tok_per_sec": 24.2,
+      "tpot_ms": 41.37,
+      "ttft_ms": 850.02
+    }
+  },
+  "nemotron3-omni": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 101.1,
+      "tpot_ms": 9.89,
+      "ttft_ms": 167.68
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 99.8,
+      "tpot_ms": 10.02,
+      "ttft_ms": 552.73
+    },
+    "deep": {
+      "actual_input_tokens": 261916,
+      "label": 261916,
+      "tok_per_sec": 93.3,
+      "tpot_ms": 10.72,
+      "ttft_ms": 1702.8
+    }
+  },
+  "qwen35-moe": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 209.2,
+      "tpot_ms": 4.78,
+      "ttft_ms": 93.35
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 192.3,
+      "tpot_ms": 5.2,
+      "ttft_ms": 1001.26
+    },
+    "deep": {
+      "actual_input_tokens": 261916,
+      "label": 261916,
+      "tok_per_sec": 144.5,
+      "tpot_ms": 6.92,
+      "ttft_ms": 427.72
+    }
+  },
+  "qwen36": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 210.5,
+      "tpot_ms": 4.75,
+      "ttft_ms": 90.11
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 189.4,
+      "tpot_ms": 5.28,
+      "ttft_ms": 868.77
+    },
+    "deep": {
+      "actual_input_tokens": 261916,
+      "label": 261916,
+      "tok_per_sec": 122.0,
+      "tpot_ms": 8.2,
+      "ttft_ms": 432.11
+    }
+  },
+  "qwen36-dense": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 69.9,
+      "tpot_ms": 14.3,
+      "ttft_ms": 452.02
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 66.0,
+      "tpot_ms": 15.15,
+      "ttft_ms": 4586.34
+    },
+    "deep": {
+      "actual_input_tokens": 261916,
+      "label": 261916,
+      "tok_per_sec": 48.2,
+      "tpot_ms": 20.73,
+      "ttft_ms": 497.53
+    }
+  }
 }

@@ -25,3 +25,26 @@ rerun silently dropped the previously-armed deep point.
 Runs on the arming evening: serve coder-30b with `--disable-cuda-graph` appended
 (receipted 4.15× graphs win ⇒ guaranteed >10% deficit), compare mode must print
 REGRESSION and exit 1. Appended here when run.
+
+## Step 9 — RESULT (2026-07-19): PASS
+
+Arming run: all 7 presets armed in one detached evening pass, zero flagged
+points, every deep point at true depth (261,916 actual; devstral self-capped at
+201,687 = its 202K pool). Cross-check vs README perf-table receipts: all 7
+within 3% (qwen36 +0.8%, dense +2.6%, coder-30b +0.9%, qwen35-moe +0.3%,
+gemma4 +0.8%, nemotron3-omni +0.3%, devstral +1.7%).
+
+Negative control: `EXTRA_ARGS="--disable-cuda-graph" launch.sh coder-30b` +
+compare mode:
+
+    coder-30b/1024:          200.8 -> 34.1 tok/s (-83.0%) [REGRESSION]
+    coder-30b/32768:         155.8 -> 33.9 tok/s (-78.2%) [REGRESSION]
+    coder-30b/deep(261916):   69.6 -> 33.4 tok/s (-52.0%) [REGRESSION]
+    exit=1 (ttft WARNs fired as warn-only)
+
+Tripwire fires both ways (perturbed-baseline offline + live mis-config) — armed.
+
+Ops scar from the first arming attempt: `common.sh` redefines `SCRIPT_DIR`, so
+the instrument path must be pinned BEFORE sourcing (script now asserts the
+instrument exists before launching any server — a path bug can never burn 7
+model loads again).

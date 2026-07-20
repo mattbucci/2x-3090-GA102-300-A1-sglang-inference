@@ -47,9 +47,14 @@
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+# common.sh redefines SCRIPT_DIR (burned the first arming run 2026-07-19: the
+# bench path silently became scripts/ instead of scripts/bench/) — pin the
+# instrument path before sourcing.
+PYBENCH="$SCRIPT_DIR/bench_long_context.py"
 source "$REPO_DIR/scripts/common.sh"
 activate_conda
 setup_nvidia_env
+[ -f "$PYBENCH" ] || { echo "FATAL: instrument missing at $PYBENCH"; exit 2; }
 
 BASELINES="${BASELINES:-$REPO_DIR/benchmarks/baselines.json}"
 RUNS_DIR="$REPO_DIR/benchmarks/regression"
@@ -217,7 +222,7 @@ bench_live() {
     fi
     local out="$RUNS_DIR/${preset}-${DATE}.json"
     echo "=== $preset (tokenizer: $model_path) ==="
-    python "$SCRIPT_DIR/bench_long_context.py" \
+    python "$PYBENCH" \
         --port "$PORT" --name "$preset" \
         --contexts 1024 32768 262144 \
         --output-tokens 100 \
@@ -302,7 +307,7 @@ case "${1:-}" in
     arm)
         shift
         echo "============================================"
-        echo "Regression tripwire — ARM mode (${SAVE_BASELINE:+SAVE}${SAVE_BASELINE:-compare}, threshold ${THRESHOLD}%)"
+        echo "Regression tripwire — ARM mode (mode: ${SAVE_BASELINE:+save}${SAVE_BASELINE:-compare}, threshold ${THRESHOLD}%)"
         echo "============================================"
         if arm "$@"; then
             echo ""; echo "RESULT: PASS"
@@ -323,7 +328,7 @@ case "${1:-}" in
     *)
         preset="$1"
         echo "============================================"
-        echo "Regression tripwire — $preset (${SAVE_BASELINE:+SAVE}${SAVE_BASELINE:-compare}, threshold ${THRESHOLD}%)"
+        echo "Regression tripwire — $preset (mode: ${SAVE_BASELINE:+save}${SAVE_BASELINE:-compare}, threshold ${THRESHOLD}%)"
         echo "============================================"
         if bench_live "$preset"; then
             echo ""; echo "RESULT: PASS"
