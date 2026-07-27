@@ -1,15 +1,15 @@
-diff --git a/python/sglang/srt/layers/attention/fla/fused_recurrent.py b/python/sglang/srt/layers/attention/fla/fused_recurrent.py
-index f110770c0..6b8409d71 100644
---- a/python/sglang/srt/layers/attention/fla/fused_recurrent.py
-+++ b/python/sglang/srt/layers/attention/fla/fused_recurrent.py
+diff --git a/python/sglang/kernels/ops/attention/fla/fused_recurrent.py b/python/sglang/kernels/ops/attention/fla/fused_recurrent.py
+index e288035..07f27b0 100644
+--- a/python/sglang/kernels/ops/attention/fla/fused_recurrent.py
++++ b/python/sglang/kernels/ops/attention/fla/fused_recurrent.py
 @@ -8,9 +8,28 @@ import torch
  import triton
  import triton.language as tl
  
 +import torch.cuda
 +
- from sglang.srt.layers.attention.fla.op import exp
- from sglang.srt.layers.attention.fla.utils import input_guard
+ from sglang.kernels.ops.attention.fla.op import exp
+ from sglang.kernels.ops.attention.fla.utils import input_guard
  
 +# sm_86 (Ampere, e.g. RTX 3090) benefits from BV=64 and num_warps=1
 +# for the recurrent decode kernel. Benchmark: 1.57x speedup over BV=32.
@@ -56,21 +56,23 @@ index f110770c0..6b8409d71 100644
  
      stride_mixed_qkv_tok = mixed_qkv.stride(0)
      stride_a_tok = a.stride(0)
-diff --git a/python/sglang/srt/layers/attention/fla/fused_sigmoid_gating_recurrent.py b/python/sglang/srt/layers/attention/fla/fused_sigmoid_gating_recurrent.py
-index 858785dec..9a7ae8bce 100644
---- a/python/sglang/srt/layers/attention/fla/fused_sigmoid_gating_recurrent.py
-+++ b/python/sglang/srt/layers/attention/fla/fused_sigmoid_gating_recurrent.py
-@@ -4,6 +4,8 @@ import torch
+diff --git a/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py b/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py
+index 37a54e8..91315ee 100644
+--- a/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py
++++ b/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py
+@@ -4,6 +4,10 @@ import torch
  import triton
  import triton.language as tl
  
-+from sglang.srt.layers.attention.fla.fused_recurrent import _get_deltanet_kernel_params
++from sglang.kernels.ops.attention.fla.fused_recurrent import (
++    _get_deltanet_kernel_params,
++)
 +
  
  @triton.jit(do_not_specialize=["T"])
  def fused_sigmoid_gating_delta_rule_update_kernel(
-@@ -282,11 +284,10 @@ def fused_sigmoid_gating_delta_rule_update(
-     stride_a = a.stride()[-2]
+@@ -286,11 +290,10 @@ def fused_sigmoid_gating_delta_rule_update(
+     stride_a = a.stride()[1] if a.ndim == 4 else a.stride()[-2]
      HV = v.shape[2]
      N = B if cu_seqlens is None else len(cu_seqlens) - 1
 -    BK, BV = triton.next_power_of_2(K), min(triton.next_power_of_2(V), 32)

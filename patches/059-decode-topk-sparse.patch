@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 0be715ac..33c221b6 100644
+index 3ec9c78..d45244f 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
 @@ -5,6 +5,38 @@ from typing import TYPE_CHECKING, List, Optional
@@ -39,9 +39,9 @@ index 0be715ac..33c221b6 100644
 +    return score
 +
  
- from sglang.srt.configs.model_config import AttentionArch
- from sglang.srt.distributed.device_communicators.pynccl_allocator import (
-@@ -140,6 +172,29 @@ class TritonAttnBackend(AttentionBackend):
+ from sglang.kernels.ops.attention.metadata import get_num_kv_splits_triton
+ from sglang.kernels.ops.kvcache.kv_indices import (
+@@ -144,6 +176,29 @@ class TritonAttnBackend(AttentionBackend):
  
          # Parse args
          self.skip_prefill = skip_prefill
@@ -71,7 +71,7 @@ index 0be715ac..33c221b6 100644
          max_bs = model_runner.req_to_token_pool.size
          self.sliding_window_size = model_runner.sliding_window_size
          self.req_to_token_pool = model_runner.req_to_token_pool
-@@ -1638,6 +1693,122 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1665,6 +1720,122 @@ class TritonAttnBackend(AttentionBackend):
  
          return o
  
@@ -194,7 +194,7 @@ index 0be715ac..33c221b6 100644
      def forward_decode(
          self,
          q: torch.Tensor,
-@@ -1694,6 +1865,24 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1723,6 +1894,24 @@ class TritonAttnBackend(AttentionBackend):
              kv_indptr = self.forward_metadata.kv_indptr
              kv_indices = self.forward_metadata.kv_indices
  
@@ -220,10 +220,10 @@ index 0be715ac..33c221b6 100644
              k_descale = layer.k_scale_float
              v_descale = layer.v_scale_float
 diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
-index ac774b82..2e422318 100644
+index 838b925..63d3c76 100644
 --- a/python/sglang/srt/server_args.py
 +++ b/python/sglang/srt/server_args.py
-@@ -780,6 +780,27 @@ class ServerArgs:
+@@ -852,6 +852,27 @@ class ServerArgs:
              resolvable=True,
          ),
      ] = False
@@ -251,13 +251,15 @@ index ac774b82..2e422318 100644
      num_continuous_decode_steps: A[
          int,
          "Run multiple continuous decoding steps to reduce scheduling overhead. This can potentially increase throughput but may also increase time-to-first-token latency. The default value is 1, meaning only run one decoding step at a time.",
-@@ -2690,6 +2711,17 @@ class ServerArgs:
-         self._validate_prefill_only_disable_kv_cache_args()
-         self._handle_dcp_validation()
- 
+@@ -2947,6 +2968,19 @@ class ServerArgs:
+         # resolution (the declarative registry materializes too late to affect
+         # it). Inkling opts into full-graph prefill capture here.
+         self._apply_inkling_prefill_cuda_graph_default()
++
 +        # R9700 069: --decode-topk-pages selects KV pages per-step with data-dependent
 +        # shapes (eager), which decode cuda-graph capture cannot represent. Auto-disable the
 +        # decode graph so the mode works without the user also passing the graph flag.
++        # Must land before _handle_cuda_graph_config(), which consumes the flag.
 +        if getattr(self, "decode_topk_pages", -1) and self.decode_topk_pages > 0:
 +            if not self.disable_decode_cuda_graph:
 +                logger.warning(

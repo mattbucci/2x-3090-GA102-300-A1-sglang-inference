@@ -1,6 +1,6 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
-High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.15** + 26 local patches (default since 2026-07-12; flip receipt + fleet re-validation: [`patches/v0.5.15-rebase-status.md`](patches/v0.5.15-rebase-status.md); prior stacks retained for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
+High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.16** + 26 local patches (default since 2026-07-27; flip receipt + fleet re-validation: [`patches/v0.5.16-rebase-status.md`](patches/v0.5.16-rebase-status.md); prior stacks retained for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 ## Fleet-audit action queue (2026-07-18)
 
@@ -142,7 +142,7 @@ One caveat carried forward: `check_awq_scales.py` reads native-AWQ format — CT
 ## Quick Start
 
 ```bash
-./scripts/setup.sh                          # clone SGLang v0.5.15, apply patches, create conda env
+./scripts/setup.sh                          # clone SGLang v0.5.16, apply patches, create conda env
 
 # TP=2 / 256K presets (matrix standard):
 ./scripts/launch.sh qwen3-ream              # 262K @ 69 tok/s — REAM merged MoE, 96 experts
@@ -415,8 +415,8 @@ Rows marked **v0.5.15 deep** are the 2026-07-18 full-depth pass with the self-ca
 
 ```bash
 ./scripts/setup.sh
-# or manually (the live tree is /data/sglang-rebase-v0515):
-cd "$SGLANG_DIR" && git checkout v0.5.15
+# or manually (the live tree is /data/sglang-rebase-v0516):
+cd "$SGLANG_DIR" && git checkout v0.5.16
 for p in "$REPO_DIR"/patches/*.patch; do git apply "$p"; done
 cd python && pip install -e .
 ```

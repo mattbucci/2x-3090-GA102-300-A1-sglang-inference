@@ -1,10 +1,10 @@
 diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
-index c628958..40f76e9 100644
+index 9f5967d..af3dbb1 100644
 --- a/python/sglang/srt/configs/model_config.py
 +++ b/python/sglang/srt/configs/model_config.py
-@@ -1856,6 +1856,13 @@ def is_hybrid_swa_model(
-         "Gemma4UnifiedForConditionalGeneration",
-         "LagunaForCausalLM",
+@@ -1930,6 +1930,13 @@ def is_hybrid_swa_model(
+         "InklingForConditionalGeneration",
+         "InklingForConditionalGenerationMTP",
          "UnlimitedOCRForCausalLM",
 +        # Cohere2Moe (North-Mini-Code) — 1:3 full:sliding (window 4096). Upstream has
 +        # native cohere2_moe but does NOT classify it hybrid-SWA, so model_runner
@@ -16,7 +16,7 @@ index c628958..40f76e9 100644
      }
      if any(arch in hybrid_swa_archs for arch in model_architectures):
          # Only treat Laguna as hybrid SWA when it actually has a sliding window.
-@@ -1893,6 +1900,20 @@ def get_hybrid_layer_ids(
+@@ -1967,6 +1974,20 @@ def get_hybrid_layer_ids(
          full_attention_layer_ids = [
              i for i, x in enumerate(layer_types) if x == "full_attention"
          ]

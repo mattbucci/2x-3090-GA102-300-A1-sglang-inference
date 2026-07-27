@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
-index adf2e65..6f1a7bb 100644
+index 7189b63..d6dfda6 100644
 --- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
 +++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
 @@ -11,7 +11,7 @@ _is_cuda = is_cuda()
@@ -11,7 +11,7 @@ index adf2e65..6f1a7bb 100644
      from sglang.jit_kernel.moe_wna16_marlin import moe_wna16_marlin_gemm
  
  
-@@ -265,6 +265,10 @@ def fused_marlin_moe(
+@@ -266,6 +266,10 @@ def fused_marlin_moe(
          )
      elif activation == "silu" and is_gated:
          silu_and_mul(intermediate_cache1.view(-1, gemm1_n), intermediate_cache2)
@@ -23,11 +23,11 @@ index adf2e65..6f1a7bb 100644
          intermediate_cache2 = F.silu(intermediate_cache1.view(-1, N))
      elif activation == "relu2" and not is_gated:
 diff --git a/python/sglang/srt/layers/moe/moe_runner/marlin.py b/python/sglang/srt/layers/moe/moe_runner/marlin.py
-index 23b5272..2f8cce7 100644
+index c595d67..24d792a 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/marlin.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/marlin.py
-@@ -93,7 +93,12 @@ def fused_experts_none_to_marlin(
-     topk_output = dispatch_output.topk_output
+@@ -140,7 +140,12 @@ def fused_experts_none_to_marlin(
+         )
  
      if runner_config.is_gated:
 -        assert runner_config.activation == "silu", "Only gated SiLU is supported."
@@ -41,10 +41,10 @@ index 23b5272..2f8cce7 100644
          raise ValueError(
              f"Unsupported Marlin MoE activation: {runner_config.activation}"
 diff --git a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
-index 942e3b8..84332f2 100644
+index cbdfe11..306e054 100644
 --- a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
 +++ b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
-@@ -443,9 +443,12 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
+@@ -452,9 +452,12 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
          )
          from sglang.srt.layers.moe.token_dispatcher import StandardCombineInput
  
@@ -60,7 +60,7 @@ index 942e3b8..84332f2 100644
  
          x = dispatch_output.hidden_states
          topk_output = dispatch_output.topk_output
-@@ -547,9 +550,11 @@ class CompressedTensorsWNA16TritonMoE(CompressedTensorsWNA16MoE):
+@@ -556,9 +559,11 @@ class CompressedTensorsWNA16TritonMoE(CompressedTensorsWNA16MoE):
          layer: torch.nn.Module,
          dispatch_output: StandardDispatchOutput,
      ) -> CombineInput:
