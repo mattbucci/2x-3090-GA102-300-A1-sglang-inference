@@ -50,7 +50,7 @@ def main():
         return 0
 
     regressions = []
-    print(f"{'preset':<16} {'MMLU 14→15':<13} {'HE 14→15':<13} {'needle':<13} {'think':<11} caps")
+    print(f"{'preset':<16} {'MMLU 15→16':<13} {'HE 15→16':<13} {'needle':<13} {'think':<11} caps")
     for preset in presets:
         old, new = load(f"{preset}-v0515"), load(f"{preset}-v0516")
         if not new:

@@ -1,6 +1,6 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
-High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.16** + 26 local patches (default since 2026-07-27; flip receipt + fleet re-validation: [`patches/v0.5.16-rebase-status.md`](patches/v0.5.16-rebase-status.md); prior stacks retained for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
+High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.16** + 27 local patches (default since 2026-07-27; flip receipt + fleet re-validation: [`patches/v0.5.16-rebase-status.md`](patches/v0.5.16-rebase-status.md); prior stacks retained for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 ## Fleet-audit action queue (2026-07-18)
 

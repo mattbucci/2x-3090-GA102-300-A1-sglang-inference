@@ -13,7 +13,7 @@ SGLang for 2x NVIDIA RTX 3090 (GA102-300-A1, 48GB total VRAM).
 
 ## Key Commands
 ```bash
-scripts/setup.sh                       # Full setup (clones SGLang v0.5.16, applies all patches/*.patch — 26 logical units)
+scripts/setup.sh                       # Full setup (clones SGLang v0.5.16, applies all patches/*.patch — 27 logical units)
 scripts/serve_production.sh gemma4-31b # Persistent PRODUCTION endpoint on :30000 (start/stop/status/restart; eval harness stays :23334)
 scripts/launch.sh devstral             # Devstral 24B AWQ (Dense, Mistral)  [ad-hoc/eval serve on :23334]
 scripts/launch.sh coder-30b-eval       # Qwen3-Coder-30B-A3B AWQ CT (256K, bake-off 43.0% opencode)
