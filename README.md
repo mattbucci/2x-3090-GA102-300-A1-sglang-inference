@@ -423,18 +423,43 @@ cd python && pip install -e .
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.15 + 26 local patches |
+| SGLang | v0.5.16 + 27 local patches |
 | PyTorch | 2.11.0 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
-| transformers | 5.12.1 (v0.5.15 pin; ships gemma4_unified natively — retired patch 055; routes Mistral ckpts to MistralCommonBackend — countered by patch 057) |
-| FlashInfer | 0.6.12 [cu13] |
-| compressed-tensors | 0.15.0.1 (serving env); 0.15.1.dev (`quant` calibration env) |
+| transformers | 5.12.1 (v0.5.16 keeps the v0.5.15 pin; ships gemma4_unified natively; routes Mistral ckpts to MistralCommonBackend — countered by patch 057) |
+| FlashInfer | 0.6.14 [cu13] |
+| compressed-tensors | serving env pin; 0.15.1.dev (`quant` calibration env) |
 
-The serving tree lives at `/data/sglang-rebase-v0515` (env `sglang-v0515`); launch with `ENV_NAME`/`SGLANG_DIR` overrides (v0.5.14 / `/data/sglang-rebase-v0514` / env `sglang-v0514` kept as rollback). Calibration uses the separate `quant` env.
+The serving tree lives at `/data/sglang-rebase-v0516` (env `sglang-v0516`); launch with `ENV_NAME`/`SGLANG_DIR` overrides (v0.5.15 / `/data/sglang-rebase-v0515` / env `sglang-v0515` kept as rollback, older trees retained). Calibration uses the separate `quant` env.
+
+## OCI image
+
+`Dockerfile` builds the CUDA/v0.5.16 stack without a GPU — every CUDA component is a pinned pip wheel and the driver is injected at `docker run` by the [NVIDIA container toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/). Base images (digest-pinned), the SGLang tag+commit, and the Miniforge installer checksum are pinned; Python/Conda transitive artifacts and live apt repositories are not fully hash-locked, so this is version-constrained rather than bit-reproducible. Adapted from the [R9700 sister repo's](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference) ROCm image — same two-stage shape, secure launcher, and CI promote-by-digest flow — minus their Rust toolchain (patch 037 drops both upstream Rust ext-modules) and minus their sglang API-hardening patch set (see the caveat below). GitHub Actions verifies PR builds and, on main-branch pushes, promotes the exact inspected candidate digest to a full-commit `sha-*` tag at `ghcr.io/<owner>/sglang-cuda-3090`; pin deployments by digest because registry tags remain mutable. **CI activation pending:** the workflow is staged at `.github/workflows-staged/build-image.yaml` because this box's PATs lack the `workflow` scope — `git mv .github/workflows-staged/build-image.yaml .github/workflows/` and push from a workflow-scoped credential to arm it.
+
+```bash
+# Local build + offline checks (no GPU needed):
+DOCKER_BUILDKIT=1 docker build -t sglang-cuda-3090:local .
+python tests/test_secure_launch.py
+
+# Serve a preset (both 3090s, TP=2 preset defaults):
+docker run --rm --gpus all \
+  -p 127.0.0.1:8000:23334 \
+  --cap-drop=ALL --security-opt=no-new-privileges:true \
+  --pids-limit 4096 --shm-size 16g \
+  -e SGLANG_API_KEY_FILE=/run/secrets/sglang-api-key \
+  -e SGLANG_ADMIN_API_KEY_FILE=/run/secrets/sglang-admin-api-key \
+  --mount type=bind,src="$api_secret",dst=/run/secrets/sglang-api-key,readonly \
+  --mount type=bind,src="$admin_secret",dst=/run/secrets/sglang-admin-api-key,readonly \
+  --mount type=bind,src=$HOME/AI/models,dst=/models,readonly \
+  sglang-cuda-3090:local \
+  scripts/launch.sh qwen36
+```
+
+The image runs as unprivileged UID 10001 with `SGLANG_SECURE_LAUNCH=1`: `scripts/launch.sh` routes through `docker/secure-launch.py`, which takes both API keys from files (never argv), refuses protected server options (gRPC/multi-node/LoRA/disaggregation/remote-loader/debug listeners), forces NCCL/GLOO onto loopback, and disables pickle IPC. `--trust-remote-code` and `--enable-metrics` are env-governed in this mode (`-e SGLANG_TRUST_REMOTE_CODE=1`, default 0 — some multimodal presets need it; enable only for reviewed, immutable checkpoints) and the request queue is bounded (`SGLANG_MAX_QUEUED_REQUESTS`, default 32). Two deltas vs the R9700 image to keep in mind: (1) **we do not carry their sglang API-hardening patches** (credential-scrubbed `/get_server_info`, delegated media-source policy, `SGLANG_ALLOW_*_MEDIA` gates) — so their guidance applies doubly here: keep the container on a private network behind an authenticating TLS proxy that denies management routes, and never publish it to an untrusted network; (2) the `developer`-role and list-content chat-template fixes patch **model files**, not sglang — run `scripts/eval/patch_chat_templates_developer_role.py` / `patch_chat_templates_list_content.py --scan` on the host against your models dir before mounting. Bare metal is unaffected by any of this: `SGLANG_SECURE_LAUNCH` defaults to 0 and `launch.sh` argv is byte-identical to the pre-image behavior (verified per-preset via the `DRY_RUN=1` hook).
 
 ## Patches
 
-**26 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang **v0.5.15** — cover AWQ/CT int4 weight loading, Qwen3.5/3.6 enablement, Gemma 4 bring-up (26B MoE / 31B dense / 12B unified omni), Nemotron-3-Nano-Omni serving (052/053), MoE gelu coverage, kernel correctness & precision, sm_86 enablement, and serving/agentic robustness. The v0.5.14→v0.5.15 flip (2026-07-12) is the first with a net patch-count reduction — 21 clean, 2 regenerated (011 extend-kernel paging drift / 051 hybrid-SWA set drift), **2 retired as upstreamed** (054 ministral3 keyword-init now native; 055's vendored gemma4_unified stack now ships in transformers 5.12.1), +1 new (**057** MistralCommonBackend opt-out — tx 5.12 silently re-routes Mistral checkpoints to a tokenizer that treats `[INST]`/`[TOOL_CALLS]` as plain text on sglang's render-then-encode path; caught by the fleet probe as devstral needle 0.0 + HE 48% + dead tool-calls, restored to parity by the patch). Post-flip: **058** (2026-07-19) upgrades 041's streaming tool-name hold-back from exact- to trailing-prefix match (R9700 056 port) — multi-token tool names (`todowrite` → `todo`+`write`) no longer leak their first token as assistant content. The 3-gate pristine replay is green and now scripted (`scripts/test_patch_gates.sh`). Per-patch narratives, the upstream-PR ledger, and the patch-hygiene gates live in [`patches/README.md`](patches/README.md); the flip receipt + full-probe results are [`patches/v0.5.15-rebase-status.md`](patches/v0.5.15-rebase-status.md).
+**27 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang **v0.5.16** — cover AWQ/CT int4 weight loading, Qwen3.5/3.6 enablement, Gemma 4 bring-up (26B MoE / 31B dense / 12B unified omni), Nemotron-3-Nano-Omni serving (052/053), MoE gelu coverage, kernel correctness & precision, sm_86 enablement, and serving/agentic robustness. The v0.5.15→v0.5.16 flip (2026-07-27) was the first with **zero patches absorbed upstream**: the release's kernel-tree relocation (`kernels/ops/…`) and model_runner decomposition drove 11 regenerations/re-ports (all mechanical or near-mechanical; transformers pin unchanged), and the fleet validation caught one v0.5.16-net-new break — **060** (the new unguarded `gemma4_unified` config alias shadows transformers' native class → boot crash on every unified checkpoint; fixed by guarding the alias on the native class, upstream-PR candidate). The 3-gate pristine replay is green and scripted (`scripts/test_patch_gates.sh`). Per-patch narratives, the upstream-PR ledger, and the patch-hygiene gates live in [`patches/README.md`](patches/README.md); the flip receipt + full fleet table are [`patches/v0.5.16-rebase-status.md`](patches/v0.5.16-rebase-status.md).
 
 ## Quantization
 

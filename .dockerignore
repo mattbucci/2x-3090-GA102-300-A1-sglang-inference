@@ -1,0 +1,20 @@
+# Keep credentials, model weights, results, and unrelated repository content
+# out of both the remote build context and immutable image layers. Add build
+# inputs explicitly; Docker does not consult .gitignore.
+**
+!.dockerignore
+!Dockerfile
+!docker/
+!docker/build-sglang.sh
+!docker/entrypoint.sh
+!docker/secure-launch.py
+!scripts/
+!scripts/common.sh
+!scripts/launch.sh
+!scripts/setup.sh
+!scripts/*.jinja
+!scripts/eval/
+!scripts/eval/patch_chat_templates_developer_role.py
+!scripts/eval/patch_chat_templates_list_content.py
+!patches/
+!patches/[0-9][0-9][0-9]-*.patch

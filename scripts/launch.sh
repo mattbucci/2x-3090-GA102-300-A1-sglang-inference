@@ -787,7 +787,24 @@ echo "Quant:  ${QUANT:-none}  Context: $CTX  Port: $PORT"
 echo "=============================================="
 
 # --- Build command ---
-CMD=(python -m sglang.launch_server
+# SGLANG_SECURE_LAUNCH=1 (the OCI image default; see docker/) swaps in the
+# hardened launcher: file-backed API keys that never touch argv, refusal of
+# protected server options, loopback-pinned NCCL. Bare metal defaults to 0 and
+# behaves exactly as before. Under secure launch, --trust-remote-code and
+# --enable-metrics are env-governed (SGLANG_TRUST_REMOTE_CODE /
+# SGLANG_ENABLE_METRICS) — the launcher refuses them on argv — so they are
+# appended here only on the bare-metal path.
+SGLANG_SECURE_LAUNCH="${SGLANG_SECURE_LAUNCH:-0}"
+case "$SGLANG_SECURE_LAUNCH" in
+    0|1) ;;
+    *) echo "ERROR: SGLANG_SECURE_LAUNCH must be 0 or 1" >&2; exit 2 ;;
+esac
+if [[ "$SGLANG_SECURE_LAUNCH" == "1" ]]; then
+    CMD=(/usr/local/libexec/sglang-cuda/secure-launch.py)
+else
+    CMD=(python -m sglang.launch_server)
+fi
+CMD+=(
     --model-path "$MODEL"
     --tensor-parallel-size "$TP"
     --dtype "$DTYPE"
@@ -797,12 +814,13 @@ CMD=(python -m sglang.launch_server
     --max-running-requests "$MAX_RUNNING"
     --chunked-prefill-size "$CHUNKED"
     --num-continuous-decode-steps "$DECODE_STEPS"
-    --trust-remote-code
     --watchdog-timeout "$WATCHDOG"
     --port "$PORT"
     --host 0.0.0.0
-    --enable-metrics
 )
+if [[ "$SGLANG_SECURE_LAUNCH" == "0" ]]; then
+    CMD+=(--trust-remote-code --enable-metrics)
+fi
 # Custom all-reduce stays OFF: it breaks cuda-graph capture on 3090 TP=2
 # (sm_86) and graphs are worth far more than the decode allreduce it would speed
 # up. Disabled 2026-04-12 (commit 45c4810, v0.5.11); RE-CONFIRMED still broken on
@@ -856,7 +874,31 @@ fi
 # NB: presets APPEND to a caller-provided EXTRA_ARGS, so a caller flag that a
 # preset also pins (e.g. --attention-backend) loses argparse last-wins. Use
 # OVERRIDE_ARGS for those — it lands after everything.
+# Under secure launch, strip the two env-governed flags that some presets bake
+# into EXTRA_ARGS (e.g. the gemma multimodal presets add --trust-remote-code);
+# the hardened launcher would refuse them on argv. Anything else protected that
+# a CALLER passes (via EXTRA_ARGS/OVERRIDE_ARGS) is deliberately left in place
+# so secure-launch refuses it loudly instead of being silently dropped.
+if [[ "$SGLANG_SECURE_LAUNCH" == "1" ]]; then
+    for _var in EXTRA_ARGS OVERRIDE_ARGS; do
+        [[ -z "${!_var:-}" ]] && continue
+        _filtered=()
+        for _a in ${!_var}; do
+            case "$_a" in
+                --trust-remote-code|--enable-metrics) ;;
+                *) _filtered+=("$_a") ;;
+            esac
+        done
+        printf -v "$_var" '%s' "${_filtered[*]:-}"
+    done
+fi
 [[ -n "${EXTRA_ARGS:-}" ]] && CMD+=(${EXTRA_ARGS})
 [[ -n "${OVERRIDE_ARGS:-}" ]] && CMD+=(${OVERRIDE_ARGS})
 
+# DRY_RUN=1: print the final argv (one arg per line) and exit without
+# launching — lets tests and reviews diff the exact server command.
+if [[ -n "${DRY_RUN:-}" ]]; then
+    printf '%s\n' "${CMD[@]}"
+    exit 0
+fi
 exec "${CMD[@]}"

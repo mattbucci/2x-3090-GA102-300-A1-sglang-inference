@@ -50,16 +50,22 @@ echo "Env:     $ENV_NAME"
 echo "=============================================="
 
 # Validate
-if ! command -v nvidia-smi &>/dev/null; then
-    echo "ERROR: nvidia-smi not found. Install NVIDIA drivers."; exit 1
+# GPU_FREE_SETUP=1 is for container image builds: no GPU, driver, or nvidia-smi
+# present at build time (the CUDA runtime is injected by the container toolkit
+# at docker run). Bare-metal setups keep the hard driver requirement.
+GPU_FREE_SETUP="${GPU_FREE_SETUP:-0}"
+if [ "$GPU_FREE_SETUP" != "1" ] && ! command -v nvidia-smi &>/dev/null; then
+    echo "ERROR: nvidia-smi not found. Install NVIDIA drivers (or GPU_FREE_SETUP=1 for image builds)."; exit 1
 fi
 if [ ! -f "$CONDA_BASE/bin/conda" ]; then
     echo "ERROR: Conda not found at $CONDA_BASE"; exit 1
 fi
 
-echo ""
-echo "GPU info:"
-nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
+if [ "$GPU_FREE_SETUP" != "1" ]; then
+    echo ""
+    echo "GPU info:"
+    nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
+fi
 
 # -------------------------------------------------------------------
 # Step 1: Clone SGLang
@@ -83,6 +89,15 @@ else
         exit 1
     fi
 fi
+# Optional commit pin (image builds set it): a tag can be re-pointed upstream;
+# the commit hash cannot.
+if [ -n "${SGLANG_COMMIT:-}" ]; then
+    _have_commit="$(git -C "$SGLANG_DIR" rev-parse HEAD)"
+    if [ "$_have_commit" != "$SGLANG_COMMIT" ]; then
+        echo "ERROR: $SGLANG_TAG resolves to $_have_commit, expected $SGLANG_COMMIT (tag moved upstream?)"
+        exit 1
+    fi
+fi
 
 # Apply local patches (idempotent — skips already-applied)
 PATCH_DIR="${PATCH_DIR:-$REPO_DIR/patches}"
@@ -96,6 +111,13 @@ if [ -d "$PATCH_DIR" ] && ls "$PATCH_DIR"/*.patch &>/dev/null; then
             git apply "$p"
             echo "  Applied: $pname"
         else
+            # STRICT_PATCHES=1 (image builds, always-fresh clones): a skip can
+            # only mean a broken chain — fail instead of hiding it. Bare-metal
+            # reruns keep the idempotent skip (already-applied is normal there).
+            if [ "${STRICT_PATCHES:-0}" = "1" ]; then
+                echo "ERROR: patch does not apply on pristine $SGLANG_TAG: $pname"
+                exit 1
+            fi
             echo "  Skipped (already applied or conflict): $pname"
         fi
     done
@@ -139,8 +161,12 @@ if [ "$SKIP_ENV" = false ]; then
     # 'swebench'` and writes a 0/300 cell JSON, silently masking the real
     # numbers behind a "harness exited rc=1; trying to summarize anyway" line
     # in score-<scaffold>.log. We hit this on 2026-05-19 after a 25h cycle.
-    echo "Installing eval/validator deps..."
-    pip install "imageio[ffmpeg]" swebench
+    # librosa + accelerate are SERVING deps for the nemotron3-omni Parakeet
+    # audio path (the header note above documented them but this script never
+    # installed them — the bare-metal envs got them by hand; fixed 2026-07-27
+    # when the OCI image build made the gap load-bearing).
+    echo "Installing eval/validator + audio-serving deps..."
+    pip install "imageio[ffmpeg]" swebench librosa accelerate
 else
     echo "[2/3] Skipping conda env creation"
     init_conda
