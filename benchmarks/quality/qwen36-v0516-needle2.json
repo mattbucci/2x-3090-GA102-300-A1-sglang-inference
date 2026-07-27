@@ -1,0 +1,45 @@
+{
+ "tag": "qwen36-v0516-needle2",
+ "note": "targeted re-probe of the 131K@0.5 single-cell miss from the v0.5.16 fleet pass; 250K included as control. First attempt discarded: orphan-scheduler-depleted KV pool (16,581 tok) errored every request.",
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 131108
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": false,
+    "actual_prompt_tokens": 131108
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131108
+   },
+   {
+    "context": 250000,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 250035
+   },
+   {
+    "context": 250000,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 250035
+   },
+   {
+    "context": 250000,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 250035
+   }
+  ],
+  "score": 0.8333333333333334
+ }
+}

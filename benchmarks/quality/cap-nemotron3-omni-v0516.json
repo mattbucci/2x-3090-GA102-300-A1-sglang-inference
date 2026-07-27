@@ -1,0 +1,38 @@
+{
+  "nemotron3-omni-v0516": {
+    "tag": "nemotron3-omni-v0516",
+    "model": "nemotron3-omni",
+    "timestamp": "2026-07-27 07:16",
+    "elapsed_sec": 8.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='\\nparis'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (147 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)the user wants a description of the image.\\n1.  **analyze the image:** i see a simple graphic. it features a large red ci'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'across', 'circle', 'red']  response='(reasoning)the user wants me to describe the video in one short sentence.\\n\\n1.  **analyze the video content:**\\n    *   the video sta'"
+      },
+      "audio": {
+        "passed": true,
+        "message": "saw=['sound']  response='(reasoning)the sound of putting the hand on the head'"
+      }
+    },
+    "summary": {
+      "passed": 6,
+      "total": 6
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "qwen36-v0516": {
+    "tag": "qwen36-v0516",
+    "model": "qwen36",
+    "timestamp": "2026-07-27 02:17",
+    "elapsed_sec": 49.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1190 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)the user wants a short sentence describing the image.\\n\\n1.  **identify the main subject:** it is a red circle.\\n2.  **iden'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'across', 'ball', 'circle', 'red']  response='\\n\\na red circle moves to the right.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  }
+}
