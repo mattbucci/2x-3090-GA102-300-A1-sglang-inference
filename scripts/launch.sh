@@ -817,6 +817,16 @@ CMD+=(
     --watchdog-timeout "$WATCHDOG"
     --port "$PORT"
     --host 0.0.0.0
+    # v0.5.17 auto-resolves the multimodal feature transport to cuda_ipc on
+    # single-node CUDA; its fd passing uses pidfd_getfd, which Yama
+    # ptrace_scope=1 (this host) and docker's default seccomp both forbid
+    # between sibling processes — the TP scheduler dies on the FIRST vision/
+    # video request while every text probe stays green (caught by the v0.5.17
+    # fleet caps probe on gemma4). Pin the v0.5.16 behavior; cuda_ipc is a
+    # future opt-in perf lever once the pidfd story works here (it also
+    # reserves SGLANG_MM_FEATURE_CACHE_MB=1024 on GPU0, which our 90% VRAM
+    # budget has not priced in).
+    --mm-feature-transport cpu
 )
 if [[ "$SGLANG_SECURE_LAUNCH" == "0" ]]; then
     CMD+=(--trust-remote-code --enable-metrics)
