@@ -219,12 +219,24 @@ def main() -> None:
             + ", ".join(enabled_unsafe_modes)
         )
 
-    server_args.api_key = api_key
-    server_args.admin_api_key = admin_api_key
-    server_args.trust_remote_code = trust_remote_code == "1"
-    server_args.enable_metrics = enable_metrics == "1"
-    server_args.max_queued_requests = int(max_queued_requests)
-    server_args.enable_custom_logit_processor = False
+    # v0.5.17 makes resolved ServerArgs read-only; ServerArgs.override(source,
+    # **fields) is the single sanctioned post-resolution mutation point (raises
+    # AttributeError on bare assignment). Older stacks lack override() — fall
+    # back to attribute assignment there (also keeps the offline unit test's
+    # SimpleNamespace stand-in exercising the legacy path).
+    credential_fields = dict(
+        api_key=api_key,
+        admin_api_key=admin_api_key,
+        trust_remote_code=trust_remote_code == "1",
+        enable_metrics=enable_metrics == "1",
+        max_queued_requests=int(max_queued_requests),
+        enable_custom_logit_processor=False,
+    )
+    if hasattr(server_args, "override"):
+        server_args.override("secure-launch", **credential_fields)
+    else:
+        for name, value in credential_fields.items():
+            setattr(server_args, name, value)
     try:
         run_server(server_args)
     finally:
