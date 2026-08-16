@@ -79,6 +79,13 @@ wait_ready() {
   log "  ERROR: server timeout"; tail -30 "$1/server.log"; return 1
 }
 
+# Preflight: a broken model registry (e.g. a patch double-registering an arch
+# after upstream adds its own) kills EVERY boot — catch it in 10 seconds
+# instead of a 30-minute server timeout per preset (v0.5.17 flip lesson: the
+# 035 EntryClass hunk vs upstream's new qwen3_5_text.py).
+python -c "from sglang.srt.models.registry import ModelRegistry" \
+  || { log "FATAL: model registry import failed — patched tree is unbootable"; exit 1; }
+
 PRESETS_RUN="${PRESETS:-$(printf '%s\n' "${FLEET[@]}" | cut -d'|' -f1 | tr '\n' ' ')}"
 log "fleet: $PRESETS_RUN"
 
