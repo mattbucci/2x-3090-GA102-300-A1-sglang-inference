@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 3ec9c78..d45244f 100644
+index c378c80..c5d1a68 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
 @@ -5,6 +5,38 @@ from typing import TYPE_CHECKING, List, Optional
@@ -41,7 +41,7 @@ index 3ec9c78..d45244f 100644
  
  from sglang.kernels.ops.attention.metadata import get_num_kv_splits_triton
  from sglang.kernels.ops.kvcache.kv_indices import (
-@@ -144,6 +176,29 @@ class TritonAttnBackend(AttentionBackend):
+@@ -150,6 +182,29 @@ class TritonAttnBackend(AttentionBackend):
  
          # Parse args
          self.skip_prefill = skip_prefill
@@ -71,7 +71,7 @@ index 3ec9c78..d45244f 100644
          max_bs = model_runner.req_to_token_pool.size
          self.sliding_window_size = model_runner.sliding_window_size
          self.req_to_token_pool = model_runner.req_to_token_pool
-@@ -1665,6 +1720,122 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1711,6 +1766,122 @@ class TritonAttnBackend(AttentionBackend):
  
          return o
  
@@ -194,7 +194,7 @@ index 3ec9c78..d45244f 100644
      def forward_decode(
          self,
          q: torch.Tensor,
-@@ -1723,6 +1894,24 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1777,6 +1948,25 @@ class TritonAttnBackend(AttentionBackend):
              kv_indptr = self.forward_metadata.kv_indptr
              kv_indices = self.forward_metadata.kv_indices
  
@@ -203,6 +203,7 @@ index 3ec9c78..d45244f 100644
 +        # a criticality-selected budget instead of the whole context.
 +        if (
 +            self.decode_topk_pages > 0
++            and self.dcp_size == 1  # v0.5.17: keep topk off the new DCP decode path
 +            and (layer.sliding_window_size is None or layer.sliding_window_size <= -1)
 +        ):
 +            qv = q.view(-1, layer.tp_q_head_num, layer.qk_head_dim)
@@ -220,13 +221,13 @@ index 3ec9c78..d45244f 100644
              k_descale = layer.k_scale_float
              v_descale = layer.v_scale_float
 diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
-index 838b925..63d3c76 100644
+index 1866495..e0e8e03 100644
 --- a/python/sglang/srt/server_args.py
 +++ b/python/sglang/srt/server_args.py
-@@ -852,6 +852,27 @@ class ServerArgs:
-             resolvable=True,
-         ),
-     ] = False
+@@ -1912,6 +1912,30 @@ class ServerArgs:
+         "The size of split KV tile in flash decoding Triton kernel. Used for deterministic inference.",
+         NS("exec.kernel"),
+     ] = None
 +    decode_topk_pages: A[
 +        int,
 +        "[R9700 069 port, experimental] Top-K sparse-KV decode: the DECODE path reads the K "
@@ -235,31 +236,35 @@ index 838b925..63d3c76 100644
 +        "KV read budget = decode-topk-pages * decode-topk-page-size tokens; scale the budget "
 +        "with context (>=6% of tokens at 256K). -1 (default) = off. Data-dependent per-step "
 +        "selection cannot be cuda-graph captured: decode cuda-graph is auto-disabled.",
++        NS("exec.kernel"),
 +    ] = -1
 +    decode_topk_page_size: A[
 +        int,
 +        "[R9700 069] KV page granularity for top-K selection (default 32). Larger pages are "
 +        "faster (less rep-scan bandwidth) at slightly lower recall. Donor sweep @128K: page8 "
 +        "0.75x, page32 1.15x, page64 1.24x. Recommend 32-64.",
++        NS("exec.kernel"),
 +    ] = 32
 +    decode_topk_scorer: A[
 +        str,
 +        "[R9700 069] Page-relevance scorer: 'bbox' = Quest bounding-box criticality (default, "
 +        "best real-key recall, 2 reps/page); 'centroid' = mean-pooled page dot query (cheaper, "
 +        "1 rep/page, no bs==1 fast path).",
++        NS("exec.kernel"),
 +    ] = "bbox"
-     num_continuous_decode_steps: A[
-         int,
-         "Run multiple continuous decoding steps to reduce scheduling overhead. This can potentially increase throughput but may also increase time-to-first-token latency. The default value is 1, meaning only run one decoding step at a time.",
-@@ -2947,6 +2968,19 @@ class ServerArgs:
-         # resolution (the declarative registry materializes too late to affect
-         # it). Inkling opts into full-graph prefill capture here.
-         self._apply_inkling_prefill_cuda_graph_default()
-+
+     flashinfer_mla_disable_ragged: A[
+         bool,
+         "Not using ragged prefill wrapper when running flashinfer mla",
+@@ -3508,6 +3532,20 @@ class ServerArgs:
+         # must run before _handle_cuda_graph_config and _handle_data_parallelism
+         self._handle_dwdp()
+ 
 +        # R9700 069: --decode-topk-pages selects KV pages per-step with data-dependent
 +        # shapes (eager), which decode cuda-graph capture cannot represent. Auto-disable the
 +        # decode graph so the mode works without the user also passing the graph flag.
-+        # Must land before _handle_cuda_graph_config(), which consumes the flag.
++        # Must land before _handle_cuda_graph_config(), which consumes the flag. (An
++        # explicit --cuda-graph-backend-decode still overrides the boolean off-switch
++        # downstream — same exposure as every disable_* graph flag.)
 +        if getattr(self, "decode_topk_pages", -1) and self.decode_topk_pages > 0:
 +            if not self.disable_decode_cuda_graph:
 +                logger.warning(

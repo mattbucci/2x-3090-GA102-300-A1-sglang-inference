@@ -1,14 +1,14 @@
 #!/bin/bash
 # SGLang setup for 2x RTX 3090
 #
-# Clones SGLang v0.5.16 and applies the local patches in patches/*.patch
-# (idempotent — git apply --check skips already-applied). 27 patches; verified
+# Clones SGLang v0.5.17 and applies the local patches in patches/*.patch
+# (idempotent — git apply --check skips already-applied). 26 patches; verified
 # byte-identical to the live tree by the 3-gate pristine replay — scripted,
-# scripts/test_patch_gates.sh (flipped from v0.5.15 2026-07-27; nothing dropped
-# as upstreamed, 11 regenerated/re-ported for the kernels/ops relocation +
-# model_runner decomposition; 037 now also drops the new sglang-mm Rust ext).
-# Requires transformers 5.12.1 + flashinfer 0.6.14 [cu13] + xgrammar 0.2.1
-# (env sglang-v0516 also has librosa + accelerate for the Parakeet audio path).
+# scripts/test_patch_gates.sh (flipped from v0.5.16 2026-08-15; 037 retired —
+# upstream's SGLANG_BUILD_RUST_EXTS=none opt-out replaces it; 5 regenerated,
+# incl. 030's silent-half-load guard for upstream's new derive-shard rewrite).
+# Requires transformers 5.12.1 + flashinfer 0.6.15.post1 [cu13] + xgrammar 0.2.1
+# (env sglang-v0517 also has librosa + accelerate for the Parakeet audio path).
 # NB: the serving runtime is in the base package (no [srt] extra) and upstream
 # adds a mandatory Rust gRPC ext that needs protoc; patch 037 drops that
 # ext (we serve over HTTP) so `pip install -e .` works without protoc.
@@ -28,11 +28,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-# Default stack = v0.5.16 (flipped 2026-07-27). The retained v0.5.15 tree
-# (/data/sglang-rebase-v0515, env sglang-v0515) still serves via ENV_NAME/SGLANG_DIR
+# Default stack = v0.5.17 (flipped 2026-08-15). The retained v0.5.16 tree
+# (/data/sglang-rebase-v0516, env sglang-v0516) still serves via ENV_NAME/SGLANG_DIR
 # overrides; to REBUILD an older stack from scratch, revert the flip commit (restores
-# the v0.5.15 patch set + this tag) or override SGLANG_TAG + PATCH_DIR + ENV_NAME.
-SGLANG_TAG="${SGLANG_TAG:-v0.5.16}"
+# the v0.5.16 patch set + this tag) or override SGLANG_TAG + PATCH_DIR + ENV_NAME.
+SGLANG_TAG="${SGLANG_TAG:-v0.5.17}"
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -85,7 +85,7 @@ else
     if [ "$_have_tag" != "$SGLANG_TAG" ]; then
         echo "ERROR: $SGLANG_DIR is at '$_have_tag', expected $SGLANG_TAG."
         echo "       Point SGLANG_DIR at a $SGLANG_TAG checkout (live tree:"
-        echo "       /data/sglang-rebase-v0516) or remove the stale dir to re-clone."
+        echo "       /data/sglang-rebase-v0517) or remove the stale dir to re-clone."
         exit 1
     fi
 fi
@@ -141,13 +141,16 @@ if [ "$SKIP_ENV" = false ]; then
 
     echo "Installing SGLang from source (CUDA)..."
     cd "$SGLANG_DIR/python"
-    pip install -e .   # 0.5.12 folded srt deps into base; patch 037 dropped the gRPC Rust ext (no protoc needed)
+    # SGLANG_BUILD_RUST_EXTS=none: v0.5.17 moved Rust-ext building into setup.py
+    # with this native opt-out — it replaces retired patch 037 (we serve over
+    # HTTP; the grpc/multimodal exts would need cargo+protoc, absent here).
+    SGLANG_BUILD_RUST_EXTS=none pip install -e .
 
-    # v0.5.16 hard-pins transformers==5.12.1 (same pin as v0.5.15 — the version
-    # the fleet is validated on). 5.12.1 ships gemma4_unified natively but also
-    # routes Mistral checkpoints to the MistralCommonBackend tokenizer (fixed by
-    # patch 057). Pin exactly — do NOT let it drift: newer tx changes both of
-    # those paths under our feet.
+    # v0.5.17 hard-pins transformers==5.12.1 (third release on this pin — the
+    # version the fleet is validated on). 5.12.1 ships gemma4_unified natively
+    # but also routes Mistral checkpoints to the MistralCommonBackend tokenizer
+    # (fixed by patch 057). Pin exactly — do NOT let it drift: newer tx changes
+    # both of those paths under our feet.
     echo "Pinning transformers 5.12.1 + gguf..."
     pip install --no-deps "transformers==5.12.1" gguf
 

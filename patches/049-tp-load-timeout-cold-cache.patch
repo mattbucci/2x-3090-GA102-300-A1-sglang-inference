@@ -9,13 +9,14 @@ killed mid-load. Bites 30-62 GB checkpoints when NVMe is contended (e.g.
 bake-off docker I/O); the timeout still catches genuinely wedged ranks.
 v0.5.16 re-port: the constant moved verbatim from model_runner.py into the
 new model_runner_components/load_model_utils.py (model_runner decomposition);
-same one-line bump at the new site. Narrative: patches/README.md.
+same one-line bump; v0.5.17 re-anchor (new maybe_precompile_model_kernels_after_loading below the constant). Narrative: patches/README.md.
 
 diff --git a/python/sglang/srt/model_executor/model_runner_components/load_model_utils.py b/python/sglang/srt/model_executor/model_runner_components/load_model_utils.py
-index c55ba80..c381cfd 100644
+diff --git a/python/sglang/srt/model_executor/model_runner_components/load_model_utils.py b/python/sglang/srt/model_executor/model_runner_components/load_model_utils.py
+index f3ada40..268ef73 100644
 --- a/python/sglang/srt/model_executor/model_runner_components/load_model_utils.py
 +++ b/python/sglang/srt/model_executor/model_runner_components/load_model_utils.py
-@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
+@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
  _is_npu = is_npu()
  
  
@@ -23,4 +24,4 @@ index c55ba80..c381cfd 100644
 +UNBALANCED_MODEL_LOADING_TIMEOUT_S = 1800  # [3090 049] cold-page-cache TP2 loads of 30-62 GB checkpoints exceed upstream 480s rank-skew window (R9700 finding); leave more time for post data processing
  
  
- class LoadedModel(msgspec.Struct, frozen=True, kw_only=True):
+ def maybe_precompile_model_kernels_after_loading(model, device: str) -> None:

@@ -1,6 +1,6 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
-High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.16** + 27 local patches (default since 2026-07-27; flip receipt + fleet re-validation: [`patches/v0.5.16-rebase-status.md`](patches/v0.5.16-rebase-status.md); prior stacks retained for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
+High-throughput LLM inference on 2× NVIDIA RTX 3090 (GA102-300-A1, Ampere). SGLang **v0.5.17** + 26 local patches (default since 2026-08-15; flip receipt + fleet re-validation: [`patches/v0.5.17-rebase-status.md`](patches/v0.5.17-rebase-status.md); prior stacks retained for one-revert rollback), CUDA 13.2 / PyTorch cu130. This rig owns **all evals + AWQ/INT4 calibrations**; FP8 work lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
 ## Fleet-audit action queue (2026-07-18)
 
@@ -423,14 +423,14 @@ cd python && pip install -e .
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.16 + 27 local patches |
+| SGLang | v0.5.17 + 26 local patches |
 | PyTorch | 2.11.0 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
-| transformers | 5.12.1 (v0.5.16 keeps the v0.5.15 pin; ships gemma4_unified natively; routes Mistral ckpts to MistralCommonBackend — countered by patch 057) |
-| FlashInfer | 0.6.14 [cu13] |
+| transformers | 5.12.1 (third release on this pin; ships gemma4_unified natively; routes Mistral ckpts to MistralCommonBackend — countered by patch 057) |
+| FlashInfer | 0.6.15.post1 [cu13] |
 | compressed-tensors | serving env pin; 0.15.1.dev (`quant` calibration env) |
 
-The serving tree lives at `/data/sglang-rebase-v0516` (env `sglang-v0516`); launch with `ENV_NAME`/`SGLANG_DIR` overrides (v0.5.15 / `/data/sglang-rebase-v0515` / env `sglang-v0515` kept as rollback, older trees retained). Calibration uses the separate `quant` env.
+The serving tree lives at `/data/sglang-rebase-v0517` (env `sglang-v0517`); launch with `ENV_NAME`/`SGLANG_DIR` overrides (v0.5.16 / `/data/sglang-rebase-v0516` / env `sglang-v0516` kept as rollback, older trees retained). Calibration uses the separate `quant` env.
 
 ## OCI image
 
@@ -459,7 +459,7 @@ The image runs as unprivileged UID 10001 with `SGLANG_SECURE_LAUNCH=1`: `scripts
 
 ## Patches
 
-**27 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang **v0.5.16** — cover AWQ/CT int4 weight loading, Qwen3.5/3.6 enablement, Gemma 4 bring-up (26B MoE / 31B dense / 12B unified omni), Nemotron-3-Nano-Omni serving (052/053), MoE gelu coverage, kernel correctness & precision, sm_86 enablement, and serving/agentic robustness. The v0.5.15→v0.5.16 flip (2026-07-27) was the first with **zero patches absorbed upstream**: the release's kernel-tree relocation (`kernels/ops/…`) and model_runner decomposition drove 11 regenerations/re-ports (all mechanical or near-mechanical; transformers pin unchanged), and the fleet validation caught one v0.5.16-net-new break — **060** (the new unguarded `gemma4_unified` config alias shadows transformers' native class → boot crash on every unified checkpoint; fixed by guarding the alias on the native class, upstream-PR candidate). The 3-gate pristine replay is green and scripted (`scripts/test_patch_gates.sh`). Per-patch narratives, the upstream-PR ledger, and the patch-hygiene gates live in [`patches/README.md`](patches/README.md); the flip receipt + full fleet table are [`patches/v0.5.16-rebase-status.md`](patches/v0.5.16-rebase-status.md).
+**26 logical patches** (`ls patches/*.patch | wc -l`) targeting SGLang **v0.5.17** — cover AWQ/CT int4 weight loading, Qwen3.5/3.6 enablement, Gemma 4 bring-up (26B MoE / 31B dense / 12B unified omni), Nemotron-3-Nano-Omni serving (052/053), MoE gelu coverage, kernel correctness & precision, sm_86 enablement, and serving/agentic robustness. The v0.5.16→v0.5.17 flip (2026-08-15): 21 applied clean (all kernel re-ports held — no new kernel moves), **037 retired** (upstream's new `SGLANG_BUILD_RUST_EXTS=none` opt-out replaces the patch), 5 regenerated — headlined by **030**, where upstream's new derive-shard-size rewrite turned the CT-presharded-w2 TP=2 failure from a loud crash into a **silent half-load** (boots green, garbage quality); the regenerated shape-guard restores correct loading and upgraded 030's upstream-PR case from crash-fix to silent-corruption-fix. The 3-gate pristine replay is green and scripted (`scripts/test_patch_gates.sh`). Per-patch narratives, the upstream-PR ledger, and the patch-hygiene gates live in [`patches/README.md`](patches/README.md); the flip receipt + full fleet table are [`patches/v0.5.17-rebase-status.md`](patches/v0.5.17-rebase-status.md).
 
 ## Quantization
 

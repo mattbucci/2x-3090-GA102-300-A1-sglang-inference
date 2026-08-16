@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/managers/mm_utils.py b/python/sglang/srt/managers/mm_utils.py
-index 891d8df..ff88033 100644
+index 97e96c0..872e835 100644
 --- a/python/sglang/srt/managers/mm_utils.py
 +++ b/python/sglang/srt/managers/mm_utils.py
 @@ -33,6 +33,7 @@ from sglang.srt.managers.schedule_batch import (
@@ -7,10 +7,10 @@ index 891d8df..ff88033 100644
  from sglang.srt.model_executor.forward_batch_info import ForwardBatch
  from sglang.srt.multimodal.evs import EVSEmbeddingResult
 +from sglang.srt.multimodal.evs.evs_module import EVSDataItem
- from sglang.srt.runtime_context import get_parallel, get_server_args
- from sglang.srt.utils import flatten_nested_list, is_hip, is_npu, print_warning_once
- from sglang.srt.utils.stale_shm_cleanup import make_shm_name
-@@ -798,7 +799,18 @@ def _get_chunked_prefill_embedding(
+ from sglang.srt.runtime_context import (
+     get_disagg,
+     get_parallel,
+@@ -856,7 +857,18 @@ def _get_chunked_prefill_embedding(
              extend_seq_len=extend_seq_len,
          )
  

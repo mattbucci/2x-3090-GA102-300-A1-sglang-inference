@@ -3,8 +3,9 @@
 # every CUDA component arrives as a pinned pip wheel (torch cu13, flashinfer,
 # sglang-kernel, nvidia-*), and the driver is injected at `docker run` by the
 # NVIDIA container toolkit. Unlike the R9700 donor image there is no Rust
-# toolchain: patch 037 drops both upstream Rust ext-modules (gRPC + sglang-mm),
-# so `pip install -e .` needs neither cargo nor protoc.
+# toolchain: setup.sh installs with upstream's SGLANG_BUILD_RUST_EXTS=none
+# opt-out (v0.5.17 setup.py auto-discovery; replaced retired patch 037), so
+# `pip install -e .` needs neither cargo nor protoc.
 # Adapted from the R9700 sister repo's docker/build-sglang.sh.
 set -euo pipefail
 
@@ -88,9 +89,12 @@ build_sglang() {
     # boot (v0.5.16-net-new).
     grep -q '\[3090 060\]' \
         "${SGLANG_DIR}/python/sglang/srt/utils/hf_transformers/common.py"
-    # Patch-037 marker: no Rust ext-modules may remain in pyproject (the image
-    # ships no cargo/protoc, and none are needed on the HTTP serving path).
-    ! grep -q 'setuptools-rust.ext-modules' "${SGLANG_DIR}/python/pyproject.toml"
+    # No Rust ext may have been BUILT (SGLANG_BUILD_RUST_EXTS=none in setup.sh;
+    # the image ships no cargo/protoc, and none are needed on the HTTP path).
+    if find "${SGLANG_DIR}/python/sglang" -name '_core*.so' | grep -q .; then
+        echo "ERROR: a Rust extension module was built despite the opt-out" >&2
+        exit 1
+    fi
     "${CONDA_BASE}/bin/conda" run -n "${ENV_NAME}" python -c "import sglang; print(sglang.__version__)"
     "${CONDA_BASE}/bin/conda" clean -afy
     rm -rf "${SGLANG_DIR}/.git" "${REPO_DIR}/build"

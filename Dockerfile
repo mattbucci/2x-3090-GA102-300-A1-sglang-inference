@@ -1,9 +1,9 @@
 # GPU-free build: every CUDA component is a pinned pip wheel (torch cu13,
 # flashinfer, sglang-kernel, nvidia-*); the driver arrives at `docker run` via
 # the NVIDIA container toolkit. Override build args with --build-arg; defaults
-# are the supported v0.5.16 stack. Adapted from the R9700 sister repo's
-# ROCm/gfx1201 image (same two-stage shape, no Rust toolchain — patch 037
-# drops both upstream Rust ext-modules).
+# are the supported v0.5.17 stack. Adapted from the R9700 sister repo's
+# ROCm/gfx1201 image (same two-stage shape, no Rust toolchain — setup.sh
+# builds with upstream's SGLANG_BUILD_RUST_EXTS=none opt-out).
 ARG UBUNTU_BUILDER_IMAGE=docker.io/library/ubuntu:24.04@sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf
 # Runtime keeps the CUDA devel image: sglang JIT-compiles triton + tvm_ffi
 # kernels at first boot and expects a full toolkit at CUDA_HOME (bare-metal
@@ -13,11 +13,11 @@ ARG CUDA_RUNTIME_IMAGE=docker.io/nvidia/cuda:13.0.2-devel-ubuntu24.04@sha256:0ee
 FROM ${UBUNTU_BUILDER_IMAGE} AS builder
 ARG MINIFORGE_VERSION=26.3.2-3
 ARG MINIFORGE_SHA256=848194851a98903134187fbb4ab50efe87b003e0c0f808f97644b7524a62bf2c
-ARG SGLANG_TAG=v0.5.16
-ARG SGLANG_COMMIT=fdebc938f7f4d16fe6b9f55dcd9a767cf0899ea1
+ARG SGLANG_TAG=v0.5.17
+ARG SGLANG_COMMIT=29481685462732237d80d86076d6563e1f658102
 ENV DEBIAN_FRONTEND=noninteractive PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    CONDA_BASE=/opt/conda ENV_NAME=sglang-v0516 \
+    CONDA_BASE=/opt/conda ENV_NAME=sglang-v0517 \
     REPO_DIR=/opt/3090-inference SGLANG_DIR=/opt/3090-inference/components/sglang
 COPY --chmod=0555 docker/build-sglang.sh /usr/local/bin/build-sglang
 RUN MINIFORGE_VERSION="${MINIFORGE_VERSION}" MINIFORGE_SHA256="${MINIFORGE_SHA256}" \
@@ -39,9 +39,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 ENV HOME=/home/sglang XDG_CACHE_HOME=/home/sglang/.cache \
-    CONDA_BASE=/opt/conda ENV_NAME=sglang-v0516 \
+    CONDA_BASE=/opt/conda ENV_NAME=sglang-v0517 \
     REPO_DIR=/opt/3090-inference SGLANG_DIR=/opt/3090-inference/components/sglang \
-    PATH=/opt/conda/envs/sglang-v0516/bin:/opt/conda/bin:${PATH} \
+    PATH=/opt/conda/envs/sglang-v0517/bin:/opt/conda/bin:${PATH} \
     CUDA_HOME=/usr/local/cuda CUDA_PATH=/usr/local/cuda \
     TRITON_CACHE_DIR=/home/sglang/.cache/triton_3090 \
     MODELS_DIR=/models TOKENIZERS_PARALLELISM=false \
