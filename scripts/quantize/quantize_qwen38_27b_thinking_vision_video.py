@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Qwen3.8-27B GPTQ W4A16 with thinking + vision + VIDEO aware calibration.
+r"""Qwen3.8-27B GPTQ W4A16 with thinking + vision + VIDEO aware calibration.
 
 Qwen3.8-27B (released 2026-08-14) declares `Qwen3_5ForConditionalGeneration` /
 `model_type: qwen3_5` — it is a Qwen3.5-FAMILY hybrid, so the whole existing
