@@ -67,6 +67,13 @@ def default_targets():
         "Qwen3.5-28B-A3B-REAP-AWQ", "Qwen3-Coder-30B-A3B-AWQ",
         "Qwen3-Coder-30B-A3B-REAM-AWQ", "Qwen3-Coder-REAP-25B-A3B-AWQ",
         "Qwen3-30B-Instruct-2507-REAM-AWQ",
+        # Qwen3.8-27B (2026-08-17): its template dispatches system/user/
+        # assistant/tool with NO else-branch, so a `developer` role is dropped
+        # SILENTLY rather than raising — little-coder would then run with no
+        # system prompt at all and emit empty diffs that read as a model
+        # capability failure. Strictly worse than the Qwen3.5/3.6 400s that
+        # motivated this script; must be patched before any agentic eval.
+        "Qwen3.8-27B-AWQ",
     ]
     targets = [models / n / "chat_template.jinja" for n in names]
     targets += sorted((repo / "scripts").glob("*chat_template*.jinja"))
