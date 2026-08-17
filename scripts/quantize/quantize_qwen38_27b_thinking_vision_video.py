@@ -194,6 +194,23 @@ print(f"Saving to {OUTPUT_DIR}...")
 model.save_pretrained(OUTPUT_DIR, save_compressed=True)
 tokenizer.save_pretrained(OUTPUT_DIR)
 processor.save_pretrained(OUTPUT_DIR)
-print(f"  Saved preprocessor (image/video) config to {OUTPUT_DIR}")
+
+# The base ships BOTH preprocessor_config.json (image) and
+# video_preprocessor_config.json (video). AutoProcessor.save_pretrained does
+# not always re-emit the video one, and a checkpoint missing it loses the
+# video modality at serve time while image still works — the same silent
+# modality-drop class M4 hit on community checkpoints. Verify and backfill.
+import shutil
+
+for cfg in ("preprocessor_config.json", "video_preprocessor_config.json"):
+    src_cfg = os.path.join(BASE_MODEL, cfg)
+    dst_cfg = os.path.join(OUTPUT_DIR, cfg)
+    if os.path.exists(dst_cfg):
+        print(f"  {cfg}: present")
+    elif os.path.exists(src_cfg):
+        shutil.copy2(src_cfg, dst_cfg)
+        print(f"  {cfg}: MISSING after save -> copied from base")
+    else:
+        print(f"  {cfg}: absent in base too (nothing to copy)")
 
 print("Done.")
