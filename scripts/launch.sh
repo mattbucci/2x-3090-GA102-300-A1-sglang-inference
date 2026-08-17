@@ -13,6 +13,7 @@
 # Dense:
 #   devstral / devstral-32k / devstral-long  Devstral-24B AWQ (131K / 32K / 217K)
 #   qwen35-dense                              Qwen3.5-27B Dense AWQ
+#   qwen38 / qwen38-27b                       Qwen3.8-27B Dense hybrid VL (video, MTP)
 #   qwen36-dense / qwen36-27b                 Qwen3.6-27B Dense AWQ (native)
 #   qwen36-dense-ct                           Qwen3.6-27B Dense compressed-tensors
 #   gemma4-31b                                Gemma 4 31B Dense AWQ (thinking+image+video)
@@ -497,6 +498,35 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
+            ;;
+        qwen38|qwen38-27b)
+            # Qwen3.8-27B Dense hybrid VL (released 2026-08-14). Declares
+            # Qwen3_5ForConditionalGeneration / model_type qwen3_5 — a
+            # Qwen3.5-FAMILY model, so the existing patch set applies as-is
+            # (002/031 DeltaNet AWQ loaders, 003/007 GDN kernels, 056 conv
+            # state, 018 vision dict-wrap, 035 config fallbacks). Shape is a
+            # near-twin of qwen36-dense (64 layers, head_dim 256, 4 KV heads),
+            # which is this preset's donor — but Qwen3.8 adds native VIDEO
+            # (hour-scale) and in-checkpoint MTP.
+            #
+            # 48 of 64 layers are Gated DeltaNet, so only 16 layers hold a KV
+            # pool: ~64 KB/token, ~8 GB/card at 256K with TP=2 — 262144 is
+            # comfortable. Untied embeddings at vocab 248320 make the INT4
+            # ship ~19 GB (embed + lm_head stay BF16), not the ~15 GB a 27B
+            # suggests; MEM starts at qwen36-dense's 0.85.
+            #
+            # MTP weights ship in the checkpoint but the MAIN loader skips
+            # every "mtp" name — they are inert here. Speculative decoding via
+            # Qwen3_5ForCausalLMMTP is an untried future lever (would need the
+            # MTP layers quantized to match, which our recipe deliberately
+            # leaves BF16).
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.8-27B-AWQ}"
+            QUANT="${QUANT:-awq_marlin}"
+            CTX=262144; MEM=0.85; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
+            MAMBA_CACHE="--max-mamba-cache-size 8"
+            REASONING="--reasoning-parser qwen3"
+            CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen35-dense)
