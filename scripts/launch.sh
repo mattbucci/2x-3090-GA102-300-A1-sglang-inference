@@ -521,9 +521,22 @@ apply_preset() {
             # Qwen3_5ForCausalLMMTP is an untried future lever (would need the
             # MTP layers quantized to match, which our recipe deliberately
             # leaves BF16).
+            # MAX_RUNNING=1 is LOAD-BEARING here, unlike the qwen36-dense donor
+            # (which uses 8). Measured 2026-08-18 on the self-calibrated ship:
+            #   MAX_RUNNING=8/6 -> max_total_num_tokens =  32,516  (context
+            #                      claim of 262144 is a LIE; deep requests fail)
+            #   MAX_RUNNING=1   -> max_total_num_tokens = 697,368  (2.7x the
+            #                      262144 context — full depth with headroom)
+            # Two reasons this model is tighter than the 3.6 donor: the ship is
+            # ~18 GB (untied embeddings, 248,320 vocab, and lm_head stays BF16)
+            # vs ~15 GB, and 48 of 64 layers carry DeltaNet recurrent state that
+            # is replicated per concurrent slot. Multi-user is still possible —
+            # but drop --context-length to ~32K when raising --max-running, and
+            # re-read max_total_num_tokens from /get_server_info rather than
+            # trusting the context flag.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.8-27B-AWQ}"
             QUANT="${QUANT:-awq_marlin}"
-            CTX=262144; MEM=0.85; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
+            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
