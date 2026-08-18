@@ -1,0 +1,128 @@
+{
+  "tag": "qwen38-v0517",
+  "timestamp": "2026-08-18 08:23",
+  "max_context": 262144,
+  "thinking": {
+    "results": [
+      {
+        "name": "simple_mc",
+        "tokens": 26,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "reasoning",
+        "tokens": 294,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "knowledge",
+        "tokens": 47,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "code",
+        "tokens": 33,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "hard_mc",
+        "tokens": 121,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      }
+    ],
+    "think_tags_rate": 0.0,
+    "clean_answer_rate": 1.0,
+    "truncation_rate": 0.0,
+    "avg_tokens": 104.2
+  },
+  "mmlu": {
+    "correct": 28,
+    "total": 30,
+    "accuracy": 0.9333333333333333
+  },
+  "humaneval": {
+    "passed": 24,
+    "total": 25,
+    "pass_rate": 0.96
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "DbQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "SuppQA": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "TableQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "ProtocolQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "SeqQA": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "CloningScenarios": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "_overall": {
+      "correct": 9,
+      "total": 56,
+      "accuracy": 0.16071428571428573
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 1101
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 1101
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 1102
+      }
+    ],
+    "score": 1.0
+  }
+}
