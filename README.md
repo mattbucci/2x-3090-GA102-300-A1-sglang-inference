@@ -138,6 +138,8 @@ The `SPEC_DECODE=1` opt-in remains wired for short-prompt uses. For our 256K age
 
 ## Known Issues (open)
 
+- **nemotron3-omni decode −12% at depth on v0.5.18** (93.3 → 82.4 tok/s @261,916; −5.4% @1K, growing with depth under fp8 KV, flat −13–14% under bf16 KV). Bisected to the flashinfer-side per-step decode dispatch (0.6.15.post1→0.6.17; sglang wrapper near-unchanged; triton fallback is far slower on this Mamba2 hybrid, e4m3 KV can't run triton on Ampere anyway). Preset unchanged (flashinfer+e4m3 remains fastest); baseline deliberately kept at 93.3 so the tripwire keeps flagging; upstream-report candidate with receipts `benchmarks/regression/exp-nemotron-*.json`.
+
 - **`qwen36-ream` × claw-code is a partial cell (122/270 = 45.2% of scored)** — discount per the full-300 rule. The 2026-07-16 reroll recovered 102 predictions (168→270); the last ~30 instances hard-fail in the GLIBC-sensitive claw scaffold (`rc=3` rollout landmine, not a model issue) and resist retry; opencode + little-coder are full-300.
 - **Host reboots every ~9–17 h under sustained docker rollout I/O (kernel BUG).** Predictions on disk survive; auto-resume is via `swebench-bakeoff.service` (the boot-ordering cycle that was silently dropping it at every boot is fixed — cooling oneshot now orders after `nvidia-persistenced`, not `multi-user.target`). Full forensic recipe in [`CLAUDE.md`](CLAUDE.md) → Operational Lessons.
 
