@@ -2,11 +2,12 @@
 # SGLang setup for 2x RTX 3090
 #
 # Clones SGLang v0.5.18 and applies the local patches in patches/*.patch
-# (idempotent — git apply --check skips already-applied). 26 patches; verified
+# (idempotent — git apply --check skips already-applied). 27 patches; verified
 # byte-identical to the live tree by the 3-gate pristine replay — scripted,
 # scripts/test_patch_gates.sh (flipped from v0.5.17 2026-08-29; 24 applied
 # clean, 004 + 053 re-ported to their moved anchors — model_config.py
-# restructure, EVS predicate now in managers/mm_schedule.py).
+# restructure, EVS predicate now in managers/mm_schedule.py; 061 added for the
+# v0.5.18 gemma4-unified lm_head_is_tied boot crash).
 # Requires transformers 5.12.1 + torch 2.13.0 + flashinfer 0.6.17 [cu13] +
 # sglang-kernel 0.4.6.post1 + xgrammar 0.2.1 (env sglang-v0518 also has
 # librosa + accelerate for the Parakeet audio path).
