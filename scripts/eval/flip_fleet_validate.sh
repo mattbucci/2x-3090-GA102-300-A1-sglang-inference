@@ -8,7 +8,12 @@
 # scripts/eval/compare_flip_receipts.py --old <prev> --new $FLIP_TAG.
 #
 # Generalized from the per-version validators at the v0.5.18 flip (2026-08-29).
-# FLEET order is risk-first for the CURRENT flip (edit per flip):
+# FLEET covers EVERY preset whose model is on disk (21 at the v0.5.18 flip; the
+# deprecated `devstral-long` alias and the two presets with no local model,
+# `coder-reap` / `qwen3-vl-moe`, are the only launch.sh entries left out).
+# Entry format: preset|think|ctx|needle-lengths — ctx/needles default to
+# 262144 / 1K..250K; 32K presets probe to 30K, qwen3-vl-32b to 120K.
+# Order is risk-first for the CURRENT flip (edit per flip):
 #   v0.5.18: coder-30b-eval FIRST — CT-format MoE at TP=2, the exact case
 #   patch 030 protects (a silent half-load boots green with garbage quality:
 #   MMLU/HE here are the corruption tripwire). nemotron3-omni second — it is
@@ -16,7 +21,8 @@
 #   new mm_schedule.py). gemma4-31b third (production model; restored on the
 #   new stack the moment the campaign is green). Then qwen36 (DeltaNet kernels
 #   003/007/056), gemma4 (017 gelu beside situ), devstral (041/057/058 chain,
-#   tokenizer routing), and the rest.
+#   tokenizer routing), the rest of the receipted fleet, then the presets that
+#   get their first receipts on this flip.
 #
 # Usage:
 #   FLIP_TAG=v0518 ./scripts/eval/flip_fleet_validate.sh              # full fleet
@@ -50,6 +56,15 @@ FLEET=(
   "qwen36-ream|yes"
   "qwen36-dense|yes"
   "qwen3-ream|no"
+  "qwen38|yes"
+  "coder-30b|no"
+  "coder-reap-25b|no"
+  "coder-30b-ream|no"
+  "qwen3-vl-32b|no|131072|1024,16384,65536,120000"
+  "qwen36-vl-reap|yes"
+  "qwen36-dense-ct|yes|32768|1024,16384,30000"
+  "qwen35-dense|yes|32768|1024,16384,30000"
+  "devstral-32k|no|32768|1024,16384,30000"
 )
 
 MMLU_N="${MMLU_N:-30}"
@@ -67,10 +82,10 @@ mkdir -p "$LOG_ROOT"
 log() { echo "[$FLIP_TAG-val $(date +%H:%M:%S)] $*"; }
 stop_server() { pkill -KILL -f "sglang.launch_server" 2>/dev/null || true; sleep 6; }
 
-launch_server() {  # $1 preset, $2 logdir
-  log "launching $1 @256K (env $ENV_NAME)"
+launch_server() {  # $1 preset, $2 logdir, $3 context length
+  log "launching $1 @$3 ctx (env $ENV_NAME)"
   MAX_RUNNING="${MAX_RUNNING:-6}" nohup setsid bash "$REPO/scripts/launch.sh" "$1" \
-    --context-length 262144 > "$2/server.log" 2>&1 < /dev/null &
+    --context-length "$3" > "$2/server.log" 2>&1 < /dev/null &
   disown
 }
 
@@ -95,23 +110,24 @@ PRESETS_RUN="${PRESETS:-$(printf '%s\n' "${FLEET[@]}" | cut -d'|' -f1 | tr '\n' 
 log "fleet: $PRESETS_RUN"
 
 for ENTRY in "${FLEET[@]}"; do
-  IFS='|' read -r PRESET THINK <<< "$ENTRY"
+  IFS='|' read -r PRESET THINK CTX NEEDLES <<< "$ENTRY"
+  CTX="${CTX:-262144}"; NEEDLES="${NEEDLES:-$NEEDLE_LENGTHS}"
   case " $PRESETS_RUN " in *" $PRESET "*) ;; *) continue ;; esac
   LOG="$LOG_ROOT/$PRESET"; mkdir -p "$LOG"
   [ "$THINK" = "yes" ] && MCB="$MC_BUDGET_THINK" || MCB=1024
   QJSON="benchmarks/quality/$PRESET-$FLIP_TAG.json"
   CJSON="benchmarks/quality/cap-$PRESET-$FLIP_TAG.json"
   if [ -s "$QJSON" ] && [ -s "$CJSON" ]; then log "=== $PRESET already done, skip ==="; continue; fi
-  log "=== $PRESET (think=$THINK mc-budget=$MCB) ==="
+  log "=== $PRESET (think=$THINK mc-budget=$MCB ctx=$CTX needles=$NEEDLES) ==="
 
   stop_server
-  launch_server "$PRESET" "$LOG"
+  launch_server "$PRESET" "$LOG" "$CTX"
   wait_ready "$LOG" || { stop_server; log "  SKIP $PRESET (boot failed)"; continue; }
 
-  log "  quality eval (mmlu=$MMLU_N he=$HE_N lab=$LAB_N needle=$NEEDLE_LENGTHS)"
+  log "  quality eval (mmlu=$MMLU_N he=$HE_N lab=$LAB_N needle=$NEEDLES)"
   python "$REPO/scripts/eval/eval_and_chart.py" --run --port $PORT --tag "$PRESET-$FLIP_TAG" \
     --mmlu-samples "$MMLU_N" --humaneval-samples "$HE_N" --labbench-samples "$LAB_N" \
-    --needle-lengths "$NEEDLE_LENGTHS" --mc-budget "$MCB" --workers "$WORKERS" \
+    --needle-lengths "$NEEDLES" --mc-budget "$MCB" --workers "$WORKERS" \
     > "$LOG/quality.log" 2>&1
   log "    quality rc=$? -> $QJSON"
 
