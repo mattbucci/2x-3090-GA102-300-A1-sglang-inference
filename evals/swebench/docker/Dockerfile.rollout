@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
 #
-# Per-instance rollout image: SWE-bench eval image + Node + (opencode,
-# little-coder) + ripgrep. claw-code is added in a sister Dockerfile
-# (Dockerfile.rollout-claw) because the Rust build is heavy and needs an
-# Anthropic-protocol translation proxy in front of SGLang.
+# Per-instance rollout image: SWE-bench eval image + Node + the scaffold
+# roster (opencode, opencode+DCP, little-coder, prime-agent, dcode) + ripgrep.
+# claw-code is DEPRECATED 2026-08-30 (unmaintained upstream; R9700 retired it
+# the same day) — its binary is still COPY'd so historical cells reproduce.
 #
 # Built once per instance:
 #
@@ -25,6 +25,10 @@ USER root
 ARG NODE_VERSION=20.18.0
 ARG OPENCODE_VERSION=1.14.25
 ARG LITTLE_CODER_VERSION=1.1.0
+ARG PRIME_AGENT_VERSION=0.8.1
+ARG DCODE_VERSION=0.1.65
+ARG OPENCODE_DCP_VERSION=3.1.15
+ARG RTK_VERSION=0.28.2
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl xz-utils ca-certificates ripgrep && \
@@ -53,6 +57,52 @@ RUN sed -i 's|http://127.0.0.1:8888/v1|http://127.0.0.1:23334/v1|' \
 RUN mkdir -p /root/.config/opencode
 
 COPY opencode.json /root/.config/opencode/opencode.json
+
+# --- opencode + DCP lane (scaffold "opencode-dcp") -------------------------
+# DCP (@tarquinen/opencode-dcp) is an opencode PLUGIN registered in the config.
+# A plugin in /root/.config would contaminate the plain-opencode control lane,
+# so the DCP lane gets its own HOME (/opt/dcp-home) with a copy of the same
+# provider config + the plugin registered there; docker_rollout.py overrides
+# HOME for that scaffold only (scaffold envs come after HOME=/root, last wins).
+RUN mkdir -p /opt/dcp-home/.config/opencode && \
+    cp /root/.config/opencode/opencode.json /opt/dcp-home/.config/opencode/opencode.json && \
+    HOME=/opt/dcp-home opencode plugin @tarquinen/opencode-dcp@${OPENCODE_DCP_VERSION} --global && \
+    grep -q opencode-dcp /opt/dcp-home/.config/opencode/opencode.json
+COPY dcp.jsonc /opt/dcp-home/.config/opencode/dcp.jsonc
+
+# --- little-coder + RTK lane (scaffold "little-coder-rtk") -----------------
+# RTK (rtk-ai/rtk) compresses bash/tool output before it reaches the model
+# (static musl binary — no rust toolchain needed, the claw lesson). The hook
+# is registered into Pi's GLOBAL config under a dedicated HOME so the plain
+# little-coder control lane stays hook-free; docker_rollout.py flips HOME for
+# this scaffold only. RTK_TELEMETRY_DISABLED is set per-lane at run time.
+RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh \
+        | env RTK_VERSION=v${RTK_VERSION} RTK_INSTALL_DIR=/usr/local/bin sh && \
+    /usr/local/bin/rtk --version && \
+    mkdir -p /opt/rtk-home && \
+    HOME=/opt/rtk-home RTK_TELEMETRY_DISABLED=1 /usr/local/bin/rtk init -g --agent pi && \
+    test -d /opt/rtk-home
+
+# --- prime-agent (scaffold "prime") ----------------------------------------
+# Distributed via a checksum-verified curl installer (NOT on public npm);
+# PRIME_AGENT_VERSION pins the release, PLAIN=1 disables the TTY UI. The
+# installer lands a standalone-node bundle under /root — symlink the binary
+# onto PATH. Provider config (~/.prime/agent/models.json) is written PER RUN
+# by docker_rollout.py with the actual served name (no static enumeration —
+# avoids the opencode.json new-preset landmine class entirely).
+RUN curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh \
+        | env HOME=/root PRIME_AGENT_VERSION=${PRIME_AGENT_VERSION} PRIME_AGENT_INSTALLER_PLAIN=1 sh && \
+    PA=$(find /root -maxdepth 5 -name prime-agent -type f | head -1) && \
+    test -n "$PA" && ln -sf "$PA" /usr/local/bin/prime-agent && \
+    /usr/local/bin/prime-agent --version
+
+# --- deepagents-code (scaffold "dcode") ------------------------------------
+# Python CLI, requires python>=3.12; the eval images' conda base is 3.11, so
+# it gets its own conda env (isolated from base AND from the testbed env).
+RUN /opt/miniconda3/bin/conda create -y -n dcode python=3.12 pip && \
+    /opt/miniconda3/envs/dcode/bin/pip install --no-cache-dir deepagents-code==${DCODE_VERSION} && \
+    ln -sf /opt/miniconda3/envs/dcode/bin/dcode /usr/local/bin/dcode && \
+    /usr/local/bin/dcode --help > /dev/null
 
 # claw is the OpenAI-compat-capable Rust scaffold (claw-code/USAGE.md
 # Provider matrix: model id `openai/<served>` + OPENAI_BASE_URL +

@@ -35,9 +35,9 @@ activate_conda
 # --- Configuration ---------------------------------------------------------
 
 # Phases as: <id>:<preset>:<scaffold>:<served_name>:<n_instances>:<comment>
-# n_instances: 0 = full 300 (Lite); 10 = smoke. claw-code phases gated on
-# the smoke result — review evals/swebench/runs/coder-30b-claw-code-smoke/
-# before flipping `BAKEOFF_PHASES` to include the full claw runs.
+# n_instances: 0 = full 300 (Lite); 10 = smoke. claw-code is RETIRED
+# 2026-08-30 (unmaintained) — its phases below are kept only to reproduce
+# historical cells; they are out of the default ENABLED set.
 PHASES=(
     "p1:coder-30b-eval:little-coder:coder-30b-eval:0:Coder-30B × little-coder (300)"
     "p2:coder-30b-eval:claw-code:coder-30b-eval:10:Coder-30B × claw-code SMOKE (10)"
@@ -54,7 +54,7 @@ PHASES=(
     "p13:qwen36:claw-code:qwen36:0:Qwen3.6-35B × claw-code (300, gated on p2)"
 )
 
-ENABLED="${BAKEOFF_PHASES:-p1 p2 p3 p4 p5 p6 p7 p8 p9 p10}"  # claw expansions gated separately
+ENABLED="${BAKEOFF_PHASES:-p1 p3 p4 p5 p6 p7 p8 p9 p10}"  # p2/p11-13 (claw) retired 2026-08-30
 TIMEOUT="${BAKEOFF_TIMEOUT:-1800}"
 LOG_DIR="${BAKEOFF_LOG_DIR:-/tmp/loop-bakeoff-logs}"
 SERVER_LOG_DIR="$LOG_DIR/servers"

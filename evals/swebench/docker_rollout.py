@@ -57,7 +57,10 @@ DOCKERFILE = THIS_DIR / "docker" / "Dockerfile.rollout"
 DOCKER_CTX = THIS_DIR / "docker"
 
 
-SUPPORTED_SCAFFOLDS = ("opencode", "little-coder", "claw-code")
+# claw-code DEPRECATED 2026-08-30 (unmaintained; kept for reproducing
+# historical cells — R9700 retired it the same day). opencode-dcp = opencode
+# with the Dynamic Context Pruning plugin (isolated HOME, see Dockerfile).
+SUPPORTED_SCAFFOLDS = ("opencode", "opencode-dcp", "little-coder", "little-coder-rtk", "claw-code", "prime", "dcode")
 
 
 def parse_args():
@@ -162,6 +165,34 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
         )
         return envs, inner
 
+    if scaffold == "little-coder-rtk":
+        # little-coder with the RTK bash-output compressor hooked into Pi's
+        # global config under /opt/rtk-home (Dockerfile.rollout). Same model
+        # routing as plain little-coder (packaged models.json is inside the
+        # npm package, HOME-independent). HOME override wins because scaffold
+        # envs are appended after --env HOME=/root (docker: last one wins).
+        oc_model = f"llamacpp/{served_name}"
+        envs = [
+            "--env", "HOME=/opt/rtk-home",
+            "--env", "LLAMACPP_API_KEY=noop",
+            "--env", "RTK_TELEMETRY_DISABLED=1",
+        ]
+        inner = (
+            f"set -e\n"
+            f"git config --global user.email eval@local\n"
+            f"git config --global user.name eval\n"
+            f"git config --global --add safe.directory /testbed\n"
+            f"cd /testbed\n"
+            f"little-coder --model {oc_model} \"$PROMPT\" || true\n"
+            f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            f"timeout 120 little-coder --model {oc_model} \"$CLEANUP_PROMPT\" || true\n"
+            f"echo === DIFF ===\n"
+            f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            f"git -C /testbed add -A\n"
+            f"git -C /testbed diff --cached\n"
+        )
+        return envs, inner
+
     if scaffold == "claw-code":
         # claw natively supports OpenAI-compat: OPENAI_BASE_URL +
         # OPENAI_API_KEY, model id "openai/<served>". The openai/ prefix
@@ -188,6 +219,94 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
             f"git -C /testbed diff --cached\n"
+        )
+        return envs, inner
+
+    if scaffold == "opencode-dcp":
+        # Same invocation as opencode, but HOME points at the DCP-enabled
+        # config home baked by Dockerfile.rollout (plugin + dcp.jsonc). The
+        # scaffold envs are appended AFTER --env HOME=/root in the docker cmd,
+        # and docker takes the last occurrence, so this override wins.
+        envs = ["--env", "HOME=/opt/dcp-home"]
+        inner = (
+            f"set -e\n"
+            f"git config --global user.email eval@local\n"
+            f"git config --global user.name eval\n"
+            f"git config --global --add safe.directory /testbed\n"
+            f"opencode run --dir /testbed --model {model} "
+            f"  --format json --dangerously-skip-permissions \"$PROMPT\" || true\n"
+            f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            f"timeout 120 opencode run --dir /testbed --model {model} "
+            f"  --format json --dangerously-skip-permissions \"$CLEANUP_PROMPT\" || true\n"
+            f"echo === DIFF ===\n"
+            f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            f"git -C /testbed add -A\n"
+            f"git -C /testbed diff --cached\n"
+        )
+        return envs, inner
+
+    if scaffold == "prime":
+        # prime-agent reads custom providers from ~/.prime/agent/models.json
+        # (no config-dir override as of 0.8.1) — written HERE with the actual
+        # served name so new presets need no static enumeration. compat flags
+        # follow the SGLang guidance (ported from R9700's host-side runner,
+        # verified by them on prime-agent 0.8.1). DO_NOT_TRACK: prime sends
+        # pseudonymous usage metrics by default; eval rollouts don't phone home.
+        provider_json = json.dumps({
+            "providers": {"sglang": {
+                "name": "SGLang local",
+                "baseUrl": "http://127.0.0.1:23334/v1",
+                "api": "openai-completions",
+                "apiKey": "noop",
+                "compat": {"supportsDeveloperRole": False,
+                           "supportsReasoningEffort": False},
+                "models": [{"id": served_name}],
+            }}}, indent=2)
+        envs = ["--env", "DO_NOT_TRACK=1"]
+        inner = (
+            "set -e\n"
+            "git config --global user.email eval@local\n"
+            "git config --global user.name eval\n"
+            "git config --global --add safe.directory /testbed\n"
+            "mkdir -p /root/.prime/agent\n"
+            "cat > /root/.prime/agent/models.json <<'PRIMEJSON'\n"
+            f"{provider_json}\n"
+            "PRIMEJSON\n"
+            "cd /testbed\n"
+            f"prime-agent --model sglang/{served_name} -p \"$PROMPT\" || true\n"
+            "rm -rf /testbed/.prime /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            f"timeout 120 prime-agent --model sglang/{served_name} -p \"$CLEANUP_PROMPT\" || true\n"
+            "echo === DIFF ===\n"
+            "rm -rf /testbed/.prime /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            "git -C /testbed add -A\n"
+            "git -C /testbed diff --cached\n"
+        )
+        return envs, inner
+
+    if scaffold == "dcode":
+        # deepagents-code headless: -n runs one task and exits (-q clean
+        # output); tools auto-run headless. Model routing is plain openai-SDK
+        # env (OPENAI_BASE_URL + `openai:<served>`; SGLang ignores the id).
+        # Inner --timeout 1700 stays under our 1800 s default outer SIGKILL so
+        # dcode exits 124 on its own (ported from R9700, deepagents-code
+        # 0.1.65; raise both together if the per-instance timeout changes).
+        envs = [
+            "--env", "OPENAI_BASE_URL=http://127.0.0.1:23334/v1",
+            "--env", "OPENAI_API_KEY=noop",
+        ]
+        inner = (
+            "set -e\n"
+            "git config --global user.email eval@local\n"
+            "git config --global user.name eval\n"
+            "git config --global --add safe.directory /testbed\n"
+            "cd /testbed\n"
+            f"dcode -M openai:{served_name} -n \"$PROMPT\" -q --max-turns 60 -S all --allow-fs-tools all --timeout 1700 || true\n"
+            "rm -rf /testbed/.deepagents /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            f"timeout 120 dcode -M openai:{served_name} -n \"$CLEANUP_PROMPT\" -q --max-turns 8 -S all --allow-fs-tools all --timeout 100 || true\n"
+            "echo === DIFF ===\n"
+            "rm -rf /testbed/.deepagents /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            "git -C /testbed add -A\n"
+            "git -C /testbed diff --cached\n"
         )
         return envs, inner
 

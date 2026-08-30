@@ -4,7 +4,7 @@
 # Sequence (Rule 2 enforced: no rollout + score concurrent):
 #   1. Launch SGLang server for $PRESET (detached via setsid)
 #   2. Wait /health=200 (max 12 min)
-#   3. For each scaffold in {opencode, claw-code, little-coder}: full 300-inst rollout
+#   3. For each scaffold in {opencode, opencode-dcp, little-coder, little-coder-rtk, prime, dcode}: full 300-inst rollout
 #   4. Stop server
 #   5. Audit each scaffold's predictions for infrastructure failures
 #   6. If any infra failures: relaunch server, reroll just those instances, stop server
@@ -22,7 +22,7 @@
 #   the preset to a different id under the sglang provider.
 #
 # Environment overrides:
-#   SCAFFOLDS       space-separated list (default: "opencode claw-code little-coder")
+#   SCAFFOLDS       space-separated list (default: "opencode opencode-dcp little-coder little-coder-rtk prime dcode")
 #   INSTANCES       per-scaffold instance count (default: 0 = full 300)
 #   TIMEOUT         per-instance rollout timeout in seconds (default: 1800)
 #   LOG_DIR         where to write per-phase logs (default: /tmp/run-model-cycle-logs/<preset>)
@@ -42,7 +42,7 @@ if [ -z "$PRESET" ]; then
   exit 1
 fi
 
-SCAFFOLDS="${SCAFFOLDS:-opencode claw-code little-coder}"
+SCAFFOLDS="${SCAFFOLDS:-opencode opencode-dcp little-coder little-coder-rtk prime dcode}"  # claw-code retired 2026-08-30 (unmaintained, R9700 same day; historical cells remain); +prime/dcode (R9700 port) and the two A/B lanes opencode-dcp / little-coder-rtk 2026-08-31
 INSTANCES="${INSTANCES:-0}"
 TIMEOUT="${TIMEOUT:-1800}"
 SERVER_TIMEOUT="${SERVER_TIMEOUT:-720}"

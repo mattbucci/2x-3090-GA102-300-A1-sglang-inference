@@ -105,7 +105,7 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
     return out
 
 
-SCAFFOLDS = ("opencode", "little-coder", "claw-code")
+SCAFFOLDS = ("opencode", "opencode-dcp", "little-coder", "little-coder-rtk", "claw-code", "prime", "dcode")  # claw-code deprecated 2026-08-30; historical cells still parse
 
 
 def discover_runs(runs_dir: Path):

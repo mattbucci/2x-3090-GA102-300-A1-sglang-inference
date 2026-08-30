@@ -1,0 +1,8 @@
+// Dynamic Context Pruning config for the "opencode-dcp" bake-off lane
+// (plugin @tarquinen/opencode-dcp, pinned in Dockerfile.rollout).
+// Explicit upstream defaults so cells are reproducible; revisit thresholds
+// for the 256K single-user lane after the first A/B cells.
+{
+  "maxContextLimit": 100000,
+  "minContextLimit": 50000
+}

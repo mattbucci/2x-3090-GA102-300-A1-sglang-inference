@@ -171,7 +171,10 @@ if [ "$SKIP_ENV" = false ]; then
     # installed them — the bare-metal envs got them by hand; fixed 2026-07-27
     # when the OCI image build made the gap load-bearing).
     echo "Installing eval/validator + audio-serving deps..."
-    pip install "imageio[ffmpeg]" swebench librosa accelerate
+    # swebench PINNED at 4.1.0: 5.0.2 is a breaking major and every historical
+    # bake-off cell was scored on 4.1.0 — bumping mid-series breaks cell
+    # comparability (R9700 finding 2026-08-30; their scorer carries the same pin).
+    pip install "imageio[ffmpeg]" "swebench==4.1.0" librosa accelerate
 else
     echo "[2/3] Skipping conda env creation"
     init_conda
