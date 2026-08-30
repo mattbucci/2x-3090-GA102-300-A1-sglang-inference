@@ -383,7 +383,7 @@ def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50, needle_lengths=[1024
     return results
 
 
-def generate_charts():
+def generate_charts(chart_all=False):
     """Generate PNG comparison charts from saved results."""
     try:
         import matplotlib
@@ -410,6 +410,30 @@ def generate_charts():
         print("No quality results found. Run evals first.")
         return
 
+    # README chart = the CURRENT fleet: one bar per preset, its latest COMPLETE
+    # receipt on a versioned stack tag (<preset>-vNNNN, >= v0514 — the current
+    # naming era). Partial re-runs (-needle2 / -mmlu2 / -needle-deep) and
+    # in-progress receipts (a section still missing) never displace a complete
+    # one; legacy unversioned experiment tags are left to --chart-all.
+    if not chart_all:
+        import re
+        latest = {}
+        for r in results:
+            m = re.fullmatch(r"(.+)-v(\d{4})", r["tag"])
+            if not m or int(m.group(2)) < 514:
+                continue
+            if not all(k in r for k in ("mmlu", "humaneval", "labbench", "needle", "thinking")):
+                continue
+            preset, ver = m.group(1), int(m.group(2))
+            if preset not in latest or ver > latest[preset][0]:
+                latest[preset] = (ver, r)
+        results = [v[1] for _, v in sorted(latest.items())]
+        if not results:
+            print("No complete versioned receipts found; use --chart-all.")
+            return
+        print(f"Charting {len(results)} presets (latest complete receipt each): "
+              + ", ".join(r["tag"] for r in results))
+
     tags = [r["tag"] for r in results]
 
     def get_score(r, path, key):
@@ -427,14 +451,16 @@ def generate_charts():
     he = [get_score(r, ["humaneval"], "pass_rate") for r in results]
     labbench = [get_score(r, ["labbench", "_overall"], "accuracy") for r in results]
     needle = [get_score(r, ["needle"], "score") for r in results]
-    think_tags = [get_score(r, ["thinking"], "think_tags_rate") for r in results]
+    # clean_answer_rate is the thinking metric that survives the reasoning
+    # parser (think_tags_rate is 0 whenever the server strips <think> blocks).
+    think_tags = [get_score(r, ["thinking"], "clean_answer_rate") for r in results]
 
     benchmarks = [
         ("MMLU (%)", mmlu),
         ("HumanEval pass@1 (%)", he),
         ("LAB-Bench (%)", labbench),
         ("Needle-in-Haystack (%)", needle),
-        ("<think> tags (%)", think_tags),
+        ("Thinking: clean answer (%)", think_tags),
     ]
     # Only show benchmarks that have at least one result
     benchmarks = [(t, d) for t, d in benchmarks if any(v is not None for v in d)]
@@ -505,6 +531,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--run", action="store_true", help="Run evals")
     parser.add_argument("--chart", action="store_true", help="Generate charts")
+    parser.add_argument("--chart-all", action="store_true", help="Chart every receipt (all stacks/tags), not just the latest per preset")
     parser.add_argument("--port", type=int, default=23334)
     parser.add_argument("--tag", type=str, default="model")
     parser.add_argument("--mmlu-samples", type=int, default=200)
@@ -521,7 +548,7 @@ if __name__ == "__main__":
         run_eval(args.port, args.tag, args.mmlu_samples, args.humaneval_samples, args.labbench_samples, lengths, args.workers, args.mc_budget)
 
     if args.chart:
-        generate_charts()
+        generate_charts(chart_all=args.chart_all)
 
     if not args.run and not args.chart:
         parser.print_help()

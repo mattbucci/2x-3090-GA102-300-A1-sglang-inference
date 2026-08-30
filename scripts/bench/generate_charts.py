@@ -35,20 +35,57 @@ plt.rcParams.update({
 })
 
 MODELS = {
-    # slug = benchmarks/<slug>/results.json. Keep in sync with run_v0512_fleet_eval.sh.
-    "qwen3.6-35b-a3b":     {"label": "Qwen3.6-35B-A3B AWQ (MoE, think)", "color": "#58a6ff"},
-    "qwen3.6-ream":        {"label": "Qwen3.6-REAM-A3B AWQ (MoE, think)", "color": "#79c0ff"},
-    "qwen3.6-27b":         {"label": "Qwen3.6-27B AWQ (dense, think)",    "color": "#1f6feb"},
-    "qwen3-30b-ream":      {"label": "Qwen3-30B-REAM AWQ (MoE)",          "color": "#3fb950"},
-    "nemotron3-omni":      {"label": "Nemotron-3-Nano-Omni AWQ (Mamba2-hybrid AVLM, int4)", "color": "#39c5cf"},
-    "devstral-24b-awq":    {"label": "Devstral-24B AWQ (dense)",          "color": "#56d364"},
-    "gemma4-31b":          {"label": "Gemma 4 31B AWQ (dense, think)",    "color": "#d2a8ff"},
-    "gemma4-26b-awq":      {"label": "Gemma 4 26B AWQ (MoE, think)",      "color": "#bc8cff"},
-    "gemma4-21b-reap":     {"label": "Gemma 4 21B REAP AWQ (MoE, think)", "color": "#a371f7"},
-    "gemma4-12b":          {"label": "Gemma 4 12B AWQ (omni, think)",     "color": "#8957e5"},
-    "coder-30b-awq":       {"label": "Coder-30B AWQ (MoE)",              "color": "#f0883e"},
-    "qwen35-27b-awq":      {"label": "Qwen3.5-27B AWQ",                  "color": "#e3b341"},
+    # slug = benchmarks/<slug>/results.json (context sweep, bench_long_context.py);
+    # preset = the launch.sh name, which is also how the throughput tripwire files
+    # its runs (benchmarks/regression/<preset>-<date>.json) — the decode bar chart
+    # takes whichever of the two is newer. Keep in sync with launch.sh presets.
+    "qwen3.6-35b-a3b":     {"preset": "qwen36",          "label": "Qwen3.6-35B-A3B AWQ (MoE, think)", "color": "#58a6ff"},
+    "qwen3.6-ream":        {"preset": "qwen36-ream",     "label": "Qwen3.6-REAM-A3B AWQ (MoE, think)", "color": "#79c0ff"},
+    "qwen3.6-27b":         {"preset": "qwen36-dense",    "label": "Qwen3.6-27B AWQ (dense, think)",    "color": "#1f6feb"},
+    "qwen38":              {"preset": "qwen38",          "label": "Qwen3.8-27B AWQ (dense, think)",    "color": "#388bfd"},
+    "qwen3.5-28b-moe":     {"preset": "qwen35-moe",      "label": "Qwen3.5-28B REAP AWQ (MoE, think)", "color": "#a5d6ff"},
+    "qwen3-30b-ream":      {"preset": "qwen3-ream",      "label": "Qwen3-30B-REAM AWQ (MoE)",          "color": "#3fb950"},
+    "nemotron3-omni":      {"preset": "nemotron3-omni",  "label": "Nemotron-3-Nano-Omni AWQ (Mamba2-hybrid AVLM, int4)", "color": "#39c5cf"},
+    "devstral-24b-awq":    {"preset": "devstral",        "label": "Devstral-24B AWQ (dense)",          "color": "#56d364"},
+    "gemma4-31b":          {"preset": "gemma4-31b",      "label": "Gemma 4 31B AWQ (dense, think)",    "color": "#d2a8ff"},
+    "gemma4-26b-awq":      {"preset": "gemma4",          "label": "Gemma 4 26B AWQ (MoE, think)",      "color": "#bc8cff"},
+    "gemma4-21b-reap":     {"preset": "gemma4-21b-reap", "label": "Gemma 4 21B REAP AWQ (MoE, think)", "color": "#a371f7"},
+    "gemma4-12b":          {"preset": "gemma4-12b",      "label": "Gemma 4 12B AWQ (omni, think)",     "color": "#8957e5"},
+    "coder-30b-awq":       {"preset": "coder-30b",       "label": "Coder-30B AWQ (MoE)",              "color": "#f0883e"},
+    "coder-reap-25b":      {"preset": "coder-reap-25b",  "label": "Coder-30B REAP AWQ (MoE)",         "color": "#ffa657"},
+    "qwen3-vl-32b":        {"preset": "qwen3-vl-32b",    "label": "Qwen3-VL-32B AWQ (dense, VL)",     "color": "#d29922"},
+    "qwen35-27b-awq":      {"preset": "qwen35-dense",    "label": "Qwen3.5-27B AWQ",                  "color": "#e3b341"},
 }
+
+
+def latest_regression_run(preset):
+    """Newest benchmarks/regression/<preset>-<date>.json (the throughput
+    tripwire's depth-verified 1K / 32K / deep sweep), or None."""
+    runs = glob.glob(os.path.join(BENCH_DIR, "regression", f"{preset}-*.json"))
+    best = None
+    for path in runs:
+        try:
+            d = json.load(open(path))
+        except Exception:
+            continue
+        if d.get("context_sweep") and (best is None or str(d.get("timestamp", "")) > str(best.get("timestamp", ""))):
+            best = d
+    return best
+
+
+def newest_decode_sweep(key, meta):
+    """The most recent depth-verified sweep for a model: its results.json or a
+    later tripwire run. Anything before 2026-05 is the old 16-32K-capped
+    instrument and would read as a fake KV cap — dropped."""
+    cands = []
+    rpath = os.path.join(BENCH_DIR, key, "results.json")
+    if os.path.exists(rpath):
+        cands.append(load_results(key))
+    reg = latest_regression_run(meta["preset"])
+    if reg:
+        cands.append(reg)
+    cands = [c for c in cands if str(c.get("timestamp", "")) >= "2026-05"]
+    return max(cands, key=lambda c: str(c.get("timestamp", ""))) if cands else None
 
 # Unified x-axis: 128 to 256K (matches R9700's chart format for cross-stack comparison).
 # Our presets serve at 256K natively; benchmark data sweeps will be re-run at this range.
@@ -245,10 +282,13 @@ def make_concurrency_chart(model_key, meta, results, out_dir):
 
 
 def make_combined_context_chart(all_data):
-    """All models on one context chart."""
-    fig, ax = plt.subplots(figsize=(8, 4.5))
+    """All models on one context chart (sweeps from the current instrument only —
+    pre-2026-05 results.json files are the old 16-32K-capped runs)."""
+    fig, ax = plt.subplots(figsize=(11, 5.5))
 
     for key, (meta, results) in all_data.items():
+        if str(results.get("timestamp", "")) < "2026-05":
+            continue
         sweep = honest_sweep(key, results)
         if not sweep:
             continue
@@ -267,8 +307,8 @@ def make_combined_context_chart(all_data):
     ax.set_title("All Models — Context Length vs Decode Speed", fontsize=13, fontweight="bold", pad=10)
     ax.grid(True, axis="both", linestyle="--")
     ax.set_ylim(bottom=0)
-    ax.legend(loc="upper right", fontsize=9, framealpha=0.5,
-              edgecolor="#30363d", facecolor="#161b22")
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=8.5, framealpha=0.5,
+              edgecolor="#30363d", facecolor="#161b22", borderaxespad=0)
 
     fig.tight_layout()
     path = os.path.join(BENCH_DIR, "all_models_context.png")
@@ -402,10 +442,9 @@ def make_decode_bar_chart(all_data):
     counterpart to R9700's per-model decode bar chart."""
     from matplotlib.patches import Patch
     rows = []
-    for key, (meta, results) in all_data.items():
-        # fresh v0512 fleet only — stale April sweeps stop at 16K (an old short
-        # sweep, not a KV limit), which would read as a fake cap.
-        if not str(results.get("timestamp", "")).startswith(("2026-05", "2026-06")):
+    for key, meta in MODELS.items():
+        results = newest_decode_sweep(key, meta)
+        if not results:
             continue
         sweep = honest_sweep(key, results)
         if len(sweep) < 2:
@@ -413,14 +452,15 @@ def make_decode_bar_chart(all_data):
         peak = max(sweep, key=lambda p: p["tok_per_sec"])
         deep = sweep[-1]
         rows.append({"meta": meta, "peak": peak["tok_per_sec"], "deep": deep["tok_per_sec"],
-                     "deep_ctx": deep["context"], "reaches": reaches_256k(key, results)})
+                     "deep_ctx": deep["context"], "reaches": reaches_256k(key, results),
+                     "date": str(results.get("timestamp", ""))[:10]})
     if not rows:
         print("  SKIP decode bar chart (no fresh fleet data)")
         return
     rows.sort(key=lambda r: r["peak"], reverse=True)
 
     x = np.arange(len(rows)); w = 0.38
-    fig, ax = plt.subplots(figsize=(11, 5.5))
+    fig, ax = plt.subplots(figsize=(max(11, 1.05 * len(rows)), 6))
     for i, r in enumerate(rows):
         c = r["meta"]["color"]
         ax.bar(x[i] - w / 2, r["peak"], w, color=c, alpha=0.42, zorder=5)
@@ -433,7 +473,7 @@ def make_decode_bar_chart(all_data):
         ax.text(x[i] + w / 2, r["deep"] + 1.5, f'{r["deep"]:.0f}\n@{ctx_lbl}',
                 ha="center", fontsize=8, color=c, fontweight="bold")
     labels = [r["meta"]["label"].replace(" AWQ ", "\n").replace(" AWQ", "") for r in rows]
-    ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=8)
+    ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=7.5, rotation=28, ha="right")
     ax.set_ylabel("tok/s (single user, M=1)")
     ax.set_title("Single-user decode — peak vs 256K (or real KV cap)",
                  fontsize=13, fontweight="bold", pad=10)
@@ -445,6 +485,10 @@ def make_decode_bar_chart(all_data):
     ], loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22", fontsize=9)
     ax.grid(True, axis="y", linestyle="--")
     ax.set_ylim(bottom=0, top=max(r["peak"] for r in rows) * 1.18)
+    dates = sorted({r["date"] for r in rows})
+    ax.text(0.0, -0.36, f"newest depth-verified sweep per model (server-verified actual tokens), "
+            f"measured {dates[0]}" + (f" .. {dates[-1]}" if len(dates) > 1 else ""),
+            transform=ax.transAxes, fontsize=7.5, color="#8b949e")
     fig.tight_layout()
     out = os.path.join(BENCH_DIR, "all_models_decode.png")
     fig.savefig(out, dpi=150, bbox_inches="tight")
@@ -538,8 +582,9 @@ if __name__ == "__main__":
         print("Combined:")
         make_combined_context_chart(all_data)
         make_combined_concurrency_chart(all_data)
-        make_decode_bar_chart(all_data)
         make_kv_capacity_chart(all_data)
+    print("Decode bars (results.json vs newer tripwire runs):")
+    make_decode_bar_chart(all_data)
 
     print("Spec-decode:")
     make_specdec_comparison_chart()
