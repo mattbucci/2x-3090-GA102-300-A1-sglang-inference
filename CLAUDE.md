@@ -25,7 +25,7 @@ scripts/launch.sh qwen3-ream           # Qwen3-30B Instruct REAM AWQ (96 experts
 scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ (thinking+image+video+audio)
 scripts/launch.sh gemma4-31b           # Gemma 4 31B Dense AWQ
 ```
-Full preset list: `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scripts/launch.sh` (24 currently). Every preset carries an explicit `--tool-call-parser` matching its chat-template's tool format (qwen3_coder / qwen25 / mistral / gemma4 — see Critical Rules below).
+Full preset list: `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scripts/launch.sh` (21 currently). Every preset carries an explicit `--tool-call-parser` matching its chat-template's tool format (qwen3_coder / qwen25 / mistral / gemma4 — see Critical Rules below).
 
 ## Critical Rules
 - **SGLang only** — uses AWQ_Marlin kernels (sm_80+), patches may be needed for tuning

@@ -44,7 +44,7 @@ if [ ${#MODELS[@]} -eq 0 ]; then
     # Excludes:
     #   devstral / devstral-* — kept for matrix work; sweep target subset only.
     #   qwen3-vl-32b — 21 GB weights need MEM=0.93 (sweep uses 0.85).
-    MODELS=(qwen3-ream coder-30b coder-reap qwen36-dense qwen36 gemma4 gemma4-31b)
+    MODELS=(qwen3-ream coder-30b coder-reap-25b qwen36-dense qwen36 gemma4 gemma4-31b)
 fi
 
 # Auto-skip decisions (text-only / non-thinking / image-only) now live in

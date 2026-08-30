@@ -11,7 +11,7 @@
 # Models (all TP=2 / 48 GB; matrix work runs --context-length 262144 --max-running 1):
 #
 # Dense:
-#   devstral / devstral-32k / devstral-long  Devstral-24B AWQ (131K / 32K / 217K)
+#   devstral / devstral-32k                  Devstral-Small-2-24B AWQ (262K / 32K)
 #   qwen35-dense                              Qwen3.5-27B Dense AWQ
 #   qwen38 / qwen38-27b                       Qwen3.8-27B Dense hybrid VL (video, MTP)
 #   qwen36-dense / qwen36-27b                 Qwen3.6-27B Dense AWQ (native)
@@ -22,14 +22,13 @@
 # MoE (R9700 team is actively recalibrating MoE checkpoints):
 #   qwen3-ream                                Qwen3-30B-Instruct-2507-REAM (96 exp)
 #   coder-30b / coder-30b-eval                Qwen3-Coder-30B-A3B (128 exp)
-#   coder-reap / coder-reap-25b               Qwen3-Coder-REAP-25B-A3B (103 exp)
+#   coder-reap-25b / coder-reap-30b           Qwen3-Coder-30B-A3B-REAP (96 exp)
 #   coder-30b-ream                            Qwen3-Coder-30B-A3B-REAM (96 exp)
 #   qwen35-moe                                Qwen3.5-28B-A3B-REAP (205 exp)
 #   qwen36                                    Qwen3.6-35B-A3B (256 exp, thinking+vision)
 #   qwen36-ream                               Qwen3.6-REAM-A3B (192 exp)
 #   qwen36-vl-reap                            Qwen3.6-VL-REAP-26B-A3B (192 exp, VL)
 #   gemma4                                    Gemma 4 26B MoE (103 exp)
-#   qwen3-vl-moe                              Qwen3-VL-30B-A3B (VL MoE)
 #
 # Note: 80B+ models (coder-next, glm45-air) do NOT fit in 48GB VRAM.
 
@@ -102,10 +101,7 @@ apply_preset() {
             #   vision tower     ~2.5 GB total (Pixtral, kept FP16)
             #   cuda graphs      ~1 GB/card
             #   = ~15.5 GB/card, MEM=0.85 budget is 20.4 GB → ~5 GB headroom.
-            # The old devstral-long preset (MEM=0.97 + everything-disabled,
-            # 217K text-only) is now redundant and was removed in the same
-            # commit; if you need to override down, use CTX=131072 env or
-            # use coder-30b/etc. presets that already have shorter caps.
+            # To serve shorter, override with CTX=131072 (env).
             CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=8192  # MEM 0.85->0.90 (A4): 172K->202K KV, gate 3/3 + tooluse 1.0@132K true
             CUDA_GRAPH="--cuda-graph-max-bs 1"
             CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/devstral2_chat_template.jinja}"
@@ -128,37 +124,6 @@ apply_preset() {
             QUANT="awq_marlin"
             CTX=32768; MEM=0.90; MAX_RUNNING=64; CHUNKED=8192
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser mistral"
-            ;;
-        devstral-long)
-            # Deprecated 2026-05-31: the default `devstral` preset now serves at
-            # full 262144 ctx (FP8 KV math fits 256K + vision tower + graphs at
-            # MEM=0.85). This alias forwards to the same config + flags for
-            # backward compat; please use `devstral` going forward.
-            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Devstral-Small-2-24B-AWQ}"
-            QUANT="${QUANT:-awq_marlin}"
-            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
-            CUDA_GRAPH="--cuda-graph-max-bs 1"
-            CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/devstral2_chat_template.jinja}"
-            WARMUP="--skip-server-warmup"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser mistral --sampling-defaults model"
-            ;;
-        coder-reap)
-            # Coder-REAP-25B-A3B-W4A16. On TP=1 / 24 GB the piecewise CUDA
-            # graph capture (58 num-token shapes at CTX=131072 + CHUNKED=8192)
-            # finishes cleanly but the detokenizer worker then hangs on the
-            # very first prefill — /health stays 503 with "couldn't get a
-            # response from detokenizer for last 20 seconds" forever. Adding
-            # --skip-server-warmup alone doesn't fix it (the next real request
-            # hits the same hang). --disable-piecewise-cuda-graph is the
-            # working workaround (~5-10% TPOT cost at long context vs the
-            # graph-on path). For TP=2 once the second 3090 returns this can
-            # be removed and the headline 46 tok/s @ 131K should restore.
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-REAP-25B-A3B-W4A16}"
-            QUANT="auto-round"
-            CTX=131072; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
-            CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
-            WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         coder-30b)
             # Repointed 2026-05-01 from local Apr-17 self-built AWQ-Marlin to the
@@ -393,18 +358,6 @@ apply_preset() {
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs 1 --disable-piecewise-cuda-graph} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625"
             ;;
-        qwen3-vl-moe)
-            # Repointed 2026-05-07 from missing $MODELS_DIR/Qwen3-VL-30B-A3B-
-            # Instruct-AWQ-4bit (path didn't exist locally — silent broken
-            # preset) to the self-cal $MODELS_DIR/Qwen3-VL-30B-A3B-AWQ-native-
-            # thinking-vision (single-file native AWQ, full metadata + chat
-            # template, build-from-scratch per CLAUDE.md). Override via env
-            # `MODEL=$MODELS_DIR/Qwen3-VL-30B-A3B-Instruct-AWQ ./scripts/launch.sh
-            # qwen3-vl-moe` for the community 6-shard variant if needed.
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3-VL-30B-A3B-AWQ-native-thinking-vision}"
-            CTX=16384; MEM=0.85; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
-            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen25"
-            ;;
         qwen3-vl-32b)
             # Qwen3-VL-32B-Instruct AWQ — 20 GB weights (11 shards). The prior
             # MEM=0.85 / MAX_RUNNING=16 / CTX=16384 defaults OOM cold at TP=1
@@ -441,7 +394,7 @@ apply_preset() {
         qwen36-vl-reap)
             # Qwen3.6-VL-REAP-26B-A3B-AWQ — Qwen3.6 VL (vision-language) with
             # Cerebras REAP prune to ~26B params (192 experts). Native AWQ.
-            # Multimodal serving path same as qwen3-vl-moe; --enable-multimodal
+            # Standard Qwen3-VL multimodal serving path; --enable-multimodal
             # required for image inputs.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-VL-REAP-26B-A3B-AWQ}"
             QUANT="awq_marlin"

@@ -547,14 +547,11 @@ NON_THINKING_MODELS = frozenset({
     "coder-30b",        # Qwen3-Coder-30B-A3B-Instruct
     "coder-30b-eval",   # Qwen3-Coder-30B-A3B CT (bakeoff name)
     "coder-30b-ream",   # Qwen3-Coder-30B-A3B REAM (coder, text-only)
-    "coder-reap",       # Qwen3-Coder-REAP-25B-A3B (preset shorthand)
     "coder-reap-25b",   # legacy preset name (alternate served-model-name)
     "coder-reap-30b",   # Qwen3-Coder-REAP-30B (in-house rebuild)
     "qwen3-ream",       # Qwen3-30B-A3B-Instruct-2507 base
     "devstral",         # Devstral 24B Instruct
-    "devstral-long",    # same model, long-context preset
     "qwen3-vl-32b",     # Qwen3-VL-32B-Instruct (the -Thinking edition is separate)
-    "qwen3-vl-moe",     # Qwen3-VL-30B-A3B-Instruct
 })
 
 # Models without any vision/video capability — running those probes against
@@ -564,7 +561,6 @@ TEXT_ONLY_MODELS = frozenset({
     "coder-30b",        # Qwen3-Coder-30B-A3B-Instruct (text)
     "coder-30b-eval",   # Qwen3-Coder-30B-A3B CT (bakeoff name, text)
     "coder-30b-ream",   # Qwen3-Coder-30B-A3B REAM (text)
-    "coder-reap",       # Qwen3-Coder-REAP-25B-A3B (preset shorthand, text)
     "coder-reap-25b",   # legacy preset name (alternate served-model-name, text)
     "coder-reap-30b",   # Qwen3-Coder-REAP-30B (in-house rebuild, text)
     "qwen3-ream",       # Qwen3-30B-A3B-Instruct-2507 base (text after REAM)
@@ -583,7 +579,6 @@ TEXT_ONLY_MODELS = frozenset({
 # has a vision tower. Devstral upstream is documented image-only.
 IMAGE_ONLY_MODELS = frozenset({
     "devstral",
-    "devstral-long",
 })
 
 

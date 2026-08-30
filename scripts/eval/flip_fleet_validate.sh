@@ -8,9 +8,7 @@
 # scripts/eval/compare_flip_receipts.py --old <prev> --new $FLIP_TAG.
 #
 # Generalized from the per-version validators at the v0.5.18 flip (2026-08-29).
-# FLEET covers EVERY preset whose model is on disk (21 at the v0.5.18 flip; the
-# deprecated `devstral-long` alias and the two presets with no local model,
-# `coder-reap` / `qwen3-vl-moe`, are the only launch.sh entries left out).
+# FLEET covers EVERY launch.sh preset (21 at the v0.5.18 flip).
 # Entry format: preset|think|ctx|needle-lengths — ctx/needles default to
 # 262144 / 1K..250K; 32K presets probe to 30K, qwen3-vl-32b to 120K.
 # Order is risk-first for the CURRENT flip (edit per flip):

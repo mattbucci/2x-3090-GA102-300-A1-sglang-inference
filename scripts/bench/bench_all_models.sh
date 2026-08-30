@@ -18,13 +18,13 @@ PORT=23334
 # Models to benchmark (launch.sh preset → display name → context max → concurrency max)
 # Tuned for 48GB VRAM (2x 24GB RTX 3090)
 ALL_MODELS=(
-    "devstral|Devstral-24B AWQ|32768|1"
-    "coder-reap|Coder-30B REAP W4A16|32768|1"
+    "devstral|Devstral-Small-2-24B AWQ|32768|1"
+    "coder-reap-25b|Coder-30B REAP AWQ|32768|1"
     "coder-30b|Coder-30B AWQ|16384|32"
-    "qwen35|Qwen3.5-27B AWQ|16384|1"
+    "qwen35-dense|Qwen3.5-27B AWQ|16384|1"
 )
 
-# Allow running a subset: ./bench_all_models.sh devstral coder-reap
+# Allow running a subset: ./bench_all_models.sh devstral coder-reap-25b
 if [ $# -gt 0 ]; then
     SELECTED=("$@")
 else
