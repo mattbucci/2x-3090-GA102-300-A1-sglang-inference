@@ -551,6 +551,7 @@ NON_THINKING_MODELS = frozenset({
     "coder-reap-30b",   # Qwen3-Coder-REAP-30B (in-house rebuild)
     "qwen3-ream",       # Qwen3-30B-A3B-Instruct-2507 base
     "devstral",         # Devstral 24B Instruct
+    "devstral-32k",     # same model family, old AWQ-Marlin build (32K preset)
     "qwen3-vl-32b",     # Qwen3-VL-32B-Instruct (the -Thinking edition is separate)
 })
 
@@ -579,6 +580,7 @@ TEXT_ONLY_MODELS = frozenset({
 # has a vision tower. Devstral upstream is documented image-only.
 IMAGE_ONLY_MODELS = frozenset({
     "devstral",
+    "devstral-32k",
 })
 
 
