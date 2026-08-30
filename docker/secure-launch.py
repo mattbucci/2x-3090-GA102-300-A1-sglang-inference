@@ -219,11 +219,14 @@ def main() -> None:
             + ", ".join(enabled_unsafe_modes)
         )
 
-    # v0.5.17 makes resolved ServerArgs read-only; ServerArgs.override(source,
-    # **fields) is the single sanctioned post-resolution mutation point (raises
-    # AttributeError on bare assignment). Older stacks lack override() — fall
-    # back to attribute assignment there (also keeps the offline unit test's
-    # SimpleNamespace stand-in exercising the legacy path).
+    # The sanctioned post-resolution mutation point moves per stack:
+    # v0.5.18 removed ServerArgs.override — resolved-config writes now go to
+    # the namespace bags via get_context().override(source, **fields)
+    # (server_args stays the pristine read-only startup record; bare
+    # assignment raises). v0.5.17 had ServerArgs.override(source, **fields).
+    # Older stacks (and the offline unit test's SimpleNamespace stand-in)
+    # take plain attribute assignment. Try newest-first; a stack where the
+    # context is not published (unit test) falls through the ladder.
     credential_fields = dict(
         api_key=api_key,
         admin_api_key=admin_api_key,
@@ -232,11 +235,19 @@ def main() -> None:
         max_queued_requests=int(max_queued_requests),
         enable_custom_logit_processor=False,
     )
-    if hasattr(server_args, "override"):
-        server_args.override("secure-launch", **credential_fields)
-    else:
-        for name, value in credential_fields.items():
-            setattr(server_args, name, value)
+    overridden = False
+    try:
+        from sglang.srt.runtime_context import get_context  # v0.5.18+
+        get_context().override("secure-launch", **credential_fields)
+        overridden = True
+    except Exception:
+        overridden = False
+    if not overridden:
+        if hasattr(server_args, "override"):
+            server_args.override("secure-launch", **credential_fields)
+        else:
+            for name, value in credential_fields.items():
+                setattr(server_args, name, value)
     try:
         run_server(server_args)
     finally:
