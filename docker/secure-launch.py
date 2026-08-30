@@ -219,14 +219,7 @@ def main() -> None:
             + ", ".join(enabled_unsafe_modes)
         )
 
-    # The sanctioned post-resolution mutation point moves per stack:
-    # v0.5.18 removed ServerArgs.override — resolved-config writes now go to
-    # the namespace bags via get_context().override(source, **fields)
-    # (server_args stays the pristine read-only startup record; bare
-    # assignment raises). v0.5.17 had ServerArgs.override(source, **fields).
-    # Older stacks (and the offline unit test's SimpleNamespace stand-in)
-    # take plain attribute assignment. Try newest-first; a stack where the
-    # context is not published (unit test) falls through the ladder.
+    # The sanctioned mutation point moves per stack (newest first below):
     credential_fields = dict(
         api_key=api_key,
         admin_api_key=admin_api_key,
@@ -235,19 +228,19 @@ def main() -> None:
         max_queued_requests=int(max_queued_requests),
         enable_custom_logit_processor=False,
     )
-    overridden = False
-    try:
-        from sglang.srt.runtime_context import get_context  # v0.5.18+
-        get_context().override("secure-launch", **credential_fields)
-        overridden = True
-    except Exception:
-        overridden = False
-    if not overridden:
-        if hasattr(server_args, "override"):
-            server_args.override("secure-launch", **credential_fields)
-        else:
-            for name, value in credential_fields.items():
-                setattr(server_args, name, value)
+    # v0.5.18: the config is NOT yet published at this point (run_server
+    # publishes it per-process), so get_context().override is unavailable
+    # ("config not published") — the sanctioned pre-publish hook is
+    # ServerArgs._late_resolution(source, **fields), which writes in place so
+    # the HTTP server, tokenizer workers, and schedulers all see the value,
+    # and refuses once published.
+    if hasattr(server_args, "_late_resolution"):
+        server_args._late_resolution("secure-launch", **credential_fields)
+    elif hasattr(server_args, "override"):  # v0.5.17
+        server_args.override("secure-launch", **credential_fields)
+    else:  # older stacks + the offline unit test's SimpleNamespace stand-in
+        for name, value in credential_fields.items():
+            setattr(server_args, name, value)
     try:
         run_server(server_args)
     finally:
