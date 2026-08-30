@@ -1,0 +1,30 @@
+{
+  "qwen3-vl-32b-v0518": {
+    "tag": "qwen3-vl-32b-v0518",
+    "model": "qwen3-vl-32b",
+    "timestamp": "2026-08-30 09:02",
+    "elapsed_sec": 1.6,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a solid red circle with a black outline is centered on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='a red circle moves from the left side of the screen to the right side.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  }
+}
