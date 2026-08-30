@@ -2,8 +2,8 @@
   "devstral-32k-v0518": {
     "tag": "devstral-32k-v0518",
     "model": "devstral-32k",
-    "timestamp": "2026-08-30 12:20",
-    "elapsed_sec": 4.0,
+    "timestamp": "2026-08-30 13:23",
+    "elapsed_sec": 0.6,
     "checks": {
       "basic": {
         "passed": true,
@@ -13,22 +13,14 @@
         "passed": true,
         "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
       },
-      "thinking": {
-        "passed": false,
-        "message": "answer_ok                      (283 tok, finish=stop)"
-      },
       "vision": {
         "passed": true,
-        "message": "saw=['red', 'circle', 'round']  response='the image shows a red circle on a white background.'"
-      },
-      "video": {
-        "passed": false,
-        "message": "request failed: <HTTPError 400: 'Bad Request: {\"object\":\"error\",\"message\":\"Only text, image and image_url chunks are supported in user message content.\",\"type\":\"BadRequest\",\"param\":null,\"code\":400}'>"
+        "message": "saw=['red', 'circle', 'round']  response='the image is a red circle with a black border on a white background.'"
       }
     },
     "summary": {
       "passed": 3,
-      "total": 5
+      "total": 3
     }
   }
 }
