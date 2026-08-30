@@ -1,0 +1,164 @@
+{
+  "tag": "qwen36-dense-ct-v0518",
+  "timestamp": "2026-08-30 10:50",
+  "max_context": 32768,
+  "thinking": {
+    "results": [
+      {
+        "name": "simple_mc",
+        "tokens": 175,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "reasoning",
+        "tokens": 977,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "knowledge",
+        "tokens": 172,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "code",
+        "tokens": 203,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "hard_mc",
+        "tokens": 2560,
+        "finish": "length",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": true
+      }
+    ],
+    "think_tags_rate": 0.0,
+    "clean_answer_rate": 1.0,
+    "truncation_rate": 0.2,
+    "avg_tokens": 817.4
+  },
+  "mmlu": {
+    "correct": 28,
+    "total": 30,
+    "accuracy": 0.9333333333333333
+  },
+  "humaneval": {
+    "passed": 25,
+    "total": 25,
+    "pass_rate": 1.0
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 4,
+      "total": 8,
+      "accuracy": 0.5
+    },
+    "DbQA": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "SuppQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "TableQA": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "ProtocolQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "SeqQA": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "CloningScenarios": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "_overall": {
+      "correct": 15,
+      "total": 56,
+      "accuracy": 0.26785714285714285
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 1059
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 1059
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 1060
+      },
+      {
+        "context": 16384,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 16420
+      },
+      {
+        "context": 16384,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 16419
+      },
+      {
+        "context": 16384,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 16419
+      },
+      {
+        "context": 30000,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 30035
+      },
+      {
+        "context": 30000,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 30035
+      },
+      {
+        "context": 30000,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 30035
+      }
+    ],
+    "score": 1.0
+  }
+}
