@@ -874,6 +874,13 @@ fi
 # without editing the preset (e.g. test cuda-graph-ON on the DeltaNet+MoE
 # hybrids whose presets default to --disable-cuda-graph). Empty/unset = preset.
 [[ -n "${_ENV_CUDA_GRAPH:-}" ]] && CUDA_GRAPH="$_ENV_CUDA_GRAPH"
+# v0.5.18 auto-enables "breakable" piecewise PREFILL cuda graphs for some archs
+# (qwen36-dense resolved prefill.backend='breakable' with no flag, where v0.5.17
+# resolved 'disabled'); capturing shapes up to 8192 tokens needs more than the
+# ~3 GB left beside a 256K KV pool on 24 GB cards -> CUDA OOM at boot. Pin it
+# off fleet-wide: single-user decode is the target and prefill graphs are a
+# batch-prefill lever. PIECEWISE_GRAPH=1 re-enables for experiments.
+[[ "${PIECEWISE_GRAPH:-0}" != "1" ]] && CMD+=(--disable-piecewise-cuda-graph)
 [[ -n "$CUDA_GRAPH" ]] && CMD+=($CUDA_GRAPH)
 # EXTRA_ARGS lets callers append/override flags (e.g. --disable-cuda-graph,
 # --enable-multimodal) without editing the script. Honor it from env.
