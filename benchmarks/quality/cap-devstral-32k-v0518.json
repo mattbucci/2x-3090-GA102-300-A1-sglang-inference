@@ -1,0 +1,34 @@
+{
+  "devstral-32k-v0518": {
+    "tag": "devstral-32k-v0518",
+    "model": "devstral-32k",
+    "timestamp": "2026-08-30 12:20",
+    "elapsed_sec": 4.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (283 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='the image shows a red circle on a white background.'"
+      },
+      "video": {
+        "passed": false,
+        "message": "request failed: <HTTPError 400: 'Bad Request: {\"object\":\"error\",\"message\":\"Only text, image and image_url chunks are supported in user message content.\",\"type\":\"BadRequest\",\"param\":null,\"code\":400}'>"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 5
+    }
+  }
+}
