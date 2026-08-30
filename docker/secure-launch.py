@@ -1,4 +1,4 @@
-#!/opt/conda/envs/sglang-v0517/bin/python
+#!/opt/conda/envs/sglang-v0518/bin/python
 """Launch SGLang with file-backed credentials that never enter process argv."""
 
 from __future__ import annotations

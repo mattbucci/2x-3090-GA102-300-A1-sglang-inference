@@ -13,7 +13,7 @@ SGLang for 2x NVIDIA RTX 3090 (GA102-300-A1, 48GB total VRAM).
 
 ## Key Commands
 ```bash
-scripts/setup.sh                       # Full setup (clones SGLang v0.5.17, applies all patches/*.patch — 26 logical units)
+scripts/setup.sh                       # Full setup (clones SGLang v0.5.18, applies all patches/*.patch — 26 logical units)
 scripts/serve_production.sh gemma4-31b # Persistent PRODUCTION endpoint on :30000 (start/stop/status/restart; eval harness stays :23334)
 scripts/launch.sh devstral             # Devstral 24B AWQ (Dense, Mistral)  [ad-hoc/eval serve on :23334]
 scripts/launch.sh coder-30b-eval       # Qwen3-Coder-30B-A3B AWQ CT (256K, bake-off 43.0% opencode)
@@ -97,7 +97,7 @@ Capability guardrail on every iteration that touches a checkpoint: **preserve th
 - **Cooling profile is load-bearing.** 260 W power cap + `gpu-fan-curve.service` keeps DDR5 below ALARM HIGH and prevents thermal-Python-heap corruption (separate failure from Rule 1/2). Don't disable.
 
 ### Conda env split — `quant` vs the serving env
-- **`sglang-v0517`** (current serving env; version-suffixed per stack, resolved by `common.sh` ENV_NAME) — SGLang + CUDA + serving-side compressed_tensors (lacks `.distributed`). Use for `launch.sh`, `validate_capabilities.py`, `probe_*.py`.
+- **`sglang-v0518`** (current serving env; version-suffixed per stack, resolved by `common.sh` ENV_NAME) — SGLang + CUDA + serving-side compressed_tensors (lacks `.distributed`). Use for `launch.sh`, `validate_capabilities.py`, `probe_*.py`.
 - **`quant`** — calibration. Has `compressed_tensors==0.15.1.dev6+g077e752` with `.distributed`, llmcompressor importable. Use for `quantize_*.py`, GPTQ, CT→AWQ conversion.
 - Wrong env on quantize gives `ModuleNotFoundError: compressed_tensors.distributed`. Don't try to upgrade the serving env — use `quant`. Pattern: `conda activate quant` (NOT the serving env) before any llmcompressor work.
 

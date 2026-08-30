@@ -28,13 +28,13 @@ if [ -z "${CONDA_BASE:-}" ]; then
 fi
 export CONDA_BASE
 
-# Default stack flipped to v0.5.17 (2026-08-15). The prior v0.5.16
-# (/data/sglang-rebase-v0516, env `sglang-v0516`), v0.5.15 (/data/sglang-rebase-v0515,
-# env `sglang-v0515`) and older trees (v0.5.14/v0.5.13/v0.5.12, same naming) are retained
-# untouched for one-revert rollback — revert this commit to fall back. Override
+# Default stack flipped to v0.5.18 (2026-08-29). The prior v0.5.17
+# (/data/sglang-rebase-v0517, env `sglang-v0517`), v0.5.16 (/data/sglang-rebase-v0516,
+# env `sglang-v0516`) and older trees (v0.5.15/v0.5.14/v0.5.13/v0.5.12, same naming) are
+# retained untouched for one-revert rollback — revert this commit to fall back. Override
 # ENV_NAME/SGLANG_DIR to run an older stack.
-ENV_NAME="${ENV_NAME:-sglang-v0517}"
-SGLANG_DIR="${SGLANG_DIR:-/data/sglang-rebase-v0517}"
+ENV_NAME="${ENV_NAME:-sglang-v0518}"
+SGLANG_DIR="${SGLANG_DIR:-/data/sglang-rebase-v0518}"
 MODELS_DIR="${MODELS_DIR:-$HOME/AI/models}"
 PORT="${PORT:-23334}"
 BASE_URL="http://localhost:${PORT}"

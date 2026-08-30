@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Compare v0.5.17 validation receipts against the v0.5.16 baselines.
+"""Compare a stack flip's validation receipts against the previous stack's.
 
-For every benchmarks/quality/<preset>-v0517.json with a matching -v0516.json,
+    compare_flip_receipts.py --old v0517 --new v0518
+
+For every benchmarks/quality/<preset>-<new>.json with a matching -<old>.json,
 print MMLU / HumanEval / needle / thinking side-by-side plus the capability
 summary, and flag regressions. Exit 1 if any regression beyond tolerance.
 
@@ -39,20 +41,20 @@ def caps(tag):
     return inner.get("checks", {})
 
 
-def main():
+def main(old_tag, new_tag):
     presets = sorted(
-        p.name[: -len("-v0517.json")]
-        for p in QDIR.glob("*-v0517.json")
+        p.name[: -len(f"-{new_tag}.json")]
+        for p in QDIR.glob(f"*-{new_tag}.json")
         if not p.name.startswith("cap-")
     )
     if not presets:
-        print("no *-v0517.json receipts yet")
+        print(f"no *-{new_tag}.json receipts yet")
         return 0
 
     regressions = []
     print(f"{'preset':<16} {'MMLU 16→17':<13} {'HE 16→17':<13} {'needle':<13} {'think':<11} caps")
     for preset in presets:
-        old, new = load(f"{preset}-v0516"), load(f"{preset}-v0517")
+        old, new = load(f"{preset}-{old_tag}"), load(f"{preset}-{new_tag}")
         if not new:
             continue
         row = [f"{preset:<16}"]
@@ -77,7 +79,7 @@ def main():
             f"{cell(lambda d: d['thinking'].get('clean_answer_rate'), 0.0, 'think'):<11}"
         )
 
-        oc, nc = caps(f"{preset}-v0516"), caps(f"{preset}-v0517")
+        oc, nc = caps(f"{preset}-{old_tag}"), caps(f"{preset}-{new_tag}")
         if nc:
             passed = sum(1 for c in nc.values() if c.get("passed"))
             row.append(f"{passed}/{len(nc)}")
@@ -101,4 +103,9 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--old", required=True, help="previous stack tag, e.g. v0516")
+    ap.add_argument("--new", required=True, help="staged stack tag, e.g. v0517")
+    a = ap.parse_args()
+    sys.exit(main(a.old, a.new))
