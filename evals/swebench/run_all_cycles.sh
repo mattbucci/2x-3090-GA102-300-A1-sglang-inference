@@ -39,7 +39,7 @@ REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # tool-call), NOT coding-tuned — included to TEST whether the Mamba2-hybrid can
 # also code (don't assume it can't; prove it). Runs last; --skip-existing no-ops
 # the others so a restart after the 9-preset run only does nemotron.
-QUEUE="${QUEUE:-coder-30b-eval qwen36 coder-reap-25b qwen36-ream qwen35-moe coder-30b-ream qwen36-dense devstral gemma4 nemotron3-omni}"
+QUEUE="${QUEUE:-qwen38 coder-30b-eval qwen36 coder-reap-25b qwen36-ream qwen35-moe coder-30b-ream qwen36-dense devstral gemma4 nemotron3-omni}"
 POLL_SECS="${POLL_SECS:-60}"
 WAIT_FOR_PID="${WAIT_FOR_PID:-}"
 
