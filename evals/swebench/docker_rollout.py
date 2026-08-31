@@ -107,7 +107,8 @@ def parse_args():
     return p.parse_args()
 
 
-def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tuple[list[str], str]:
+def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
+                              timeout: int = 1800) -> tuple[list[str], str]:
     """Return (docker_run_extra_envs, inner_shell_command) for the given
     scaffold. The inner command runs opencode-equivalent against $PROMPT
     in /testbed and emits `=== DIFF ===\\n<git diff>` to stdout for the
@@ -166,11 +167,17 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
         return envs, inner
 
     if scaffold == "little-coder-rtk":
-        # little-coder with the RTK bash-output compressor hooked into Pi's
-        # global config under /opt/rtk-home (Dockerfile.rollout). Same model
-        # routing as plain little-coder (packaged models.json is inside the
-        # npm package, HOME-independent). HOME override wins because scaffold
-        # envs are appended after --env HOME=/root (docker: last one wins).
+        # little-coder with the RTK bash-output compressor loaded EXPLICITLY
+        # via pi's -e flag: headless little-coder runs skip pi's extension
+        # auto-discovery (proven with a marker extension), and the session
+        # jsonl records the PRE-mutation command — engagement was verified
+        # with an rtk-shim log showing `rtk rewrite git status` -> executed
+        # `rtk git status` (2026-08-31).
+        # Uses the lane's OWN little-coder 1.19.0 prefix (/opt/lc-rtk): rtk's
+        # extension needs the current @earendil-works pi; the control lane's
+        # 1.1.0 bundle (@mariozechner pi) ignores it — verified, commands
+        # stayed unrewritten. HOME override wins (scaffold envs append after
+        # --env HOME=/root; docker takes the last occurrence).
         oc_model = f"llamacpp/{served_name}"
         envs = [
             "--env", "HOME=/opt/rtk-home",
@@ -183,9 +190,9 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
             f"git config --global user.name eval\n"
             f"git config --global --add safe.directory /testbed\n"
             f"cd /testbed\n"
-            f"little-coder --model {oc_model} \"$PROMPT\" || true\n"
+            f"/opt/lc-rtk/node_modules/.bin/little-coder -e /opt/rtk-home/.pi/agent/extensions/rtk.ts --model {oc_model} \"$PROMPT\" || true\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
-            f"timeout 120 little-coder --model {oc_model} \"$CLEANUP_PROMPT\" || true\n"
+            f"timeout 120 /opt/lc-rtk/node_modules/.bin/little-coder -e /opt/rtk-home/.pi/agent/extensions/rtk.ts --model {oc_model} \"$CLEANUP_PROMPT\" || true\n"
             f"echo === DIFF ===\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
@@ -287,9 +294,10 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
         # deepagents-code headless: -n runs one task and exits (-q clean
         # output); tools auto-run headless. Model routing is plain openai-SDK
         # env (OPENAI_BASE_URL + `openai:<served>`; SGLang ignores the id).
-        # Inner --timeout 1700 stays under our 1800 s default outer SIGKILL so
-        # dcode exits 124 on its own (ported from R9700, deepagents-code
-        # 0.1.65; raise both together if the per-instance timeout changes).
+        # The inner --timeout is derived from the outer per-instance timeout
+        # (outer minus 100 s) so dcode always exits on its own before the
+        # outer SIGKILL — a fixed inner value bit the 900 s smoke runs
+        # (rc=124 mid-session -> empty diff). Ported from R9700, 0.1.65.
         envs = [
             "--env", "OPENAI_BASE_URL=http://127.0.0.1:23334/v1",
             "--env", "OPENAI_API_KEY=noop",
@@ -300,7 +308,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str) -> tu
             "git config --global user.name eval\n"
             "git config --global --add safe.directory /testbed\n"
             "cd /testbed\n"
-            f"dcode -M openai:{served_name} -n \"$PROMPT\" -q --max-turns 60 -S all --allow-fs-tools all --timeout 1700 || true\n"
+            f"dcode -M openai:{served_name} -n \"$PROMPT\" -q --max-turns 60 -S all --allow-fs-tools all --timeout {max(60, timeout - 100)} || true\n"
             "rm -rf /testbed/.deepagents /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"timeout 120 dcode -M openai:{served_name} -n \"$CLEANUP_PROMPT\" -q --max-turns 8 -S all --allow-fs-tools all --timeout 100 || true\n"
             "echo === DIFF ===\n"
@@ -643,7 +651,7 @@ def main():
                     hints=row.get("hints_text", "") or "(none)",
                 )
                 scaffold_envs, inner_with_diff = build_scaffold_invocation(
-                    args.scaffold, args.model, served,
+                    args.scaffold, args.model, served, timeout=args.timeout,
                 )
                 container_name = f"swebench-rollout-{iid}-{int(time.time())}"
                 cmd = [

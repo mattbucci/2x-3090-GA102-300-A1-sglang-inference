@@ -22,13 +22,14 @@ FROM ${BASE}
 
 USER root
 
-ARG NODE_VERSION=20.18.0
+ARG NODE_VERSION=22.23.2  # prime-agent requires Node >=22.8
 ARG OPENCODE_VERSION=1.14.25
 ARG LITTLE_CODER_VERSION=1.1.0
 ARG PRIME_AGENT_VERSION=0.8.1
 ARG DCODE_VERSION=0.1.65
 ARG OPENCODE_DCP_VERSION=3.1.15
-ARG RTK_VERSION=0.28.2
+ARG RTK_VERSION=0.46.0
+ARG LITTLE_CODER_RTK_VERSION=1.19.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl xz-utils ca-certificates ripgrep && \
@@ -76,25 +77,32 @@ COPY dcp.jsonc /opt/dcp-home/.config/opencode/dcp.jsonc
 # is registered into Pi's GLOBAL config under a dedicated HOME so the plain
 # little-coder control lane stays hook-free; docker_rollout.py flips HOME for
 # this scaffold only. RTK_TELEMETRY_DISABLED is set per-lane at run time.
+# The RTK lane needs a NEWER little-coder than the control lane's pin: rtk's
+# pi extension targets the current @earendil-works pi (little-coder >=1.15);
+# the 1.1.0 control bundle ships the older @mariozechner pi, which ignores the
+# extension (verified: session commands stayed unrewritten). The lane gets its
+# own prefix so the control lane's scaffold version stays series-comparable.
 RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh \
         | env RTK_VERSION=v${RTK_VERSION} RTK_INSTALL_DIR=/usr/local/bin sh && \
     /usr/local/bin/rtk --version && \
+    npm install --prefix /opt/lc-rtk little-coder@${LITTLE_CODER_RTK_VERSION} && \
+    sed -i 's|http://127.0.0.1:8888/v1|http://127.0.0.1:23334/v1|' \
+        /opt/lc-rtk/node_modules/little-coder/models.json && \
+    test -x /opt/lc-rtk/node_modules/.bin/little-coder && \
     mkdir -p /opt/rtk-home && \
     HOME=/opt/rtk-home RTK_TELEMETRY_DISABLED=1 /usr/local/bin/rtk init -g --agent pi && \
-    test -d /opt/rtk-home
+    test -f /opt/rtk-home/.pi/agent/extensions/rtk.ts
 
 # --- prime-agent (scaffold "prime") ----------------------------------------
 # Distributed via a checksum-verified curl installer (NOT on public npm);
 # PRIME_AGENT_VERSION pins the release, PLAIN=1 disables the TTY UI. The
-# installer lands a standalone-node bundle under /root — symlink the binary
-# onto PATH. Provider config (~/.prime/agent/models.json) is written PER RUN
+# installer npm-installs into the image's node prefix (/opt/node/bin, already
+# on PATH). Provider config (~/.prime/agent/models.json) is written PER RUN
 # by docker_rollout.py with the actual served name (no static enumeration —
 # avoids the opencode.json new-preset landmine class entirely).
 RUN curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh \
         | env HOME=/root PRIME_AGENT_VERSION=${PRIME_AGENT_VERSION} PRIME_AGENT_INSTALLER_PLAIN=1 sh && \
-    PA=$(find /root -maxdepth 5 -name prime-agent -type f | head -1) && \
-    test -n "$PA" && ln -sf "$PA" /usr/local/bin/prime-agent && \
-    /usr/local/bin/prime-agent --version
+    command -v prime-agent
 
 # --- deepagents-code (scaffold "dcode") ------------------------------------
 # Python CLI, requires python>=3.12; the eval images' conda base is 3.11, so
