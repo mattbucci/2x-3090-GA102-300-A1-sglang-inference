@@ -28,6 +28,7 @@ while true; do
     done < <(grep -o '"instance_id"[[:space:]]*:[[:space:]]*"[^"]*"' "$lane" | sed 's/.*"\([^"]*\)"$/\1/')
     # Per-instance build cache has no cross-instance reuse; idle cache is dead weight.
     docker builder prune -af >/dev/null 2>&1
+    docker image prune -f >/dev/null 2>&1  # dangling: old layers left by moved tags / refused rmi
     [ "$n" -gt 0 ] && echo "[janitor $(date '+%F %T')] lane=$(basename "$(dirname "$lane")") removed=${n} images; / free=$(df --output=avail -h / | tail -1 | tr -d ' ')"
   fi
   sleep "$INTERVAL"
