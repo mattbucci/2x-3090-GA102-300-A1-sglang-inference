@@ -43,26 +43,57 @@ import sys
 from pathlib import Path
 
 
-# Substring -> category. Checked in stderr first, then stdout. First hit wins.
-INFRA_PATTERNS = [
+# Two pattern tables (2026-09-03 rewrite — receipt in the qwen38 opencode lane):
+#
+# The per-instance log is "# stdout\n<scaffold event stream>\n# stderr\n<process
+# errors>". The scaffold's stdout EMBEDS the model's tool output — i.e. the
+# repository text it grep/cat'd. Scanning that for generic error shapes is
+# noise, not signal: the old catch-all `\b5\d{2}\b.*(error|Bad Gateway)` fired
+# on 147 of 249 *successful* (patched) runs ("Line 518: ... 'this is an
+# error'"), and bare `UnicodeDecodeError` / `ECONNRESET` / `Internal Server
+# Error` match Django, requests and Sphinx sources. Net: 24 of 31 planned
+# re-rolls were false positives — each one a free second attempt for the
+# model on a genuinely silent/timeout instance (upward cell bias).
+#
+# STDERR_PATTERNS: process-level shapes, trusted only in the stderr section.
+# ANYWHERE_PATTERNS: scaffold/API-error shapes that cannot occur in repo text
+# (node error strings, SDK error class names, JSON status fields); scanned in
+# both sections. Zero hits on 300 qwen38 logs; would have caught the
+# developer-role 400 case (opencode surfaces it as AI_APICallError).
+STDERR_PATTERNS = [
     (r"Connection error", "connection_error"),
-    (r"connect ECONN(REFUSED|RESET|ABORTED)", "connection_error"),
     (r"Connection refused", "connection_error"),
     (r"ECONNRESET", "connection_error"),
-    (r"ProviderModelNotFoundError", "scaffold_model_registry_mismatch"),
-    (r"Model not found: sglang/", "scaffold_model_registry_mismatch"),
-    (r"assistant stream produced no content", "server_empty_stream"),
+    (r"socket hang up", "connection_error"),
+    (r"NetworkError", "connection_error"),
     (r"UnicodeDecodeError", "rollout_unicode_bug"),
-    (r"HSAIL 0x", "gpu_crash"),
     (r"HIP error", "gpu_crash"),
     (r"CUDA error", "gpu_crash"),
     (r"out of memory", "gpu_oom"),
     (r"Internal Server Error", "server_500"),
-    (r"\b5\d{2}\b.*(error|Bad Gateway)", "server_5xx"),
+    (r"Bad Gateway|Service Unavailable|Gateway Time-?out", "server_5xx"),
     (r"Read timed out", "client_timeout"),
-    (r"socket hang up", "connection_error"),
-    (r"NetworkError", "connection_error"),
 ]
+ANYWHERE_PATTERNS = [
+    (r"connect ECONN(REFUSED|RESET|ABORTED)", "connection_error"),
+    (r"ProviderModelNotFoundError", "scaffold_model_registry_mismatch"),
+    (r"Model not found: sglang/", "scaffold_model_registry_mismatch"),
+    (r"assistant stream produced no content", "server_empty_stream"),
+    (r"AI_APICallError|AI_RetryError|APICallError", "server_api_error"),
+    (r"statusCode\"?\s*:\s*5\d\d", "server_5xx"),
+    (r"Request failed with status code 5\d\d", "server_5xx"),
+    (r"HSAIL 0x", "gpu_crash"),
+]
+# Back-compat alias (external callers / tests import this name).
+INFRA_PATTERNS = STDERR_PATTERNS + ANYWHERE_PATTERNS
+
+
+def split_log_sections(log_text: str) -> tuple[str, str]:
+    """Return (stdout_section, stderr_section) of a docker_rollout per-instance log."""
+    i = log_text.rfind("\n# stderr\n")
+    if i < 0:
+        return log_text, ""
+    return log_text[:i], log_text[i + len("\n# stderr\n"):]
 
 
 def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float) -> tuple[str, str | None]:
@@ -87,8 +118,14 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float) -> 
     if has_patch:
         return ("real_diff", None)
 
-    # Pattern match on the full log
-    for pat, cat in INFRA_PATTERNS:
+    # Process-level shapes are trusted only in stderr; the stdout event stream
+    # embeds repo text the model read (see the pattern-table comment).
+    stdout_sec, stderr_sec = split_log_sections(log_text)
+    for pat, cat in STDERR_PATTERNS:
+        m = re.search(pat, stderr_sec, re.IGNORECASE)
+        if m:
+            return (f"infra_{cat}", m.group(0))
+    for pat, cat in ANYWHERE_PATTERNS:
         m = re.search(pat, log_text, re.IGNORECASE)
         if m:
             return (f"infra_{cat}", m.group(0))
