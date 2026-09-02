@@ -2,7 +2,7 @@
 
 | lane | rc | predictions | non-empty diffs | engagement proof / note |
 |------|----|-------------|-----------------|--------------------------|
-| opencode-dcp | 0 | 2 | **2/2** | `dcp` tool_use events in both session logs |
+| opencode-dcp | 0 | 2 | **2/2** | patches only — the "dcp tool_use events" first written here did not reproduce from the on-disk logs (DCP prunes inside the messages.transform hook, registers a `compress` tool, emits nothing to stdout). Plugin load verified in a live lane-2 container 2026-09-02 (`loading plugin @tarquinen/opencode-dcp@3.1.15`, `compress` permission in ruleset); per-instance prune receipts via `evals/swebench/dcp_engagement_poller.sh` → `benchmarks/quality/dcp-engagement/` |
 | little-coder-rtk | 0 | 2 | 1/2 | rtk-shim log: `rtk rewrite git status` → executed `rtk git status`; empty = full 201 s session, model declined to edit (12907 solvable per other lanes) |
 | prime | 0 | 2 | 1/2 | real 504 B patch @459 s; empty = rc=124 at the smoke's 900 s cap (production runs 1800 s) |
 | dcode | 0 | 2 | **2/2** | inner `--timeout` now derived from the outer (outer−100 s) |
