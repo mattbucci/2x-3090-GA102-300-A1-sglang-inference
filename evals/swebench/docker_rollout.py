@@ -107,6 +107,22 @@ def parse_args():
     return p.parse_args()
 
 
+# Activate the SWE-bench `testbed` conda env EXPLICITLY inside the container
+# script. `bash -lc` only reaches `conda activate testbed` through
+# /root/.bashrc; the lanes that override HOME for config isolation
+# (opencode-dcp -> /opt/dcp-home, little-coder-rtk -> /opt/rtk-home) skipped it
+# and ran the scaffold on the miniconda BASE interpreter while the prompt
+# promised the repo env. qwen38 receipts (2026-09-07): "No module named
+# <repo>" in 34% of DCP sessions vs 10% opencode control; env-hunting in 85%
+# of RTK ledgers; 5 timeouts in the first 40 RTK instances vs 0 control.
+# Idempotent for HOME=/root lanes (same env the login shell already gave).
+ACTIVATE_TESTBED = (
+    "if [ -f /opt/miniconda3/etc/profile.d/conda.sh ]; then\n"
+    "  source /opt/miniconda3/etc/profile.d/conda.sh && conda activate testbed\n"
+    "fi\n"
+)
+
+
 def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
                               timeout: int = 1800) -> tuple[list[str], str]:
     """Return (docker_run_extra_envs, inner_shell_command) for the given
@@ -463,7 +479,7 @@ opencode run --dir /testbed --model {model} --format json --dangerously-skip-per
         "--env", "HOME=/root",
         "--workdir", "/testbed",
         image_tag,
-        "bash", "-lc", inner,
+        "bash", "-lc", ACTIVATE_TESTBED + inner,
     ]
 
     t0 = time.time()
@@ -665,7 +681,7 @@ def main():
                     *scaffold_envs,
                     "--workdir", "/testbed",
                     image_tag,
-                    "bash", "-lc", inner_with_diff,
+                    "bash", "-lc", ACTIVATE_TESTBED + inner_with_diff,
                 ]
                 log_path = out / "logs" / f"{iid}.log"
                 proc = subprocess.Popen(

@@ -113,7 +113,11 @@ def discover_runs(runs_dir: Path):
     if not runs_dir.exists():
         return
 
-    pat = re.compile(r"^(.*)-(opencode|little-coder|claw-code)-v2$")
+    # Built from SCAFFOLDS so a roster change cannot silently drop lanes at
+    # Phase 6 (the hand-written 3-scaffold alternation would have skipped the
+    # 2026-08-31 lanes). `-v2$` anchoring disambiguates opencode vs
+    # opencode-dcp regardless of alternation order.
+    pat = re.compile(r"^(.*)-(" + "|".join(re.escape(sc) for sc in SCAFFOLDS) + r")-v2$")
     for d in sorted(runs_dir.iterdir()):
         if not d.is_dir():
             continue
