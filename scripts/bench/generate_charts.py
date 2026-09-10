@@ -10,6 +10,7 @@ throughput-tuned defaults; re-benchmark sweeps at 256K are queued.
 import os
 import glob
 import json
+import re
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -61,7 +62,13 @@ MODELS = {
 def latest_regression_run(preset):
     """Newest benchmarks/regression/<preset>-<date>.json (the throughput
     tripwire's depth-verified 1K / 32K / deep sweep), or None."""
-    runs = glob.glob(os.path.join(BENCH_DIR, "regression", f"{preset}-*.json"))
+    # Anchor on the date suffix: `qwen36-*.json` would also match
+    # `qwen36-dense-2026-08-30.json`, and from 2026-08-30 the dense sweep
+    # (05:03) was newer than qwen36's own (04:56) — the decode bar chart showed
+    # the 35B-A3B MoE at the dense 27B's 70/48 tok/s instead of 215/122.
+    pat = re.compile(rf"^{re.escape(preset)}-\d{{4}}-\d{{2}}-\d{{2}}\.json$")
+    runs = [p for p in glob.glob(os.path.join(BENCH_DIR, "regression", f"{preset}-*.json"))
+            if pat.match(os.path.basename(p))]
     best = None
     for path in runs:
         try:
@@ -496,6 +503,86 @@ def make_decode_bar_chart(all_data):
     print(f"  {out}")
 
 
+# Scaffold display order for the bake-off chart: the live 2026-08-31 roster
+# first, retired scaffolds (claw-code) last so historical cells still show.
+BAKEOFF_SCAFFOLDS = [
+    ("opencode",         "#58a6ff", "opencode"),
+    ("opencode-dcp",     "#1f6feb", "opencode + DCP"),
+    ("little-coder",     "#3fb950", "little-coder"),
+    ("little-coder-rtk", "#2ea043", "little-coder + RTK"),
+    ("prime",            "#d2a8ff", "prime"),
+    ("dcode",            "#f0883e", "dcode"),
+    ("claw-code",        "#8b949e", "claw-code (retired)"),
+]
+
+
+def make_bakeoff_chart():
+    """SWE-bench Lite resolve rate per preset × scaffold, from the per-cell
+    JSONs `benchmarks/quality/bakeoff-<preset>-<scaffold>.json` that
+    `evals/swebench/aggregate_bakeoff.py` writes. Cells under 300 predictions
+    are hatched — the full-300 rule: partial cells are not comparable."""
+    from matplotlib.patches import Patch
+    cells = {}
+    for path in glob.glob(os.path.join(BENCH_DIR, "quality", "bakeoff-*.json")):
+        try:
+            d = json.load(open(path))
+        except Exception:
+            continue
+        if not d.get("preset") or not d.get("scaffold") or d.get("resolved") is None:
+            continue
+        cells[(d["preset"], d["scaffold"])] = d
+    if not cells:
+        print("  SKIP bake-off chart (no cell JSONs)")
+        return
+    scaffolds = [s for s in BAKEOFF_SCAFFOLDS if any(k[1] == s[0] for k in cells)]
+    presets = sorted({k[0] for k in cells},
+                     key=lambda p: -max(c["resolve_rate_pct"] for (pp, _), c in cells.items() if pp == p))
+    x = np.arange(len(presets)); n = len(scaffolds); w = min(0.8 / n, 0.26)
+    fig, ax = plt.subplots(figsize=(max(11, 1.6 * len(presets)), 6))
+    partial = False
+    for j, (sc, color, label) in enumerate(scaffolds):
+        off = (j - (n - 1) / 2) * w
+        for i, p in enumerate(presets):
+            c = cells.get((p, sc))
+            if not c:
+                continue
+            full = c.get("total_predictions", 0) >= 300
+            partial |= not full
+            rate = c["resolve_rate_pct"]
+            ax.bar(x[i] + off, rate, w, color=color, alpha=0.95 if full else 0.55,
+                   hatch=None if full else "////", edgecolor="#0d1117", linewidth=0.6,
+                   zorder=5, label=label if i == 0 or (p, sc) == next(k for k in cells if k[1] == sc) else None)
+            ax.text(x[i] + off, rate + 0.8, f"{rate:.1f}", ha="center", fontsize=7.5,
+                    color=color, fontweight="bold")
+    # de-duplicate legend entries (one per scaffold)
+    handles, labels = ax.get_legend_handles_labels()
+    seen, hl = set(), []
+    for h, l in zip(handles, labels):
+        if l not in seen:
+            seen.add(l); hl.append((h, l))
+    if partial:
+        hl.append((Patch(facecolor="#8b949e", alpha=0.55, hatch="////", edgecolor="#0d1117"),
+                   "partial cell (< 300) — not comparable"))
+    ax.legend([h for h, _ in hl], [l for _, l in hl], loc="upper right", framealpha=0.5,
+              edgecolor="#30363d", facecolor="#161b22", fontsize=8.5)
+    ax.set_xticks(x); ax.set_xticklabels(presets, fontsize=9, rotation=20, ha="right")
+    ax.set_ylabel("SWE-bench Lite resolved (%)")
+    ax.set_ylim(0, max(c["resolve_rate_pct"] for c in cells.values()) * 1.25)
+    ax.set_title("SWE-bench Lite (300 instances) — resolve rate per preset × scaffold, 256K single-user",
+                 fontsize=12.5, fontweight="bold", pad=10)
+    ax.grid(True, axis="y", linestyle="--")
+    dates = sorted(str(c.get("timestamp", ""))[:10] for c in cells.values() if c.get("timestamp"))
+    ax.text(0.0, -0.22, "v2 Docker harness, swebench scorer 4.1.0, AWQ-int4 presets at full context, "
+            "one attempt per instance (resolved / 300); "
+            + (f"cell receipts {dates[0]} .. {dates[-1]}" if dates else ""),
+            transform=ax.transAxes, fontsize=7.5, color="#8b949e")
+    fig.tight_layout()
+    out = os.path.join(BENCH_DIR, "bakeoff_swebench_lite.png")
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  {out}")
+
+
 def _fmt_tok(n):
     if n >= 1_000_000:
         return f"{n / 1_000_000:.1f}M"
@@ -588,5 +675,8 @@ if __name__ == "__main__":
 
     print("Spec-decode:")
     make_specdec_comparison_chart()
+
+    print("SWE-bench Lite bake-off:")
+    make_bakeoff_chart()
 
     print("\nDone!")
