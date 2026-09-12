@@ -152,7 +152,7 @@ def main() -> int:
     ap.add_argument("--engagement", required=True, type=Path)
     ap.add_argument("--kind", choices=["rtk", "dcp"], required=True)
     ap.add_argument("--out", required=True, type=Path, help="prefix; writes .md and .json")
-    ap.add_argument("--label", default=None, help="lane label for the markdown (default: lane dir name)")
+    ap.add_argument("--label", default=None, help="title label for the markdown (default: '<lane> vs <control>' dir names)")
     a = ap.parse_args()
 
     lane, ctl = lane_rows(a.lane), lane_rows(a.control)
@@ -186,9 +186,9 @@ def main() -> int:
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.with_suffix(".json").write_text(json.dumps(rep, indent=1))
 
-    lab = a.label or a.lane.name
+    lab = a.label or f"{a.lane.name} vs {a.control.name}"
     ls, cs = rep["lane_summary"], rep["control_summary"]
-    md = [f"# {lab} vs {a.control.name} — pre-score rollout receipt", ""]
+    md = [f"# {lab} — pre-score rollout receipt", ""]
     md += [f"Same-ID instances: **{len(common)}** (lane {len(lane)} logs, control {len(ctl)} logs).", ""]
     md += ["| | lane | control |", "|---|---|---|"]
     for k, nm in (("patched", "patched (non-empty diff)"), ("empty", "empty diff"), ("timeout", "timeout (rc=124)"),
