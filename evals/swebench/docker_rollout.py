@@ -91,6 +91,16 @@ def parse_args():
                    help="SGLang server base URL (used for preflight)")
     p.add_argument("--served-name", default=None,
                    help="Served model name (defaults to model id after slash)")
+    p.add_argument("--context-window", type=int, default=0,
+                   help="Token budget every scaffold is told the model has. 0 (default) "
+                        "= read max_model_len from the server's /v1/models so the "
+                        "scaffold budget always equals the served KV window. Found "
+                        "2026-09-11: little-coder's pi ran every preset at a 32,768 "
+                        "fallback (unknown model id -> first packaged models.json "
+                        "entry), prime-agent defaulted to 128K, dcode to a 170K "
+                        "summarization trigger, and opencode.json carried 32K for "
+                        "several presets. Budget is now injected per run (see "
+                        "build_scaffold_invocation) and recorded in meta.json.")
     p.add_argument("--skip-existing", action="store_true",
                    help="Skip instances that already have a prediction")
     p.add_argument("--max-empty-streak", type=int, default=10,
@@ -123,16 +133,55 @@ ACTIVATE_TESTBED = (
 )
 
 
+def _opencode_budget_snippet(served_name: str, context_window: int) -> str:
+    """Shell lines that pin `provider.sglang.models[<served>].limit.context`
+    in the lane's ~/.config/opencode/opencode.json to the served window
+    (adding the entry if the preset is missing — the old "new preset needs
+    an opencode.json entry + image nuke" landmine). HOME-relative, so the
+    DCP lane's /opt/dcp-home copy is the one edited there."""
+    js = (
+        'const fs=require("fs");const p=process.env.HOME+"/.config/opencode/opencode.json";'
+        'const d=JSON.parse(fs.readFileSync(p,"utf8"));const m=d.provider.sglang.models;'
+        f'const id={json.dumps(served_name)};const e=m[id]||(m[id]={{name:id,tool_call:true}});'
+        f'e.limit=Object.assign({{output:8192}},e.limit||{{}},{{context:{int(context_window)}}});'
+        'fs.writeFileSync(p,JSON.stringify(d,null,2));'
+        'console.error("context budget: opencode.json "+id+" limit="+JSON.stringify(e.limit));'
+    )
+    return f"node -e '{js}'\n"
+
+
+def _little_coder_budget_snippet(pkg_root: str, served_name: str, context_window: int) -> str:
+    """Shell lines that write a per-run little-coder models file declaring the
+    served model under the llamacpp provider (copying the packaged provider's
+    api/baseUrl/apiKey) and export LITTLE_CODER_MODELS_FILE so both little-coder
+    1.1.0 and 1.19.0 load it (provider-level merge over the packaged file).
+    Without it pi's model resolver clones the first packaged entry: 32K."""
+    js = (
+        f'const fs=require("fs");const pkg=JSON.parse(fs.readFileSync({json.dumps(pkg_root + "/models.json")},"utf8"));'
+        f'const prov=pkg.providers.llamacpp;const id={json.dumps(served_name)};'
+        f'prov.models=[{{id:id,name:id+" (SGLang, served window)",reasoning:true,input:["text"],'
+        f'contextWindow:{int(context_window)},maxTokens:16384,cost:{{input:0,output:0,cacheRead:0,cacheWrite:0}}}}];'
+        'fs.writeFileSync("/tmp/sweb-little-coder-models.json",JSON.stringify({providers:{llamacpp:prov}},null,2));'
+        'console.error("context budget: little-coder models.json "+id+" contextWindow="+prov.models[0].contextWindow);'
+    )
+    return f"node -e '{js}'\nexport LITTLE_CODER_MODELS_FILE=/tmp/sweb-little-coder-models.json\n"
+
+
 def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
-                              timeout: int = 1800) -> tuple[list[str], str]:
+                              timeout: int = 1800, context_window: int = 0) -> tuple[list[str], str]:
     """Return (docker_run_extra_envs, inner_shell_command) for the given
     scaffold. The inner command runs opencode-equivalent against $PROMPT
     in /testbed and emits `=== DIFF ===\\n<git diff>` to stdout for the
     parent process to extract.
 
-    All three scaffolds share the same diff-capture protocol so the parent
-    `_extract_diff_from_stdout` works uniformly.
+    All scaffolds share the same diff-capture protocol so the parent
+    `_extract_diff_from_stdout` works uniformly, and every scaffold is told
+    the same `context_window` (the served KV window) through its own config
+    surface — opencode.json limit.context, little-coder models file,
+    prime models.json contextWindow, dcode --profile-override.
     """
+    if context_window <= 0:
+        raise ValueError("context_window must be the served window (>0); see --context-window")
     if scaffold == "opencode":
         # opencode reads ~/.config/opencode/opencode.json which the Dockerfile
         # provisions. The `sglang/<served-name>` model id wires there.
@@ -142,6 +191,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             f"git config --global user.email eval@local\n"
             f"git config --global user.name eval\n"
             f"git config --global --add safe.directory /testbed\n"
+            + _opencode_budget_snippet(served_name, context_window) +
             f"opencode run --dir /testbed --model {model} "
             f"  --format json --dangerously-skip-permissions \"$PROMPT\" || true\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
@@ -158,10 +208,12 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
         # little-coder wraps pi-ai, which reads provider baseUrls from a
         # packaged models.json — not from OPENAI_BASE_URL. Dockerfile.rollout
         # repoints the "llamacpp" provider's baseUrl at our SGLang endpoint,
-        # so we route through llamacpp/<served-name>. pi will warn that the
-        # model id isn't in its known list and fall back to "Using custom
-        # model id" — that warning is benign and the request still reaches
-        # SGLang's OpenAI-compat endpoint.
+        # so we route through llamacpp/<served-name>. The served id is
+        # declared in a per-run models file (LITTLE_CODER_MODELS_FILE) with the
+        # served context window: the old "Using custom model id" fallback was
+        # NOT benign — pi cloned the first packaged entry and ran every preset
+        # at contextWindow 32768 (compaction loops / aborted sessions; see
+        # benchmarks/quality/rtk-lane-close-qwen38-2026-09-11.md).
         oc_model = f"llamacpp/{served_name}"
         envs = [
             "--env", "LLAMACPP_API_KEY=noop",
@@ -171,6 +223,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             f"git config --global user.email eval@local\n"
             f"git config --global user.name eval\n"
             f"git config --global --add safe.directory /testbed\n"
+            + _little_coder_budget_snippet("/opt/node/lib/node_modules/little-coder", served_name, context_window) +
             f"cd /testbed\n"
             f"little-coder --model {oc_model} \"$PROMPT\" || true\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
@@ -205,6 +258,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             f"git config --global user.email eval@local\n"
             f"git config --global user.name eval\n"
             f"git config --global --add safe.directory /testbed\n"
+            + _little_coder_budget_snippet("/opt/lc-rtk/node_modules/little-coder", served_name, context_window) +
             f"cd /testbed\n"
             f"/opt/lc-rtk/node_modules/.bin/little-coder -e /opt/rtk-home/.pi/agent/extensions/rtk.ts --model {oc_model} \"$PROMPT\" || true\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
@@ -256,6 +310,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             f"git config --global user.email eval@local\n"
             f"git config --global user.name eval\n"
             f"git config --global --add safe.directory /testbed\n"
+            + _opencode_budget_snippet(served_name, context_window) +
             f"opencode run --dir /testbed --model {model} "
             f"  --format json --dangerously-skip-permissions \"$PROMPT\" || true\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
@@ -283,7 +338,11 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
                 "apiKey": "noop",
                 "compat": {"supportsDeveloperRole": False,
                            "supportsReasoningEffort": False},
-                "models": [{"id": served_name}],
+                # explicit budget: prime-agent's custom-provider default is
+                # contextWindow 128000 / maxTokens 16384 (model-registry.js)
+                "models": [{"id": served_name,
+                            "contextWindow": int(context_window),
+                            "maxTokens": 16384}],
             }}}, indent=2)
         envs = ["--env", "DO_NOT_TRACK=1"]
         inner = (
@@ -324,9 +383,13 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             "git config --global user.name eval\n"
             "git config --global --add safe.directory /testbed\n"
             "cd /testbed\n"
-            f"dcode -M openai:{served_name} -n \"$PROMPT\" -q --max-turns 60 -S all --allow-fs-tools all --timeout {max(60, timeout - 100)} || true\n"
+            # --profile-override: langchain has no profile for a custom
+            # openai:<id>, so deepagents falls back to a fixed 170K-token
+            # summarization trigger; with max_input_tokens set it uses
+            # fraction 0.85 of the served window.
+            f"dcode -M openai:{served_name} --profile-override '{{\"max_input_tokens\": {int(context_window)}}}' -n \"$PROMPT\" -q --max-turns 60 -S all --allow-fs-tools all --timeout {max(60, timeout - 100)} || true\n"
             "rm -rf /testbed/.deepagents /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
-            f"timeout 120 dcode -M openai:{served_name} -n \"$CLEANUP_PROMPT\" -q --max-turns 8 -S all --allow-fs-tools all --timeout 100 || true\n"
+            f"timeout 120 dcode -M openai:{served_name} --profile-override '{{\"max_input_tokens\": {int(context_window)}}}' -n \"$CLEANUP_PROMPT\" -q --max-turns 8 -S all --allow-fs-tools all --timeout 100 || true\n"
             "echo === DIFF ===\n"
             "rm -rf /testbed/.deepagents /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             "git -C /testbed add -A\n"
@@ -579,6 +642,30 @@ def preflight_canary(server_url: str, served_name: str) -> tuple[bool, str]:
         return False, f"{type(e).__name__}: {e}"
 
 
+def served_context_window(server_url: str, served: str) -> int | None:
+    """max_model_len the server advertises for `served` on /v1/models (SGLang
+    reports the launch --context-length there). None if unavailable."""
+    try:
+        with urllib.request.urlopen(f"{server_url}/v1/models", timeout=30) as r:
+            body = json.loads(r.read())
+    except Exception:
+        return None
+    cards = body.get("data") or []
+    for c in cards:
+        if c.get("id") == served and c.get("max_model_len"):
+            return int(c["max_model_len"])
+    if len(cards) == 1 and cards[0].get("max_model_len"):
+        return int(cards[0]["max_model_len"])
+    return None
+
+
+# pi (little-coder) prints this when the model id is not in the provider's
+# models.json and it clones the first entry (32K). With the per-run models
+# file below it must never appear; if it does, the context budget was NOT
+# applied and the instance ran at 32K.
+PI_FALLBACK_MARKER = "not found for provider"
+
+
 def load_dataset(dataset_id: str, split: str):
     from datasets import load_dataset as _ld
     return _ld(dataset_id, split=split)
@@ -597,6 +684,15 @@ def main():
         print(f"  refusing to start rollout — fix the server / chat template first", flush=True)
         return 2
     print(f"  preflight {info}", flush=True)
+
+    if args.context_window > 0:
+        ctx, ctx_src = args.context_window, "--context-window"
+    else:
+        ctx, ctx_src = served_context_window(args.server_url, served), "server /v1/models max_model_len"
+    if not ctx:
+        print("  CONTEXT BUDGET UNKNOWN: /v1/models did not report max_model_len — pass --context-window", flush=True)
+        return 2
+    print(f"Context budget: {ctx} tokens for every scaffold (source: {ctx_src})", flush=True)
 
     out = Path(args.out)
     (out / "predictions").mkdir(parents=True, exist_ok=True)
@@ -620,6 +716,8 @@ def main():
         "dataset": args.dataset,
         "split": args.split,
         "timeout_sec": args.timeout,
+        "context_window": ctx,
+        "context_window_source": ctx_src,
     })
     meta["scaffold"] = args.scaffold
     meta["model"] = args.model
@@ -668,6 +766,7 @@ def main():
                 )
                 scaffold_envs, inner_with_diff = build_scaffold_invocation(
                     args.scaffold, args.model, served, timeout=args.timeout,
+                    context_window=ctx,
                 )
                 container_name = f"swebench-rollout-{iid}-{int(time.time())}"
                 cmd = [
@@ -710,6 +809,10 @@ def main():
                     f"# elapsed {elapsed}s   rc={rc}\n"
                     f"# stdout\n{stdout}\n# stderr\n{stderr}\n"
                 )
+
+                if args.scaffold.startswith("little-coder") and PI_FALLBACK_MARKER in (stderr + stdout):
+                    print(f"  CONTEXT-BUDGET TRIPWIRE: pi reported '{PI_FALLBACK_MARKER}' — the per-run "
+                          f"models file was not honoured; this instance ran at the 32K fallback", flush=True)
 
                 diff = _extract_diff_from_stdout(stdout)
                 (out / "predictions" / f"{iid}.diff").write_text(diff)
