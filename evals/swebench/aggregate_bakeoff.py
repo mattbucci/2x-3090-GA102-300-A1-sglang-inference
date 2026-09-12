@@ -62,6 +62,29 @@ def first_model_path(run_dir: Path) -> str | None:
     return None
 
 
+def scaffold_context_window(run_dir: Path):
+    """Smallest `context_window` recorded across the run's meta.json entries.
+
+    docker_rollout.py records the token budget it handed the scaffold since
+    2026-09-11 (read from the server's /v1/models max_model_len). The
+    minimum matters: a run assembled from several invocations is only as
+    good as its most-truncated one. None for runs older than the field —
+    those ran at whatever the scaffold's own default was (pi: 32K, prime:
+    128K, dcode: 170K, opencode: the static opencode.json entry).
+    """
+    meta = run_dir / "meta.json"
+    if not meta.exists():
+        return None
+    try:
+        m = json.loads(meta.read_text())
+    except Exception:
+        return None
+    runs = m.get("runs") if isinstance(m, dict) else m
+    vals = [r.get("context_window") for r in (runs or []) if isinstance(r, dict)]
+    vals = [v for v in vals if isinstance(v, int) and v > 0]
+    return min(vals) if vals else None
+
+
 def write_cell_json(preset: str, scaffold: str, run_dir: Path,
                     summary: dict, quality_dir: Path,
                     repo_root: Path) -> Path:
@@ -96,6 +119,7 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
         "resolve_rate_pct": rate,
         **counts,
         "harness_returncode": summary.get("harness_returncode"),
+        "scaffold_context_window": scaffold_context_window(run_dir),
         "run_dir": str(run_dir.relative_to(repo_root))
                    if str(run_dir).startswith(str(repo_root))
                    else str(run_dir),

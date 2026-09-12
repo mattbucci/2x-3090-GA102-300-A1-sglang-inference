@@ -18,6 +18,12 @@
 #   QUEUE          space-separated preset names (default: full bake-off queue)
 #   WAIT_FOR_PID   if set, wait for this PID to exit before starting the queue
 #   POLL_SECS      WAIT_FOR_PID poll interval in seconds (default: 60)
+#   SCAFFOLDS      lane list handed to every cycle (default: the cycle's own)
+#   SCAFFOLDS_FOR  per-preset lane override, "preset:lane,lane preset2:lane"
+#                  e.g. "qwen36-dense:opencode,little-coder devstral:opencode"
+#                  — presets not listed fall back to SCAFFOLDS / cycle default.
+#                  Used for the 256K re-roll of cells that ran at a scaffold
+#                  budget below the served window (2026-09-11).
 #
 # Detach pattern (recommended — survives session interrupts):
 #   mkdir -p /tmp/run-model-cycle-logs
@@ -42,6 +48,7 @@ REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 QUEUE="${QUEUE:-qwen38 coder-30b-eval qwen36 coder-reap-25b qwen36-ream qwen35-moe coder-30b-ream qwen36-dense devstral gemma4 nemotron3-omni}"
 POLL_SECS="${POLL_SECS:-60}"
 WAIT_FOR_PID="${WAIT_FOR_PID:-}"
+SCAFFOLDS_FOR="${SCAFFOLDS_FOR:-}"
 
 LOG_ROOT="/tmp/run-model-cycle-logs"
 mkdir -p "$LOG_ROOT"
@@ -79,8 +86,15 @@ for PRESET in $QUEUE; do
   mkdir -p "$LOG_DIR"
   WRAPPER_LOG="$LOG_DIR/wrapper.log"
 
-  log "=== START $PRESET ==="
-  bash "$REPO_DIR/evals/swebench/run_model_cycle.sh" "$PRESET" \
+  LANES=""
+  for kv in $SCAFFOLDS_FOR; do
+    [ "${kv%%:*}" = "$PRESET" ] && LANES="${kv#*:}"
+  done
+  CYCLE_ENV=()
+  [ -n "$LANES" ] && CYCLE_ENV+=("SCAFFOLDS=${LANES//,/ }")
+
+  log "=== START $PRESET${LANES:+ (lanes: ${LANES//,/ })} ==="
+  env "${CYCLE_ENV[@]}" bash "$REPO_DIR/evals/swebench/run_model_cycle.sh" "$PRESET" \
     > "$WRAPPER_LOG" 2>&1
   RC=$?
   DURATION=$(( $(date +%s) - CYCLE_START ))

@@ -520,7 +520,9 @@ def make_bakeoff_chart():
     """SWE-bench Lite resolve rate per preset × scaffold, from the per-cell
     JSONs `benchmarks/quality/bakeoff-<preset>-<scaffold>.json` that
     `evals/swebench/aggregate_bakeoff.py` writes. Cells under 300 predictions
-    are hatched — the full-300 rule: partial cells are not comparable."""
+    are hatched — the full-300 rule: partial cells are not comparable.
+    Superseded cells (`"superseded"` set; the pre-2026-09-11 scaffold-budget
+    receipts) are skipped."""
     from matplotlib.patches import Patch
     cells = {}
     for path in glob.glob(os.path.join(BENCH_DIR, "quality", "bakeoff-*.json")):
@@ -529,6 +531,10 @@ def make_bakeoff_chart():
         except Exception:
             continue
         if not d.get("preset") or not d.get("scaffold") or d.get("resolved") is None:
+            continue
+        if d.get("superseded"):
+            # bakeoff-*-ctx32k.json etc.: cells whose scaffold ran below the
+            # served window (2026-09-11 harness fix); kept as receipts, not plotted
             continue
         cells[(d["preset"], d["scaffold"])] = d
     if not cells:
