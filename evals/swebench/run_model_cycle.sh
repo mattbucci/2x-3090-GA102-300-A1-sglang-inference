@@ -2,6 +2,7 @@
 # run_model_cycle.sh — full bakeoff eval cycle for a single SGLang preset.
 #
 # Sequence (Rule 2 enforced: no rollout + score concurrent):
+#   0. Scaffold request audit (scaffold_request_audit.py: max thinking + output caps on the wire)
 #   1. Launch SGLang server for $PRESET (detached via setsid)
 #   2. Wait /health=200 (max 12 min)
 #   3. For each scaffold in {opencode, opencode-dcp, little-coder, little-coder-rtk, prime, dcode}: full 300-inst rollout
@@ -68,9 +69,23 @@ stop_server() {
 }
 
 launch_server() {
+  # Reuse a healthy server already serving this preset (a cycle relaunched
+  # after a harness-side fix; the preset's serving config is unchanged).
+  # Launching a second one would fight for :23334 / VRAM. Phase 2's
+  # stop_server still owns shutdown.
+  local live
+  live=$(curl -s -m 5 http://127.0.0.1:23334/v1/models 2>/dev/null \
+         | python -c 'import json,sys; print(" ".join(m["id"] for m in json.load(sys.stdin)["data"]))' 2>/dev/null)
+  if [ -n "$live" ] && [[ " $live " == *" $SERVED "* ]]; then
+    log "reusing healthy server already serving $SERVED"
+    return 0
+  fi
   log "launching server"
+  # 9>&-: don't leak run_all_cycles.sh's flock fd into the server — a server
+  # that outlives a stopped queue would otherwise hold /tmp/swebench-bakeoff.lock
+  # and block the relaunch (2026-09-13).
   nohup setsid bash "$REPO_DIR/scripts/launch.sh" "$PRESET" \
-    > "$LOG_DIR/server.log" 2>&1 < /dev/null &
+    > "$LOG_DIR/server.log" 2>&1 < /dev/null 9>&- &
   local pid=$!
   disown $pid 2>/dev/null
   echo $pid > "$LOG_DIR/server.pid"
@@ -119,6 +134,25 @@ wait_ready() {
 if needs_kernel_smoke "$PRESET"; then
   run_kernel_smoke
 fi
+
+# --- Phase 0.5: scaffold request audit (no GPU, no server) ---
+# Proves what each lane will put on the wire before any of it costs GPU
+# days: max thinking (no reasoning_effort / enable_thinking:false), output
+# caps >= the harness floor, served model id. Runs the real
+# build_scaffold_invocation() commands in a throwaway rollout container
+# against a capture endpoint. Non-zero = a scaffold default drifted; the
+# cycle stops rather than roll a mislabelled cell.
+log "scaffold request audit ($SCAFFOLDS)"
+python "$REPO_DIR/evals/swebench/scaffold_request_audit.py" \
+  --served-name "$SERVED" --scaffolds "$SCAFFOLDS" \
+  --receipt "$LOG_DIR/scaffold-audit.json" > "$LOG_DIR/scaffold-audit.log" 2>&1
+rc=$?
+if [ $rc -ne 0 ]; then
+  log "ERROR: scaffold request audit failed (rc=$rc) — see $LOG_DIR/scaffold-audit.log"
+  tail -12 "$LOG_DIR/scaffold-audit.log"
+  exit 1
+fi
+log "scaffold request audit PASS"
 
 # --- Phase 1: launch + rollouts ---
 launch_server

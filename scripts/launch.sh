@@ -67,6 +67,7 @@ CUDA_GRAPH=""
 MAMBA_CACHE=""
 CHAT_TEMPLATE=""
 REASONING=""
+THINK_DEFAULT=""   # JSON for --default-chat-template-kwargs (thinking models whose template defaults thinking OFF)
 OVERLAP=""
 WARMUP=""
 WATCHDOG=600
@@ -249,6 +250,10 @@ apply_preset() {
             # text-only and image_url payloads silently degrade.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/gemma-4-26B-AWQ}"
             REASONING="--reasoning-parser gemma4"
+            # Gemma 4 templates render thinking OFF unless enable_thinking is
+            # true; no agentic scaffold sends it. Server default = thinking on
+            # (per-request chat_template_kwargs still win: setdefault merge).
+            THINK_DEFAULT="${THINK_DEFAULT:-{\"enable_thinking\": true}}"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             # 2026-05-31: CTX bumped 16K -> 262144 (model card native max).
@@ -282,6 +287,10 @@ apply_preset() {
             #     --local-dir /data/models/hf-mattbucci/gemma-4-21B-REAP-AWQ
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/gemma-4-21B-REAP-AWQ}"
             REASONING="--reasoning-parser gemma4"
+            # Gemma 4 templates render thinking OFF unless enable_thinking is
+            # true; no agentic scaffold sends it. Server default = thinking on
+            # (per-request chat_template_kwargs still win: setdefault merge).
+            THINK_DEFAULT="${THINK_DEFAULT:-{\"enable_thinking\": true}}"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
@@ -305,6 +314,10 @@ apply_preset() {
             # triton captures fine at bs=1 — the old head_dim concern was wrong).
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/gemma-4-31B-AWQ}"
             REASONING="--reasoning-parser gemma4"
+            # Gemma 4 templates render thinking OFF unless enable_thinking is
+            # true; no agentic scaffold sends it. Server default = thinking on
+            # (per-request chat_template_kwargs still win: setdefault merge).
+            THINK_DEFAULT="${THINK_DEFAULT:-{\"enable_thinking\": true}}"
             KV_DTYPE="${_ENV_KV_DTYPE:-fp8_e5m2}"  # A5: e5m2 FP8 KV compiles on triton sm_86 (e4m3/fp8e4nv does not) -> 130K->260K pool, retrieval 1.0 to 258K true
             # BF16 — Gemma 4 SigLIP vision tower NaNs in FP16 (attention softmax
             # overflows past 65504). Override DTYPE=float16 only for text-only use.
@@ -351,6 +364,10 @@ apply_preset() {
             MODEL="${MODEL:-/data/models/gemma-4-12B-it-AWQ}"
             [ -d "$MODEL" ] || MODEL="$MODELS_DIR/hf-google/gemma-4-12B-it"
             REASONING="--reasoning-parser gemma4"
+            # Gemma 4 templates render thinking OFF unless enable_thinking is
+            # true; no agentic scaffold sends it. Server default = thinking on
+            # (per-request chat_template_kwargs still win: setdefault merge).
+            THINK_DEFAULT="${THINK_DEFAULT:-{\"enable_thinking\": true}}"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             # AWQ weights are int4; BF16 only for the vision-tower numerics (n/a here, no tower).
             DTYPE="${_ENV_DTYPE:-bfloat16}"
@@ -864,9 +881,15 @@ SERVED_NAME="${SERVED_NAME:-$PRESET}"
 #    edit (R9700: budget≈300 turned 0→1 applied edits). Deliberately NOT a
 #    default: a ~300-token cap would gut our 256K deep-reasoning win. Leave
 #    OFF for reasoning / 256K decode workloads.
+#  * THINK_DEFAULT (preset-set JSON, e.g. gemma4 '{"enable_thinking": true}')
+#    — --default-chat-template-kwargs so a client that sends no thinking
+#    kwarg still gets the model's maximum thinking (bake-off policy: every
+#    scaffold runs max thinking; evals/swebench/scaffold_request_audit.py).
+#    Qwen3.5/3.6/3.8 templates already default thinking on (3.8: xhigh).
 if [[ -n "$REASONING" ]]; then
     [[ "${EXTRA_ARGS:-}" != *--sampling-defaults* ]] && CMD+=(--sampling-defaults model)
     [[ -n "${STRICT_THINK:-}" ]] && CMD+=(--enable-strict-thinking)
+    [[ -n "$THINK_DEFAULT" && "${EXTRA_ARGS:-}" != *--default-chat-template-kwargs* ]] && CMD+=(--default-chat-template-kwargs "$THINK_DEFAULT")
 fi
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
 [[ -n "$OVERLAP" ]] && CMD+=($OVERLAP)

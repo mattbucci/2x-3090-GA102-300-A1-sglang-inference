@@ -1,0 +1,19 @@
+{
+  "preset": "qwen35-moe",
+  "scaffold": "opencode",
+  "model_path": "sglang/qwen35-moe",
+  "total_predictions": 300,
+  "resolve_rate_pct": 56.3,
+  "resolved": 169,
+  "unresolved": 128,
+  "error": 1,
+  "empty_patch": 2,
+  "incomplete": 0,
+  "submitted": 300,
+  "completed": 297,
+  "harness_returncode": 0,
+  "run_dir": "evals/swebench/runs/qwen35-moe-opencode-v2-out8k",
+  "timestamp": "2026-07-17T13:16:49",
+  "scaffold_output_budget": 8192,
+  "superseded": "cell ran with opencode's output budget capped at 8192 tokens (opencode.json limit.output), which truncated thinking + patch generation on long-reasoning turns (qwen38 audit: 62-69% of the lane's empty patches were length-truncated). Harness defect fixed 2026-09-13 (uniform 32768 output budget, template-default max thinking, scaffold_request_audit.py tripwire) \u2014 see benchmarks/quality/harness-thinking-budget-2026-09-13.md; re-rolled under the fixed harness by the 256K re-roll queue"
+}

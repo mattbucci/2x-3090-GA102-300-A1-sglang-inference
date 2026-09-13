@@ -133,17 +133,63 @@ ACTIVATE_TESTBED = (
 )
 
 
+# Uniform per-request output budget for every scaffold. Thinking models emit
+# long reasoning traces: opencode's packaged `limit.output: 8192` truncated
+# 38 of 293 qwen38 opencode sessions, 35 of which ended as empty patches (69%
+# of that cell's empties; 62% on the DCP lane), pi's 16384 hit the cap 29x
+# in the first 250 little-coder sessions. Must EQUAL each scaffold's compaction
+# reserve: SGLang 400s any request whose prompt + max_tokens exceeds the served
+# window (presets deliberately don't pass --allow-auto-truncate, which would
+# also silently truncate over-long prompts), so the scaffold has to compact
+# before the prompt reaches window - OUTPUT_BUDGET.
+OUTPUT_BUDGET = 32768
+# What the wire actually carries: pi-ai 0.68 (little-coder 1.1.0) and
+# prime-agent clamp `Math.min(model.maxTokens, 32000)` in simple-options.js;
+# the current @earendil-works pi (rtk lane) and opencode send OUTPUT_BUDGET
+# as-is. scaffold_request_audit.py checks caps against this floor.
+OUTPUT_CAP_FLOOR = 32000
+
+# Thinking policy: every scaffold runs the model at its MAXIMUM thinking
+# tier. No scaffold may send `reasoning_effort` (pi's default "medium"
+# halved qwen38's budget; pi also clamps xhigh->high, which the Qwen3.8
+# template rejects) or `enable_thinking: false`. Sending nothing lets the
+# served chat template's default apply — the preset owns that default
+# (Qwen3.8 -> xhigh, Qwen3.5/3.6 -> on; gemma4 presets pass
+# --default-chat-template-kwargs). scaffold_request_audit.py asserts this.
+
+
+def _pi_settings_snippet(agent_dir: str) -> str:
+    """Shell lines that merge `compaction.reserveTokens = OUTPUT_BUDGET` into
+    a pi-family global settings.json (pi-coding-agent / prime-agent both
+    default 16384: compaction fires at contextWindow - reserveTokens, so the
+    reserve must cover the request's max_completion_tokens or the server
+    rejects the turn). `agent_dir` is a shell expression ($HOME/.pi/agent,
+    /root/.prime/agent)."""
+    js = (
+        'const fs=require("fs");const d=process.argv[1];const p=d+"/settings.json";'
+        'fs.mkdirSync(d,{recursive:true});'
+        'let s={};try{s=JSON.parse(fs.readFileSync(p,"utf8"))}catch(e){}'
+        f's.compaction=Object.assign({{}},s.compaction||{{}},{{reserveTokens:{OUTPUT_BUDGET}}});'
+        'fs.writeFileSync(p,JSON.stringify(s,null,2));'
+        'console.error("context budget: "+p+" compaction="+JSON.stringify(s.compaction));'
+    )
+    return f"node -e '{js}' \"{agent_dir}\"\n"
+
+
 def _opencode_budget_snippet(served_name: str, context_window: int) -> str:
     """Shell lines that pin `provider.sglang.models[<served>].limit.context`
     in the lane's ~/.config/opencode/opencode.json to the served window
     (adding the entry if the preset is missing — the old "new preset needs
-    an opencode.json entry + image nuke" landmine). HOME-relative, so the
-    DCP lane's /opt/dcp-home copy is the one edited there."""
+    an opencode.json entry + image nuke" landmine) and `limit.output` to
+    OUTPUT_BUDGET (opencode sends max_tokens = min(limit.output,
+    OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX) and auto-compacts at
+    limit.context - that). HOME-relative, so the DCP lane's /opt/dcp-home
+    copy is the one edited there."""
     js = (
         'const fs=require("fs");const p=process.env.HOME+"/.config/opencode/opencode.json";'
         'const d=JSON.parse(fs.readFileSync(p,"utf8"));const m=d.provider.sglang.models;'
         f'const id={json.dumps(served_name)};const e=m[id]||(m[id]={{name:id,tool_call:true}});'
-        f'e.limit=Object.assign({{output:8192}},e.limit||{{}},{{context:{int(context_window)}}});'
+        f'e.limit=Object.assign({{}},e.limit||{{}},{{context:{int(context_window)},output:{OUTPUT_BUDGET}}});'
         'fs.writeFileSync(p,JSON.stringify(d,null,2));'
         'console.error("context budget: opencode.json "+id+" limit="+JSON.stringify(e.limit));'
     )
@@ -155,16 +201,21 @@ def _little_coder_budget_snippet(pkg_root: str, served_name: str, context_window
     served model under the llamacpp provider (copying the packaged provider's
     api/baseUrl/apiKey) and export LITTLE_CODER_MODELS_FILE so both little-coder
     1.1.0 and 1.19.0 load it (provider-level merge over the packaged file).
-    Without it pi's model resolver clones the first packaged entry: 32K."""
+    Without it pi's model resolver clones the first packaged entry: 32K.
+    `compat.supportsReasoningEffort:false` keeps pi from sending its default
+    `reasoning_effort: medium` (see the thinking policy above); maxTokens and
+    the settings.json compaction reserve are both OUTPUT_BUDGET."""
     js = (
         f'const fs=require("fs");const pkg=JSON.parse(fs.readFileSync({json.dumps(pkg_root + "/models.json")},"utf8"));'
         f'const prov=pkg.providers.llamacpp;const id={json.dumps(served_name)};'
         f'prov.models=[{{id:id,name:id+" (SGLang, served window)",reasoning:true,input:["text"],'
-        f'contextWindow:{int(context_window)},maxTokens:16384,cost:{{input:0,output:0,cacheRead:0,cacheWrite:0}}}}];'
+        f'contextWindow:{int(context_window)},maxTokens:{OUTPUT_BUDGET},cost:{{input:0,output:0,cacheRead:0,cacheWrite:0}},'
+        'compat:{supportsReasoningEffort:false}}];'
         'fs.writeFileSync("/tmp/sweb-little-coder-models.json",JSON.stringify({providers:{llamacpp:prov}},null,2));'
         'console.error("context budget: little-coder models.json "+id+" contextWindow="+prov.models[0].contextWindow);'
     )
-    return f"node -e '{js}'\nexport LITTLE_CODER_MODELS_FILE=/tmp/sweb-little-coder-models.json\n"
+    return (f"node -e '{js}'\nexport LITTLE_CODER_MODELS_FILE=/tmp/sweb-little-coder-models.json\n"
+            + _pi_settings_snippet("$HOME/.pi/agent"))
 
 
 def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
@@ -185,7 +236,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
     if scaffold == "opencode":
         # opencode reads ~/.config/opencode/opencode.json which the Dockerfile
         # provisions. The `sglang/<served-name>` model id wires there.
-        envs = []
+        envs = ["--env", f"OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX={OUTPUT_BUDGET}"]
         inner = (
             f"set -e\n"
             f"git config --global user.email eval@local\n"
@@ -304,7 +355,8 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
         # config home baked by Dockerfile.rollout (plugin + dcp.jsonc). The
         # scaffold envs are appended AFTER --env HOME=/root in the docker cmd,
         # and docker takes the last occurrence, so this override wins.
-        envs = ["--env", "HOME=/opt/dcp-home"]
+        envs = ["--env", "HOME=/opt/dcp-home",
+                "--env", f"OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX={OUTPUT_BUDGET}"]
         inner = (
             f"set -e\n"
             f"git config --global user.email eval@local\n"
@@ -342,7 +394,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
                 # contextWindow 128000 / maxTokens 16384 (model-registry.js)
                 "models": [{"id": served_name,
                             "contextWindow": int(context_window),
-                            "maxTokens": 16384}],
+                            "maxTokens": OUTPUT_BUDGET}],
             }}}, indent=2)
         envs = ["--env", "DO_NOT_TRACK=1"]
         inner = (
@@ -354,6 +406,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             "cat > /root/.prime/agent/models.json <<'PRIMEJSON'\n"
             f"{provider_json}\n"
             "PRIMEJSON\n"
+            + _pi_settings_snippet("/root/.prime/agent") +
             "cd /testbed\n"
             f"prime-agent --model sglang/{served_name} -p \"$PROMPT\" || true\n"
             "rm -rf /testbed/.prime /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
@@ -718,6 +771,10 @@ def main():
         "timeout_sec": args.timeout,
         "context_window": ctx,
         "context_window_source": ctx_src,
+        # harness policy this run rolled under (see OUTPUT_BUDGET / thinking
+        # policy above; scaffold_request_audit.py proves it on the wire)
+        "output_budget": OUTPUT_BUDGET,
+        "thinking": "max (template default; no reasoning_effort sent)",
     })
     meta["scaffold"] = args.scaffold
     meta["model"] = args.model

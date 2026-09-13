@@ -85,6 +85,25 @@ def scaffold_context_window(run_dir: Path):
     return min(vals) if vals else None
 
 
+def scaffold_output_budget(run_dir: Path):
+    """Smallest `output_budget` across the run's meta.json entries — the
+    per-request output cap docker_rollout.py configured in the scaffold
+    (32768 since 2026-09-13; every scaffold also runs max thinking from that
+    date). None for older runs: opencode's packaged 8192 / pi's 16384 with
+    `reasoning_effort: medium`."""
+    meta = run_dir / "meta.json"
+    if not meta.exists():
+        return None
+    try:
+        m = json.loads(meta.read_text())
+    except Exception:
+        return None
+    runs = m.get("runs") if isinstance(m, dict) else m
+    vals = [r.get("output_budget") for r in (runs or []) if isinstance(r, dict)]
+    vals = [v for v in vals if isinstance(v, int) and v > 0]
+    return min(vals) if vals else None
+
+
 def write_cell_json(preset: str, scaffold: str, run_dir: Path,
                     summary: dict, quality_dir: Path,
                     repo_root: Path) -> Path:
@@ -120,6 +139,7 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
         **counts,
         "harness_returncode": summary.get("harness_returncode"),
         "scaffold_context_window": scaffold_context_window(run_dir),
+        "scaffold_output_budget": scaffold_output_budget(run_dir),
         "run_dir": str(run_dir.relative_to(repo_root))
                    if str(run_dir).startswith(str(repo_root))
                    else str(run_dir),

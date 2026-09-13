@@ -1,0 +1,19 @@
+{
+  "preset": "coder-30b-ream",
+  "scaffold": "opencode",
+  "model_path": "sglang/coder-30b-ream",
+  "total_predictions": 300,
+  "resolve_rate_pct": 38.7,
+  "resolved": 116,
+  "unresolved": 155,
+  "error": 2,
+  "empty_patch": 27,
+  "incomplete": 0,
+  "submitted": 300,
+  "completed": 271,
+  "harness_returncode": 0,
+  "run_dir": "evals/swebench/runs/coder-30b-ream-opencode-v2-out8k",
+  "timestamp": "2026-09-10T01:44:17",
+  "scaffold_output_budget": 8192,
+  "superseded": "cell ran with opencode's output budget capped at 8192 tokens (opencode.json limit.output), which truncated thinking + patch generation on long-reasoning turns (qwen38 audit: 62-69% of the lane's empty patches were length-truncated). Harness defect fixed 2026-09-13 (uniform 32768 output budget, template-default max thinking, scaffold_request_audit.py tripwire) \u2014 see benchmarks/quality/harness-thinking-budget-2026-09-13.md; re-rolled under the fixed harness by the 256K re-roll queue"
+}
