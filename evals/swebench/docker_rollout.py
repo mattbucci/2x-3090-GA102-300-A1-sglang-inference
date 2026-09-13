@@ -215,7 +215,52 @@ def _little_coder_budget_snippet(pkg_root: str, served_name: str, context_window
         'console.error("context budget: little-coder models.json "+id+" contextWindow="+prov.models[0].contextWindow);'
     )
     return (f"node -e '{js}'\nexport LITTLE_CODER_MODELS_FILE=/tmp/sweb-little-coder-models.json\n"
+            + _little_coder_profile_snippet(pkg_root, served_name, context_window)
             + _pi_settings_snippet("$HOME/.pi/agent"))
+
+
+# little-coder per-model profile pinned for the served model (R9700 finding,
+# their commit 96a61f5, 2026-09-13; verified in both of our prefixes). The
+# package's benchmark-profiles extension resolves `little_coder.model_profiles`
+# from the PACKAGE's own .pi/settings.json (exact key, then prefix, then
+# `default_model_profile`); an unknown served model gets the default profile:
+# 1.1.0 = thinking_budget 2048 / context_limit 32768 / temperature 0.3,
+# 1.19.0 = thinking_budget 4096 / temperature 0.3. The thinking-budget
+# extension counts thinking_delta chars/3.5 and on breach ABORTS the turn,
+# flips pi's thinking level to "off" (which only drops `reasoning_effort` —
+# we never send it, so the template keeps thinking at its default) and queues
+# "[thinking budget exceeded] Please commit to an implementation now" — at
+# xhigh that is an abort->nudge loop until the rollout timeout (R9700: 3258
+# iterations in 90 s on a ~6K-token thinking stream). The profile beats
+# LITTLE_CODER_THINKING_BUDGET (profile || env || default), so pinning the
+# key is the only lever. No `temperature`: the extension then injects
+# nothing and SGLang applies the checkpoint's generation_config, the same
+# sampling every other lane gets (lanes before 2026-09-13 ran at T=0.3).
+LC_MODEL_PROFILE = {
+    "max_tokens": OUTPUT_BUDGET,   # informational; the wire cap is models.json maxTokens
+    "thinking_budget": 1000000,    # never trips the abort (server-bound instead)
+    "skill_token_budget": 300,     # unchanged package defaults from here down
+    "knowledge_token_budget": 200,
+    "system_prompt_budget": 0,
+    "max_retries": 1,
+}
+
+
+def _little_coder_profile_snippet(pkg_root: str, served_name: str, context_window: int) -> str:
+    """Shell lines that pin `little_coder.model_profiles["llamacpp/<served>"]`
+    in the package's .pi/settings.json (see LC_MODEL_PROFILE). The image is
+    rebuilt per instance, so this runs on every rollout; the file lives inside
+    the npm package (an upgrade drops it)."""
+    prof = dict(LC_MODEL_PROFILE, context_limit=int(context_window))
+    js = (
+        f'const fs=require("fs");const p={json.dumps(pkg_root + "/.pi/settings.json")};'
+        'const d=JSON.parse(fs.readFileSync(p,"utf8"));const lc=d.little_coder||(d.little_coder={});'
+        f'const mp=lc.model_profiles||(lc.model_profiles={{}});const k="llamacpp/"+{json.dumps(served_name)};'
+        f'mp[k]={json.dumps(prof, separators=(",", ":"))};'
+        'fs.writeFileSync(p,JSON.stringify(d,null,2)+"\\n");'
+        'console.error("context budget: little-coder model profile "+k+" "+JSON.stringify(mp[k]));'
+    )
+    return f"node -e '{js}'\n"
 
 
 def build_scaffold_invocation(scaffold: str, model: str, served_name: str,

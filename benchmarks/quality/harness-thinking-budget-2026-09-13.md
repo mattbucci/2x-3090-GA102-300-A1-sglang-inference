@@ -52,15 +52,42 @@ withdrawn, not just re-scaled.
 - **Provenance:** `meta.json` records `output_budget` + `thinking`; each cell JSON carries
   `scaffold_output_budget` next to `scaffold_context_window`.
 
-Scaffold identity that is deliberately *not* normalised: little-coder sends `temperature: 0.3`
-(its benchmark profile), opencode sends `top_p: 1`; the rest of the sampling comes from the
-preset's `--sampling-defaults model`.
+Sampling is preset-owned (`--sampling-defaults model`): no scaffold may pin a `temperature` (see the
+third finding below). Residual scaffold identity: opencode sends `top_p: 1` (top_k still comes
+from the checkpoint's generation_config); tolerated, shown in the audit's body column.
+
+## Third finding, same day (R9700 cross-check, their `96a61f5`): little-coder's thinking-budget abort
+
+little-coder ships a `benchmark-profiles` extension that resolves a per-model profile from the
+**package's own** `.pi/settings.json` (exact key `llamacpp/<served>`, then prefix, then
+`default_model_profile`); an unknown served model gets the default. Verified in both of our
+prefixes: 1.1.0 (control) = `thinking_budget 2048`, `context_limit 32768`, `temperature 0.3`;
+1.19.0 (RTK) = `thinking_budget 4096`, `temperature 0.3`. The `thinking-budget` extension counts
+`thinking_delta` chars / 3.5 and on breach **aborts the turn**, flips pi's thinking level to `off`
+(which only drops `reasoning_effort` — never sent by us, so the template keeps thinking at its
+default) and queues "[thinking budget exceeded] Please commit to an implementation now". At the
+template's max tier that is an abort → nudge loop (R9700: 3,258 iterations in 90 s on a ~6K-token
+thinking stream); at `medium` R9700 measured 21/258 and 28/287 sessions breaching. Our rollout logs
+capture only the final stdout, so no count exists for our superseded lanes — the mechanism is
+source-verified and identical.
+
+Fix: `docker_rollout.py` pins `little_coder.model_profiles["llamacpp/<served>"]` in the package
+settings on every rollout (`LC_MODEL_PROFILE`: `thinking_budget 1000000`, `max_tokens 32768`,
+`context_limit` = served window, package defaults for the skill/knowledge budgets, **no
+`temperature`**) — the profile beats `LITTLE_CODER_THINKING_BUDGET`, so the key is the only lever.
+Dropping the temperature means SGLang applies the checkpoint's `generation_config` (the preset's
+`--sampling-defaults model`), the same sampling every other lane gets; the audit now fails any
+scaffold that pins a `temperature`. Wire receipt after the pin: both little-coder lanes send no
+`temperature`, no `reasoning_effort`, caps 32000 / 32768, and stderr shows the profile line.
+Timing: the qwen38 opencode lane was already rolling (unaffected); the little-coder lanes pick the
+pin up when they start (fresh `docker_rollout.py` per lane).
 
 ## Quarantine
 
 Run dirs renamed (gitignored): `qwen38-{opencode,opencode-dcp}-v2-out8k`,
 `{qwen36,qwen36-ream,qwen35-moe,coder-30b-eval,coder-reap-25b,coder-30b-ream}-opencode-v2-out8k`,
-`qwen38-little-coder-v2-effmed16k`. Receipts renamed to
+`qwen38-little-coder-v2-effmed16k` (that lane also ran under the 2048-token thinking-budget abort
+and T=0.3, as did every earlier little-coder cell). Receipts renamed to
 `benchmarks/quality/bakeoff-<preset>-opencode-out8k.json` with a `superseded` note and
 `scaffold_output_budget: 8192` (the chart skips `superseded` cells). DCP engagement receipts of the
 8K lane moved to `benchmarks/quality/dcp-engagement-out8k-2026-09-13/`.

@@ -14,13 +14,16 @@ the harness policy:
   * output budget — max_tokens / max_completion_tokens / max_output_tokens
     absent or >= docker_rollout.OUTPUT_CAP_FLOOR (32000: pi 0.68 / prime
     clamp OUTPUT_BUDGET 32768 to 32000 on the wire);
+  * sampling from the preset — no scaffold-pinned `temperature` (little-coder's
+    default model profile injected 0.3 and a 2048/4096-token thinking-budget
+    abort until the profile pin — docker_rollout.LC_MODEL_PROFILE);
   * `model` == the served name.
 
 Why: scaffold defaults are a harness input (commit 9c31fff for context
 budgets; this is the thinking/output-budget counterpart). pi's default
 `reasoning_effort: medium` ran the qwen38 little-coder lanes at half budget,
-opencode's packaged `limit.output: 8192` truncated 38/53 xhigh traces into
-empty patches. Nothing in the rollout logs shows either.
+opencode's packaged `limit.output: 8192` truncated 38 of 293 xhigh sessions, 35
+of them into empty patches. Nothing in the rollout logs shows either.
 
 Usage (run_model_cycle.sh runs it before the lanes; non-zero exit blocks):
   scaffold_request_audit.py --served-name qwen38 --scaffolds "opencode little-coder"
@@ -143,6 +146,12 @@ def check_body(sc: str, path: str, body: dict, served: str, allow_effort: set[st
         v = body.get(k)
         if v is not None and int(v) < dr.OUTPUT_CAP_FLOOR:
             bad.append(f"{k}={v} < OUTPUT_CAP_FLOOR {dr.OUTPUT_CAP_FLOOR}")
+    # Sampling comes from the preset (--sampling-defaults model): no scaffold
+    # may pin a temperature (little-coder's default model profile injected 0.3
+    # until the profile pin, 2026-09-13). opencode's `top_p: 1` is tolerated
+    # (top_k still comes from generation_config) and shows in the body column.
+    if body.get("temperature") is not None:
+        bad.append(f"temperature={body['temperature']} (scaffold-pinned sampling)")
     return bad
 
 
