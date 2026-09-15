@@ -80,6 +80,11 @@ ANYWHERE_PATTERNS = [
     (r"Model not found: sglang/", "scaffold_model_registry_mismatch"),
     (r"assistant stream produced no content", "server_empty_stream"),
     (r"AI_APICallError|AI_RetryError|APICallError", "server_api_error"),
+    # opencode's AI SDK rejecting a tool-call delta with no id (SGLang emitted a
+    # tool_index=-1 argument delta for an orphan <parameter=/</function>;
+    # patch 063). The scaffold surfaces it as UnknownError and ends the session.
+    (r'"name":"UnknownError","data":\{"message":"Expected \'id\' to be a string',
+     "server_toolcall_stream_shape"),
     (r"statusCode\"?\s*:\s*5\d\d", "server_5xx"),
     (r"Request failed with status code 5\d\d", "server_5xx"),
     (r"HSAIL 0x", "gpu_crash"),
