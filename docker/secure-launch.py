@@ -228,17 +228,25 @@ def main() -> None:
         max_queued_requests=int(max_queued_requests),
         enable_custom_logit_processor=False,
     )
+    # This write hook has moved at three consecutive releases; the rungs are
+    # ordered newest-API-first and each is a no-op on the stacks that lack it.
     # v0.5.18: the config is NOT yet published at this point (run_server
     # publishes it per-process), so get_context().override is unavailable
     # ("config not published") — the sanctioned pre-publish hook is
     # ServerArgs._late_resolution(source, **fields), which writes in place so
     # the HTTP server, tokenizer workers, and schedulers all see the value,
     # and refuses once published.
-    if hasattr(server_args, "_late_resolution"):
+    # v0.5.20: neither _late_resolution nor override exists. prepare_server_args
+    # now returns the RAW, unresolved record and run_server calls
+    # resolve_once() itself; ServerArgs.__setattr__ only refuses field writes
+    # during/after resolution, so plain setattr on the raw record IS the
+    # sanctioned pre-resolution write there (resolver-side writes go through
+    # arg_groups.overrides.declare_resolution, which is not for launchers).
+    if hasattr(server_args, "_late_resolution"):  # v0.5.18
         server_args._late_resolution("secure-launch", **credential_fields)
     elif hasattr(server_args, "override"):  # v0.5.17
         server_args.override("secure-launch", **credential_fields)
-    else:  # older stacks + the offline unit test's SimpleNamespace stand-in
+    else:  # v0.5.20+, older stacks, and the offline unit test's SimpleNamespace stand-in
         for name, value in credential_fields.items():
             setattr(server_args, name, value)
     try:
