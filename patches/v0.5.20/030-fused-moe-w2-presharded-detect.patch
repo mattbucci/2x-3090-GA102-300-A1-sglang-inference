@@ -1,0 +1,35 @@
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/layer.py b/python/sglang/srt/layers/moe/fused_moe_triton/layer.py
+index b3f1291..ba6e499 100644
+--- a/python/sglang/srt/layers/moe/fused_moe_triton/layer.py
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/layer.py
+@@ -748,12 +748,24 @@ class FusedMoE(torch.nn.Module):
+             if not is_bias and not self.use_presharded_weights:
+                 if self.use_triton_kernels:
+                     loaded_weight = loaded_weight.transpose(-2, -1)
+-                # Derive shard size from the loaded weight so padded buffers
+-                # do not cause out-of-bounds indexing into the checkpoint.
+-                loaded_shard_size = loaded_weight.shape[shard_dim] // self.moe_tp_size
+-                loaded_weight = loaded_weight.narrow(
+-                    shard_dim, loaded_shard_size * tp_rank, loaded_shard_size
+-                )
++                # CT-format MoE checkpoints pre-shard w2 to per-rank size
++                # before invoking weight_loader (the CT loader does the
++                # global -> per-rank slice on disk read). Native AWQ ships
++                # at full global size. Detect the already-presharded case
++                # and copy through unchanged; otherwise narrow as before.
++                # Without this, CT MoE at TP>=2 silently half-loads w2 on
++                # every rank (upstream's derived loaded_shard_size splits
++                # the already-local slice again and the padded-buffer copy
++                # below masks the size mismatch) — patch 030 narrative.
++                if loaded_weight.shape[shard_dim] != shard_size:
++                    # Derive shard size from the loaded weight so padded buffers
++                    # do not cause out-of-bounds indexing into the checkpoint.
++                    loaded_shard_size = (
++                        loaded_weight.shape[shard_dim] // self.moe_tp_size
++                    )
++                    loaded_weight = loaded_weight.narrow(
++                        shard_dim, loaded_shard_size * tp_rank, loaded_shard_size
++                    )
+ 
+         # w2, down_proj: Load into only logical weight of w2.
+         loaded_weight = _maybe_copy_weight_view_before_h2d(loaded_weight)

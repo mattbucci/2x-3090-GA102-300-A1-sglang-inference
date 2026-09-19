@@ -1,0 +1,104 @@
+From: 3090 team <noreply@anthropic.com>
+Date: 2026-05-09
+Subject: [PATCH] qwen3_5: AWQ-aware DeltaNet weight loader (in_proj_ba quant_config + qweight binding + pack_factor)
+
+v0.5.10 had this fix; v0.5.11 dropped it during upstream sync. Three related
+gaps in `Qwen3_5GatedDeltaNet`'s constructor + packed weight loader path
+together leave every AWQ-quantized Qwen3.5/3.6 DeltaNet build broken on
+v0.5.11:
+
+1. **`in_proj_ba` constructor must use quant_config=None.** Output dim 48
+   is not divisible by TP=2 × 16 (hipBLASLt scaled_mm alignment), AND AWQ
+   checkpoints ship `in_proj_a` / `in_proj_b` in full precision (only
+   `.weight` keys, no `.qweight/.scales/.qzeros`). v0.5.11 forces
+   quant_config=quant_config, so the model expects packed AWQ params on
+   `in_proj_ba` that the checkpoint doesn't provide. Symptom: hundreds of
+   "Parameter model.layers.X.linear_attn.in_proj_ba.weight not found in
+   params_dict" warnings, default-init weights, generation outputs
+   literal `!!!!!` for every prompt.
+
+2. **`_bind_packed_weight_loaders` only iterates over FP weight names**
+   `(weight, weight_scale_inv, weight_scale, input_scale)`. AWQ modules
+   (`in_proj_qkvz` on this build) carry `qweight`, `scales`, `qzeros`
+   instead, so the packed-checkpoint loader is never bound. Even after
+   fix #1, this leaves AWQ-quantized merged columns with default-init
+   weights.
+
+3. **`_get_split_sizes_for_param` doesn't account for pack factor.** AWQ
+   qweight is 8 fp16 per int32 — the splits need to be divided by the
+   pack factor or `loaded_weight.split(split_sizes, ...)` raises
+   `RuntimeError: split_with_sizes expects split_sizes to sum exactly
+   to 1280, got [2048, 2048, 6144]` (the 1280 = 10240/8 is the packed
+   shape).
+
+Fix: restore the v0.5.10 special-cases (constructor quant_config=None +
+attr_name extension + pack_factor handling). No-op on FP16/BF16 paths
+(no qweight attr; pack_factor stays 1).
+
+Affects every Qwen3.5/3.6 AWQ build: qwen35-tp1 (Qwen3.6-27B-AWQ),
+qwen36-tp1 (Qwen3.6-35B-A3B-AWQ), qwen35-moe (Qwen3.5-28B-A3B-REAP-AWQ),
+qwen3-vl-32b (Qwen3-VL-32B-AWQ), and any future
+Qwen3_5ForConditionalGeneration / Qwen3_5MoeForConditionalGeneration
+AWQ ship.
+
+diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
+--- a/python/sglang/srt/models/qwen3_5.py
++++ b/python/sglang/srt/models/qwen3_5.py
+@@ -169,10 +169,19 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+             tp_size=self.attn_tp_size,
+         )
+
++        # quant_config=None for in_proj_ba: output dim 48 is not divisible
++        # by TP=2 × 16 (hipBLASLt scaled_mm alignment), AND AWQ checkpoints
++        # ship in_proj_a / in_proj_b in full precision (no .qweight/.scales/
++        # .qzeros — only .weight). Forcing quant_config=quant_config on this
++        # layer makes the model expect packed AWQ params that the checkpoint
++        # doesn't provide → "Parameter ...in_proj_ba.weight not found in
++        # params_dict" warnings × num_layers, default-init weights, and
++        # generation outputs literal `!!!!!`. v0.5.10 had this; v0.5.11
++        # dropped the special-case during upstream sync.
+         self.in_proj_ba = self.create_ba_proj(
+             hidden_size=self.hidden_size,
+             num_v_heads=self.num_v_heads,
+-            quant_config=quant_config,
++            quant_config=None,
+             prefix=add_prefix("in_proj_ba", prefix),
+             tp_rank=self.attn_tp_rank,
+             tp_size=self.attn_tp_size,
+@@ -275,7 +284,13 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+
+     def _bind_packed_weight_loaders(self, module):
+         """Bind packed-checkpoint-aware loaders to all relevant params of a merged module."""
+-        for attr_name in ("weight", "weight_scale_inv", "weight_scale", "input_scale"):
++        # Include AWQ param names (qweight, scales, qzeros) alongside standard names.
++        # Without this, AWQ-quantized DeltaNet in_proj_qkvz / in_proj_ba never bind
++        # the packed loader, the model loads as if uninitialized, and generation
++        # produces literal `!!!!!` garbage. v0.5.10 had this; v0.5.11 dropped it
++        # during upstream sync.
++        for attr_name in ("weight", "weight_scale_inv", "weight_scale", "input_scale",
++                          "qweight", "scales", "qzeros"):
+             param = getattr(module, attr_name, None)
+             if param is None:
+                 continue
+@@ -301,8 +316,19 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+             # One logical scale per logical shard.
+             return [1 for _ in loaded_shard_id]
+
+-        # Normal weight / non-block quant tensor
+-        return [module.output_sizes[idx] for idx in loaded_shard_id]
++        # For packed params (AWQ qweight/qzeros), divide by pack factor when
++        # the split dimension is the packed dimension. v0.5.10 had this; v0.5.11
++        # dropped it during upstream sync — without it, AWQ Qwen3.5/3.6 DeltaNet
++        # weight loading hits "split_sizes sum != tensor size" RuntimeError.
++        from sglang.srt.layers.parameter import PackedvLLMParameter, PackedColumnParameter
++        pack_factor = 1
++        if isinstance(param, (PackedvLLMParameter, PackedColumnParameter)):
++            split_dim = getattr(param, "output_dim", 0)
++            if getattr(param, "packed_dim", None) == split_dim:
++                pack_factor = getattr(param, "packed_factor",
++                                      getattr(param, "pack_factor", 1))
++
++        return [module.output_sizes[idx] // pack_factor for idx in loaded_shard_id]
+
+     @classmethod
+     def _make_packed_weight_loader(cls, module, original_weight_loader):

@@ -1,0 +1,19 @@
+diff --git a/python/sglang/srt/models/gemma4_unified.py b/python/sglang/srt/models/gemma4_unified.py
+index 67d0771..902c056 100644
+--- a/python/sglang/srt/models/gemma4_unified.py
++++ b/python/sglang/srt/models/gemma4_unified.py
+@@ -190,7 +190,13 @@ class Gemma4UnifiedForConditionalGeneration(Gemma4ForConditionalGeneration):
+         )
+ 
+         text_tie = getattr(text_config, "tie_word_embeddings", True)
+-        if self.pp_group.world_size == 1 and text_tie:
++        # v0.5.18 routes the parent's logits through `self.lm_head_is_tied`
++        # (gemma4_mm.py forward: embed_tokens if tied else lm_head), but this
++        # subclass re-implements __init__ and never set it -> AttributeError on
++        # the first forward (cuda-graph capture) for every unified checkpoint.
++        # The unified head is tied exactly when it aliases embed_tokens below.
++        self.lm_head_is_tied = self.pp_group.world_size == 1 and text_tie
++        if self.lm_head_is_tied:
+             self.lm_head = self.language_model.embed_tokens
+         elif self.pp_group.is_last_rank:
+             self.lm_head = ParallelLMHead(
