@@ -3,6 +3,7 @@
 #
 # Sequence (Rule 2 enforced: no rollout + score concurrent):
 #   0. Scaffold request audit (scaffold_request_audit.py: max thinking + output caps on the wire)
+#   1a. /v1/responses function-call probe on the live server when a dcode lane is queued
 #   1. Launch SGLang server for $PRESET (serve_backend.sh: bare metal, or the
 #      repo's OCI image when SERVE_MODE=docker / serve_mode.conf says docker)
 #   2. Wait /health=200 (max 12 min)
@@ -176,6 +177,25 @@ log "scaffold request audit PASS"
 # --- Phase 1: launch + rollouts ---
 launch_server || { log "ERROR: server launch failed"; exit 1; }
 wait_ready || { stop_server; exit 1; }
+
+# --- Phase 1a: Responses-API gate (dcode lanes only) ---
+# deepagents forces /v1/responses; v0.5.20's _validate_model 404s any request
+# whose `model` is not the served name, and chat probes / the Phase-0 wire
+# audit cannot see that (R9700 lost a full dcode lane to it in 10 s per
+# instance). Prove one function_call round-trip on the live server first.
+case " $SCAFFOLDS " in *" dcode "*)
+  log "responses-api probe (dcode lane)"
+  python "$REPO_DIR/scripts/eval/probe_responses_api.py" --port 23334 \
+    ${SWEBENCH_API_KEY_FILE:+--api-key "$(_serve_api_key)"} \
+    --json "$LOG_DIR/responses-probe.json" > "$LOG_DIR/responses-probe.log" 2>&1
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    log "ERROR: /v1/responses probe failed (rc=$rc) — see $LOG_DIR/responses-probe.log"
+    tail -8 "$LOG_DIR/responses-probe.log"
+    stop_server; exit 1
+  fi
+  log "responses-api probe PASS" ;;
+esac
 
 NEED_RESCORE=()  # cells that have predictions to score
 NEED_RESCORE_AFTER_REROLL=()
