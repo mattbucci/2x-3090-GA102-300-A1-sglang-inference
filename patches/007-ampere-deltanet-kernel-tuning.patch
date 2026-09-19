@@ -1,5 +1,5 @@
 diff --git a/python/sglang/kernels/ops/attention/fla/fused_recurrent.py b/python/sglang/kernels/ops/attention/fla/fused_recurrent.py
-index e288035..07f27b0 100644
+index 1a59ad0643..d5f08df9da 100644
 --- a/python/sglang/kernels/ops/attention/fla/fused_recurrent.py
 +++ b/python/sglang/kernels/ops/attention/fla/fused_recurrent.py
 @@ -8,9 +8,28 @@ import torch
@@ -31,7 +31,7 @@ index e288035..07f27b0 100644
  
  @triton.jit(do_not_specialize=["T"])
  def fused_recurrent_gated_delta_rule_fwd_kernel(
-@@ -136,11 +155,10 @@ def fused_recurrent_gated_delta_rule_fwd(
+@@ -137,11 +156,10 @@ def fused_recurrent_gated_delta_rule_fwd(
      B, T, H, K, V = *k.shape, v.shape[-1]
      HV = v.shape[2]
      N = B if cu_seqlens is None else len(cu_seqlens) - 1
@@ -45,7 +45,7 @@ index e288035..07f27b0 100644
  
      o = q.new_empty(NK, *v.shape)
      if output_final_state:
-@@ -358,9 +376,7 @@ def fused_recurrent_gated_delta_rule_packed_decode(
+@@ -359,9 +377,7 @@ def fused_recurrent_gated_delta_rule_packed_decode(
          raise ValueError(
              f"Packed decode kernel only supports NK=1 (got K={K}, BK={BK})."
          )
@@ -57,21 +57,20 @@ index e288035..07f27b0 100644
      stride_mixed_qkv_tok = mixed_qkv.stride(0)
      stride_a_tok = a.stride(0)
 diff --git a/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py b/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py
-index 37a54e8..91315ee 100644
+index 8f7c342002..448fad2c7a 100644
 --- a/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py
 +++ b/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py
-@@ -4,6 +4,10 @@ import torch
- import triton
+@@ -5,6 +5,9 @@ import triton
  import triton.language as tl
  
+ from sglang.kernels.jit.utils import is_arch_support_pdl
 +from sglang.kernels.ops.attention.fla.fused_recurrent import (
 +    _get_deltanet_kernel_params,
 +)
-+
+ 
  
  @triton.jit(do_not_specialize=["T"])
- def fused_sigmoid_gating_delta_rule_update_kernel(
-@@ -286,11 +290,10 @@ def fused_sigmoid_gating_delta_rule_update(
+@@ -401,11 +404,10 @@ def fused_sigmoid_gating_delta_rule_update(
      stride_a = a.stride()[1] if a.ndim == 4 else a.stride()[-2]
      HV = v.shape[2]
      N = B if cu_seqlens is None else len(cu_seqlens) - 1

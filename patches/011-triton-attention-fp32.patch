@@ -1,8 +1,21 @@
 diff --git a/python/sglang/kernels/ops/attention/decode_attention.py b/python/sglang/kernels/ops/attention/decode_attention.py
-index 6ab7cd2..6fda28a 100644
+index f711172ea3..096be0bb9b 100644
 --- a/python/sglang/kernels/ops/attention/decode_attention.py
 +++ b/python/sglang/kernels/ops/attention/decode_attention.py
-@@ -203,7 +203,8 @@ def _fwd_kernel_stage1(
+@@ -39,6 +39,12 @@ from sglang.srt.utils import (
+ 
+ _is_hip = is_hip()
+ _is_gfx1250 = _is_hip and is_gfx1250_supported()
++# 3090 patch 011 (triton-attention-fp32): upstream's IS_GFX1250 kernel branches keep q
++# in its own dtype for the QK dot and the fp32 softmax weights un-downcast for the P.V
++# dot (upstream's own comment records the bf16 downcast of p as the accuracy loss).
++# That is the fp32-accumulation path this stack has carried for Ampere/RDNA4 since
++# v0.5.11 (256K needle / long-context quality), so take it on every platform.
++_FP32_SOFTMAX_PV = True
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -332,7 +338,8 @@ def _fwd_kernel_stage1(
                  mask=(offs_n[:, None] < split_kv_end) & (mask_d[None, :]),
                  other=0.0,
              )
@@ -12,7 +25,7 @@ index 6ab7cd2..6fda28a 100644
              qk *= sm_scale_withk
  
              if logit_cap > 0:
-@@ -247,11 +248,12 @@ def _fwd_kernel_stage1(
+@@ -376,11 +383,12 @@ def _fwd_kernel_stage1(
                  other=0.0,
              )
  
@@ -26,22 +39,16 @@ index 6ab7cd2..6fda28a 100644
  
              e_sum = e_sum * re_scale + tl.sum(p, 0)
              e_max = n_e_max
-@@ -570,11 +572,13 @@ def _fwd_grouped_kernel_stage1(
-                     other=0.0,
-                 )
- 
-+            # Online softmax in FP32
-             n_e_max = tl.maximum(tl.max(qk, 1), e_max)
-             re_scale = tl.exp(e_max - n_e_max)
-             p = tl.exp(qk - n_e_max[:, None])
-             acc *= re_scale[:, None]
--            acc += tl.dot(p.to(v.dtype), v)
-+            # FP32 value accumulation — cast v to FP32 to preserve p's FP32 precision
-+            acc += tl.dot(p.to(tl.float32), v.to(tl.float32))
- 
-             e_sum = e_sum * re_scale + tl.sum(p, 1)
-             e_max = n_e_max
-@@ -782,8 +786,8 @@ def _fwd_kernel_stage2(
+@@ -887,7 +895,7 @@ def _decode_grouped_att_m_fwd(
+         Lv=Lv,
+         HAS_MLA=has_mla,
+         USE_PDL=use_pdl,
+-        IS_GFX1250=_is_gfx1250,
++        IS_GFX1250=_is_gfx1250 or _FP32_SOFTMAX_PV,
+         PAGE_SIZE=page_size,
+         SCORE_MOD=score_mod,
+         Aux0=aux0,
+@@ -964,8 +972,8 @@ def _fwd_kernel_stage2(
          if split_kv_end > split_kv_start:
              tv = tl.load(
                  Mid_O + offs_v + split_kv_id * stride_mid_os, mask=mask_d, other=0.0
@@ -53,77 +60,37 @@ index 6ab7cd2..6fda28a 100644
  
              old_scale = tl.exp(e_max - n_e_max)
 diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
-index 4c456b8..16d1d62 100644
+index 38606d936d..201ee9761b 100644
 --- a/python/sglang/kernels/ops/attention/extend_attention.py
 +++ b/python/sglang/kernels/ops/attention/extend_attention.py
-@@ -427,7 +427,8 @@ def _fwd_kernel(
-                 mask=(mask_n[None, :]) & (mask_d[:, None]),
-                 other=0.0,
-             )
--            qk = tl.dot(q.to(k.dtype), k)
-+            # FP32 QK dot product — preserve q precision, cast k to q dtype
-+            qk = tl.dot(q, k.to(q.dtype))
-             if BLOCK_DPE > 0:
-                 if PAGE_SIZE == 1:
-                     offs_kpe = (
-@@ -447,7 +448,7 @@ def _fwd_kernel(
-                     mask=mask_n[None, :],
-                     other=0.0,
-                 )
--                qk += tl.dot(qpe.to(kpe.dtype), kpe)
-+                qk += tl.dot(qpe, kpe.to(qpe.dtype))
-             qk *= sm_scale * k_scale
+@@ -41,6 +41,12 @@ if _is_cuda:
+ _is_hip = is_hip()
+ _is_gfx95 = _is_hip and is_gfx95_supported()
+ _is_gfx1250 = _is_hip and is_gfx1250_supported()
++# 3090 patch 011 (triton-attention-fp32): upstream's IS_GFX1250 kernel branches keep q
++# in its own dtype for the QK dot and the fp32 softmax weights un-downcast for the P.V
++# dot (upstream's own comment records the bf16 downcast of p as the accuracy loss).
++# That is the fp32-accumulation path this stack has carried for Ampere/RDNA4 since
++# v0.5.11 (256K needle / long-context quality), so take it on every platform.
++_FP32_SOFTMAX_PV = True
  
-             if logit_cap > 0:
-@@ -500,8 +501,8 @@ def _fwd_kernel(
-                 mask=mask_n[:, None] & mask_dv[None, :],
-                 other=0.0,
-             )
--            p = p.to(v.dtype)
--            acc = acc * re_scale[:, None] + tl.dot(p, v) * v_scale
-+            # FP32 value accumulation — keep p in FP32, cast v to FP32 (256K precision)
-+            acc = acc * re_scale[:, None] + tl.dot(p.to(tl.float32), v.to(tl.float32)) * v_scale
- 
-             e_max = n_e_max
- 
-@@ -621,8 +622,8 @@ def _fwd_kernel(
-             v = tl.load(
-                 V_Extend + offs_v, mask=mask_n[:, None] & mask_dv[None, :], other=0.0
-             )
--            p = p.to(v.dtype)
--            acc = acc * re_scale[:, None] + tl.dot(p, v)
-+            # FP32 value accumulation (256K precision)
-+            acc = acc * re_scale[:, None] + tl.dot(p.to(tl.float32), v.to(tl.float32))
- 
-             e_max = n_e_max
- 
-@@ -1052,7 +1053,8 @@ def _fwd_kernel_unified(
-                 other=0.0,
-             )
- 
--            qk = tl.dot(q.to(k.dtype), k)
-+            # FP32 QK dot product — preserve q precision, cast k to q dtype
-+            qk = tl.dot(q, k.to(q.dtype))
-             if BLOCK_DPE > 0:
-                 if PAGE_SIZE == 1:
-                     offs_kpe = (
-@@ -1072,7 +1074,7 @@ def _fwd_kernel_unified(
-                     mask=mask_n[None, :],
-                     other=0.0,
-                 )
--                qk += tl.dot(qpe.to(kpe.dtype), kpe)
-+                qk += tl.dot(qpe, kpe.to(qpe.dtype))
- 
-             qk *= sm_scale_withk
- 
-@@ -1126,8 +1128,8 @@ def _fwd_kernel_unified(
-                 mask=mask_n[:, None] & mask_dv[None, :],
-                 other=0.0,
-             )
--            p = p.to(v.dtype)
--            acc = acc * re_scale[:, None] + tl.dot(p, v)
-+            # FP32 value accumulation (256K precision)
-+            acc = acc * re_scale[:, None] + tl.dot(p.to(tl.float32), v.to(tl.float32))
- 
-             e_max = n_e_max
- 
+ try:
+     _triton_version_parts = tuple(
+@@ -1080,7 +1086,7 @@ def extend_attention_fwd(
+         SKIP_PREFIX=skip_prefix,
+         SKIP_EXTEND=skip_extend,
+         HAS_SINK=HAS_SINK,
+-        IS_GFX1250=_is_gfx1250,
++        IS_GFX1250=_is_gfx1250 or _FP32_SOFTMAX_PV,
+         STORE_TRANSPOSE=_is_hip,
+         USE_COMPACT_TILE_GRID=use_compact_tile_grid,
+         USE_EXP2=USE_EXP2,
+@@ -1595,7 +1601,7 @@ def extend_attention_fwd_unified(
+         IS_CAUSAL=is_causal,
+         USE_CUSTOM_MASK=USE_CUSTOM_MASK,
+         HAS_SINK=HAS_SINK,
+-        IS_GFX1250=_is_gfx1250,
++        IS_GFX1250=_is_gfx1250 or _FP32_SOFTMAX_PV,
+         PAGE_SIZE=page_size,
+         SCORE_MOD=score_mod,
+         Aux0=aux0,

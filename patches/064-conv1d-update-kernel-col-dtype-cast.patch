@@ -1,0 +1,48 @@
+diff --git a/python/sglang/kernels/ops/mamba/causal_conv1d_triton.py b/python/sglang/kernels/ops/mamba/causal_conv1d_triton.py
+index 9449a3a432..bd8b6faac5 100644
+--- a/python/sglang/kernels/ops/mamba/causal_conv1d_triton.py
++++ b/python/sglang/kernels/ops/mamba/causal_conv1d_triton.py
+@@ -693,32 +693,39 @@ def _causal_conv1d_update_kernel(
+ 
+     # STEP 1: READ init_state data
+     conv_states_base = (
+         conv_state_ptr
+         + (conv_state_batch_coord * stride_conv_state_seq)
+         + (idx_feats * stride_conv_state_dim)
+     )
+     mask_w = idx_feats < dim
+ 
+     prior_tokens = conv_states_base + conv_state_token_offset * stride_conv_state_tok
++    # Load the cached conv-state columns in x's dtype. The spec-verify branches
++    # below rebind `matrix_x` to these cols in siblings of the fp16 `x` load, and
++    # Triton rejects the merge at compile time when the cache dtype differs
++    # (bf16 mamba-radix `extra_buffer` cache under fp16 AWQ activations — the
++    # configuration spec x radix needs on the DeltaNet hybrids). Plain decode
++    # never rebinds across dtypes, so it compiled either way. Mirrors the
++    # `.to(x_elem_ty)` casts upstream #38039 added to the prefill kernel.
+     if KERNEL_WIDTH >= 2:
+         conv_states_ptrs = prior_tokens  # [BLOCK_N]
+-        col0 = tl.load(conv_states_ptrs, mask_w, 0.0)
++        col0 = tl.load(conv_states_ptrs, mask_w, 0.0).to(x_ptr.dtype.element_ty)
+     if KERNEL_WIDTH >= 3:
+         conv_states_ptrs = prior_tokens + 1 * stride_conv_state_tok  # [BLOCK_N]
+-        col1 = tl.load(conv_states_ptrs, mask_w, 0.0)
++        col1 = tl.load(conv_states_ptrs, mask_w, 0.0).to(x_ptr.dtype.element_ty)
+     if KERNEL_WIDTH >= 4:
+         conv_states_ptrs = prior_tokens + 2 * stride_conv_state_tok  # [BLOCK_N]
+-        col2 = tl.load(conv_states_ptrs, mask_w, 0.0)
++        col2 = tl.load(conv_states_ptrs, mask_w, 0.0).to(x_ptr.dtype.element_ty)
+     if KERNEL_WIDTH == 5:
+         conv_states_ptrs = prior_tokens + 3 * stride_conv_state_tok  # [BLOCK_N]
+-        col3 = tl.load(conv_states_ptrs, mask_w, 0.0)
++        col3 = tl.load(conv_states_ptrs, mask_w, 0.0).to(x_ptr.dtype.element_ty)
+ 
+     # STEP 2: assume state_len > seqlen
+     idx_tokens = tl.arange(0, NP2_STATELEN)  # [BLOCK_M]
+ 
+     # The conv_state updates works in a sliding window manner,
+     # at each forward pass, the tokens are shift by 1, so we
+     # load since idx_tokens + 1.
+     conv_state_ptrs_source = (
+         conv_state_ptr
+         + (conv_state_batch_coord * stride_conv_state_seq)

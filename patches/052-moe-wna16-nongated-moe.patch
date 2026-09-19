@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/quantization/moe_wna16.py b/python/sglang/srt/layers/quantization/moe_wna16.py
-index a7d87c6..b097195 100644
+index 711f361bbc..0518305132 100644
 --- a/python/sglang/srt/layers/quantization/moe_wna16.py
 +++ b/python/sglang/srt/layers/quantization/moe_wna16.py
-@@ -264,6 +264,13 @@ class MoeWNA16Method(FusedMoEMethodBase):
+@@ -263,6 +263,13 @@ class MoeWNA16Method(FusedMoEMethodBase):
          layer.group_size = group_size
          layer.group_size_div_factor = group_size_div_factor
  
@@ -16,7 +16,7 @@ index a7d87c6..b097195 100644
          strategy = FusedMoeWeightScaleSupported.GROUP.value
          extra_weight_attrs.update({"quant_method": strategy, "is_transposed": False})
  
-@@ -276,7 +283,7 @@ class MoeWNA16Method(FusedMoEMethodBase):
+@@ -275,7 +282,7 @@ class MoeWNA16Method(FusedMoEMethodBase):
          w13_qweight = torch.nn.Parameter(
              torch.empty(
                  num_experts,
@@ -25,7 +25,7 @@ index a7d87c6..b097195 100644
                  hidden_size // bit8_pack_factor,
                  dtype=torch.uint8,
              ),
-@@ -301,7 +308,7 @@ class MoeWNA16Method(FusedMoEMethodBase):
+@@ -300,7 +307,7 @@ class MoeWNA16Method(FusedMoEMethodBase):
          w13_scales = torch.nn.Parameter(
              torch.zeros(
                  num_experts,
@@ -34,7 +34,7 @@ index a7d87c6..b097195 100644
                  hidden_size // group_size,
                  dtype=params_dtype,
              ),
-@@ -326,7 +333,7 @@ class MoeWNA16Method(FusedMoEMethodBase):
+@@ -325,7 +332,7 @@ class MoeWNA16Method(FusedMoEMethodBase):
              w13_qzeros = torch.nn.Parameter(
                  torch.zeros(
                      num_experts,
@@ -43,24 +43,25 @@ index a7d87c6..b097195 100644
                      hidden_size // group_size,
                      dtype=torch.uint8,
                  ),
-@@ -386,9 +393,14 @@ class MoeWNA16Method(FusedMoEMethodBase):
+@@ -385,9 +392,14 @@ class MoeWNA16Method(FusedMoEMethodBase):
          layer: torch.nn.Module,
          dispatch_output: StandardDispatchOutput,
      ) -> CombineInput:
+-        assert self.moe_runner_config.activation == "silu", (
+-            "Only SiLU activation is supported."
+-        )
 +        # Gated MoE: SiLU (Qwen/Mixtral) + GeLU (Gemma 4 gelu_pytorch_tanh) are
 +        # wired here. Non-gated MoE (is_gated=False, e.g. NemotronH squared-ReLU)
 +        # lets the Triton MoE runner handle the activation (relu2) — added
 +        # upstream for non-gated archs.
-         assert (
--            self.moe_runner_config.activation == "silu"
--        ), "Only SiLU activation is supported."
++        assert (
 +            not self.moe_runner_config.is_gated
 +            or self.moe_runner_config.activation in ("silu", "gelu")
 +        ), "Only SiLU/GELU activation is supported for gated MoE."
  
          quant_info = self.get_triton_quant_info(layer)
          return self.runner.run(dispatch_output, quant_info)
-@@ -496,7 +508,10 @@ class MoeWNA16Method(FusedMoEMethodBase):
+@@ -495,7 +507,10 @@ class MoeWNA16Method(FusedMoEMethodBase):
                  tensor = loaded_weight.view(
                      layer.moe_tp_size, -1, loaded_weight.size(1)
                  )[tp_rank]
