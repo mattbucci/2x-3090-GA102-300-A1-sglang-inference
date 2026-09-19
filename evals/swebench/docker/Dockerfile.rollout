@@ -12,8 +12,10 @@
 #       --build-arg BASE=swebench/sweb.eval.x86_64.<instance>:latest \
 #       -f Dockerfile.rollout .
 #
-# The host SGLang server is reachable from inside the container via
-# `--network=host` (127.0.0.1:23334 maps to the host port). opencode.json
+# The host SGLang server is reachable from inside the container ONLY at
+# 127.0.0.1:23334: docker_rollout.py runs the container with `--network none`
+# and an in-container loopback bridge (net_bridge.py, bind-mounted at run
+# time) forwards that port over a unix socket to the host server. opencode.json
 # in this directory wires the `sglang/<preset>` model ids to that endpoint;
 # little-coder reads OPENAI_BASE_URL + OPENAI_API_KEY at the same target.
 

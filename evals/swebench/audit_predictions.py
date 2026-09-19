@@ -73,6 +73,9 @@ STDERR_PATTERNS = [
     (r"Internal Server Error", "server_500"),
     (r"Bad Gateway|Service Unavailable|Gateway Time-?out", "server_5xx"),
     (r"Read timed out", "client_timeout"),
+    # docker_rollout.py isolation prelude: the in-container loopback bridge
+    # could not reach the server (exit 97) — the scaffold never ran
+    (r"BRIDGE CHECK FAILED", "bridge"),
 ]
 ANYWHERE_PATTERNS = [
     (r"connect ECONN(REFUSED|RESET|ABORTED)", "connection_error"),

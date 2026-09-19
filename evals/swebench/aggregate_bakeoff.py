@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Aggregate bake-off scores into a per-model × per-scaffold resolved-rate
 table. Reads scores-docker-summary.json from every
-evals/swebench/runs/<preset>-<scaffold>-v2/ directory and writes:
+evals/swebench/runs/<preset>-<scaffold>-v<N>/ directory (highest N per cell) and writes:
 
   - `benchmarks/quality/bakeoff-<preset>-<scaffold>.json` — one tracked
     JSON per (preset, scaffold) cell. Matches the existing 1-file-per-
@@ -104,6 +104,24 @@ def scaffold_output_budget(run_dir: Path):
     return min(vals) if vals else None
 
 
+def rollout_network_mode(run_dir: Path):
+    """`network_mode` of the run's rollouts: "none" = isolated (docker_rollout.py
+    default since 2026-09-19), "host" = the scaffold could reach the internet
+    (every run before that date — 54 % of qwen38 opencode instances touched
+    upstream; audit_leakage.py). A run mixing both reports "host"; runs older
+    than the field report "host" too (that is what they ran with)."""
+    meta = run_dir / "meta.json"
+    if not meta.exists():
+        return "host"
+    try:
+        m = json.loads(meta.read_text())
+    except Exception:
+        return "host"
+    runs = m.get("runs") if isinstance(m, dict) else m
+    modes = {r.get("network_mode", "host") for r in (runs or []) if isinstance(r, dict)}
+    return "none" if modes == {"none"} else "host"
+
+
 def write_cell_json(preset: str, scaffold: str, run_dir: Path,
                     summary: dict, quality_dir: Path,
                     repo_root: Path) -> Path:
@@ -140,6 +158,7 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
         "harness_returncode": summary.get("harness_returncode"),
         "scaffold_context_window": scaffold_context_window(run_dir),
         "scaffold_output_budget": scaffold_output_budget(run_dir),
+        "rollout_network_mode": rollout_network_mode(run_dir),
         "run_dir": str(run_dir.relative_to(repo_root))
                    if str(run_dir).startswith(str(repo_root))
                    else str(run_dir),
@@ -159,16 +178,24 @@ def discover_runs(runs_dir: Path):
 
     # Built from SCAFFOLDS so a roster change cannot silently drop lanes at
     # Phase 6 (the hand-written 3-scaffold alternation would have skipped the
-    # 2026-08-31 lanes). `-v2$` anchoring disambiguates opencode vs
-    # opencode-dcp regardless of alternation order.
-    pat = re.compile(r"^(.*)-(" + "|".join(re.escape(sc) for sc in SCAFFOLDS) + r")-v2$")
+    # 2026-08-31 lanes). `-v<N>$` anchoring disambiguates opencode vs
+    # opencode-dcp regardless of alternation order. Only the highest version
+    # per (preset, scaffold) is a live cell: v3 (2026-09-19, network-isolated
+    # rollouts) supersedes v2 (--network=host, exposure-confounded) as each
+    # lane lands. Quarantined dirs (`-v2-ctx32k`, `-v2-netopen`, ...) do not
+    # match and never aggregate.
+    pat = re.compile(r"^(.*)-(" + "|".join(re.escape(sc) for sc in SCAFFOLDS) + r")-v(\d+)$")
+    latest: dict[tuple[str, str], tuple[int, Path]] = {}
     for d in sorted(runs_dir.iterdir()):
         if not d.is_dir():
             continue
         m = pat.match(d.name)
         if not m:
             continue
-        preset, scaffold = m.group(1), m.group(2)
+        key, ver = (m.group(1), m.group(2)), int(m.group(3))
+        if key not in latest or ver > latest[key][0]:
+            latest[key] = (ver, d)
+    for (preset, scaffold), (_ver, d) in sorted(latest.items()):
         summary_path = d / "scores-docker-summary.json"
         if summary_path.exists():
             try:

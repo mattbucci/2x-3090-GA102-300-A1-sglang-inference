@@ -12,9 +12,12 @@ Per-instance flow:
      Node + opencode + little-coder + ripgrep on top of the eval image
      (Dockerfile.rollout). claw-code lives in Dockerfile.rollout-claw
      because of its Rust build + Anthropic-proxy requirement.
-  3. Run a container with --network=host so the scaffold reaches the host
-     SGLang server at http://127.0.0.1:23334. Working directory is /testbed
-     (already cloned + conda-activated by the upstream eval image).
+  3. Run a container with --network none (default) — the only reachable
+     address is the SGLang server at 127.0.0.1:<port>, forwarded through
+     net_bridge.py over a bind-mounted unix socket; git refs are stripped to
+     HEAD first. Working directory is /testbed (already cloned +
+     conda-activated by the upstream eval image). `--network-mode host` is
+     the pre-2026-09-19 behaviour (exposure-confounded; study cells only).
   4. Exec the scaffold against the problem statement; capture the resulting
      `git diff` as the prediction patch.
   5. Append to predictions.jsonl in the v1 schema + a `rollout_scaffold`
@@ -105,6 +108,13 @@ def parse_args():
                    help="Skip instances that already have a prediction")
     p.add_argument("--max-empty-streak", type=int, default=10,
                    help="Abort after this many consecutive empty diffs")
+    p.add_argument("--network-mode", default="none", choices=("none", "host"),
+                   help="Rollout container network. `none` (default) = no network; the "
+                        "scaffold reaches the server through a loopback bridge over a "
+                        "bind-mounted unix socket (net_bridge.py) and release tags / "
+                        "non-HEAD refs are stripped from the work tree. `host` = the "
+                        "pre-2026-09-19 configuration (answer leakage: webfetch/curl "
+                        "reach GitHub) — exposure studies only.")
     p.add_argument("--keep-containers", action="store_true",
                    help="Don't `docker rm` after each instance (debug)")
     p.add_argument("--no-pull", action="store_true",
@@ -300,6 +310,132 @@ def _little_coder_profile_snippet(pkg_root: str, served_name: str, context_windo
         'console.error("context budget: little-coder model profile "+k+" "+JSON.stringify(mp[k]));'
     )
     return f"node -e '{js}'\n"
+
+
+# --- network isolation -------------------------------------------------------
+# 2026-09-19: with `--network=host` the scaffolds' web tools and bash network
+# reached the upstream fix — 54 % of qwen38 opencode instances exposed, 21 %
+# fetched their own PR diff (benchmarks/quality/swebench-leak-audit-qwen38-
+# netopen-2026-09-19.md; R9700 found 45–61 % on their lanes first). The
+# container now runs with no network; only 127.0.0.1:<server port> works,
+# through net_bridge.py over a unix socket the host half forwards to SGLang.
+BRIDGE_SOCK_IN_CONTAINER = "/run/swebench-bridge.sock"
+BRIDGE_SCRIPT_IN_CONTAINER = "/sandbox/net_bridge.py"
+# Every scaffold config in the image points at 127.0.0.1:23334 (opencode.json,
+# the pi models files, OPENAI_BASE_URL for prime/dcode). The container half of
+# the bridge always binds that port; the host half forwards to --server-url,
+# so the host may serve from any port (docker-mode SGLang, a capture server).
+CONTAINER_SERVER_PORT = 23334
+# the images' base python (modern, has asyncio unix sockets); the testbed env
+# may be python 3.5 on old django instances
+CONTAINER_PY = "/opt/miniconda3/bin/python3"
+_BRIDGE_PROC = None
+
+
+def start_host_bridge(server_url: str) -> Path:
+    """Host half of the bridge: unix socket -> server TCP. Lives for the run
+    (PDEATHSIG so a SIGKILLed lane does not leave a listener on a dead socket)."""
+    global _BRIDGE_PROC
+    import atexit
+    from urllib.parse import urlparse
+    u = urlparse(server_url)
+    port = u.port or 80
+    run_dir = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
+    if not run_dir.is_dir():
+        run_dir = Path("/tmp")
+    sock = run_dir / f"swebench-bridge-{os.getpid()}.sock"  # unix paths cap at ~107 bytes
+
+    def _die_with_parent():
+        try:
+            import ctypes
+            ctypes.CDLL("libc.so.6", use_errno=True).prctl(1, 15)  # PR_SET_PDEATHSIG, SIGTERM
+        except Exception:
+            pass
+
+    _BRIDGE_PROC = subprocess.Popen(
+        [sys.executable, str(Path(__file__).resolve().parent / "net_bridge.py"),
+         "host", str(sock), u.hostname or "127.0.0.1", str(port)],
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        preexec_fn=_die_with_parent,
+    )
+    for _ in range(50):
+        if sock.exists():
+            break
+        time.sleep(0.1)
+    if not sock.exists():
+        raise RuntimeError("network bridge socket did not appear (net_bridge.py host)")
+
+    def _stop():
+        if _BRIDGE_PROC and _BRIDGE_PROC.poll() is None:
+            _BRIDGE_PROC.kill()
+        try:
+            sock.unlink()
+        except FileNotFoundError:
+            pass
+    atexit.register(_stop)
+    return sock
+
+
+def network_docker_args(network_mode: str, bridge_sock: Path | None, sessions_dir: Path) -> list[str]:
+    """docker-run arguments for the chosen network mode plus the per-instance
+    session-store mount every mode gets (audit_leakage.py reads it)."""
+    args = ["--mount", f"type=bind,src={sessions_dir},dst=/sessions"]
+    if network_mode == "host":
+        return ["--network=host", *args]
+    here = Path(__file__).resolve().parent
+    return [
+        "--network", "none",
+        "--mount", f"type=bind,src={here / 'net_bridge.py'},dst={BRIDGE_SCRIPT_IN_CONTAINER},readonly",
+        "--mount", f"type=bind,src={bridge_sock},dst={BRIDGE_SOCK_IN_CONTAINER}",
+        *args,
+    ]
+
+
+def isolation_prelude(network_mode: str, port: int = CONTAINER_SERVER_PORT) -> str:
+    """Shell that runs before the scaffold: bring up the loopback bridge and
+    prove the server is reachable through it (exit 97 = infra, never a model
+    verdict), then strip release tags, non-HEAD branches and remotes so the
+    work tree carries no ref past the base commit. (The official sweb.eval
+    images were verified to hold no future ref and no unreachable object —
+    django/sympy, 2026-09-19 — the strip is belt-and-braces for tags whose
+    backport branches diverge from HEAD.)"""
+    strip = (
+        "cur=$(git -C /testbed symbolic-ref -q HEAD || true)\n"
+        "git -C /testbed tag -l | xargs -r git -C /testbed tag -d >/dev/null 2>&1 || true\n"
+        "git -C /testbed for-each-ref --format='%(refname)' refs/heads refs/remotes refs/stash 2>/dev/null "
+        "| grep -vx \"$cur\" | xargs -r -n1 git -C /testbed update-ref -d 2>/dev/null || true\n"
+        "git -C /testbed remote 2>/dev/null | xargs -r -n1 git -C /testbed remote remove 2>/dev/null || true\n"
+        "echo \"isolation: refs=$(git -C /testbed for-each-ref | wc -l) tags=$(git -C /testbed tag | wc -l)\" >&2\n"
+    )
+    if network_mode == "host":
+        return strip
+    py = f"$( [ -x {CONTAINER_PY} ] && echo {CONTAINER_PY} || command -v python3 )"
+    return (
+        f"BRIDGE_PY={py}\n"
+        f"\"$BRIDGE_PY\" {BRIDGE_SCRIPT_IN_CONTAINER} container {port} {BRIDGE_SOCK_IN_CONTAINER} &\n"
+        f"for i in $(seq 1 50); do \"$BRIDGE_PY\" -c \"import urllib.request,sys; "
+        f"urllib.request.urlopen('http://127.0.0.1:{port}/health', timeout=5)\" 2>/dev/null && break; sleep 0.2; done\n"
+        f"\"$BRIDGE_PY\" -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:{port}/health', timeout=10)\" "
+        f"|| {{ echo 'BRIDGE CHECK FAILED: server not reachable through the loopback bridge' >&2; exit 97; }}\n"
+        f"echo \"isolation: network=none bridge=127.0.0.1:{port}\" >&2\n"
+    ) + strip
+
+
+# Session stores every scaffold keeps under $HOME; copied to the bind-mounted
+# /sessions before the diff so audit_leakage.py can read the transcript after
+# the container is gone (the per-instance log only carries stdout — full tool
+# events for opencode, the final text for the others).
+SESSION_SNAPSHOT = (
+    # Transcript stores only — opencode's snapshot/ (a git object store of the
+    # work tree per session) and bin/ log/ are skipped on purpose.
+    "snap() { [ -e \"$HOME/$1\" ] || return 0; mkdir -p \"/sessions/$(dirname \"$1\")\" && cp -a \"$HOME/$1\" \"/sessions/$1\" 2>/dev/null || true; }\n"
+    "for f in \"$HOME\"/.local/share/opencode/opencode.db*; do [ -e \"$f\" ] && snap \".local/share/opencode/$(basename \"$f\")\"; done\n"
+    "snap .local/share/opencode/storage\n"
+    "snap .pi/agent/sessions\n"
+    "snap .prime/agent/sessions\n"
+    "snap .deepagents/.state\n"
+    "snap .local/share/rtk/history.db\n"
+)
 
 
 def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
@@ -650,7 +786,7 @@ After cleanup, stop. Don't run pytest, don't edit any code.
 """
 
 
-def run_in_container(image_tag: str, instance_id: str, prompt: str, model: str,
+def run_in_container(image_tag: str, instance_id: str, prompt: str, model: str,  # unused since the scaffold table; kept for ad-hoc probes — NO isolation
                      timeout: int, log_path: Path, *, keep: bool = False) -> tuple[int, str, str]:
     """Run opencode inside the rollout container; return (rc, stdout, stderr).
 
@@ -835,6 +971,17 @@ def main():
     out = Path(args.out)
     (out / "predictions").mkdir(parents=True, exist_ok=True)
     (out / "logs").mkdir(parents=True, exist_ok=True)
+    (out / "sessions").mkdir(parents=True, exist_ok=True)
+
+    # Network isolation (see the section comment above network_docker_args).
+    bridge_sock = None
+    if args.network_mode == "none":
+        bridge_sock = start_host_bridge(args.server_url)
+        print(f"Isolation: containers run --network none; in-container 127.0.0.1:{CONTAINER_SERVER_PORT} "
+              f"-> {bridge_sock} -> {args.server_url}", flush=True)
+    else:
+        print("Isolation: OFF (--network-mode host) — scaffolds can reach the internet; "
+              "cells rolled this way are exposure-confounded", flush=True)
 
     # meta.json declares scaffold + model + run dates so future tooling can
     # group predictions.jsonl files by scaffold without inferring from the
@@ -866,6 +1013,12 @@ def main():
         "serve_image": os.environ.get("SWEBENCH_SERVE_IMAGE"),
         "serve_image_id": os.environ.get("SWEBENCH_SERVE_IMAGE_ID"),
         "api_auth": api_auth_enabled(),
+        # answer-leakage controls (2026-09-19): no container network beyond the
+        # loopback bridge to the server, git refs stripped to HEAD, per-instance
+        # session-store snapshot under sessions/<iid> for audit_leakage.py
+        "network_mode": args.network_mode,
+        "git_refs_stripped": True,
+        "session_snapshot": True,
     })
     meta["scaffold"] = args.scaffold
     meta["model"] = args.model
@@ -917,18 +1070,26 @@ def main():
                     context_window=ctx,
                 )
                 container_name = f"swebench-rollout-{iid}-{int(time.time())}"
+                sessions_dir = out / "sessions" / iid
+                sessions_dir.mkdir(parents=True, exist_ok=True)
+                inner = (
+                    ACTIVATE_TESTBED
+                    + isolation_prelude(args.network_mode)
+                    + inner_with_diff.replace("echo === DIFF ===",
+                                              SESSION_SNAPSHOT + "echo === DIFF ===", 1)
+                )
                 cmd = [
                     "docker", "run",
                     *([] if args.keep_containers else ["--rm"]),
                     "--name", container_name,
-                    "--network=host",
+                    *network_docker_args(args.network_mode, bridge_sock, sessions_dir),
                     "--env", f"PROMPT={prompt}",
                     "--env", f"CLEANUP_PROMPT={CLEANUP_PROMPT}",
                     "--env", "HOME=/root",
                     *scaffold_envs,
                     "--workdir", "/testbed",
                     image_tag,
-                    "bash", "-lc", ACTIVATE_TESTBED + inner_with_diff,
+                    "bash", "-lc", inner,
                 ]
                 log_path = out / "logs" / f"{iid}.log"
                 proc = subprocess.Popen(
