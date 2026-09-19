@@ -3,14 +3,15 @@
 #
 # Sequence (Rule 2 enforced: no rollout + score concurrent):
 #   0. Scaffold request audit (scaffold_request_audit.py: max thinking + output caps on the wire)
-#   1a. /v1/responses function-call probe on the live server when a dcode lane is queued
 #   1. Launch SGLang server for $PRESET (serve_backend.sh: bare metal, or the
 #      repo's OCI image when SERVE_MODE=docker / serve_mode.conf says docker)
-#   2. Wait /health=200 (max 12 min)
+#   2. Wait /health=200 (max 12 min); when a dcode lane is queued, prove one
+#      /v1/responses function_call round-trip first (probe_responses_api.py)
 #   3. For each scaffold in {opencode, opencode-dcp, little-coder, little-coder-rtk, prime, dcode}: full 300-inst rollout
 #   4. Stop server
 #   5. Audit each scaffold's predictions for infrastructure failures
 #   6. If any infra failures: relaunch server, reroll just those instances, stop server
+#   6b. Leak gate (audit_leakage.py --require-isolation): an exposed or unproven cell is never scored
 #   7. Score each scaffold
 #   8. Regenerate cell JSONs via aggregate_bakeoff.py
 #   9. Print summary
@@ -260,6 +261,26 @@ if [ "${#NEED_RESCORE_AFTER_REROLL[@]}" -gt 0 ]; then
   done
   stop_server
 fi
+
+# --- Phase 4.5: leak gate — a cell is scored only if no instance reached the
+# answer (audit_leakage.py: 0 web UPSTREAM/SEARCH calls that did not fail) and
+# every instance log carries both isolation proofs (network none + bridge,
+# refs stripped). A failure here is a harness defect, never a model result:
+# stop the cycle with the receipt at <cell>/leak-audit.json; the predictions
+# stay and a relaunch --skip-existing resumes once the cause is fixed.
+for SCAFFOLD in "${NEED_RESCORE[@]}"; do
+  OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-${RUN_TAG}"
+  log "leak audit $SCAFFOLD"
+  python "$REPO_DIR/evals/swebench/audit_leakage.py" --run "$OUT" --require-isolation \
+    > "$LOG_DIR/leak-audit-$SCAFFOLD.log" 2>&1
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    log "ERROR: leak audit FAILED for $SCAFFOLD (rc=$rc) — cell NOT scored; see $LOG_DIR/leak-audit-$SCAFFOLD.log"
+    head -3 "$LOG_DIR/leak-audit-$SCAFFOLD.log"
+    exit 1
+  fi
+  log "leak audit $SCAFFOLD: $(head -1 "$LOG_DIR/leak-audit-$SCAFFOLD.log" | sed 's/^[^:]*: //')"
+done
 
 # --- Phase 5: score each scaffold (Rule 2: server already stopped) ---
 for SCAFFOLD in "${NEED_RESCORE[@]}"; do
