@@ -6,7 +6,7 @@
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$SCRIPT_DIR/../.." && pwd)"
-GG="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
+GG="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
 run() { # preset ratio exp
   echo "[b1b $(date +%H:%M:%S)] ===== $1 graphs-ON ====="
   (

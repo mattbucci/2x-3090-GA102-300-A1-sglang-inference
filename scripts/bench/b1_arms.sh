@@ -26,6 +26,6 @@ run_arm() { # name extra_sweep_args gemma_graph mem
 }
 ARMS="${ARMS:-N G GT}"
 case " $ARMS " in *" N "*)  run_arm N  "--attention-backend torch_native" "" "" ;; esac
-case " $ARMS " in *" G "*)  run_arm G  "--attention-backend torch_native" "--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph" "0.78" ;; esac
-case " $ARMS " in *" GT "*) run_arm GT ""                                 "--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph" "0.78" ;; esac
+case " $ARMS " in *" G "*)  run_arm G  "--attention-backend torch_native" "--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled" "0.78" ;; esac
+case " $ARMS " in *" GT "*) run_arm GT ""                                 "--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled" "0.78" ;; esac
 echo "[b1-arms $(date +%H:%M:%S)] all arms done"

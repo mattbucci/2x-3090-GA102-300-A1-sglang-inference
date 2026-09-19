@@ -104,7 +104,7 @@ apply_preset() {
             #   = ~15.5 GB/card, MEM=0.85 budget is 20.4 GB → ~5 GB headroom.
             # To serve shorter, override with CTX=131072 (env).
             CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=8192  # MEM 0.85->0.90 (A4): 172K->202K KV, gate 3/3 + tooluse 1.0@132K true
-            CUDA_GRAPH="--cuda-graph-max-bs 1"
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1"
             CHAT_TEMPLATE="${DEVSTRAL_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/devstral2_chat_template.jinja}"
             WARMUP="--skip-server-warmup"
             # 2026-05-31: --sampling-defaults model. The model's recommended
@@ -133,7 +133,7 @@ apply_preset() {
             # Source: hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ (CT format).
             # Conversion: scripts/quantize/convert_moe_ct_to_awq.py --group-size 128.
             #
-            # 2026-05-07: bake --disable-piecewise-cuda-graph. Capability sweep
+            # 2026-05-07: bake --cuda-graph-backend-prefill disabled. Capability sweep
             # found the awq_marlin MoE inference path on TP=1 with piecewise
             # CUDA graph capture takes >>120s for a 20-token completion (GPU
             # at 100% util but throughput collapses to ~1 tok/s from a normal
@@ -157,8 +157,8 @@ apply_preset() {
             # half the weight bytes so headroom is comfortable). Override for
             # short-ctx batch benchmarks via `CTX=16384 MAX_RUNNING=32 ./launch.sh coder-30b`.
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
-            CUDA_GRAPH="--cuda-graph-max-bs 1"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --cuda-graph-backend-prefill disabled --tool-call-parser qwen3_coder"
             # SPEC_DECODE opt-in: EAGLE3 spec-decode (validated 2026-05-29:
             # 1.65x decode, 185.5 -> 306.0 tok/s, accept_len 4.12 on the wider
             # ladder). MEM 0.85 -> 0.70 to fit draft + cuda graphs at TP=2 on
@@ -191,8 +191,8 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ}"
             QUANT="compressed-tensors"
             CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
-            CUDA_GRAPH="--cuda-graph-max-bs 1"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --cuda-graph-backend-prefill disabled --tool-call-parser qwen3_coder"
             ;;
         coder-reap-25b|coder-reap-30b)
             # 2026-05-14: SWAPPED from Cerebras pre-pruned 25B-AWQ to R9700's
@@ -209,8 +209,8 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ}"
             QUANT="awq_marlin"
             CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
-            CUDA_GRAPH="--cuda-graph-max-bs 1"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --cuda-graph-backend-prefill disabled --tool-call-parser qwen3_coder"
             ;;
         coder-30b-ream)
             # Qwen3-Coder-30B-A3B-REAM-AWQ — Samsung SAIL REAM merge of the
@@ -221,12 +221,12 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-REAM-AWQ}"
             QUANT="awq_marlin"
             CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
-            CUDA_GRAPH="--cuda-graph-max-bs 1"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen3_coder"
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --cuda-graph-backend-prefill disabled --tool-call-parser qwen3_coder"
             ;;
         gemma4)
             # Env hooks shared by all gemma presets (default off/graphs-on):
-            #   _ENV_GEMMA_GRAPH="--cuda-graph-backend-decode disabled --disable-piecewise-cuda-graph"
+            #   _ENV_GEMMA_GRAPH="--cuda-graph-backend-decode disabled --cuda-graph-backend-prefill disabled"
             #     — serve graphs-off (eager) e.g. for the decode-topk pre-check.
             #   _ENV_GEMMA_TOPK="--decode-topk-pages 256 --decode-topk-page-size 64"
             #     — patch 059 sparse-KV decode: 2.03x @262K on gemma4-31b, opt-in
@@ -265,7 +265,7 @@ apply_preset() {
             # bytes) so 256K fits comfortably on 2x24GB.
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096  # graphs capture fine at 0.85 with the full 652K pool (B1 G receipt)
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs 1 --disable-piecewise-cuda-graph} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625"
             ;;
         gemma4-21b-reap)
             # Gemma 4 21B REAP AWQ — Cerebras-style expert prune of the 26B
@@ -295,7 +295,7 @@ apply_preset() {
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs 1 --disable-piecewise-cuda-graph} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625"
             ;;
         gemma4-31b)
             # Gemma 4 31B Dense AWQ — in-house BF16->GPTQ->AWQ rebuild
@@ -331,7 +331,7 @@ apply_preset() {
             # leaves the prior turn unclosed → runaway to max_tokens=8192 → empty diff.
             # Override with GEMMA4_31B_CHAT_TEMPLATE="--chat-template <file>".
             CHAT_TEMPLATE="${GEMMA4_31B_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/gemma4_chat_template.jinja}"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs 1 --disable-piecewise-cuda-graph} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.05"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.05"
             ;;
         gemma4-12b)
             # Gemma 4 12B unified omni (Gemma4UnifiedForConditionalGeneration) —
@@ -373,7 +373,7 @@ apply_preset() {
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs 1 --disable-piecewise-cuda-graph} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625"
             ;;
         qwen3-vl-32b)
             # Qwen3-VL-32B-Instruct AWQ — 20 GB weights (11 shards). The prior
@@ -419,7 +419,7 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --tool-call-parser qwen3_coder"
-            CUDA_GRAPH="--disable-cuda-graph --disable-piecewise-cuda-graph"
+            CUDA_GRAPH="--disable-cuda-graph --cuda-graph-backend-prefill disabled"
             ;;
         qwen36-dense|qwen36-27b)
             # Qwen3.6-27B Dense AWQ. Canonical preset name is qwen36-dense
@@ -509,7 +509,7 @@ apply_preset() {
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
-            CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen35-dense)
@@ -551,11 +551,11 @@ apply_preset() {
             # 2026-06-07: CUDA graph ENABLED — same stale-disable fix as the
             # qwen36 family (DeltaNet+MoE hybrid; ~4x single-user 256K decode,
             # 5/5 capabilities under graph replay). bs=1 capture, piecewise off.
-            CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen3-ream)
-            # 2026-05-07: bake --disable-piecewise-cuda-graph for TP=1 cold-fit.
+            # 2026-05-07: bake --cuda-graph-backend-prefill disabled for TP=1 cold-fit.
             # Same awq_marlin MoE + piecewise CUDA graph regression as coder-30b
             # (TP=1 inference collapses to ~1 tok/s with piecewise enabled).
             # When TP=2 returns this can be revisited — the original preset
@@ -571,7 +571,7 @@ apply_preset() {
             # without it SGLang generic defaults apply and agentic sessions fall into
             # the int4 degenerate-repeat trap (116x identical glob calls, 2026-07-17) —
             # same anti-repetition lever the thinking presets carry.
-            EXTRA_ARGS="${EXTRA_ARGS:-} --disable-piecewise-cuda-graph --tool-call-parser qwen25 --sampling-defaults model"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --cuda-graph-backend-prefill disabled --tool-call-parser qwen25 --sampling-defaults model"
             ;;
         qwen36)
             # Qwen3.6-35B-A3B (thinking + vision): 256-expert hybrid DeltaNet
@@ -616,7 +616,7 @@ apply_preset() {
             # MoE-marlin TP regression qwen3-ream documents). MEM 0.85 -> 0.80
             # for graph+warmup headroom — the 0.85 config died at the final init
             # step with avail 2.9 GB (KV pool still ~900K >> 262K at 0.80).
-            CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
             # 2026-05-13: bakeoff p13 ran qwen36 x claw at 1/300 = 0.3%. Forensics
             # (286/300 .claw-only diffs) showed the model emits valid
             # <function=NAME><parameter=...>VAL</parameter></function> tool tags
@@ -661,7 +661,7 @@ apply_preset() {
             # 2026-06-07: CUDA graph ENABLED — same stale-disable fix as qwen36
             # (Qwen3.6 DeltaNet+MoE captures cleanly @ v0.5.12/Ampere TP=2, 5/5
             # capabilities under graph replay, ~4x single-user 256K decode).
-            CUDA_GRAPH="--cuda-graph-max-bs 1 --disable-piecewise-cuda-graph"
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         nemotron3-omni)
@@ -903,7 +903,12 @@ fi
 # ~3 GB left beside a 256K KV pool on 24 GB cards -> CUDA OOM at boot. Pin it
 # off fleet-wide: single-user decode is the target and prefill graphs are a
 # batch-prefill lever. PIECEWISE_GRAPH=1 re-enables for experiments.
-[[ "${PIECEWISE_GRAPH:-0}" != "1" ]] && CMD+=(--disable-piecewise-cuda-graph)
+# Spelling: v0.5.20 retired the deprecated aliases --disable-piecewise-cuda-graph
+# and --cuda-graph-max-bs (argparse now reports the latter as ambiguous with
+# --cuda-graph-max-bs-{decode,prefill}); the canonical --cuda-graph-backend-prefill
+# disabled / --cuda-graph-max-bs-decode N parse to the identical namespace on
+# v0.5.18 (verified for all 21 presets), so the rename is stack-neutral.
+[[ "${PIECEWISE_GRAPH:-0}" != "1" ]] && CMD+=(--cuda-graph-backend-prefill disabled)
 [[ -n "$CUDA_GRAPH" ]] && CMD+=($CUDA_GRAPH)
 # EXTRA_ARGS lets callers append/override flags (e.g. --disable-cuda-graph,
 # --enable-multimodal) without editing the script. Honor it from env.
