@@ -1,0 +1,4565 @@
+{
+ "lane": "evals/swebench/runs/qwen38-opencode-dcp-v2",
+ "control": "evals/swebench/runs/qwen38-opencode-v2",
+ "kind": "dcp",
+ "same_id_n": 298,
+ "lane_summary": {
+  "n": 298,
+  "patched": 278,
+  "empty": 0,
+  "timeout": 20,
+  "no_prediction": 0,
+  "other_rc": 0,
+  "median_elapsed_s": 736.5,
+  "p90_elapsed_s": 1529.5
+ },
+ "control_summary": {
+  "n": 298,
+  "patched": 272,
+  "empty": 2,
+  "timeout": 24,
+  "no_prediction": 0,
+  "other_rc": 0,
+  "median_elapsed_s": 672.6,
+  "p90_elapsed_s": 1640.6
+ },
+ "agreement": {
+  "both_patched": 258,
+  "control_only": 14,
+  "neither": 6,
+  "lane_only": 20
+ },
+ "engagement": {
+  "kind": "dcp",
+  "observed": 298,
+  "snapshots": 222,
+  "engaged": 65,
+  "engagement_rate": 0.218,
+  "pruned_tokens_median": 43961,
+  "pruned_tokens_total": 3054293
+ },
+ "split_by_engagement": {
+  "engaged": {
+   "n": 65,
+   "patched": 54,
+   "empty": 0,
+   "timeout": 11,
+   "no_prediction": 0,
+   "other_rc": 0,
+   "median_elapsed_s": 1279.6,
+   "p90_elapsed_s": 1973.8
+  },
+  "not_engaged": {
+   "n": 233,
+   "patched": 224,
+   "empty": 0,
+   "timeout": 9,
+   "no_prediction": 0,
+   "other_rc": 0,
+   "median_elapsed_s": 664.0,
+   "p90_elapsed_s": 1222.4
+  },
+  "control_on_engaged_ids": {
+   "n": 65,
+   "patched": 58,
+   "empty": 0,
+   "timeout": 7,
+   "no_prediction": 0,
+   "other_rc": 0,
+   "median_elapsed_s": 817.9,
+   "p90_elapsed_s": 1889.5
+  }
+ },
+ "lane_all": {
+  "n": 299,
+  "patched": 279,
+  "empty": 0,
+  "timeout": 20,
+  "no_prediction": 0,
+  "other_rc": 0,
+  "median_elapsed_s": 737.9,
+  "p90_elapsed_s": 1529.5
+ },
+ "control_all": {
+  "n": 299,
+  "patched": 273,
+  "empty": 2,
+  "timeout": 24,
+  "no_prediction": 0,
+  "other_rc": 0,
+  "median_elapsed_s": 670.3,
+  "p90_elapsed_s": 1640.6
+ },
+ "per_instance": {
+  "astropy__astropy-12907": {
+   "lane": {
+    "elapsed": 346.8,
+    "rc": 0,
+    "patch_bytes": 504,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 772.1,
+    "rc": 0,
+    "patch_bytes": 504,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "astropy__astropy-14182": {
+   "lane": {
+    "elapsed": 887.9,
+    "rc": 0,
+    "patch_bytes": 2222,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 818.6,
+    "rc": 0,
+    "patch_bytes": 1683,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "astropy__astropy-14365": {
+   "lane": {
+    "elapsed": 362.4,
+    "rc": 0,
+    "patch_bytes": 734,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 432.8,
+    "rc": 0,
+    "patch_bytes": 989,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "astropy__astropy-14995": {
+   "lane": {
+    "elapsed": 357.1,
+    "rc": 0,
+    "patch_bytes": 712,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 439.8,
+    "rc": 0,
+    "patch_bytes": 850,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "astropy__astropy-6938": {
+   "lane": {
+    "elapsed": 673.0,
+    "rc": 0,
+    "patch_bytes": 626,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 789.1,
+    "rc": 0,
+    "patch_bytes": 491,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "astropy__astropy-7746": {
+   "lane": {
+    "elapsed": 1121.9,
+    "rc": 0,
+    "patch_bytes": 7094,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 559.0,
+    "rc": 0,
+    "patch_bytes": 1275,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-10914": {
+   "lane": {
+    "elapsed": 1464.1,
+    "rc": 0,
+    "patch_bytes": 3026,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 666.0,
+    "rc": 0,
+    "patch_bytes": 3026,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-10924": {
+   "lane": {
+    "elapsed": 774.7,
+    "rc": 0,
+    "patch_bytes": 622,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 463.0,
+    "rc": 0,
+    "patch_bytes": 1976,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11001": {
+   "lane": {
+    "elapsed": 1356.9,
+    "rc": 0,
+    "patch_bytes": 543,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 554.8,
+    "rc": 0,
+    "patch_bytes": 624,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-11019": {
+   "lane": {
+    "elapsed": 1972.9,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 1889.5,
+    "rc": 0,
+    "patch_bytes": 6346,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-11039": {
+   "lane": {
+    "elapsed": 561.5,
+    "rc": 0,
+    "patch_bytes": 854,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 442.3,
+    "rc": 0,
+    "patch_bytes": 821,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11049": {
+   "lane": {
+    "elapsed": 549.1,
+    "rc": 0,
+    "patch_bytes": 566,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 583.0,
+    "rc": 0,
+    "patch_bytes": 566,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-11099": {
+   "lane": {
+    "elapsed": 326.2,
+    "rc": 0,
+    "patch_bytes": 901,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 329.6,
+    "rc": 0,
+    "patch_bytes": 901,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11133": {
+   "lane": {
+    "elapsed": 531.6,
+    "rc": 0,
+    "patch_bytes": 3289,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 519.5,
+    "rc": 0,
+    "patch_bytes": 612,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11179": {
+   "lane": {
+    "elapsed": 415.2,
+    "rc": 0,
+    "patch_bytes": 768,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 640.3,
+    "rc": 0,
+    "patch_bytes": 614,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11283": {
+   "lane": {
+    "elapsed": 1074.2,
+    "rc": 0,
+    "patch_bytes": 2396,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 856.2,
+    "rc": 0,
+    "patch_bytes": 3104,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11422": {
+   "lane": {
+    "elapsed": 637.9,
+    "rc": 0,
+    "patch_bytes": 1644,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 461.8,
+    "rc": 0,
+    "patch_bytes": 1133,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-11564": {
+   "lane": {
+    "elapsed": 1970.0,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 1952.5,
+    "rc": 0,
+    "patch_bytes": 3829,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11583": {
+   "lane": {
+    "elapsed": 739.6,
+    "rc": 0,
+    "patch_bytes": 1182,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 694.9,
+    "rc": 0,
+    "patch_bytes": 1182,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11620": {
+   "lane": {
+    "elapsed": 1358.5,
+    "rc": 0,
+    "patch_bytes": 773,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 982.0,
+    "rc": 0,
+    "patch_bytes": 955,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-11630": {
+   "lane": {
+    "elapsed": 626.0,
+    "rc": 0,
+    "patch_bytes": 3144,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 936.4,
+    "rc": 0,
+    "patch_bytes": 3144,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11742": {
+   "lane": {
+    "elapsed": 556.1,
+    "rc": 0,
+    "patch_bytes": 2596,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 876.6,
+    "rc": 0,
+    "patch_bytes": 2596,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11797": {
+   "lane": {
+    "elapsed": 1222.4,
+    "rc": 0,
+    "patch_bytes": 825,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 953.5,
+    "rc": 0,
+    "patch_bytes": 905,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11815": {
+   "lane": {
+    "elapsed": 579.1,
+    "rc": 0,
+    "patch_bytes": 761,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 692.6,
+    "rc": 0,
+    "patch_bytes": 792,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11848": {
+   "lane": {
+    "elapsed": 1075.7,
+    "rc": 0,
+    "patch_bytes": 905,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1062.8,
+    "rc": 0,
+    "patch_bytes": 1168,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11905": {
+   "lane": {
+    "elapsed": 753.1,
+    "rc": 0,
+    "patch_bytes": 703,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 507.1,
+    "rc": 0,
+    "patch_bytes": 703,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11910": {
+   "lane": {
+    "elapsed": 1974.3,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 1971.2,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": true
+  },
+  "django__django-11964": {
+   "lane": {
+    "elapsed": 790.9,
+    "rc": 0,
+    "patch_bytes": 612,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 926.2,
+    "rc": 0,
+    "patch_bytes": 612,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-11999": {
+   "lane": {
+    "elapsed": 898.5,
+    "rc": 0,
+    "patch_bytes": 963,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 598.6,
+    "rc": 0,
+    "patch_bytes": 724,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-12113": {
+   "lane": {
+    "elapsed": 1425.9,
+    "rc": 0,
+    "patch_bytes": 525,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 828.8,
+    "rc": 0,
+    "patch_bytes": 1123,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-12125": {
+   "lane": {
+    "elapsed": 712.1,
+    "rc": 0,
+    "patch_bytes": 599,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 899.0,
+    "rc": 0,
+    "patch_bytes": 599,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-12184": {
+   "lane": {
+    "elapsed": 947.6,
+    "rc": 0,
+    "patch_bytes": 733,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 666.6,
+    "rc": 0,
+    "patch_bytes": 733,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-12284": {
+   "lane": {
+    "elapsed": 935.8,
+    "rc": 0,
+    "patch_bytes": 659,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 429.0,
+    "rc": 0,
+    "patch_bytes": 659,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-12286": {
+   "lane": {
+    "elapsed": 426.8,
+    "rc": 0,
+    "patch_bytes": 762,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 720.3,
+    "rc": 0,
+    "patch_bytes": 955,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-12308": {
+   "lane": {
+    "elapsed": 769.5,
+    "rc": 0,
+    "patch_bytes": 720,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1270.6,
+    "rc": 0,
+    "patch_bytes": 765,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-12453": {
+   "lane": {
+    "elapsed": 770.6,
+    "rc": 0,
+    "patch_bytes": 1570,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1979.2,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "django__django-12470": {
+   "lane": {
+    "elapsed": 1437.0,
+    "rc": 0,
+    "patch_bytes": 1093,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1441.4,
+    "rc": 0,
+    "patch_bytes": 898,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-12497": {
+   "lane": {
+    "elapsed": 581.6,
+    "rc": 0,
+    "patch_bytes": 1393,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 476.7,
+    "rc": 0,
+    "patch_bytes": 1393,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-12589": {
+   "lane": {
+    "elapsed": 960.7,
+    "rc": 0,
+    "patch_bytes": 2100,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 928.0,
+    "rc": 0,
+    "patch_bytes": 1563,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-12700": {
+   "lane": {
+    "elapsed": 504.9,
+    "rc": 0,
+    "patch_bytes": 707,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 576.9,
+    "rc": 0,
+    "patch_bytes": 707,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-12708": {
+   "lane": {
+    "elapsed": 1529.5,
+    "rc": 0,
+    "patch_bytes": 839,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 851.9,
+    "rc": 0,
+    "patch_bytes": 787,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-12747": {
+   "lane": {
+    "elapsed": 786.3,
+    "rc": 0,
+    "patch_bytes": 1070,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 583.9,
+    "rc": 0,
+    "patch_bytes": 1070,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-12856": {
+   "lane": {
+    "elapsed": 795.6,
+    "rc": 0,
+    "patch_bytes": 630,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 626.6,
+    "rc": 0,
+    "patch_bytes": 2350,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-12908": {
+   "lane": {
+    "elapsed": 433.8,
+    "rc": 0,
+    "patch_bytes": 514,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 494.9,
+    "rc": 0,
+    "patch_bytes": 514,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-12915": {
+   "lane": {
+    "elapsed": 583.8,
+    "rc": 0,
+    "patch_bytes": 933,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 577.7,
+    "rc": 0,
+    "patch_bytes": 981,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-12983": {
+   "lane": {
+    "elapsed": 667.2,
+    "rc": 0,
+    "patch_bytes": 1088,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 624.9,
+    "rc": 0,
+    "patch_bytes": 1452,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13028": {
+   "lane": {
+    "elapsed": 554.3,
+    "rc": 0,
+    "patch_bytes": 665,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 690.4,
+    "rc": 0,
+    "patch_bytes": 705,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13033": {
+   "lane": {
+    "elapsed": 486.9,
+    "rc": 0,
+    "patch_bytes": 885,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 854.2,
+    "rc": 0,
+    "patch_bytes": 885,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13158": {
+   "lane": {
+    "elapsed": 854.4,
+    "rc": 0,
+    "patch_bytes": 972,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1049.0,
+    "rc": 0,
+    "patch_bytes": 667,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13220": {
+   "lane": {
+    "elapsed": 768.2,
+    "rc": 0,
+    "patch_bytes": 1729,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1095.4,
+    "rc": 0,
+    "patch_bytes": 1875,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13230": {
+   "lane": {
+    "elapsed": 1186.3,
+    "rc": 0,
+    "patch_bytes": 3735,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 536.2,
+    "rc": 0,
+    "patch_bytes": 2179,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-13265": {
+   "lane": {
+    "elapsed": 1190.3,
+    "rc": 0,
+    "patch_bytes": 2394,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1170.6,
+    "rc": 0,
+    "patch_bytes": 2458,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13315": {
+   "lane": {
+    "elapsed": 997.4,
+    "rc": 0,
+    "patch_bytes": 1222,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 817.9,
+    "rc": 0,
+    "patch_bytes": 1222,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-13321": {
+   "lane": {
+    "elapsed": 533.4,
+    "rc": 0,
+    "patch_bytes": 1005,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 458.5,
+    "rc": 0,
+    "patch_bytes": 720,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13401": {
+   "lane": {
+    "elapsed": 1079.2,
+    "rc": 0,
+    "patch_bytes": 2644,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1209.3,
+    "rc": 0,
+    "patch_bytes": 2644,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13447": {
+   "lane": {
+    "elapsed": 500.2,
+    "rc": 0,
+    "patch_bytes": 1940,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 670.3,
+    "rc": 0,
+    "patch_bytes": 1940,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13448": {
+   "lane": {
+    "elapsed": 1763.8,
+    "rc": 0,
+    "patch_bytes": 1408,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1963.1,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "django__django-13551": {
+   "lane": {
+    "elapsed": 527.3,
+    "rc": 0,
+    "patch_bytes": 1549,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 780.4,
+    "rc": 0,
+    "patch_bytes": 1977,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13590": {
+   "lane": {
+    "elapsed": 426.5,
+    "rc": 0,
+    "patch_bytes": 677,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 638.3,
+    "rc": 0,
+    "patch_bytes": 825,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13658": {
+   "lane": {
+    "elapsed": 335.0,
+    "rc": 0,
+    "patch_bytes": 896,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 591.6,
+    "rc": 0,
+    "patch_bytes": 896,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13660": {
+   "lane": {
+    "elapsed": 735.2,
+    "rc": 0,
+    "patch_bytes": 931,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 501.3,
+    "rc": 0,
+    "patch_bytes": 1582,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13710": {
+   "lane": {
+    "elapsed": 700.9,
+    "rc": 0,
+    "patch_bytes": 2550,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1450.4,
+    "rc": 0,
+    "patch_bytes": 946,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13757": {
+   "lane": {
+    "elapsed": 813.5,
+    "rc": 0,
+    "patch_bytes": 1082,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 480.9,
+    "rc": 0,
+    "patch_bytes": 1457,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13768": {
+   "lane": {
+    "elapsed": 958.0,
+    "rc": 0,
+    "patch_bytes": 1372,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 741.6,
+    "rc": 0,
+    "patch_bytes": 1043,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-13925": {
+   "lane": {
+    "elapsed": 921.0,
+    "rc": 0,
+    "patch_bytes": 674,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 790.9,
+    "rc": 0,
+    "patch_bytes": 674,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-13933": {
+   "lane": {
+    "elapsed": 585.1,
+    "rc": 0,
+    "patch_bytes": 1271,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 561.1,
+    "rc": 0,
+    "patch_bytes": 1271,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14016": {
+   "lane": {
+    "elapsed": 613.3,
+    "rc": 0,
+    "patch_bytes": 1044,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 452.6,
+    "rc": 0,
+    "patch_bytes": 1044,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14017": {
+   "lane": {
+    "elapsed": 1053.5,
+    "rc": 0,
+    "patch_bytes": 610,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 800.2,
+    "rc": 0,
+    "patch_bytes": 1269,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14155": {
+   "lane": {
+    "elapsed": 903.1,
+    "rc": 0,
+    "patch_bytes": 760,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 440.4,
+    "rc": 0,
+    "patch_bytes": 976,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14238": {
+   "lane": {
+    "elapsed": 650.0,
+    "rc": 0,
+    "patch_bytes": 691,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 631.2,
+    "rc": 0,
+    "patch_bytes": 651,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14382": {
+   "lane": {
+    "elapsed": 396.7,
+    "rc": 0,
+    "patch_bytes": 708,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 289.7,
+    "rc": 0,
+    "patch_bytes": 849,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14411": {
+   "lane": {
+    "elapsed": 1485.3,
+    "rc": 0,
+    "patch_bytes": 456,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 457.4,
+    "rc": 0,
+    "patch_bytes": 537,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-14534": {
+   "lane": {
+    "elapsed": 721.1,
+    "rc": 0,
+    "patch_bytes": 694,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 412.7,
+    "rc": 0,
+    "patch_bytes": 446,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14580": {
+   "lane": {
+    "elapsed": 492.6,
+    "rc": 0,
+    "patch_bytes": 599,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 355.4,
+    "rc": 0,
+    "patch_bytes": 599,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14608": {
+   "lane": {
+    "elapsed": 909.9,
+    "rc": 0,
+    "patch_bytes": 2256,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 899.5,
+    "rc": 0,
+    "patch_bytes": 2733,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14667": {
+   "lane": {
+    "elapsed": 533.2,
+    "rc": 0,
+    "patch_bytes": 869,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1967.6,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "django__django-14672": {
+   "lane": {
+    "elapsed": 539.9,
+    "rc": 0,
+    "patch_bytes": 512,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 453.4,
+    "rc": 0,
+    "patch_bytes": 512,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14730": {
+   "lane": {
+    "elapsed": 881.0,
+    "rc": 0,
+    "patch_bytes": 1264,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 976.5,
+    "rc": 0,
+    "patch_bytes": 1264,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14752": {
+   "lane": {
+    "elapsed": 275.5,
+    "rc": 0,
+    "patch_bytes": 984,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 506.3,
+    "rc": 0,
+    "patch_bytes": 1502,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14787": {
+   "lane": {
+    "elapsed": 622.8,
+    "rc": 0,
+    "patch_bytes": 725,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 610.2,
+    "rc": 0,
+    "patch_bytes": 725,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14855": {
+   "lane": {
+    "elapsed": 1154.5,
+    "rc": 0,
+    "patch_bytes": 698,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 681.3,
+    "rc": 0,
+    "patch_bytes": 697,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14915": {
+   "lane": {
+    "elapsed": 279.5,
+    "rc": 0,
+    "patch_bytes": 402,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 244.1,
+    "rc": 0,
+    "patch_bytes": 447,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14997": {
+   "lane": {
+    "elapsed": 1109.5,
+    "rc": 0,
+    "patch_bytes": 626,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1640.6,
+    "rc": 0,
+    "patch_bytes": 613,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-14999": {
+   "lane": {
+    "elapsed": 896.7,
+    "rc": 0,
+    "patch_bytes": 1220,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 833.3,
+    "rc": 0,
+    "patch_bytes": 1220,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15061": {
+   "lane": {
+    "elapsed": 579.5,
+    "rc": 0,
+    "patch_bytes": 422,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 462.7,
+    "rc": 0,
+    "patch_bytes": 528,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15202": {
+   "lane": {
+    "elapsed": 884.7,
+    "rc": 0,
+    "patch_bytes": 2092,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1028.8,
+    "rc": 0,
+    "patch_bytes": 2092,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15213": {
+   "lane": {
+    "elapsed": 1411.1,
+    "rc": 0,
+    "patch_bytes": 855,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1064.8,
+    "rc": 0,
+    "patch_bytes": 855,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-15252": {
+   "lane": {
+    "elapsed": 835.5,
+    "rc": 0,
+    "patch_bytes": 830,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 733.9,
+    "rc": 0,
+    "patch_bytes": 830,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15320": {
+   "lane": {
+    "elapsed": 572.2,
+    "rc": 0,
+    "patch_bytes": 621,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1057.7,
+    "rc": 0,
+    "patch_bytes": 621,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15347": {
+   "lane": {
+    "elapsed": 315.2,
+    "rc": 0,
+    "patch_bytes": 711,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 396.0,
+    "rc": 0,
+    "patch_bytes": 711,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15388": {
+   "lane": {
+    "elapsed": 1237.7,
+    "rc": 0,
+    "patch_bytes": 556,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 792.4,
+    "rc": 0,
+    "patch_bytes": 556,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-15400": {
+   "lane": {
+    "elapsed": 749.6,
+    "rc": 0,
+    "patch_bytes": 779,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 703.6,
+    "rc": 0,
+    "patch_bytes": 779,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-15498": {
+   "lane": {
+    "elapsed": 521.4,
+    "rc": 0,
+    "patch_bytes": 675,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 395.4,
+    "rc": 0,
+    "patch_bytes": 570,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15695": {
+   "lane": {
+    "elapsed": 592.6,
+    "rc": 0,
+    "patch_bytes": 781,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 721.2,
+    "rc": 0,
+    "patch_bytes": 731,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15738": {
+   "lane": {
+    "elapsed": 784.7,
+    "rc": 0,
+    "patch_bytes": 855,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1413.8,
+    "rc": 0,
+    "patch_bytes": 855,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15781": {
+   "lane": {
+    "elapsed": 503.5,
+    "rc": 0,
+    "patch_bytes": 814,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 533.9,
+    "rc": 0,
+    "patch_bytes": 814,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15789": {
+   "lane": {
+    "elapsed": 911.1,
+    "rc": 0,
+    "patch_bytes": 2554,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 492.9,
+    "rc": 0,
+    "patch_bytes": 2615,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-15790": {
+   "lane": {
+    "elapsed": 638.6,
+    "rc": 0,
+    "patch_bytes": 1407,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 457.8,
+    "rc": 0,
+    "patch_bytes": 1407,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15814": {
+   "lane": {
+    "elapsed": 922.0,
+    "rc": 0,
+    "patch_bytes": 627,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1967.7,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "django__django-15819": {
+   "lane": {
+    "elapsed": 547.7,
+    "rc": 0,
+    "patch_bytes": 1817,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 605.5,
+    "rc": 0,
+    "patch_bytes": 1817,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-15851": {
+   "lane": {
+    "elapsed": 269.7,
+    "rc": 0,
+    "patch_bytes": 530,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 336.0,
+    "rc": 0,
+    "patch_bytes": 530,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15902": {
+   "lane": {
+    "elapsed": 704.1,
+    "rc": 0,
+    "patch_bytes": 497,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1011.8,
+    "rc": 0,
+    "patch_bytes": 497,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-15996": {
+   "lane": {
+    "elapsed": 611.7,
+    "rc": 0,
+    "patch_bytes": 2670,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 916.7,
+    "rc": 0,
+    "patch_bytes": 1385,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-16041": {
+   "lane": {
+    "elapsed": 687.9,
+    "rc": 0,
+    "patch_bytes": 904,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 346.9,
+    "rc": 0,
+    "patch_bytes": 904,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-16046": {
+   "lane": {
+    "elapsed": 582.0,
+    "rc": 0,
+    "patch_bytes": 454,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 777.4,
+    "rc": 0,
+    "patch_bytes": 561,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-16139": {
+   "lane": {
+    "elapsed": 788.2,
+    "rc": 0,
+    "patch_bytes": 735,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 959.8,
+    "rc": 0,
+    "patch_bytes": 735,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-16229": {
+   "lane": {
+    "elapsed": 1006.2,
+    "rc": 0,
+    "patch_bytes": 902,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1973.3,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "django__django-16255": {
+   "lane": {
+    "elapsed": 266.1,
+    "rc": 0,
+    "patch_bytes": 623,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 467.2,
+    "rc": 0,
+    "patch_bytes": 623,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-16379": {
+   "lane": {
+    "elapsed": 286.7,
+    "rc": 0,
+    "patch_bytes": 629,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 385.4,
+    "rc": 0,
+    "patch_bytes": 629,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-16400": {
+   "lane": {
+    "elapsed": 1338.8,
+    "rc": 0,
+    "patch_bytes": 990,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1360.7,
+    "rc": 0,
+    "patch_bytes": 988,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-16408": {
+   "lane": {
+    "elapsed": 685.6,
+    "rc": 0,
+    "patch_bytes": 1150,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1037.2,
+    "rc": 0,
+    "patch_bytes": 1083,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-16527": {
+   "lane": {
+    "elapsed": 328.8,
+    "rc": 0,
+    "patch_bytes": 549,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1969.8,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "django__django-16595": {
+   "lane": {
+    "elapsed": 582.5,
+    "rc": 0,
+    "patch_bytes": 747,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 416.1,
+    "rc": 0,
+    "patch_bytes": 702,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-16816": {
+   "lane": {
+    "elapsed": 1657.8,
+    "rc": 0,
+    "patch_bytes": 821,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1970.0,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "django__django-16820": {
+   "lane": {
+    "elapsed": 1855.6,
+    "rc": 0,
+    "patch_bytes": 3102,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 856.7,
+    "rc": 0,
+    "patch_bytes": 4354,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-16873": {
+   "lane": {
+    "elapsed": 510.3,
+    "rc": 0,
+    "patch_bytes": 592,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 363.2,
+    "rc": 0,
+    "patch_bytes": 592,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-16910": {
+   "lane": {
+    "elapsed": 1442.9,
+    "rc": 0,
+    "patch_bytes": 1251,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 990.8,
+    "rc": 0,
+    "patch_bytes": 1569,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "django__django-17051": {
+   "lane": {
+    "elapsed": 621.6,
+    "rc": 0,
+    "patch_bytes": 2471,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 562.2,
+    "rc": 0,
+    "patch_bytes": 2469,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "django__django-17087": {
+   "lane": {
+    "elapsed": 533.2,
+    "rc": 0,
+    "patch_bytes": 684,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 268.8,
+    "rc": 0,
+    "patch_bytes": 616,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-18869": {
+   "lane": {
+    "elapsed": 1007.2,
+    "rc": 0,
+    "patch_bytes": 3301,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 456.4,
+    "rc": 0,
+    "patch_bytes": 3302,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-22711": {
+   "lane": {
+    "elapsed": 713.3,
+    "rc": 0,
+    "patch_bytes": 1097,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1022.4,
+    "rc": 0,
+    "patch_bytes": 4044,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-22835": {
+   "lane": {
+    "elapsed": 678.1,
+    "rc": 0,
+    "patch_bytes": 1661,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 517.0,
+    "rc": 0,
+    "patch_bytes": 1661,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "matplotlib__matplotlib-23299": {
+   "lane": {
+    "elapsed": 1756.6,
+    "rc": 0,
+    "patch_bytes": 1739,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 924.7,
+    "rc": 0,
+    "patch_bytes": 682,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "matplotlib__matplotlib-23314": {
+   "lane": {
+    "elapsed": 780.5,
+    "rc": 0,
+    "patch_bytes": 873,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 739.6,
+    "rc": 0,
+    "patch_bytes": 872,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-23476": {
+   "lane": {
+    "elapsed": 721.6,
+    "rc": 0,
+    "patch_bytes": 658,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 482.5,
+    "rc": 0,
+    "patch_bytes": 557,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-23562": {
+   "lane": {
+    "elapsed": 1345.6,
+    "rc": 0,
+    "patch_bytes": 897,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 875.8,
+    "rc": 0,
+    "patch_bytes": 897,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "matplotlib__matplotlib-23563": {
+   "lane": {
+    "elapsed": 1178.6,
+    "rc": 0,
+    "patch_bytes": 541,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 912.1,
+    "rc": 0,
+    "patch_bytes": 541,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-23913": {
+   "lane": {
+    "elapsed": 443.6,
+    "rc": 0,
+    "patch_bytes": 1216,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 396.5,
+    "rc": 0,
+    "patch_bytes": 1216,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-23964": {
+   "lane": {
+    "elapsed": 273.6,
+    "rc": 0,
+    "patch_bytes": 545,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 344.0,
+    "rc": 0,
+    "patch_bytes": 533,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-23987": {
+   "lane": {
+    "elapsed": 770.2,
+    "rc": 0,
+    "patch_bytes": 829,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 452.7,
+    "rc": 0,
+    "patch_bytes": 672,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-24149": {
+   "lane": {
+    "elapsed": 341.2,
+    "rc": 0,
+    "patch_bytes": 990,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 415.2,
+    "rc": 0,
+    "patch_bytes": 990,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-24265": {
+   "lane": {
+    "elapsed": 552.4,
+    "rc": 0,
+    "patch_bytes": 3535,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 486.8,
+    "rc": 0,
+    "patch_bytes": 3535,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-24334": {
+   "lane": {
+    "elapsed": 452.1,
+    "rc": 0,
+    "patch_bytes": 630,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 425.0,
+    "rc": 0,
+    "patch_bytes": 630,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-24970": {
+   "lane": {
+    "elapsed": 751.8,
+    "rc": 0,
+    "patch_bytes": 1602,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 455.3,
+    "rc": 0,
+    "patch_bytes": 1602,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-25079": {
+   "lane": {
+    "elapsed": 1016.1,
+    "rc": 0,
+    "patch_bytes": 734,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1976.5,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": true
+  },
+  "matplotlib__matplotlib-25311": {
+   "lane": {
+    "elapsed": 1226.1,
+    "rc": 0,
+    "patch_bytes": 906,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1903.0,
+    "rc": 0,
+    "patch_bytes": 1509,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-25332": {
+   "lane": {
+    "elapsed": 821.6,
+    "rc": 0,
+    "patch_bytes": 860,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 896.7,
+    "rc": 0,
+    "patch_bytes": 860,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "matplotlib__matplotlib-25433": {
+   "lane": {
+    "elapsed": 1482.9,
+    "rc": 0,
+    "patch_bytes": 449,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1974.4,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": true
+  },
+  "matplotlib__matplotlib-25442": {
+   "lane": {
+    "elapsed": 1531.4,
+    "rc": 0,
+    "patch_bytes": 2507,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1669.9,
+    "rc": 0,
+    "patch_bytes": 2507,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "matplotlib__matplotlib-25498": {
+   "lane": {
+    "elapsed": 1233.5,
+    "rc": 0,
+    "patch_bytes": 1091,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1235.2,
+    "rc": 0,
+    "patch_bytes": 1091,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "matplotlib__matplotlib-26011": {
+   "lane": {
+    "elapsed": 2192.4,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 1981.4,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": true
+  },
+  "matplotlib__matplotlib-26020": {
+   "lane": {
+    "elapsed": 538.3,
+    "rc": 0,
+    "patch_bytes": 4656,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 511.4,
+    "rc": 0,
+    "patch_bytes": 1208,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "mwaskom__seaborn-2848": {
+   "lane": {
+    "elapsed": 803.0,
+    "rc": 0,
+    "patch_bytes": 801,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 891.1,
+    "rc": 0,
+    "patch_bytes": 556,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "mwaskom__seaborn-3010": {
+   "lane": {
+    "elapsed": 1278.4,
+    "rc": 0,
+    "patch_bytes": 465,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 385.3,
+    "rc": 0,
+    "patch_bytes": 436,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "mwaskom__seaborn-3190": {
+   "lane": {
+    "elapsed": 967.4,
+    "rc": 0,
+    "patch_bytes": 28347,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1975.5,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "mwaskom__seaborn-3407": {
+   "lane": {
+    "elapsed": 1417.4,
+    "rc": 0,
+    "patch_bytes": 601,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 324.0,
+    "rc": 0,
+    "patch_bytes": 501,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pallets__flask-4045": {
+   "lane": {
+    "elapsed": 712.4,
+    "rc": 0,
+    "patch_bytes": 2041,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 740.5,
+    "rc": 0,
+    "patch_bytes": 2041,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "pallets__flask-4992": {
+   "lane": {
+    "elapsed": 598.8,
+    "rc": 0,
+    "patch_bytes": 2165,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 492.2,
+    "rc": 0,
+    "patch_bytes": 2165,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "pallets__flask-5063": {
+   "lane": {
+    "elapsed": 559.7,
+    "rc": 0,
+    "patch_bytes": 3957,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 564.4,
+    "rc": 0,
+    "patch_bytes": 3957,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "psf__requests-1963": {
+   "lane": {
+    "elapsed": 814.0,
+    "rc": 0,
+    "patch_bytes": 565,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1144.9,
+    "rc": 0,
+    "patch_bytes": 726,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "psf__requests-2148": {
+   "lane": {
+    "elapsed": 447.4,
+    "rc": 0,
+    "patch_bytes": 1204,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 453.9,
+    "rc": 0,
+    "patch_bytes": 1204,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "psf__requests-2317": {
+   "lane": {
+    "elapsed": 1976.2,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 223.8,
+    "rc": 0,
+    "patch_bytes": 0,
+    "outcome": "empty"
+   },
+   "engaged": false
+  },
+  "psf__requests-2674": {
+   "lane": {
+    "elapsed": 846.9,
+    "rc": 0,
+    "patch_bytes": 915,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 635.0,
+    "rc": 0,
+    "patch_bytes": 915,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "psf__requests-3362": {
+   "lane": {
+    "elapsed": 1184.6,
+    "rc": 0,
+    "patch_bytes": 1044,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 641.6,
+    "rc": 0,
+    "patch_bytes": 1044,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "psf__requests-863": {
+   "lane": {
+    "elapsed": 822.4,
+    "rc": 0,
+    "patch_bytes": 615,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 835.4,
+    "rc": 0,
+    "patch_bytes": 503,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pydata__xarray-3364": {
+   "lane": {
+    "elapsed": 689.1,
+    "rc": 0,
+    "patch_bytes": 850,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 932.3,
+    "rc": 0,
+    "patch_bytes": 850,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pydata__xarray-4094": {
+   "lane": {
+    "elapsed": 548.4,
+    "rc": 0,
+    "patch_bytes": 551,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 658.3,
+    "rc": 0,
+    "patch_bytes": 551,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pydata__xarray-4248": {
+   "lane": {
+    "elapsed": 1072.0,
+    "rc": 0,
+    "patch_bytes": 2579,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1139.8,
+    "rc": 0,
+    "patch_bytes": 2579,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pydata__xarray-4493": {
+   "lane": {
+    "elapsed": 725.8,
+    "rc": 0,
+    "patch_bytes": 2153,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 561.3,
+    "rc": 0,
+    "patch_bytes": 522,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "pydata__xarray-5131": {
+   "lane": {
+    "elapsed": 327.5,
+    "rc": 0,
+    "patch_bytes": 571,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 275.7,
+    "rc": 0,
+    "patch_bytes": 571,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pylint-dev__pylint-5859": {
+   "lane": {
+    "elapsed": 652.3,
+    "rc": 0,
+    "patch_bytes": 654,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 600.6,
+    "rc": 0,
+    "patch_bytes": 664,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pylint-dev__pylint-6506": {
+   "lane": {
+    "elapsed": 650.7,
+    "rc": 0,
+    "patch_bytes": 715,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 545.9,
+    "rc": 0,
+    "patch_bytes": 715,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pylint-dev__pylint-7080": {
+   "lane": {
+    "elapsed": 1130.7,
+    "rc": 0,
+    "patch_bytes": 979,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 657.4,
+    "rc": 0,
+    "patch_bytes": 979,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "pylint-dev__pylint-7114": {
+   "lane": {
+    "elapsed": 1861.1,
+    "rc": 0,
+    "patch_bytes": 1606,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1470.5,
+    "rc": 0,
+    "patch_bytes": 1307,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pylint-dev__pylint-7228": {
+   "lane": {
+    "elapsed": 584.3,
+    "rc": 0,
+    "patch_bytes": 1621,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 650.6,
+    "rc": 0,
+    "patch_bytes": 1343,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pylint-dev__pylint-7993": {
+   "lane": {
+    "elapsed": 588.6,
+    "rc": 0,
+    "patch_bytes": 584,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 940.9,
+    "rc": 0,
+    "patch_bytes": 584,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-11143": {
+   "lane": {
+    "elapsed": 1382.6,
+    "rc": 0,
+    "patch_bytes": 557,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 278.4,
+    "rc": 0,
+    "patch_bytes": 557,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "pytest-dev__pytest-11148": {
+   "lane": {
+    "elapsed": 1969.2,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 1252.5,
+    "rc": 0,
+    "patch_bytes": 882,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "pytest-dev__pytest-5103": {
+   "lane": {
+    "elapsed": 1972.1,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 1966.3,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": true
+  },
+  "pytest-dev__pytest-5221": {
+   "lane": {
+    "elapsed": 905.6,
+    "rc": 0,
+    "patch_bytes": 1296,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1466.2,
+    "rc": 0,
+    "patch_bytes": 1293,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-5227": {
+   "lane": {
+    "elapsed": 1121.2,
+    "rc": 0,
+    "patch_bytes": 512,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 661.8,
+    "rc": 0,
+    "patch_bytes": 1434,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-5413": {
+   "lane": {
+    "elapsed": 608.4,
+    "rc": 0,
+    "patch_bytes": 611,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 641.2,
+    "rc": 0,
+    "patch_bytes": 611,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-5495": {
+   "lane": {
+    "elapsed": 1165.3,
+    "rc": 0,
+    "patch_bytes": 404,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1202.2,
+    "rc": 0,
+    "patch_bytes": 474,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-5692": {
+   "lane": {
+    "elapsed": 617.6,
+    "rc": 0,
+    "patch_bytes": 1016,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 401.9,
+    "rc": 0,
+    "patch_bytes": 767,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-6116": {
+   "lane": {
+    "elapsed": 395.0,
+    "rc": 0,
+    "patch_bytes": 378,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 742.4,
+    "rc": 0,
+    "patch_bytes": 378,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-7168": {
+   "lane": {
+    "elapsed": 712.2,
+    "rc": 0,
+    "patch_bytes": 546,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 332.3,
+    "rc": 0,
+    "patch_bytes": 546,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-7220": {
+   "lane": {
+    "elapsed": 1239.1,
+    "rc": 0,
+    "patch_bytes": 1224,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1394.3,
+    "rc": 0,
+    "patch_bytes": 2716,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-7373": {
+   "lane": {
+    "elapsed": 485.6,
+    "rc": 0,
+    "patch_bytes": 1699,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 571.8,
+    "rc": 0,
+    "patch_bytes": 1534,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-7432": {
+   "lane": {
+    "elapsed": 894.4,
+    "rc": 0,
+    "patch_bytes": 1826,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 515.4,
+    "rc": 0,
+    "patch_bytes": 488,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-8365": {
+   "lane": {
+    "elapsed": 508.0,
+    "rc": 0,
+    "patch_bytes": 1156,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 437.3,
+    "rc": 0,
+    "patch_bytes": 872,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-8906": {
+   "lane": {
+    "elapsed": 472.7,
+    "rc": 0,
+    "patch_bytes": 1314,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 594.4,
+    "rc": 0,
+    "patch_bytes": 1314,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "pytest-dev__pytest-9359": {
+   "lane": {
+    "elapsed": 1969.0,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 1146.3,
+    "rc": 0,
+    "patch_bytes": 941,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-10297": {
+   "lane": {
+    "elapsed": 688.0,
+    "rc": 0,
+    "patch_bytes": 1551,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 625.1,
+    "rc": 0,
+    "patch_bytes": 4594,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-10508": {
+   "lane": {
+    "elapsed": 768.7,
+    "rc": 0,
+    "patch_bytes": 1008,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1001.6,
+    "rc": 0,
+    "patch_bytes": 902,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-10949": {
+   "lane": {
+    "elapsed": 1160.2,
+    "rc": 0,
+    "patch_bytes": 1238,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1177.6,
+    "rc": 0,
+    "patch_bytes": 1562,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-11040": {
+   "lane": {
+    "elapsed": 463.2,
+    "rc": 0,
+    "patch_bytes": 1302,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 524.2,
+    "rc": 0,
+    "patch_bytes": 1302,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-11281": {
+   "lane": {
+    "elapsed": 1107.2,
+    "rc": 0,
+    "patch_bytes": 2991,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1012.3,
+    "rc": 0,
+    "patch_bytes": 2991,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-12471": {
+   "lane": {
+    "elapsed": 1076.3,
+    "rc": 0,
+    "patch_bytes": 1061,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 985.1,
+    "rc": 0,
+    "patch_bytes": 1652,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-13142": {
+   "lane": {
+    "elapsed": 362.6,
+    "rc": 0,
+    "patch_bytes": 1255,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 307.3,
+    "rc": 0,
+    "patch_bytes": 1253,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-13241": {
+   "lane": {
+    "elapsed": 774.1,
+    "rc": 0,
+    "patch_bytes": 2150,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 802.4,
+    "rc": 0,
+    "patch_bytes": 2149,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-13439": {
+   "lane": {
+    "elapsed": 263.3,
+    "rc": 0,
+    "patch_bytes": 463,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 236.9,
+    "rc": 0,
+    "patch_bytes": 463,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-13496": {
+   "lane": {
+    "elapsed": 959.0,
+    "rc": 0,
+    "patch_bytes": 3136,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 466.5,
+    "rc": 0,
+    "patch_bytes": 1311,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-13497": {
+   "lane": {
+    "elapsed": 598.9,
+    "rc": 0,
+    "patch_bytes": 1617,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 440.7,
+    "rc": 0,
+    "patch_bytes": 641,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-13584": {
+   "lane": {
+    "elapsed": 549.5,
+    "rc": 0,
+    "patch_bytes": 601,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 413.7,
+    "rc": 0,
+    "patch_bytes": 601,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-13779": {
+   "lane": {
+    "elapsed": 372.5,
+    "rc": 0,
+    "patch_bytes": 699,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 381.7,
+    "rc": 0,
+    "patch_bytes": 611,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-14087": {
+   "lane": {
+    "elapsed": 717.1,
+    "rc": 0,
+    "patch_bytes": 1468,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 656.5,
+    "rc": 0,
+    "patch_bytes": 1468,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-14092": {
+   "lane": {
+    "elapsed": 713.7,
+    "rc": 0,
+    "patch_bytes": 1539,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 536.6,
+    "rc": 0,
+    "patch_bytes": 1539,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-14894": {
+   "lane": {
+    "elapsed": 600.7,
+    "rc": 0,
+    "patch_bytes": 1073,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 975.0,
+    "rc": 0,
+    "patch_bytes": 1609,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-14983": {
+   "lane": {
+    "elapsed": 545.3,
+    "rc": 0,
+    "patch_bytes": 950,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 476.0,
+    "rc": 0,
+    "patch_bytes": 950,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-15512": {
+   "lane": {
+    "elapsed": 584.6,
+    "rc": 0,
+    "patch_bytes": 1416,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1981.0,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-15535": {
+   "lane": {
+    "elapsed": 501.0,
+    "rc": 0,
+    "patch_bytes": 690,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 453.1,
+    "rc": 0,
+    "patch_bytes": 690,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-25500": {
+   "lane": {
+    "elapsed": 1283.9,
+    "rc": 0,
+    "patch_bytes": 952,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 413.4,
+    "rc": 0,
+    "patch_bytes": 2365,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-25570": {
+   "lane": {
+    "elapsed": 1973.3,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 917.6,
+    "rc": 0,
+    "patch_bytes": 2422,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-25638": {
+   "lane": {
+    "elapsed": 1976.1,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 776.6,
+    "rc": 0,
+    "patch_bytes": 2679,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "scikit-learn__scikit-learn-25747": {
+   "lane": {
+    "elapsed": 767.1,
+    "rc": 0,
+    "patch_bytes": 1301,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 506.6,
+    "rc": 0,
+    "patch_bytes": 1301,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sphinx-doc__sphinx-10325": {
+   "lane": {
+    "elapsed": 1267.3,
+    "rc": 0,
+    "patch_bytes": 4021,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 535.7,
+    "rc": 0,
+    "patch_bytes": 1462,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sphinx-doc__sphinx-10451": {
+   "lane": {
+    "elapsed": 1973.8,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 1601.9,
+    "rc": 0,
+    "patch_bytes": 1648,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sphinx-doc__sphinx-11445": {
+   "lane": {
+    "elapsed": 1146.4,
+    "rc": 0,
+    "patch_bytes": 1284,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 576.1,
+    "rc": 0,
+    "patch_bytes": 1354,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sphinx-doc__sphinx-7686": {
+   "lane": {
+    "elapsed": 1269.0,
+    "rc": 0,
+    "patch_bytes": 3559,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1116.6,
+    "rc": 0,
+    "patch_bytes": 3559,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sphinx-doc__sphinx-7738": {
+   "lane": {
+    "elapsed": 891.0,
+    "rc": 0,
+    "patch_bytes": 1080,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 564.6,
+    "rc": 0,
+    "patch_bytes": 550,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sphinx-doc__sphinx-7975": {
+   "lane": {
+    "elapsed": 1529.8,
+    "rc": 0,
+    "patch_bytes": 1672,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1118.7,
+    "rc": 0,
+    "patch_bytes": 625,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sphinx-doc__sphinx-8273": {
+   "lane": {
+    "elapsed": 680.2,
+    "rc": 0,
+    "patch_bytes": 2360,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 686.3,
+    "rc": 0,
+    "patch_bytes": 2360,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sphinx-doc__sphinx-8282": {
+   "lane": {
+    "elapsed": 831.4,
+    "rc": 0,
+    "patch_bytes": 2005,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 783.8,
+    "rc": 0,
+    "patch_bytes": 2496,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sphinx-doc__sphinx-8435": {
+   "lane": {
+    "elapsed": 1229.7,
+    "rc": 0,
+    "patch_bytes": 1765,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1006.7,
+    "rc": 0,
+    "patch_bytes": 1765,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sphinx-doc__sphinx-8474": {
+   "lane": {
+    "elapsed": 1974.4,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 603.6,
+    "rc": 0,
+    "patch_bytes": 657,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sphinx-doc__sphinx-8506": {
+   "lane": {
+    "elapsed": 530.5,
+    "rc": 0,
+    "patch_bytes": 970,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 678.0,
+    "rc": 0,
+    "patch_bytes": 1378,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sphinx-doc__sphinx-8595": {
+   "lane": {
+    "elapsed": 326.6,
+    "rc": 0,
+    "patch_bytes": 638,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 416.5,
+    "rc": 0,
+    "patch_bytes": 992,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sphinx-doc__sphinx-8627": {
+   "lane": {
+    "elapsed": 797.7,
+    "rc": 0,
+    "patch_bytes": 1647,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 546.3,
+    "rc": 0,
+    "patch_bytes": 0,
+    "outcome": "empty"
+   },
+   "engaged": false
+  },
+  "sphinx-doc__sphinx-8713": {
+   "lane": {
+    "elapsed": 427.8,
+    "rc": 0,
+    "patch_bytes": 1057,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 368.0,
+    "rc": 0,
+    "patch_bytes": 952,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sphinx-doc__sphinx-8721": {
+   "lane": {
+    "elapsed": 1168.0,
+    "rc": 0,
+    "patch_bytes": 1118,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 549.0,
+    "rc": 0,
+    "patch_bytes": 1001,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sphinx-doc__sphinx-8801": {
+   "lane": {
+    "elapsed": 567.8,
+    "rc": 0,
+    "patch_bytes": 2171,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1882.9,
+    "rc": 0,
+    "patch_bytes": 1059,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-11400": {
+   "lane": {
+    "elapsed": 574.1,
+    "rc": 0,
+    "patch_bytes": 631,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 782.2,
+    "rc": 0,
+    "patch_bytes": 932,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-11870": {
+   "lane": {
+    "elapsed": 757.5,
+    "rc": 0,
+    "patch_bytes": 1284,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1969.6,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-11897": {
+   "lane": {
+    "elapsed": 932.0,
+    "rc": 0,
+    "patch_bytes": 698,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 677.2,
+    "rc": 0,
+    "patch_bytes": 698,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-12171": {
+   "lane": {
+    "elapsed": 664.8,
+    "rc": 0,
+    "patch_bytes": 588,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 895.4,
+    "rc": 0,
+    "patch_bytes": 551,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-12236": {
+   "lane": {
+    "elapsed": 1982.1,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 1985.5,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-12419": {
+   "lane": {
+    "elapsed": 552.2,
+    "rc": 0,
+    "patch_bytes": 732,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 692.0,
+    "rc": 0,
+    "patch_bytes": 490,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-12454": {
+   "lane": {
+    "elapsed": 486.8,
+    "rc": 0,
+    "patch_bytes": 808,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 687.3,
+    "rc": 0,
+    "patch_bytes": 808,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-12481": {
+   "lane": {
+    "elapsed": 595.6,
+    "rc": 0,
+    "patch_bytes": 926,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 486.3,
+    "rc": 0,
+    "patch_bytes": 794,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-13031": {
+   "lane": {
+    "elapsed": 761.3,
+    "rc": 0,
+    "patch_bytes": 1081,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1973.8,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-13043": {
+   "lane": {
+    "elapsed": 664.0,
+    "rc": 0,
+    "patch_bytes": 1152,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1077.3,
+    "rc": 0,
+    "patch_bytes": 1152,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-13146": {
+   "lane": {
+    "elapsed": 1977.1,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 1633.8,
+    "rc": 0,
+    "patch_bytes": 936,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-13177": {
+   "lane": {
+    "elapsed": 399.8,
+    "rc": 0,
+    "patch_bytes": 585,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 770.1,
+    "rc": 0,
+    "patch_bytes": 585,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-13437": {
+   "lane": {
+    "elapsed": 352.7,
+    "rc": 0,
+    "patch_bytes": 547,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 497.1,
+    "rc": 0,
+    "patch_bytes": 545,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-13471": {
+   "lane": {
+    "elapsed": 950.4,
+    "rc": 0,
+    "patch_bytes": 781,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 395.5,
+    "rc": 0,
+    "patch_bytes": 781,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-13480": {
+   "lane": {
+    "elapsed": 377.4,
+    "rc": 0,
+    "patch_bytes": 590,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 335.0,
+    "rc": 0,
+    "patch_bytes": 590,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-13647": {
+   "lane": {
+    "elapsed": 439.4,
+    "rc": 0,
+    "patch_bytes": 529,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 436.3,
+    "rc": 0,
+    "patch_bytes": 529,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-13773": {
+   "lane": {
+    "elapsed": 1414.5,
+    "rc": 0,
+    "patch_bytes": 916,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 597.5,
+    "rc": 0,
+    "patch_bytes": 916,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-13895": {
+   "lane": {
+    "elapsed": 1979.2,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 1980.0,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-13915": {
+   "lane": {
+    "elapsed": 1974.4,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 786.9,
+    "rc": 0,
+    "patch_bytes": 682,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-13971": {
+   "lane": {
+    "elapsed": 763.7,
+    "rc": 0,
+    "patch_bytes": 519,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 425.0,
+    "rc": 0,
+    "patch_bytes": 519,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-14024": {
+   "lane": {
+    "elapsed": 1978.5,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 1625.3,
+    "rc": 0,
+    "patch_bytes": 1144,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-14308": {
+   "lane": {
+    "elapsed": 1422.4,
+    "rc": 0,
+    "patch_bytes": 3119,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1073.0,
+    "rc": 0,
+    "patch_bytes": 3119,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-14317": {
+   "lane": {
+    "elapsed": 549.4,
+    "rc": 0,
+    "patch_bytes": 1858,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 796.4,
+    "rc": 0,
+    "patch_bytes": 1858,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-14396": {
+   "lane": {
+    "elapsed": 524.1,
+    "rc": 0,
+    "patch_bytes": 1202,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 413.5,
+    "rc": 0,
+    "patch_bytes": 1202,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-14774": {
+   "lane": {
+    "elapsed": 342.9,
+    "rc": 0,
+    "patch_bytes": 586,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 330.4,
+    "rc": 0,
+    "patch_bytes": 586,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-14817": {
+   "lane": {
+    "elapsed": 750.7,
+    "rc": 0,
+    "patch_bytes": 607,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 573.8,
+    "rc": 0,
+    "patch_bytes": 620,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-15011": {
+   "lane": {
+    "elapsed": 601.2,
+    "rc": 0,
+    "patch_bytes": 1814,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1111.2,
+    "rc": 0,
+    "patch_bytes": 1510,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-15308": {
+   "lane": {
+    "elapsed": 564.1,
+    "rc": 0,
+    "patch_bytes": 871,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1975.5,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-15345": {
+   "lane": {
+    "elapsed": 752.8,
+    "rc": 0,
+    "patch_bytes": 646,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 522.8,
+    "rc": 0,
+    "patch_bytes": 842,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-15346": {
+   "lane": {
+    "elapsed": 1981.1,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 773.3,
+    "rc": 0,
+    "patch_bytes": 609,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-15609": {
+   "lane": {
+    "elapsed": 281.9,
+    "rc": 0,
+    "patch_bytes": 530,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 567.3,
+    "rc": 0,
+    "patch_bytes": 530,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-15678": {
+   "lane": {
+    "elapsed": 1315.7,
+    "rc": 0,
+    "patch_bytes": 1030,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 913.0,
+    "rc": 0,
+    "patch_bytes": 820,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-16106": {
+   "lane": {
+    "elapsed": 603.7,
+    "rc": 0,
+    "patch_bytes": 934,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 675.0,
+    "rc": 0,
+    "patch_bytes": 970,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-16281": {
+   "lane": {
+    "elapsed": 650.5,
+    "rc": 0,
+    "patch_bytes": 937,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 651.9,
+    "rc": 0,
+    "patch_bytes": 937,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-16503": {
+   "lane": {
+    "elapsed": 1983.3,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 719.8,
+    "rc": 0,
+    "patch_bytes": 1555,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-16792": {
+   "lane": {
+    "elapsed": 671.4,
+    "rc": 0,
+    "patch_bytes": 864,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 760.9,
+    "rc": 0,
+    "patch_bytes": 1827,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-16988": {
+   "lane": {
+    "elapsed": 573.6,
+    "rc": 0,
+    "patch_bytes": 469,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1972.4,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-17022": {
+   "lane": {
+    "elapsed": 670.0,
+    "rc": 0,
+    "patch_bytes": 859,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 732.9,
+    "rc": 0,
+    "patch_bytes": 859,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-17139": {
+   "lane": {
+    "elapsed": 1031.1,
+    "rc": 0,
+    "patch_bytes": 444,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 588.1,
+    "rc": 0,
+    "patch_bytes": 444,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-17630": {
+   "lane": {
+    "elapsed": 1873.7,
+    "rc": 0,
+    "patch_bytes": 979,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1973.7,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-17655": {
+   "lane": {
+    "elapsed": 916.3,
+    "rc": 0,
+    "patch_bytes": 541,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 755.9,
+    "rc": 0,
+    "patch_bytes": 541,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-18057": {
+   "lane": {
+    "elapsed": 737.9,
+    "rc": 0,
+    "patch_bytes": 427,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1970.3,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-18087": {
+   "lane": {
+    "elapsed": 1395.8,
+    "rc": 0,
+    "patch_bytes": 846,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1966.1,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-18189": {
+   "lane": {
+    "elapsed": 262.6,
+    "rc": 0,
+    "patch_bytes": 657,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 284.3,
+    "rc": 0,
+    "patch_bytes": 657,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-18199": {
+   "lane": {
+    "elapsed": 1104.1,
+    "rc": 0,
+    "patch_bytes": 603,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 417.0,
+    "rc": 0,
+    "patch_bytes": 591,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-18532": {
+   "lane": {
+    "elapsed": 1806.6,
+    "rc": 0,
+    "patch_bytes": 739,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1206.0,
+    "rc": 0,
+    "patch_bytes": 644,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-18621": {
+   "lane": {
+    "elapsed": 520.3,
+    "rc": 0,
+    "patch_bytes": 783,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 355.1,
+    "rc": 0,
+    "patch_bytes": 594,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-18698": {
+   "lane": {
+    "elapsed": 956.3,
+    "rc": 0,
+    "patch_bytes": 1771,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1964.4,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-18835": {
+   "lane": {
+    "elapsed": 638.8,
+    "rc": 0,
+    "patch_bytes": 1957,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 630.3,
+    "rc": 0,
+    "patch_bytes": 821,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-19007": {
+   "lane": {
+    "elapsed": 795.6,
+    "rc": 0,
+    "patch_bytes": 1737,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 883.9,
+    "rc": 0,
+    "patch_bytes": 1737,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-19254": {
+   "lane": {
+    "elapsed": 696.8,
+    "rc": 0,
+    "patch_bytes": 2122,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 490.3,
+    "rc": 0,
+    "patch_bytes": 2187,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-19487": {
+   "lane": {
+    "elapsed": 545.1,
+    "rc": 0,
+    "patch_bytes": 618,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 372.0,
+    "rc": 0,
+    "patch_bytes": 620,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-20049": {
+   "lane": {
+    "elapsed": 1261.6,
+    "rc": 0,
+    "patch_bytes": 2650,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1114.7,
+    "rc": 0,
+    "patch_bytes": 2725,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-20154": {
+   "lane": {
+    "elapsed": 680.3,
+    "rc": 0,
+    "patch_bytes": 1980,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 436.3,
+    "rc": 0,
+    "patch_bytes": 1595,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-20212": {
+   "lane": {
+    "elapsed": 489.0,
+    "rc": 0,
+    "patch_bytes": 518,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 997.2,
+    "rc": 0,
+    "patch_bytes": 446,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-20322": {
+   "lane": {
+    "elapsed": 628.7,
+    "rc": 0,
+    "patch_bytes": 736,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 633.1,
+    "rc": 0,
+    "patch_bytes": 736,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-20442": {
+   "lane": {
+    "elapsed": 501.3,
+    "rc": 0,
+    "patch_bytes": 1061,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 565.7,
+    "rc": 0,
+    "patch_bytes": 1061,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-20590": {
+   "lane": {
+    "elapsed": 1965.5,
+    "rc": 124,
+    "patch_bytes": 0,
+    "outcome": "timeout"
+   },
+   "control": {
+    "elapsed": 365.5,
+    "rc": 0,
+    "patch_bytes": 476,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-20639": {
+   "lane": {
+    "elapsed": 1465.2,
+    "rc": 0,
+    "patch_bytes": 2489,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1184.7,
+    "rc": 0,
+    "patch_bytes": 2489,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-21055": {
+   "lane": {
+    "elapsed": 886.6,
+    "rc": 0,
+    "patch_bytes": 1211,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 452.4,
+    "rc": 0,
+    "patch_bytes": 1211,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-21171": {
+   "lane": {
+    "elapsed": 557.9,
+    "rc": 0,
+    "patch_bytes": 777,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 304.5,
+    "rc": 0,
+    "patch_bytes": 731,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-21379": {
+   "lane": {
+    "elapsed": 359.8,
+    "rc": 0,
+    "patch_bytes": 1028,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 546.4,
+    "rc": 0,
+    "patch_bytes": 4779,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-21612": {
+   "lane": {
+    "elapsed": 1666.8,
+    "rc": 0,
+    "patch_bytes": 577,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 384.4,
+    "rc": 0,
+    "patch_bytes": 577,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-21614": {
+   "lane": {
+    "elapsed": 545.3,
+    "rc": 0,
+    "patch_bytes": 497,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 526.4,
+    "rc": 0,
+    "patch_bytes": 497,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-21627": {
+   "lane": {
+    "elapsed": 1098.4,
+    "rc": 0,
+    "patch_bytes": 618,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1502.4,
+    "rc": 0,
+    "patch_bytes": 1051,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-21847": {
+   "lane": {
+    "elapsed": 392.2,
+    "rc": 0,
+    "patch_bytes": 1051,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 296.7,
+    "rc": 0,
+    "patch_bytes": 1051,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-22005": {
+   "lane": {
+    "elapsed": 1294.3,
+    "rc": 0,
+    "patch_bytes": 601,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1281.0,
+    "rc": 0,
+    "patch_bytes": 1128,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-22714": {
+   "lane": {
+    "elapsed": 583.2,
+    "rc": 0,
+    "patch_bytes": 705,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 706.4,
+    "rc": 0,
+    "patch_bytes": 705,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-22840": {
+   "lane": {
+    "elapsed": 1279.6,
+    "rc": 0,
+    "patch_bytes": 1032,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1689.7,
+    "rc": 0,
+    "patch_bytes": 1032,
+    "outcome": "patched"
+   },
+   "engaged": true
+  },
+  "sympy__sympy-23117": {
+   "lane": {
+    "elapsed": 683.0,
+    "rc": 0,
+    "patch_bytes": 1813,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 394.5,
+    "rc": 0,
+    "patch_bytes": 648,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-23191": {
+   "lane": {
+    "elapsed": 1098.8,
+    "rc": 0,
+    "patch_bytes": 2642,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 952.8,
+    "rc": 0,
+    "patch_bytes": 2724,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-23262": {
+   "lane": {
+    "elapsed": 413.6,
+    "rc": 0,
+    "patch_bytes": 584,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 947.5,
+    "rc": 0,
+    "patch_bytes": 708,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-24066": {
+   "lane": {
+    "elapsed": 510.0,
+    "rc": 0,
+    "patch_bytes": 731,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 542.8,
+    "rc": 0,
+    "patch_bytes": 919,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-24102": {
+   "lane": {
+    "elapsed": 543.9,
+    "rc": 0,
+    "patch_bytes": 3742,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 410.3,
+    "rc": 0,
+    "patch_bytes": 1115,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-24152": {
+   "lane": {
+    "elapsed": 370.9,
+    "rc": 0,
+    "patch_bytes": 932,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 362.3,
+    "rc": 0,
+    "patch_bytes": 993,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-24213": {
+   "lane": {
+    "elapsed": 625.6,
+    "rc": 0,
+    "patch_bytes": 713,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 411.1,
+    "rc": 0,
+    "patch_bytes": 691,
+    "outcome": "patched"
+   },
+   "engaged": false
+  },
+  "sympy__sympy-24909": {
+   "lane": {
+    "elapsed": 456.9,
+    "rc": 0,
+    "patch_bytes": 1063,
+    "outcome": "patched"
+   },
+   "control": {
+    "elapsed": 1059.2,
+    "rc": 0,
+    "patch_bytes": 1054,
+    "outcome": "patched"
+   },
+   "engaged": false
+  }
+ }
+}
