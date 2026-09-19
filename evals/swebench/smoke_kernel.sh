@@ -23,6 +23,9 @@ REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 source "$REPO_DIR/scripts/common.sh"
 activate_conda 2>/dev/null || true
+# bare metal or the OCI image — same choice the cycle's lanes will run under
+# (run_model_cycle.sh exports SERVE_MODE + the key dir before calling us)
+source "$SCRIPT_DIR/serve_backend.sh"
 
 PRESET="${1:?usage: smoke_kernel.sh <preset> <quant_label>}"
 QUANT_LABEL="${2:?usage: smoke_kernel.sh <preset> <quant_label>}"
@@ -33,34 +36,27 @@ mkdir -p "$LOG_DIR"
 
 log() { echo "[smoke $PRESET/$QUANT_LABEL $(date +%H:%M:%S)] $*"; }
 
-# Build the launch.sh environment override for this kernel
-QUANT_ENV=""
+# Build the launch.sh environment override for this kernel (exported: the
+# docker backend forwards QUANT into the container when set)
 case "$QUANT_LABEL" in
-  default)    QUANT_ENV="" ;;  # let launch.sh keep its preset default
-  awq_marlin) QUANT_ENV="QUANT=awq_marlin" ;;
-  awq)        QUANT_ENV="QUANT=awq" ;;
-  *)          QUANT_ENV="QUANT=$QUANT_LABEL" ;;
+  default)    unset QUANT ;;  # let launch.sh keep its preset default
+  awq_marlin) export QUANT=awq_marlin ;;
+  awq)        export QUANT=awq ;;
+  *)          export QUANT="$QUANT_LABEL" ;;
 esac
 
-# Hard cleanup of any stray server on $PORT before we start
-pkill -KILL -f "sglang.launch_server.*--port $PORT" 2>/dev/null || true
-sleep 2
+serve_backend_init || { log "ERROR: serve backend init failed"; exit 2; }
 
-log "launching ($QUANT_ENV) on port $PORT"
-# setsid puts the launcher in its own process group so a single kill -PG cleans
-# everything (python + helper procs).
-env $QUANT_ENV setsid nohup bash "$REPO_DIR/scripts/launch.sh" "$PRESET" --port "$PORT" \
-  > "$LOG_DIR/server.log" 2>&1 &
-LAUNCH_PID=$!
-echo $LAUNCH_PID > "$LOG_DIR/server.pid"
-disown $LAUNCH_PID 2>/dev/null || true
+# Hard cleanup of any stray server on $PORT before we start
+serve_stop "$PRESET" "$PORT"
+
+log "launching (QUANT=${QUANT:-<preset default>}, $SERVE_MODE) on port $PORT"
+serve_start "$PRESET" "$LOG_DIR/server.log" "$LOG_DIR/server.pid" --port "$PORT" \
+  || { log "ERROR: server launch failed"; exit 2; }
 
 cleanup() {
   log "cleanup"
-  # Kill the entire process group (setsid means PGID==LAUNCH_PID)
-  kill -KILL -- -"$LAUNCH_PID" 2>/dev/null || true
-  pkill -KILL -f "sglang.launch_server.*--port $PORT" 2>/dev/null || true
-  sleep 5
+  serve_stop "$PRESET" "$PORT"
 }
 trap cleanup EXIT
 
@@ -93,10 +89,13 @@ log "server ready"
 
 # 5 short generations -> average decode tok/s
 python3 - "$LOG_DIR" "$PRESET" "$QUANT_LABEL" "$PORT" <<'PY'
-import json, sys, time, urllib.request
+import json, os, sys, time, urllib.request
 
 log_dir, preset, quant_label, port = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 endpoint = f"http://127.0.0.1:{port}/v1/chat/completions"
+headers = {"Content-Type": "application/json"}
+if os.environ.get("SWEBENCH_API_KEY_FILE"):  # docker mode: secure-launch needs the bearer
+    headers["Authorization"] = "Bearer " + open(os.environ["SWEBENCH_API_KEY_FILE"]).readline().strip()
 
 def chat(prompt, max_tokens):
     body = json.dumps({
@@ -106,7 +105,7 @@ def chat(prompt, max_tokens):
         "temperature": 0.0,
         "stream": False,
     }).encode()
-    req = urllib.request.Request(endpoint, body, {"Content-Type": "application/json"})
+    req = urllib.request.Request(endpoint, body, headers)
     t0 = time.time()
     with urllib.request.urlopen(req, timeout=120) as r:
         data = json.loads(r.read())

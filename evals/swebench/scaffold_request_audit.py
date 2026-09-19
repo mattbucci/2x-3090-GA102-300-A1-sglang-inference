@@ -17,7 +17,10 @@ the harness policy:
   * sampling from the preset — no scaffold-pinned `temperature` (little-coder's
     default model profile injected 0.3 and a 2048/4096-token thinking-budget
     abort until the profile pin — docker_rollout.LC_MODEL_PROFILE);
-  * `model` == the served name.
+  * `model` == the served name;
+  * when the server needs a credential (SERVE_MODE=docker: secure-launch in
+    the OCI image), the request carries `Authorization: Bearer <key>` — the
+    per-cycle key serve_backend.sh mints (SWEBENCH_API_KEY_FILE).
 
 Why: scaffold defaults are a harness input (commit 9c31fff for context
 budgets; this is the thinking/output-budget counterpart). pi's default
@@ -46,12 +49,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import docker_rollout as dr  # noqa: E402
 
 CAPTURE_SERVER = r'''
-import json, sys, time
+import json, os, sys, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 SERVED, CTX = sys.argv[1], int(sys.argv[2])
+EXPECT = os.environ.get("SWEBENCH_API_KEY_EXPECT", "")
 LOG = open("/cap/requests.jsonl", "a")
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
+    def _auth(self):
+        h = self.headers.get("Authorization") or ""
+        if not h: return "missing"
+        return "ok" if h == "Bearer " + EXPECT else "mismatch"
     def _json(self, code, obj):
         b = json.dumps(obj).encode()
         self.send_response(code); self.send_header("Content-Type", "application/json")
@@ -72,7 +80,8 @@ class H(BaseHTTPRequestHandler):
             elif k == "tools": slim["tools_n"] = len(v)
             else: slim[k] = v
         LOG.write(json.dumps({"scaffold": open("/cap/current").read().strip(), "path": self.path,
-                              "user_agent": self.headers.get("User-Agent"), "body": slim}) + "\n"); LOG.flush()
+                              "user_agent": self.headers.get("User-Agent"), "auth": self._auth(),
+                              "body": slim}) + "\n"); LOG.flush()
         text = "I cannot make changes; the task is complete as-is."
         if self.path.endswith("/chat/completions"):
             if body.get("stream"):
@@ -126,8 +135,11 @@ def build_driver(scaffolds: list[str], served: str, ctx: int, per_timeout: int) 
     return "\n".join(parts) + "\n"
 
 
-def check_body(sc: str, path: str, body: dict, served: str, allow_effort: set[str]) -> list[str]:
+def check_body(sc: str, path: str, body: dict, served: str, allow_effort: set[str],
+               auth: str = "missing") -> list[str]:
     bad = []
+    if dr.api_auth_enabled() and auth != "ok":
+        bad.append(f"auth={auth} (server key configured; the image's secure-launch would 401)")
     if body.get("model") != served:
         bad.append(f"model={body.get('model')!r} != served {served!r}")
     eff = body.get("reasoning_effort")
@@ -191,6 +203,7 @@ def main() -> int:
     t0 = time.time()
     cmd = ["docker", "run", "--rm", "--name", f"scaffold-audit-{int(t0)}",
            "-v", f"{work}:/cap", "--env", "HOME=/root", "--workdir", "/testbed",
+           "--env", f"SWEBENCH_API_KEY_EXPECT={dr.api_key()}",
            pinned, "bash", "-lc", "bash /cap/run_all.sh"]
     proc = subprocess.run(cmd, text=True, capture_output=True,
                           timeout=args.per_scaffold_timeout * len(scaffolds) + 120)
@@ -209,16 +222,16 @@ def main() -> int:
 
     verdicts = {}
     ok = True
-    print(f"{'scaffold':18} {'path':22} {'effort':8} {'cap':>6}  verdict")
+    print(f"{'scaffold':18} {'path':22} {'effort':8} {'cap':>6} {'auth':8}  verdict")
     for sc in scaffolds:
         r = first.get(sc)
         if not r:
             ok = False
             verdicts[sc] = {"status": "NO_REQUEST", "problems": ["no generation request captured"]}
-            print(f"{sc:18} {'-':22} {'-':8} {'-':>6}  FAIL no generation request captured (see {work}/{sc}.err)")
+            print(f"{sc:18} {'-':22} {'-':8} {'-':>6} {'-':8}  FAIL no generation request captured (see {work}/{sc}.err)")
             continue
         b = r["body"]
-        probs = check_body(sc, r["path"], b, args.served_name, allow)
+        probs = check_body(sc, r["path"], b, args.served_name, allow, r.get("auth", "missing"))
         eff = b.get("reasoning_effort")
         if eff is None and isinstance(b.get("reasoning"), dict):
             eff = b["reasoning"].get("effort")
@@ -226,13 +239,13 @@ def main() -> int:
         status = "OK" if not probs else "FAIL"
         ok &= not probs
         verdicts[sc] = {"status": status, "problems": probs, "path": r["path"], "body": b,
-                        "budget_lines": budget_lines[sc]}
-        print(f"{sc:18} {r['path']:22} {str(eff or '-'):8} {str(cap or '-'):>6}  {status} {'; '.join(probs)}")
+                        "auth": r.get("auth"), "budget_lines": budget_lines[sc]}
+        print(f"{sc:18} {r['path']:22} {str(eff or '-'):8} {str(cap or '-'):>6} {r.get('auth', '-'):8}  {status} {'; '.join(probs)}")
     if args.receipt:
         Path(args.receipt).write_text(json.dumps({
             "date": time.strftime("%Y-%m-%d %H:%M"), "served_name": args.served_name, "image": image,
             "context_window": args.context_window, "output_budget": dr.OUTPUT_BUDGET,
-            "output_cap_floor": dr.OUTPUT_CAP_FLOOR,
+            "output_cap_floor": dr.OUTPUT_CAP_FLOOR, "api_auth": dr.api_auth_enabled(),
             "allow_effort": sorted(allow), "verdicts": verdicts,
         }, indent=2) + "\n")
     print(f"[audit] {'PASS' if ok else 'FAIL'}: {sum(v['status']=='OK' for v in verdicts.values())}/{len(scaffolds)} scaffolds at policy")

@@ -158,6 +158,37 @@ OUTPUT_CAP_FLOOR = 32000
 # --default-chat-template-kwargs). scaffold_request_audit.py asserts this.
 
 
+# Server credential. Bare-metal serving (SERVE_MODE=bare in run_model_cycle.sh)
+# runs without --api-key and every scaffold sends a placeholder; serving from
+# the OCI image (SERVE_MODE=docker) goes through secure-launch, which requires
+# an API key, so serve_backend.sh mints one per cycle and points
+# SWEBENCH_API_KEY_FILE at it. The same value is handed to every scaffold's
+# provider config and used by our own preflight / model-card reads.
+API_KEY_PLACEHOLDER = "noop"
+
+
+def api_key() -> str:
+    path = os.environ.get("SWEBENCH_API_KEY_FILE")
+    if path:
+        with open(path) as fh:
+            key = fh.readline().strip()
+        if not key:
+            raise ValueError(f"SWEBENCH_API_KEY_FILE={path} is empty")
+        return key
+    return os.environ.get("SWEBENCH_API_KEY") or API_KEY_PLACEHOLDER
+
+
+def api_auth_enabled() -> bool:
+    return api_key() != API_KEY_PLACEHOLDER
+
+
+def _auth_headers() -> dict:
+    h = {"Content-Type": "application/json"}
+    if api_auth_enabled():
+        h["Authorization"] = f"Bearer {api_key()}"
+    return h
+
+
 def _pi_settings_snippet(agent_dir: str) -> str:
     """Shell lines that merge `compaction.reserveTokens = OUTPUT_BUDGET` into
     a pi-family global settings.json (pi-coding-agent / prime-agent both
@@ -180,16 +211,18 @@ def _opencode_budget_snippet(served_name: str, context_window: int) -> str:
     """Shell lines that pin `provider.sglang.models[<served>].limit.context`
     in the lane's ~/.config/opencode/opencode.json to the served window
     (adding the entry if the preset is missing — the old "new preset needs
-    an opencode.json entry + image nuke" landmine) and `limit.output` to
+    an opencode.json entry + image nuke" landmine), `limit.output` to
     OUTPUT_BUDGET (opencode sends max_tokens = min(limit.output,
     OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX) and auto-compacts at
-    limit.context - that). HOME-relative, so the DCP lane's /opt/dcp-home
-    copy is the one edited there."""
+    limit.context - that) and the provider apiKey to the server credential
+    (see api_key). HOME-relative, so the DCP lane's /opt/dcp-home copy is
+    the one edited there."""
     js = (
         'const fs=require("fs");const p=process.env.HOME+"/.config/opencode/opencode.json";'
         'const d=JSON.parse(fs.readFileSync(p,"utf8"));const m=d.provider.sglang.models;'
         f'const id={json.dumps(served_name)};const e=m[id]||(m[id]={{name:id,tool_call:true}});'
         f'e.limit=Object.assign({{}},e.limit||{{}},{{context:{int(context_window)},output:{OUTPUT_BUDGET}}});'
+        f'd.provider.sglang.options.apiKey={json.dumps(api_key())};'
         'fs.writeFileSync(p,JSON.stringify(d,null,2));'
         'console.error("context budget: opencode.json "+id+" limit="+JSON.stringify(e.limit));'
     )
@@ -199,15 +232,21 @@ def _opencode_budget_snippet(served_name: str, context_window: int) -> str:
 def _little_coder_budget_snippet(pkg_root: str, served_name: str, context_window: int) -> str:
     """Shell lines that write a per-run little-coder models file declaring the
     served model under the llamacpp provider (copying the packaged provider's
-    api/baseUrl/apiKey) and export LITTLE_CODER_MODELS_FILE so both little-coder
+    api/baseUrl) and export LITTLE_CODER_MODELS_FILE so both little-coder
     1.1.0 and 1.19.0 load it (provider-level merge over the packaged file).
     Without it pi's model resolver clones the first packaged entry: 32K.
+    The provider apiKey is written as the literal credential: the packaged
+    value is the env-var NAME `LLAMACPP_API_KEY`, which pi 0.68 (1.1.0)
+    resolves through the environment but the current @earendil-works pi
+    (1.19.0, rtk lane) sends verbatim — `Bearer LLAMACPP_API_KEY` on the
+    wire (caught by scaffold_request_audit.py's auth check, 2026-09-19).
     `compat.supportsReasoningEffort:false` keeps pi from sending its default
     `reasoning_effort: medium` (see the thinking policy above); maxTokens and
     the settings.json compaction reserve are both OUTPUT_BUDGET."""
     js = (
         f'const fs=require("fs");const pkg=JSON.parse(fs.readFileSync({json.dumps(pkg_root + "/models.json")},"utf8"));'
         f'const prov=pkg.providers.llamacpp;const id={json.dumps(served_name)};'
+        f'prov.apiKey={json.dumps(api_key())};'
         f'prov.models=[{{id:id,name:id+" (SGLang, served window)",reasoning:true,input:["text"],'
         f'contextWindow:{int(context_window)},maxTokens:{OUTPUT_BUDGET},cost:{{input:0,output:0,cacheRead:0,cacheWrite:0}},'
         'compat:{supportsReasoningEffort:false}}];'
@@ -312,7 +351,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
         # benchmarks/quality/rtk-lane-close-qwen38-2026-09-11.md).
         oc_model = f"llamacpp/{served_name}"
         envs = [
-            "--env", "LLAMACPP_API_KEY=noop",
+            "--env", f"LLAMACPP_API_KEY={api_key()}",
         ]
         inner = (
             f"set -e\n"
@@ -346,7 +385,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
         oc_model = f"llamacpp/{served_name}"
         envs = [
             "--env", "HOME=/opt/rtk-home",
-            "--env", "LLAMACPP_API_KEY=noop",
+            "--env", f"LLAMACPP_API_KEY={api_key()}",
             "--env", "RTK_TELEMETRY_DISABLED=1",
         ]
         inner = (
@@ -377,7 +416,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
         oc_model = f"openai/{served_name}"
         envs = [
             "--env", "OPENAI_BASE_URL=http://127.0.0.1:23334/v1",
-            "--env", "OPENAI_API_KEY=noop",
+            "--env", f"OPENAI_API_KEY={api_key()}",
         ]
         inner = (
             f"set -e\n"
@@ -432,7 +471,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
                 "name": "SGLang local",
                 "baseUrl": "http://127.0.0.1:23334/v1",
                 "api": "openai-completions",
-                "apiKey": "noop",
+                "apiKey": api_key(),
                 "compat": {"supportsDeveloperRole": False,
                            "supportsReasoningEffort": False},
                 # explicit budget: prime-agent's custom-provider default is
@@ -473,7 +512,7 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
         # (rc=124 mid-session -> empty diff). Ported from R9700, 0.1.65.
         envs = [
             "--env", "OPENAI_BASE_URL=http://127.0.0.1:23334/v1",
-            "--env", "OPENAI_API_KEY=noop",
+            "--env", f"OPENAI_API_KEY={api_key()}",
         ]
         inner = (
             "set -e\n"
@@ -721,7 +760,7 @@ def preflight_canary(server_url: str, served_name: str) -> tuple[bool, str]:
     req = urllib.request.Request(
         f"{server_url}/v1/chat/completions",
         data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"},
+        headers=_auth_headers(),
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
@@ -744,7 +783,8 @@ def served_context_window(server_url: str, served: str) -> int | None:
     """max_model_len the server advertises for `served` on /v1/models (SGLang
     reports the launch --context-length there). None if unavailable."""
     try:
-        with urllib.request.urlopen(f"{server_url}/v1/models", timeout=30) as r:
+        req = urllib.request.Request(f"{server_url}/v1/models", headers=_auth_headers())
+        with urllib.request.urlopen(req, timeout=30) as r:
             body = json.loads(r.read())
     except Exception:
         return None
@@ -820,6 +860,12 @@ def main():
         # policy above; scaffold_request_audit.py proves it on the wire)
         "output_budget": OUTPUT_BUDGET,
         "thinking": "max (template default; no reasoning_effort sent)",
+        # what served the cell (serve_backend.sh exports these; bare metal =
+        # the live tree, docker = the pinned OCI image by id)
+        "serve_mode": os.environ.get("SWEBENCH_SERVE_MODE", "bare"),
+        "serve_image": os.environ.get("SWEBENCH_SERVE_IMAGE"),
+        "serve_image_id": os.environ.get("SWEBENCH_SERVE_IMAGE_ID"),
+        "api_auth": api_auth_enabled(),
     })
     meta["scaffold"] = args.scaffold
     meta["model"] = args.model

@@ -3,7 +3,8 @@
 #
 # Sequence (Rule 2 enforced: no rollout + score concurrent):
 #   0. Scaffold request audit (scaffold_request_audit.py: max thinking + output caps on the wire)
-#   1. Launch SGLang server for $PRESET (detached via setsid)
+#   1. Launch SGLang server for $PRESET (serve_backend.sh: bare metal, or the
+#      repo's OCI image when SERVE_MODE=docker / serve_mode.conf says docker)
 #   2. Wait /health=200 (max 12 min)
 #   3. For each scaffold in {opencode, opencode-dcp, little-coder, little-coder-rtk, prime, dcode}: full 300-inst rollout
 #   4. Stop server
@@ -28,6 +29,13 @@
 #   TIMEOUT         per-instance rollout timeout in seconds (default: 1800)
 #   LOG_DIR         where to write per-phase logs (default: /tmp/run-model-cycle-logs/<preset>)
 #   SERVER_TIMEOUT  max seconds to wait for server /health=200 (default: 720)
+#   SERVE_MODE      bare | docker — how the server is started (default: the
+#                   tracked evals/swebench/serve_mode.conf). docker = the OCI
+#                   image (SERVE_IMAGE, default sglang-cuda-3090:local) with a
+#                   per-cycle API key every scaffold receives; see serve_backend.sh
+#   PAUSE_FILE      while this path exists the cycle waits before touching the
+#                   GPU (default /tmp/run-model-cycle-logs/PAUSE) — the hook for
+#                   stack flips / image rebuilds at a cycle boundary
 
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -35,6 +43,7 @@ REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 source "$REPO_DIR/scripts/common.sh"
 activate_conda 2>/dev/null || true
+source "$SCRIPT_DIR/serve_backend.sh"
 
 PRESET="${1:-}"
 SERVED="${2:-$PRESET}"
@@ -48,6 +57,7 @@ INSTANCES="${INSTANCES:-0}"
 TIMEOUT="${TIMEOUT:-1800}"
 SERVER_TIMEOUT="${SERVER_TIMEOUT:-720}"
 LOG_DIR="${LOG_DIR:-/tmp/run-model-cycle-logs/$PRESET}"
+PAUSE_FILE="${PAUSE_FILE:-/tmp/run-model-cycle-logs/PAUSE}"
 
 mkdir -p "$LOG_DIR"
 # Self-heal the score flock dir. run_all_cycles.sh creates /tmp/loop-bakeoff-logs
@@ -62,10 +72,23 @@ START=$(date +%s)
 
 log() { echo "[$PRESET $(date +%H:%M:%S)] $*"; }
 
+# --- boundary pause: a queue cycle starts only when nobody holds the GPU for
+# a stack flip / image rebuild (touch $PAUSE_FILE before the previous cycle
+# ends; rm it to release). Checked before anything runs.
+if [ -e "$PAUSE_FILE" ]; then
+  log "PAUSED: $PAUSE_FILE exists — waiting before starting the cycle"
+  while [ -e "$PAUSE_FILE" ]; do sleep 60; done
+  log "resuming: $PAUSE_FILE removed"
+fi
+
+# Resolve how the server is served (bare metal vs the OCI image); in docker
+# mode this mints the per-cycle API key and checks the image is current.
+serve_backend_init || { log "ERROR: serve backend init failed (SERVE_MODE=${SERVE_MODE:-?})"; exit 1; }
+serve_receipt "$LOG_DIR/serve-backend.json"
+log "serve mode: $SERVE_MODE${SWEBENCH_SERVE_IMAGE:+ (image $SWEBENCH_SERVE_IMAGE ${SWEBENCH_SERVE_IMAGE_ID#sha256:})}"
+
 stop_server() {
-  pkill -KILL -f "sglang.launch_server" 2>/dev/null || true
-  pkill -KILL -f "scripts/launch.sh $PRESET" 2>/dev/null || true
-  sleep 5
+  serve_stop "$PRESET"
 }
 
 launch_server() {
@@ -73,22 +96,12 @@ launch_server() {
   # after a harness-side fix; the preset's serving config is unchanged).
   # Launching a second one would fight for :23334 / VRAM. Phase 2's
   # stop_server still owns shutdown.
-  local live
-  live=$(curl -s -m 5 http://127.0.0.1:23334/v1/models 2>/dev/null \
-         | python -c 'import json,sys; print(" ".join(m["id"] for m in json.load(sys.stdin)["data"]))' 2>/dev/null)
-  if [ -n "$live" ] && [[ " $live " == *" $SERVED "* ]]; then
+  if serve_reusable "$SERVED"; then
     log "reusing healthy server already serving $SERVED"
     return 0
   fi
-  log "launching server"
-  # 9>&-: don't leak run_all_cycles.sh's flock fd into the server — a server
-  # that outlives a stopped queue would otherwise hold /tmp/swebench-bakeoff.lock
-  # and block the relaunch (2026-09-13).
-  nohup setsid bash "$REPO_DIR/scripts/launch.sh" "$PRESET" \
-    > "$LOG_DIR/server.log" 2>&1 < /dev/null 9>&- &
-  local pid=$!
-  disown $pid 2>/dev/null
-  echo $pid > "$LOG_DIR/server.pid"
+  log "launching server ($SERVE_MODE)"
+  serve_start "$PRESET" "$LOG_DIR/server.log" "$LOG_DIR/server.pid" || return 1
 }
 
 # Presets whose launch.sh entry omits QUANT (so the default vs awq_marlin
@@ -155,7 +168,7 @@ fi
 log "scaffold request audit PASS"
 
 # --- Phase 1: launch + rollouts ---
-launch_server
+launch_server || { log "ERROR: server launch failed"; exit 1; }
 wait_ready || { stop_server; exit 1; }
 
 NEED_RESCORE=()  # cells that have predictions to score
@@ -168,6 +181,7 @@ for SCAFFOLD in $SCAFFOLDS; do
   [ "$INSTANCES" -gt 0 ] && N_FLAG=(--instances "$INSTANCES")
 
   log "rollout $SCAFFOLD (out=$OUT instances=${INSTANCES:-300} timeout=$TIMEOUT)"
+  cp -f "$LOG_DIR/serve-backend.json" "$OUT/serve-backend.json" 2>/dev/null || true
   python "$REPO_DIR/evals/swebench/docker_rollout.py" \
     --model "sglang/$PRESET" \
     --served-name "$SERVED" \
@@ -203,7 +217,7 @@ done
 # --- Phase 4: reroll if needed (single server-restart pass) ---
 if [ "${#NEED_RESCORE_AFTER_REROLL[@]}" -gt 0 ]; then
   log "relaunching server for reroll"
-  launch_server
+  launch_server || log "ERROR: server launch failed on reroll"
   wait_ready || { stop_server; log "ERROR: server failed on reroll"; }
 
   for SCAFFOLD in "${NEED_RESCORE_AFTER_REROLL[@]}"; do
