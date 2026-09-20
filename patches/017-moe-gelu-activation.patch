@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
-index fd37548..979e2d7 100644
+index 7f76b2616e..2ebf9e68df 100644
 --- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
 +++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_marlin_moe.py
 @@ -14,7 +14,7 @@ _is_cuda = is_cuda()
@@ -23,7 +23,7 @@ index fd37548..979e2d7 100644
          intermediate_cache2 = F.silu(intermediate_cache1.view(-1, N))
      elif activation == "relu2" and not is_gated:
 diff --git a/python/sglang/srt/layers/moe/moe_runner/marlin.py b/python/sglang/srt/layers/moe/moe_runner/marlin.py
-index 0c5ea7f..59e8eb8 100644
+index 0c5ea7fae8..59e8eb8dd6 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/marlin.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/marlin.py
 @@ -140,10 +140,13 @@ def fused_experts_none_to_marlin(
@@ -42,45 +42,41 @@ index 0c5ea7f..59e8eb8 100644
          raise ValueError(
              f"Unsupported Marlin MoE activation: {runner_config.activation}"
 diff --git a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
-index cbdfe11..306e054 100644
+index 9d182e066d..c1c3f25bc3 100644
 --- a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
 +++ b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16_moe.py
-@@ -452,9 +452,12 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
+@@ -451,8 +451,11 @@ class CompressedTensorsWNA16MoE(CompressedTensorsMoEScheme):
          )
          from sglang.srt.layers.moe.token_dispatcher import StandardCombineInput
  
--        assert (
--            self.moe_runner_config.activation == "silu"
--        ), "Only SiLU activation is supported."
+-        assert self.moe_runner_config.activation == "silu", (
+-            "Only SiLU activation is supported."
 +        # Gemma 4 MoE uses gated gelu_pytorch_tanh; the marlin MoE runner
 +        # dispatches gelu_and_mul / silu_and_mul on moe_runner_config.activation
 +        # (threaded through to fused_marlin_moe). Relax the SiLU-only assert.
 +        assert self.moe_runner_config.activation in ("silu", "gelu"), (
 +            "Only SiLU/GELU activation is supported."
-+        )
+         )
  
          x = dispatch_output.hidden_states
-         topk_output = dispatch_output.topk_output
-@@ -556,9 +559,11 @@ class CompressedTensorsWNA16TritonMoE(CompressedTensorsWNA16MoE):
+@@ -555,8 +558,10 @@ class CompressedTensorsWNA16TritonMoE(CompressedTensorsWNA16MoE):
          layer: torch.nn.Module,
          dispatch_output: StandardDispatchOutput,
      ) -> CombineInput:
--        assert (
--            self.moe_runner_config.activation == "silu"
--        ), "Only SiLU activation is supported."
+-        assert self.moe_runner_config.activation == "silu", (
+-            "Only SiLU activation is supported."
 +        # Triton fused MoE runner dispatches silu/gelu internally on
 +        # runner_config.activation; relax the SiLU-only assert for Gemma 4.
 +        assert self.moe_runner_config.activation in ("silu", "gelu"), (
 +            "Only SiLU/GELU activation is supported."
-+        )
+         )
  
          quant_info = self.get_triton_quant_info(layer)
-         return self.runner.run(dispatch_output, quant_info)
 diff --git a/python/sglang/srt/layers/quantization/marlin_utils.py b/python/sglang/srt/layers/quantization/marlin_utils.py
-index a475e3c..aeafac4 100644
+index 9b432028d1..e18cee49f6 100644
 --- a/python/sglang/srt/layers/quantization/marlin_utils.py
 +++ b/python/sglang/srt/layers/quantization/marlin_utils.py
-@@ -250,7 +250,8 @@ def check_moe_marlin_supports_layer(
+@@ -234,7 +234,8 @@ def check_moe_marlin_supports_layer(
      # apply_router_weight_on_input is not supported for moe marlin
      supports_router_weight = not layer.moe_runner_config.apply_router_weight_on_input
      if layer.moe_runner_config.is_gated:

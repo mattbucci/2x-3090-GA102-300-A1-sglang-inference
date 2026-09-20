@@ -1,5 +1,5 @@
 From: 3090 team <noreply@anthropic.com>
-Date: 2026-06-10 (trimmed 2026-08-15)
+Date: 2026-06-10 (trimmed 2026-08-15; re-anchored 2026-09-19 v0.5.20: get_layer dispatches via self.decoder_layer_types)
 Subject: [PATCH] qwen3_5: config fallbacks for text-only CausalLM checkpoints
 
 Merged unit (2026-06-10) absorbing former 035/036/038; TRIMMED at the
@@ -17,10 +17,10 @@ supply the attrs; they protect the HF/AutoConfig routes.
 Per-member narratives: patches/README.md.
 
 diff --git a/python/sglang/srt/models/qwen2_moe.py b/python/sglang/srt/models/qwen2_moe.py
-index 9d17e74..6ff6f40 100644
+index 83aad13ebb..8a6a53d8a2 100644
 --- a/python/sglang/srt/models/qwen2_moe.py
 +++ b/python/sglang/srt/models/qwen2_moe.py
-@@ -269,7 +269,11 @@ class Qwen2MoeSparseMoeBlock(nn.Module):
+@@ -312,7 +312,11 @@ class Qwen2MoeSparseMoeBlock(nn.Module):
  
          self.topk = TopK(
              top_k=config.num_experts_per_tok,
@@ -34,10 +34,10 @@ index 9d17e74..6ff6f40 100644
          )
  
 diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
-index a7fc46e..119431e 100644
+index 9dccf9ee92..9eae88bb93 100644
 --- a/python/sglang/srt/models/qwen3_5.py
 +++ b/python/sglang/srt/models/qwen3_5.py
-@@ -1383,7 +1383,16 @@ class Qwen3_5ForCausalLM(nn.Module):
+@@ -1663,7 +1663,16 @@ class Qwen3_5ForCausalLM(nn.Module):
  
          # Decoder layers
          def get_layer(idx: int, prefix: str):
@@ -52,6 +52,6 @@ index a7fc46e..119431e 100644
 +            layer_type = layer_type_list[idx]
 +            if layer_type == "full_attention":
 +                layer_type = "attention"
-             layer_class = ALL_DECODER_LAYER_TYPES[layer_type]
+             layer_class = self.decoder_layer_types[layer_type]
              if layer_type == "attention":
                  prefix = add_prefix("self_attn", prefix)
