@@ -53,10 +53,22 @@ socket, `net_bridge.py`; per-instance session-store snapshot under
 `<run>/sessions/<iid>/`). `audit_leakage.py --require-isolation` runs at every
 v3 lane close and gates the cell on 0 exposed + isolation proof on 300/300.
 
-**Exposure study (pending).** The two cells above are being scored
-(`score_docker.py`, sequential) purely to measure the effect size — resolved
-rate exposed vs isolated per cell — never as bake-off cells. Result lands here
-when scoring finishes.
+**Exposure study (scored 2026-09-19, `exposure_study.py`).** The two cells were
+scored purely to measure the effect size — never as bake-off cells:
+
+| cell | resolved (all 300) | exposed: resolved / n | isolated: resolved / n | gold-overlap median exposed / isolated |
+|---|---|---|---|---|
+| qwen38-opencode-v2-netopen | 250 (83.3 %) | **159 / 168 (94.6 %)** | 91 / 131 (69.5 %) | 1.00 / 0.67 |
+| qwen38-opencode-dcp-v2-netopen | 253 (84.3 %) | **145 / 159 (91.2 %)** | 107 / 140 (76.4 %) | 1.00 / 0.50 |
+
+Exposure is worth +25 / +15 points on these cells, and the exposed group's
+patches are the gold patch. The "isolated" column is NOT a clean number: it is
+the self-selected subset of instances where the agent happened not to make an
+*observed* upstream/search call while the network was open (channels the
+transcript does not record stay possible), so it is at best an upper-bound hint
+for what the v3 cell will measure under `--network none`. Neither column goes
+into the bake-off tables. Per-cell JSON: `exposure-study.json` (here) and
+`<run>/exposure-study.json`.
 
 Receipts: `swebench-leak-audit-qwen38-netopen-2026-09-19/*.leak-audit.json`
 (per-instance source, classification, evidence, gold overlap, isolation proof).
