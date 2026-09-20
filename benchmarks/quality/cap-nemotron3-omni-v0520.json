@@ -1,0 +1,38 @@
+{
+  "nemotron3-omni-v0520": {
+    "tag": "nemotron3-omni-v0520",
+    "model": "nemotron3-omni",
+    "timestamp": "2026-09-19 15:37",
+    "elapsed_sec": 11.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='\\nparis'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (104 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)the user wants a description of the image in one short sentence.\\n1.  **analyze the image:** the image shows a simple gra'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'slide', 'right', 'across', 'circle', 'red']  response='\\na red circle slides right, then a blue circle, and finally a green circle follow in the same direction.'"
+      },
+      "audio": {
+        "passed": true,
+        "message": "saw=['sound', 'audio', 'note']  response='\\na piano playing a note.'"
+      }
+    },
+    "summary": {
+      "passed": 6,
+      "total": 6
+    }
+  }
+}
