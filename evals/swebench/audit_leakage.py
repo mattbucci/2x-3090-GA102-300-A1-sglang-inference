@@ -16,8 +16,11 @@ only), strips refs to HEAD and snapshots each scaffold's session store to
 `<run>/sessions/<iid>/`. This script closes the loop at lane close:
 
   * proves every instance ran isolated (`isolation: network=none`,
-    `isolation: refs=1 tags=0` and an `isolation: mounts=` line whose bind-source
-    paths name neither the benchmark nor the instance; `--require-isolation`)
+    `isolation: refs=1 tags=0`, `isolation: git=reinit commits=1 dirty=0` (the
+    tree's history is one `eval@local` commit — the official image's `SWE-bench`
+    HEAD commit is gone — and the re-added tracked set left the tree clean) and
+    an `isolation: mounts=` line whose bind-source paths name neither the
+    benchmark nor the instance; `--require-isolation`)
   * scans the transcript for web / network / git-peek attempts and whether
     they returned content (a fetch under `--network none` fails — an attempt
     is a model behaviour note, a success is an infra alarm)
@@ -316,19 +319,23 @@ ISO_REFS_RE = re.compile(r"^isolation: refs=(\d+) tags=(\d+)", re.M)
 # bind-source paths as the sandbox sees them in /proc/self/mountinfo (docker_rollout.py
 # stages them under a neutral dir, 2026-09-20): none may name the benchmark or the instance
 ISO_MOUNTS_RE = re.compile(r"^isolation: mounts=(.*)$", re.M)
+ISO_GIT_RE = re.compile(r"^isolation: git=reinit commits=(\d+) dirty=(\d+) author=(\S+)", re.M)
 CUE_RE = re.compile(r"swe[-_ ]?bench", re.I)
 
 
 def isolation_proof(run: Path, iid: str) -> dict:
     log = run / "logs" / f"{iid}.log"
     if not log.exists():
-        return {"network_none": False, "refs_stripped": False, "mounts_clean": False}
+        return {"network_none": False, "refs_stripped": False, "mounts_clean": False, "git_reinit": False}
     t = log.read_text(errors="replace")
     m = ISO_REFS_RE.search(t)
     mm = ISO_MOUNTS_RE.search(t)
+    mg = ISO_GIT_RE.search(t)
     return {"network_none": bool(ISO_NET_RE.search(t)),
             "refs_stripped": bool(m and int(m.group(1)) <= 1 and int(m.group(2)) == 0),
-            "mounts_clean": bool(mm and not CUE_RE.search(mm.group(1)) and iid not in mm.group(1))}
+            "mounts_clean": bool(mm and not CUE_RE.search(mm.group(1)) and iid not in mm.group(1)),
+            "git_reinit": bool(mg and mg.group(1) == "1" and mg.group(2) == "0"
+                               and not CUE_RE.search(mg.group(3)))}
 
 
 # --- gold overlap --------------------------------------------------------------
@@ -410,6 +417,7 @@ def audit_run(run: Path, require_isolation: bool, gold: dict[str, str]) -> dict:
     c["iso_network_none"] = sum(1 for r in rows.values() if r["isolation"]["network_none"])
     c["iso_refs_stripped"] = sum(1 for r in rows.values() if r["isolation"]["refs_stripped"])
     c["iso_mounts_clean"] = sum(1 for r in rows.values() if r["isolation"]["mounts_clean"])
+    c["iso_git_reinit"] = sum(1 for r in rows.values() if r["isolation"]["git_reinit"])
 
     def ov_stats(flag: bool):
         xs = [r["overlap"] for r in have if r["exposed"] == flag and r["overlap"] is not None]
@@ -420,7 +428,7 @@ def audit_run(run: Path, require_isolation: bool, gold: dict[str, str]) -> dict:
     verdict_ok = c["exposed"] == 0 and (c["no_transcript"] == 0 or c["iso_network_none"] == n)
     if require_isolation:
         verdict_ok = verdict_ok and c["iso_network_none"] == n and c["iso_refs_stripped"] == n \
-            and c["iso_mounts_clean"] == n and n > 0
+            and c["iso_mounts_clean"] == n and c["iso_git_reinit"] == n and n > 0
     return {"run": run.name, "n": n, "counts": dict(c),
             "gold_overlap": {"exposed": ov_stats(True), "isolated": ov_stats(False)},
             "require_isolation": require_isolation, "ok": verdict_ok, "instances": rows}
@@ -430,7 +438,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run", required=True, action="append", help="run dir (repeatable)")
     ap.add_argument("--require-isolation", action="store_true",
-                    help="fail unless every instance log carries the network=none + refs-stripped proof")
+                    help="fail unless every instance log carries the network=none + refs-stripped + mounts-clean + git-reinit proof")
     ap.add_argument("--json", help="write the report here (default: <run>/leak-audit.json per run)")
     ap.add_argument("--show", type=int, default=3, help="evidence lines to print per run")
     ap.add_argument("--no-gold", action="store_true", help="skip the gold-patch overlap")
@@ -454,7 +462,7 @@ def main() -> int:
               f"attempted={c.get('attempted', 0)} ({100 * c.get('attempted', 0) / den:.0f}%) "
               f"EXPOSED={c.get('exposed', 0)} ({100 * c.get('exposed', 0) / den:.0f}%) | "
               f"isolation proof: network=none {c['iso_network_none']}/{n}, refs stripped {c['iso_refs_stripped']}/{n}, "
-              f"mounts clean {c['iso_mounts_clean']}/{n}")
+              f"mounts clean {c['iso_mounts_clean']}/{n}, git reinit {c['iso_git_reinit']}/{n}")
         go = rep["gold_overlap"]
         print(f"  gold-overlap>=80%: exposed {go['exposed']['ge80']}/{go['exposed']['n']} (med {go['exposed']['median']}), "
               f"isolated {go['isolated']['ge80']}/{go['isolated']['n']} (med {go['isolated']['median']})")

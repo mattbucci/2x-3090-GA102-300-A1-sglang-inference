@@ -14,7 +14,7 @@ Per-instance flow:
      because of its Rust build + Anthropic-proxy requirement.
   3. Run a container with --network none (default) — the only reachable
      address is the SGLang server at 127.0.0.1:<port>, forwarded through
-     net_bridge.py over a bind-mounted unix socket; git refs are stripped to
+     net_bridge.py over a bind-mounted unix socket; /testbed's git history is re-initialised to
      HEAD first. Working directory is /testbed (already cloned +
      conda-activated by the upstream eval image). `--network-mode host` is
      the pre-2026-09-19 behaviour (exposure-confounded; study cells only).
@@ -479,17 +479,32 @@ def assert_no_harness_cues(cmd: list[str], iid: str) -> None:
 def isolation_prelude(network_mode: str, port: int = CONTAINER_SERVER_PORT) -> str:
     """Shell that runs before the scaffold: bring up the loopback bridge and
     prove the server is reachable through it (exit 97 = infra, never a model
-    verdict), then strip release tags, non-HEAD branches and remotes so the
-    work tree carries no ref past the base commit. (The official sweb.eval
-    images were verified to hold no future ref and no unreachable object —
-    django/sympy, 2026-09-19 — the strip is belt-and-braces for tags whose
-    backport branches diverge from HEAD.)"""
+    verdict), then re-initialise /testbed's git history to ONE commit holding
+    exactly the original tracked set, authored `eval <eval@local>`.
+
+    That replaces the earlier ref strip (tags / non-HEAD branches / remotes):
+    the official sweb.eval image's HEAD is a commit *by* `SWE-bench
+    <setup@swebench.com>` *titled* `SWE-bench` (reflog too), so the first
+    `git log` told the model which benchmark it was in — and R9700's recall
+    audit (2026-09-20) put 17 of 19 wall hits in sessions naming the benchmark
+    30+ times. Their sandbox re-inits the tree the same way (1 commit,
+    eval@local), so the two matrices share the residual cue set: `/testbed`,
+    the `testbed` conda env, the issue text and the prompt's "Do not modify
+    tests" line. `git ls-files` + `add -f --pathspec-from-file` keeps the
+    tracked set bit-identical (no .gitignore drift: `dirty=0` on the
+    `isolation: git=` line is what audit_leakage.py gates on); ~1.5 s on
+    django. Release tags, other branches and remotes go with the old store,
+    so the ref-strip guarantee is preserved (refs=1 tags=0)."""
     strip = (
-        "cur=$(git -C /testbed symbolic-ref -q HEAD || true)\n"
-        "git -C /testbed tag -l | xargs -r git -C /testbed tag -d >/dev/null 2>&1 || true\n"
-        "git -C /testbed for-each-ref --format='%(refname)' refs/heads refs/remotes refs/stash 2>/dev/null "
-        "| grep -vx \"$cur\" | xargs -r -n1 git -C /testbed update-ref -d 2>/dev/null || true\n"
-        "git -C /testbed remote 2>/dev/null | xargs -r -n1 git -C /testbed remote remove 2>/dev/null || true\n"
+        "git config --global --add safe.directory /testbed 2>/dev/null || true\n"
+        "git -C /testbed ls-files -z > /tmp/.tracked.z && rm -rf /testbed/.git "
+        "&& git -C /testbed init -q -b main "
+        "&& git -C /testbed add -f --pathspec-from-file=/tmp/.tracked.z --pathspec-file-nul "
+        "&& git -C /testbed -c user.name=eval -c user.email=eval@local commit -q -m base "
+        "|| { echo 'GIT REINIT FAILED' >&2; exit 97; }\n"
+        "rm -f /tmp/.tracked.z\n"
+        "echo \"isolation: git=reinit commits=$(git -C /testbed rev-list --all | wc -l) "
+        "dirty=$(git -C /testbed status --porcelain | wc -l) author=$(git -C /testbed log -1 --format=%ae)\" >&2\n"
         "echo \"isolation: refs=$(git -C /testbed for-each-ref | wc -l) tags=$(git -C /testbed tag | wc -l)\" >&2\n"
     )
     if network_mode == "host":
@@ -1126,6 +1141,7 @@ def main():
         "network_mode": args.network_mode,
         "prompt_delivery": "stdin-file",   # argv-era cells (re-quoted opencode task, self-kill exposure) have no key
         "git_refs_stripped": True,
+        "git_history": "reinit-1-commit",  # official image HEAD (`SWE-bench <setup@swebench.com>`) replaced by one eval@local commit
         "session_snapshot": True,
         "mount_staging": "neutral",   # bind sources under /var/tmp/rs-*: no benchmark/instance/model/scaffold in mountinfo
     })
