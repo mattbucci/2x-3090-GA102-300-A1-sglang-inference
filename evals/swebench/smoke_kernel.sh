@@ -19,13 +19,14 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SWEBENCH_DIR="$SCRIPT_DIR"  # common.sh re-points SCRIPT_DIR at scripts/; this dir stays evals/swebench
+REPO_DIR="$(cd "$SWEBENCH_DIR/../.." && pwd)"
 
 source "$REPO_DIR/scripts/common.sh"
 activate_conda 2>/dev/null || true
 # bare metal or the OCI image — same choice the cycle's lanes will run under
 # (run_model_cycle.sh exports SERVE_MODE + the key dir before calling us)
-source "$SCRIPT_DIR/serve_backend.sh"
+source "$SWEBENCH_DIR/serve_backend.sh"
 
 PRESET="${1:?usage: smoke_kernel.sh <preset> <quant_label>}"
 QUANT_LABEL="${2:?usage: smoke_kernel.sh <preset> <quant_label>}"

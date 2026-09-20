@@ -34,7 +34,8 @@
 # Rule 2: refuses to start while a rollout / scoring container is running.
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SWEBENCH_DIR="$SCRIPT_DIR"  # common.sh re-points SCRIPT_DIR at scripts/; this dir stays evals/swebench
+REPO_DIR="$(cd "$SWEBENCH_DIR/../.." && pwd)"
 
 [ $# -ge 1 ] || { echo "Usage: $0 <preset> [preset...]" >&2; exit 2; }
 
@@ -49,7 +50,7 @@ SERVER_TIMEOUT="${SERVER_TIMEOUT:-1800}"
 export SERVE_SECRETS_DIR="${SERVE_SECRETS_DIR:-$SMOKE_DIR/secrets}"
 mkdir -p "$SMOKE_DIR"
 
-source "$SCRIPT_DIR/serve_backend.sh"
+source "$SWEBENCH_DIR/serve_backend.sh"
 
 log() { echo "[smoke $(date +%H:%M:%S)] $*"; }
 
@@ -130,7 +131,7 @@ smoke_preset() {
   # 1. scaffold request audit (no GPU) — auth column must pass with the bakeoff key
   local audit_scaffolds="$SMOKE_SCAFFOLD"
   [[ " $audit_scaffolds " == *" dcode "* ]] || audit_scaffolds="$audit_scaffolds dcode"
-  python "$SCRIPT_DIR/scaffold_request_audit.py" --served-name "$served" --scaffolds "$audit_scaffolds" \
+  python "$SWEBENCH_DIR/scaffold_request_audit.py" --served-name "$served" --scaffolds "$audit_scaffolds" \
     --receipt "$d/scaffold-audit.json" > "$d/scaffold-audit.log" 2>&1
   rc=$?
   if [ $rc -eq 0 ]; then
@@ -183,7 +184,7 @@ smoke_preset() {
     local out="$SMOKE_DIR/runs/${preset}-${SMOKE_SCAFFOLD}-smoke"
     rm -rf "$out"; mkdir -p "$out"
     cp -f "$d/serve-backend.json" "$out/serve-backend.json"
-    python "$SCRIPT_DIR/docker_rollout.py" \
+    python "$SWEBENCH_DIR/docker_rollout.py" \
       --model "sglang/$preset" --served-name "$served" --scaffold "$SMOKE_SCAFFOLD" \
       --out "$out" --instances "$SMOKE_INSTANCES" --timeout 1800 --max-empty-streak 30 \
       > "$d/rollout-$SMOKE_SCAFFOLD.log" 2>&1
@@ -200,7 +201,7 @@ smoke_preset() {
     else
       mark rollout FAIL "rc=$rc preds=$preds nonempty=$nonempty meta=$meta_ok tripwires=$trip ($d/rollout-$SMOKE_SCAFFOLD.log)"; fail=1
     fi
-    python "$SCRIPT_DIR/audit_leakage.py" --run "$out" --require-isolation > "$d/leak-audit.log" 2>&1
+    python "$SWEBENCH_DIR/audit_leakage.py" --run "$out" --require-isolation > "$d/leak-audit.log" 2>&1
     rc=$?
     if [ $rc -eq 0 ]; then mark leak_audit PASS "$(head -1 "$d/leak-audit.log")"; else mark leak_audit FAIL "rc=$rc $(head -1 "$d/leak-audit.log")"; fail=1; fi
   fi

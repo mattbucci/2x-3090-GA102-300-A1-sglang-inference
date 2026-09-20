@@ -47,11 +47,12 @@
 
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SWEBENCH_DIR="$SCRIPT_DIR"  # common.sh re-points SCRIPT_DIR at scripts/; this dir stays evals/swebench
+REPO_DIR="$(cd "$SWEBENCH_DIR/../.." && pwd)"
 
 source "$REPO_DIR/scripts/common.sh"
 activate_conda 2>/dev/null || true
-source "$SCRIPT_DIR/serve_backend.sh"
+source "$SWEBENCH_DIR/serve_backend.sh"
 
 PRESET="${1:-}"
 SERVED="${2:-$PRESET}"
@@ -126,7 +127,7 @@ needs_kernel_smoke() {
 
 run_kernel_smoke() {
   log "kernel smoke (default vs awq_marlin)"
-  bash "$SCRIPT_DIR/smoke_kernel_pair.sh" "$PRESET" \
+  bash "$SWEBENCH_DIR/smoke_kernel_pair.sh" "$PRESET" \
     > "$LOG_DIR/smoke.log" 2>&1
   local rc=$?
   local winner_env="/tmp/smoke-kernel/$PRESET/winner.env"
