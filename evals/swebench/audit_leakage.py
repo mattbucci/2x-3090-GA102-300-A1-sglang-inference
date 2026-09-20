@@ -68,7 +68,10 @@ NET_FAIL_RE = re.compile(
     r"Could not resolve host|Temporary failure in name resolution|Network is unreachable"
     r"|ENOTFOUND|ECONNREFUSED|EAI_AGAIN|Name or service not known|No address associated"
     r"|fetch failed|Failed to fetch|Connection refused|NewConnectionError|Max retries exceeded"
-    r"|Could not fetch URL|No matching distribution|network error|unable to access", re.I)
+    r"|Could not fetch URL|No matching distribution|network error|unable to access"
+    # pip swallows the DNS failure and prints an empty version list; opencode's
+    # webfetch surfaces a blocked socket as "Transport error" (R9700 `1ea2167`)
+    r"|\(from versions: none\)|Transport error", re.I)
 
 # instance prefix -> tokens that identify the project's own sites/repos in a URL
 PROJECT_TOKENS = {
