@@ -33,6 +33,16 @@
 # OVERRIDE_ARGS ENABLE_CUSTOM_AR CUDA_VISIBLE_DEVICES) are forwarded into the
 # container when set. MODEL= overrides must use the in-container path (/models/...).
 #
+# Checkpoint reachability: $MODELS_DIR (resolved) is bound at /models AND at its
+# own host path, because most preset checkpoints are symlinks to absolute host
+# paths (hf-mattbucci/<name> -> /data/models/<real-name>) that only resolve when
+# the target path exists inside the container too. serve_start runs a GPU-free
+# preflight container first (DRY_RUN=1 launch.sh, then `test -e` on every
+# /models/... argv entry) so a checkpoint that resolves outside $MODELS_DIR
+# (e.g. a symlink into ~/.cache/huggingface) fails in 2 s with the offending
+# path instead of 45 s into the boot with transformers' "Repo id must be in
+# the form 'repo_name'" — materialise such checkpoints under $MODELS_DIR.
+#
 # Functions:
 #   serve_backend_init                 resolve mode, mint keys, stale-image check;
 #                                      exports SERVE_MODE, SWEBENCH_API_KEY_FILE,
@@ -150,6 +160,37 @@ _serve_port_busy() {  # 0 when something already listens on tcp:$1
   ss -Hltn "sport = :$1" 2>/dev/null | grep -q .
 }
 
+# Every /models/... path in the preset's final argv must exist inside the
+# container (bind + symlink targets), checked from a throwaway GPU-free
+# container with the same mounts/env. Uses $mounts / $env_args of the caller.
+_serve_model_preflight() {
+  local preset="$1"; shift
+  local out
+  if ! out="$(docker run --rm --network=none --cap-drop=ALL \
+        --security-opt=no-new-privileges:true -e DRY_RUN=1 \
+        "${env_args[@]}" "${mounts[@]}" "$SERVE_IMAGE" bash -c '
+          set -o pipefail
+          argv="$(scripts/launch.sh "$@")" || { echo "DRY_RUN launch.sh failed"; exit 70; }
+          rc=0
+          while IFS= read -r a; do
+            case "$a" in
+              /models/*|'"$models"'/*)
+                if [ -e "$a" ]; then
+                  [ -r "$a" ] || { echo "UNREADABLE $a (uid $(id -u))"; rc=1; }
+                else
+                  echo "UNREACHABLE $a -> $(readlink -f "$a" 2>/dev/null || readlink "$a" 2>/dev/null)"; rc=1
+                fi ;;
+            esac
+          done <<< "$argv"
+          exit $rc' _ "$preset" "$@" 2>&1 9>&-)"; then
+    echo "ERROR: checkpoint preflight failed for preset $preset — a /models path in its argv does not resolve inside the container:" >&2
+    printf '  %s\n' "$out" >&2
+    echo "  (symlink targets must stay under $models; materialise anything that points elsewhere)" >&2
+    return 1
+  fi
+  _serve_log "checkpoint preflight ok for $preset"
+}
+
 serve_start() {
   local preset="$1" log="$2" pidfile="$3"; shift 3
   if [ "$SERVE_MODE" = "bare" ]; then
@@ -175,6 +216,15 @@ serve_start() {
   fi
 
   local models; models="$(readlink -f "$MODELS_DIR")"
+  # /models is what launch.sh's MODELS_DIR points at in the image; the second
+  # bind (same path as on the host) is what lets the absolute symlink targets
+  # under it resolve — see the header.
+  local mounts=(--mount "type=bind,src=$models,dst=/models,readonly")
+  [ "$models" != /models ] && mounts+=(--mount "type=bind,src=$models,dst=$models,readonly")
+  local env_args=(-e SGLANG_TRUST_REMOTE_CODE="$SERVE_TRUST_REMOTE_CODE") k
+  for k in "${SERVE_LAUNCH_KNOBS[@]}"; do [ -n "${!k+x}" ] && env_args+=(-e "$k"); done
+  [ -n "${MODEL+x}" ] && env_args+=(-e MODEL)
+  _serve_model_preflight "$preset" "$@" || return 1
   local args=(
     docker run -d --name "$name"
     --gpus "$SERVE_GPUS" --network=host --shm-size 16g
@@ -182,15 +232,13 @@ serve_start() {
     --stop-timeout 90
     -e SGLANG_API_KEY_FILE=/run/secrets/sglang-api-key
     -e SGLANG_ADMIN_API_KEY_FILE=/run/secrets/sglang-admin-api-key
-    -e SGLANG_TRUST_REMOTE_CODE="$SERVE_TRUST_REMOTE_CODE"
     -e SGLANG_ENABLE_METRICS=1
+    "${env_args[@]}"
     --mount "type=bind,src=$SERVE_SECRETS_DIR/api-key,dst=/run/secrets/sglang-api-key,readonly"
     --mount "type=bind,src=$SERVE_SECRETS_DIR/admin-key,dst=/run/secrets/sglang-admin-api-key,readonly"
-    --mount "type=bind,src=$models,dst=/models,readonly"
+    "${mounts[@]}"
     --mount "type=volume,src=$SERVE_CACHE_VOLUME,dst=/home/sglang/.cache"
   )
-  local k
-  for k in "${SERVE_LAUNCH_KNOBS[@]}"; do [ -n "${!k+x}" ] && args+=(-e "$k"); done
   args+=("$SERVE_IMAGE" scripts/launch.sh "$preset" "$@")
   local cid
   if ! cid="$("${args[@]}" 9>&-)"; then

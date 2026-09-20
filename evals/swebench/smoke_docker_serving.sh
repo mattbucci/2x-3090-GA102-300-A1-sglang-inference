@@ -192,7 +192,9 @@ smoke_preset() {
     local preds nonempty meta_ok
     preds=$(wc -l < "$out/predictions.jsonl" 2>/dev/null || echo 0)
     nonempty=$(python3 -c "import json,sys; print(sum(1 for l in open('$out/predictions.jsonl') if json.loads(l).get('model_patch','').strip()))" 2>/dev/null || echo 0)
-    meta_ok=$(python3 -c "import json; m=json.load(open('$out/meta.json')); print('ok' if m.get('serve_mode')=='docker' and m.get('network_mode')=='none' and m.get('context_window',0)>=262144 else f\"serve_mode={m.get('serve_mode')} network_mode={m.get('network_mode')} context_window={m.get('context_window')}\")" 2>/dev/null || echo "no meta.json")
+    # meta.json = {"runs": [per-run entries...], "scaffold", "model"}; the isolation
+    # facts live on the latest run entry, not at the top level.
+    meta_ok=$(python3 -c "import json; m=json.load(open('$out/meta.json'))['runs'][-1]; print('ok' if m.get('serve_mode')=='docker' and m.get('network_mode')=='none' and m.get('context_window',0)>=262144 and m.get('prompt_delivery')=='stdin-file' and m.get('mount_staging')=='neutral' and m.get('git_history')=='reinit-1-commit' else f\"serve_mode={m.get('serve_mode')} network_mode={m.get('network_mode')} context_window={m.get('context_window')} prompt_delivery={m.get('prompt_delivery')} mount_staging={m.get('mount_staging')} git_history={m.get('git_history')}\")" 2>/dev/null || echo "no meta.json")
     local budget trip
     budget="$(grep -c 'context budget:' "$d/rollout-$SMOKE_SCAFFOLD.log" 2>/dev/null)"; budget="${budget:-0}"
     trip="$(grep -c 'CONTEXT-BUDGET TRIPWIRE\|BRIDGE CHECK FAILED' "$d/rollout-$SMOKE_SCAFFOLD.log" 2>/dev/null)"; trip="${trip:-0}"
