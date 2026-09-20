@@ -102,7 +102,7 @@ reference points only — never ships, never calibration bases.
 ### Conda env split (calibration device)
 **llmcompressor MUST run in the `quant` env, never the serving env** — conflicting
 transformers/compressed-tensors/torch pins break both. The serving env
-(version-suffixed, e.g. `sglang-v0515`, resolved by `common.sh`) is for inference only.
+(version-suffixed, currently `sglang-v0520` for SGLang v0.5.20, resolved by `common.sh`) is for inference only.
 
 ### DeltaNet/Mamba/SSM layers — DO NOT quantize to INT4
 Models with recurrent state accumulate quantization error: `S(t) = gating * S(t-1) + delta`.
