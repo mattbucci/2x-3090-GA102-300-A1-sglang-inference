@@ -1,0 +1,393 @@
+{
+ "generated": "2026-09-20T13:35-07:00",
+ "image": "sglang-cuda-3090:local",
+ "image_id": "0d926588ba00b32ee8b225bb457b556bf47b2a0f60887ca13a893946b0343581",
+ "note": "smoke_docker_serving.sh parity receipts. Each preset ran in two passes: a full pass (bench vs the bare-metal tripwire baseline) and, after the janitor fix ae0a8bd, a rollout-only pass whose receipt is `final`. `bench_log` is the full pass's bench_regression.sh compare output. The qwen36 full pass's leak_audit FAIL (isolation 1/2) was the janitor race, not the harness \u2014 see swebench-harness-isolation-2026-09-20.md.",
+ "presets": {
+  "qwen38": {
+   "final": {
+    "preset": "qwen38",
+    "verdict": "PASS",
+    "serve_mode": "docker",
+    "image": "sglang-cuda-3090:local",
+    "image_id": "0d926588ba00b32ee8b225bb457b556bf47b2a0f60887ca13a893946b0343581",
+    "date": "2026-09-20T13:23:42",
+    "steps": {
+     "stop": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "responses_api": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "bench": {
+      "status": "SKIP",
+      "detail": ""
+     },
+     "rollout": {
+      "status": "PASS",
+      "detail": "rc=0 preds=2 nonempty=2 meta=ok budget_lines=0"
+     },
+     "boot": {
+      "status": "PASS",
+      "detail": "53s to /health; /v1/models=[qwen38]"
+     },
+     "scaffold_audit": {
+      "status": "PASS",
+      "detail": "api_auth=True opencode:auth=ok dcode:auth=ok"
+     },
+     "leak_audit": {
+      "status": "PASS",
+      "detail": "Using the latest cached version of the dataset since princeton-nlp/SWE-bench_Lite couldn't be found on the Hugging Face Hub (offline mode is enabled)."
+     },
+     "api_auth": {
+      "status": "PASS",
+      "detail": "anon /v1/models -> 401"
+     }
+    }
+   },
+   "bench_log": [
+    "============================================",
+    "Regression tripwire \u2014 qwen38 (mode: compare, threshold 10%)",
+    "============================================",
+    "=== qwen38 (tokenizer: /home/letsrtfm/AI/models/hf-mattbucci/Qwen3.8-27B-AWQ) ===",
+    "NOTE: KV pool max_total_num_tokens=645807; capping input sweep at 261916 usable tokens. Dropping over-cap contexts [262144] (they can't fit the pool and would log artifact tok/s).",
+    "=== qwen38 (qwen38) ===",
+    "Contexts: [1024, 32768, 261916]  (output tokens: 100, KV pool: 645807)",
+    "",
+    "Warmup (3x 128-in 10-out)...",
+    "  ctx=  1024: TPOT=14.2ms  TTFT=443ms  70.2 tok/s",
+    "  ctx= 32768: TPOT=15.1ms  TTFT=4438ms  66.1 tok/s",
+    "  ctx=261916: TPOT=20.7ms  TTFT=627ms  48.3 tok/s",
+    "",
+    "Results saved to /home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference/benchmarks/regression/qwen38-2026-09-20-docker-smoke.json",
+    "  qwen38/1024: 70.6 -> 70.2 tok/s (-0.6%) [ok]",
+    "  qwen38/32768: 67.2 -> 66.1 tok/s (-1.6%) [ok]",
+    "  qwen38/deep(261916): 48.4 -> 48.3 tok/s (-0.2%) [ok]",
+    "  qwen38: within threshold.",
+    "",
+    "RESULT: PASS"
+   ],
+   "scaffold_audit": {
+    "date": "2026-09-20 13:08",
+    "served_name": "qwen38",
+    "image": "swebench-rollout/django__django-11564:latest",
+    "context_window": 262144,
+    "output_budget": 32768,
+    "output_cap_floor": 32000,
+    "api_auth": true,
+    "allow_effort": [
+     "xhigh"
+    ],
+    "verdicts": {
+     "opencode": {
+      "status": "OK",
+      "problems": [],
+      "path": "/v1/chat/completions",
+      "body": {
+       "model": "qwen38",
+       "max_tokens": 32768,
+       "top_p": 1,
+       "messages_n": 3,
+       "stream": true,
+       "stream_options": {
+        "include_usage": true
+       },
+       "user0": {
+        "len": 40,
+        "sha256": "343ad246dc9ed907",
+        "text": "Generate a title for this conversation:\n"
+       }
+      },
+      "auth": "ok",
+      "prompt": "verbatim*",
+      "argv": "clean",
+      "n_requests": 2,
+      "user0": {
+       "len": 109,
+       "sha256": "cd0255efd8ec3c2a",
+       "text": "\nReply with the single word OK and stop. Probe text: run `python -c \"print(1)\"` \u2014 it has \"quotes\" and spaces."
+      },
+      "budget_lines": [
+       "context budget: opencode.json qwen38 limit={\"context\":262144,\"output\":32768}"
+      ]
+     },
+     "dcode": {
+      "status": "OK",
+      "problems": [],
+      "path": "/v1/responses",
+      "body": {
+       "input_n": 2,
+       "model": "qwen38",
+       "prompt_cache_key": "01a0c06f-7af2-7c40-8eec-e5654295f8b0",
+       "stream": true,
+       "tools_n": 14,
+       "user0": {
+        "len": 108,
+        "sha256": "4b064132703ecb3c",
+        "text": "Reply with the single word OK and stop. Probe text: run `python -c \"print(1)\"` \u2014 it has \"quotes\" and spaces."
+       }
+      },
+      "auth": "ok",
+      "prompt": "verbatim",
+      "argv": "clean",
+      "n_requests": 1,
+      "user0": {
+       "len": 108,
+       "sha256": "4b064132703ecb3c",
+       "text": "Reply with the single word OK and stop. Probe text: run `python -c \"print(1)\"` \u2014 it has \"quotes\" and spaces."
+      },
+      "budget_lines": []
+     }
+    }
+   },
+   "responses_probe": {
+    "base": "http://127.0.0.1:23334",
+    "steps": {
+     "models": {
+      "status": 200,
+      "ids": [
+       "qwen38"
+      ]
+     },
+     "function_call": {
+      "http": 200,
+      "status": "completed",
+      "output_types": [
+       "reasoning",
+       "message",
+       "function_call"
+      ],
+      "call": {
+       "name": "get_weather",
+       "arguments": "{\"city\": \"Paris\"}"
+      },
+      "arguments_ok": true,
+      "seconds": 1.0,
+      "error": null
+     },
+     "wrong_model": {
+      "http": 404,
+      "body": "404 as expected"
+     }
+    },
+    "ok": true
+   }
+  },
+  "qwen36": {
+   "final": {
+    "preset": "qwen36",
+    "verdict": "PASS",
+    "serve_mode": "docker",
+    "image": "sglang-cuda-3090:local",
+    "image_id": "0d926588ba00b32ee8b225bb457b556bf47b2a0f60887ca13a893946b0343581",
+    "date": "2026-09-20T13:33:38",
+    "steps": {
+     "stop": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "responses_api": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "bench": {
+      "status": "SKIP",
+      "detail": ""
+     },
+     "rollout": {
+      "status": "PASS",
+      "detail": "rc=0 preds=2 nonempty=2 meta=ok budget_lines=0"
+     },
+     "boot": {
+      "status": "PASS",
+      "detail": "103s to /health; /v1/models=[qwen36]"
+     },
+     "scaffold_audit": {
+      "status": "PASS",
+      "detail": "api_auth=True opencode:auth=ok dcode:auth=ok"
+     },
+     "leak_audit": {
+      "status": "PASS",
+      "detail": "Using the latest cached version of the dataset since princeton-nlp/SWE-bench_Lite couldn't be found on the Hugging Face Hub (offline mode is enabled)."
+     },
+     "api_auth": {
+      "status": "PASS",
+      "detail": "anon /v1/models -> 401"
+     }
+    }
+   },
+   "bench_log": [
+    "============================================",
+    "Regression tripwire \u2014 qwen36 (mode: compare, threshold 10%)",
+    "============================================",
+    "=== qwen36 (tokenizer: /home/letsrtfm/AI/models/hf-mattbucci/Qwen3.6-35B-A3B-AWQ) ===",
+    "NOTE: KV pool max_total_num_tokens=862404; capping input sweep at 261916 usable tokens. Dropping over-cap contexts [262144] (they can't fit the pool and would log artifact tok/s).",
+    "=== qwen36 (qwen36) ===",
+    "Contexts: [1024, 32768, 261916]  (output tokens: 100, KV pool: 862404)",
+    "",
+    "Warmup (3x 128-in 10-out)...",
+    "  ctx=  1024: TPOT=4.6ms  TTFT=90ms  217.9 tok/s",
+    "  ctx= 32768: TPOT=5.2ms  TTFT=884ms  192.3 tok/s",
+    "  ctx=261916: TPOT=8.0ms  TTFT=653ms  124.5 tok/s",
+    "",
+    "Results saved to /home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference/benchmarks/regression/qwen36-2026-09-20-docker-smoke.json",
+    "  qwen36/1024: 210.5 -> 217.9 tok/s (+3.5%) [ok]",
+    "  qwen36/32768: 189.4 -> 192.3 tok/s (+1.5%) [ok]",
+    "  qwen36/deep(261916): 122.0 -> 124.5 tok/s (+2.0%) [ok]",
+    "  qwen36/deep(261916): WARN ttft 432 -> 653 ms (+51.1%) \u2014 prefill drift (no gate)",
+    "  qwen36: within threshold.",
+    "",
+    "RESULT: PASS"
+   ],
+   "scaffold_audit": {
+    "date": "2026-09-20 13:26",
+    "served_name": "qwen36",
+    "image": "swebench-rollout/astropy__astropy-14182:latest",
+    "context_window": 262144,
+    "output_budget": 32768,
+    "output_cap_floor": 32000,
+    "api_auth": true,
+    "allow_effort": [
+     "xhigh"
+    ],
+    "verdicts": {
+     "opencode": {
+      "status": "OK",
+      "problems": [],
+      "path": "/v1/chat/completions",
+      "body": {
+       "model": "qwen36",
+       "max_tokens": 32768,
+       "top_p": 1,
+       "messages_n": 3,
+       "stream": true,
+       "stream_options": {
+        "include_usage": true
+       },
+       "user0": {
+        "len": 40,
+        "sha256": "343ad246dc9ed907",
+        "text": "Generate a title for this conversation:\n"
+       }
+      },
+      "auth": "ok",
+      "prompt": "verbatim*",
+      "argv": "clean",
+      "n_requests": 2,
+      "user0": {
+       "len": 109,
+       "sha256": "cd0255efd8ec3c2a",
+       "text": "\nReply with the single word OK and stop. Probe text: run `python -c \"print(1)\"` \u2014 it has \"quotes\" and spaces."
+      },
+      "budget_lines": [
+       "context budget: opencode.json qwen36 limit={\"context\":262144,\"output\":32768}"
+      ]
+     },
+     "dcode": {
+      "status": "OK",
+      "problems": [],
+      "path": "/v1/responses",
+      "body": {
+       "input_n": 2,
+       "model": "qwen36",
+       "prompt_cache_key": "01a0c07f-8ae4-74f1-85c5-65641b01a974",
+       "stream": true,
+       "tools_n": 14,
+       "user0": {
+        "len": 108,
+        "sha256": "4b064132703ecb3c",
+        "text": "Reply with the single word OK and stop. Probe text: run `python -c \"print(1)\"` \u2014 it has \"quotes\" and spaces."
+       }
+      },
+      "auth": "ok",
+      "prompt": "verbatim",
+      "argv": "clean",
+      "n_requests": 1,
+      "user0": {
+       "len": 108,
+       "sha256": "4b064132703ecb3c",
+       "text": "Reply with the single word OK and stop. Probe text: run `python -c \"print(1)\"` \u2014 it has \"quotes\" and spaces."
+      },
+      "budget_lines": []
+     }
+    }
+   },
+   "responses_probe": {
+    "base": "http://127.0.0.1:23334",
+    "steps": {
+     "models": {
+      "status": 200,
+      "ids": [
+       "qwen36"
+      ]
+     },
+     "function_call": {
+      "http": 200,
+      "status": "completed",
+      "output_types": [
+       "reasoning",
+       "message",
+       "function_call"
+      ],
+      "call": {
+       "name": "get_weather",
+       "arguments": "{\"city\": \"Paris\"}"
+      },
+      "arguments_ok": true,
+      "seconds": 1.0,
+      "error": null
+     },
+     "wrong_model": {
+      "http": 404,
+      "body": "404 as expected"
+     }
+    },
+    "ok": true
+   },
+   "full_pass": {
+    "preset": "qwen36",
+    "verdict": "FAIL",
+    "serve_mode": "docker",
+    "image": "sglang-cuda-3090:local",
+    "image_id": "0d926588ba00b32ee8b225bb457b556bf47b2a0f60887ca13a893946b0343581",
+    "date": "2026-09-20T13:08:38",
+    "steps": {
+     "stop": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "responses_api": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "bench": {
+      "status": "PASS",
+      "detail": "qwen36/1024: 210.5 -> 217.9 tok/s (+3.5%) [ok]|qwen36/32768: 189.4 -> 192.3 tok/s (+1.5%) [ok]|qwen36/deep(261916): 122.0 -> 124.5 tok/s (+2.0%) [ok]|qwen36/deep(261916): WARN ttft 432 -> 653 ms (+51.1%) \u2014 prefill drift (no gate)|RESULT: PASS|"
+     },
+     "rollout": {
+      "status": "PASS",
+      "detail": "rc=0 preds=2 nonempty=1 meta=ok budget_lines=0"
+     },
+     "boot": {
+      "status": "PASS",
+      "detail": "253s to /health; /v1/models=[qwen36]"
+     },
+     "scaffold_audit": {
+      "status": "PASS",
+      "detail": "api_auth=True opencode:auth=ok dcode:auth=ok"
+     },
+     "leak_audit": {
+      "status": "FAIL",
+      "detail": "rc=1 Using the latest cached version of the dataset since princeton-nlp/SWE-bench_Lite couldn't be found on the Hugging Face Hub (offline mode is enabled)."
+     },
+     "api_auth": {
+      "status": "PASS",
+      "detail": "anon /v1/models -> 401"
+     }
+    }
+   }
+  }
+ }
+}
