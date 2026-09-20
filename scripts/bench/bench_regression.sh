@@ -73,13 +73,19 @@ TRIPWIRE_PRESETS=(qwen36 qwen36-dense coder-30b qwen35-moe gemma4 nemotron3-omni
 
 mkdir -p "$RUNS_DIR"
 
+# A docker-served (secure-launch) server wants a bearer on everything but
+# /health; SGLANG_API_KEY (or OPENAI_API_KEY) supplies it here and inside the
+# instrument (bench_long_context.py mirrors it into bench_serving's variable).
+AUTH_ARGS=()
+[ -n "${SGLANG_API_KEY:-${OPENAI_API_KEY:-}}" ] && AUTH_ARGS=(-H "Authorization: Bearer ${SGLANG_API_KEY:-$OPENAI_API_KEY}")
+
 server_served_name() {
-    curl -s -m 5 "$BASE_URL/v1/models" | python3 -c \
+    curl -s -m 5 "${AUTH_ARGS[@]}" "$BASE_URL/v1/models" | python3 -c \
         "import json,sys; print(json.load(sys.stdin)['data'][0]['id'])" 2>/dev/null
 }
 
 server_model_path() {
-    curl -s -m 5 "$BASE_URL/get_model_info" | python3 -c \
+    curl -s -m 5 "${AUTH_ARGS[@]}" "$BASE_URL/get_model_info" | python3 -c \
         "import json,sys; print(json.load(sys.stdin)['model_path'])" 2>/dev/null
 }
 

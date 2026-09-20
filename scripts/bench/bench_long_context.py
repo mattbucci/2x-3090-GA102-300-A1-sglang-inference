@@ -21,6 +21,14 @@ import requests
 
 DEFAULT_CONTEXTS = [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 196608, 262144]
 
+# A docker-served (secure-launch) server requires a bearer on every endpoint
+# but /health and /metrics. sglang.bench_serving reads OPENAI_API_KEY; mirror
+# SGLANG_API_KEY into it so one variable drives both halves of the instrument.
+if os.environ.get("SGLANG_API_KEY") and not os.environ.get("OPENAI_API_KEY"):
+    os.environ["OPENAI_API_KEY"] = os.environ["SGLANG_API_KEY"]
+AUTH = ({"Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}"}
+        if os.environ.get("OPENAI_API_KEY") else {})
+
 
 def run_bench(base_url, model, input_len, output_len, tokenizer=None):
     cmd = [
@@ -73,7 +81,7 @@ def run_bench(base_url, model, input_len, output_len, tokenizer=None):
 
 
 def server_model(base_url):
-    r = requests.get(f"{base_url}/v1/models", timeout=5)
+    r = requests.get(f"{base_url}/v1/models", timeout=5, headers=AUTH)
     return r.json()["data"][0]["id"]
 
 
@@ -84,7 +92,7 @@ def server_context_length(base_url):
     second depth bug — surfaced once range_ratio=1 made prompts hit full length)."""
     for ep in ("/server_info", "/get_server_info"):
         try:
-            j = requests.get(f"{base_url}{ep}", timeout=10).json()
+            j = requests.get(f"{base_url}{ep}", timeout=10, headers=AUTH).json()
             v = j.get("context_length") or j.get("max_context_len")
             if isinstance(v, int) and v > 0:
                 return v
@@ -100,7 +108,7 @@ def server_max_tokens(base_url):
     (gemma4-26b "75 tok/s @262K" vs 34 @1K). Returns None if unavailable."""
     for ep in ("/server_info", "/get_server_info"):   # /server_info current; other deprecated
         try:
-            j = requests.get(f"{base_url}{ep}", timeout=5).json()
+            j = requests.get(f"{base_url}{ep}", timeout=5, headers=AUTH).json()
             v = j.get("max_total_num_tokens")
             if isinstance(v, int) and v > 0:
                 return v
