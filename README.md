@@ -48,7 +48,7 @@ Every deep point is **server-verified at its labeled depth** (`actual_input_toke
 
 ### Known issues (open)
 
-- **`nemotron3-omni` decode −12% at depth on v0.5.18** (93.3 → 82.4 tok/s @261,916). Bisected to the flashinfer-side decode dispatch (0.6.15.post1 → 0.6.17); preset unchanged (still the fastest path), tripwire baseline deliberately kept at 93.3; upstream-report candidate with receipts `benchmarks/regression/exp-nemotron-*.json`.
+- **`nemotron3-omni` decode −12% at depth since v0.5.18** (93.3 → 82.4 tok/s @261,916; v0.5.20 measures 85.9, −7.9 % against the same kept baseline — the largest single move of that campaign, inside the band). Bisected to the flashinfer-side decode dispatch (0.6.15.post1 → 0.6.17); preset unchanged (still the fastest path), tripwire baseline deliberately kept at 93.3 so each flip measures against one reference; upstream-report candidate with receipts `benchmarks/regression/exp-nemotron-*.json`.
 - **`qwen36-ream` × claw-code is 122/300 with ~30 instances that hard-fail in the scaffold** (`rc=3` GLIBC rollout landmine, not a model issue). claw-code is retired, so the cell stays as scored — read it with that discount.
 - **Host reboots every ~9–17 h under sustained docker rollout I/O (kernel BUG).** Predictions on disk survive; `swebench-bakeoff.service` auto-resumes. Durable fix is user-gated (item 7). Forensic recipe: [`CLAUDE.md`](CLAUDE.md) → Operational Lessons.
 - `check_awq_scales.py` reads native-AWQ format only — CT-format checkpoints crash its tensor reader (use a native-AWQ mirror or HF Range-fetch mode).
