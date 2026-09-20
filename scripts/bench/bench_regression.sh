@@ -85,8 +85,15 @@ server_served_name() {
 }
 
 server_model_path() {
-    curl -s -m 5 "${AUTH_ARGS[@]}" "$BASE_URL/get_model_info" | python3 -c \
-        "import json,sys; print(json.load(sys.stdin)['model_path'])" 2>/dev/null
+    local p
+    p="$(curl -s -m 5 "${AUTH_ARGS[@]}" "$BASE_URL/get_model_info" | python3 -c \
+        "import json,sys; print(json.load(sys.stdin)['model_path'])" 2>/dev/null)"
+    # docker-mode server (serve_backend.sh): the image sees the models dir as
+    # /models — translate to the host path so --tokenizer can load it.
+    if [ -n "$p" ] && [ ! -e "$p" ] && [[ "$p" == /models/* ]] && [ -e "$MODELS_DIR/${p#/models/}" ]; then
+        p="$MODELS_DIR/${p#/models/}"
+    fi
+    echo "$p"
 }
 
 # process_run <preset> <run.json>  — schema-v2 compare (or save w/ BASELINE=save)
@@ -226,7 +233,9 @@ bench_live() {
     if [ -z "$model_path" ]; then
         echo "ERROR: could not read model_path from /get_model_info (needed for --tokenizer)"; return 2
     fi
-    local out="$RUNS_DIR/${preset}-${DATE}.json"
+    # RUN_SUFFIX keeps a side bench (docker-mode parity smoke) from overwriting
+    # the day's arm/tripwire receipt for the same preset.
+    local out="$RUNS_DIR/${preset}-${DATE}${RUN_SUFFIX:+-$RUN_SUFFIX}.json"
     echo "=== $preset (tokenizer: $model_path) ==="
     python "$PYBENCH" \
         --port "$PORT" --name "$preset" \
