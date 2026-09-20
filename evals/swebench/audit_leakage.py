@@ -15,8 +15,9 @@ docker_rollout.py now runs `--network none` (loopback bridge to the server
 only), strips refs to HEAD and snapshots each scaffold's session store to
 `<run>/sessions/<iid>/`. This script closes the loop at lane close:
 
-  * proves every instance ran isolated (`isolation: network=none` and
-    `isolation: refs=1 tags=0` in its per-instance log; `--require-isolation`)
+  * proves every instance ran isolated (`isolation: network=none`,
+    `isolation: refs=1 tags=0` and an `isolation: mounts=` line whose bind-source
+    paths name neither the benchmark nor the instance; `--require-isolation`)
   * scans the transcript for web / network / git-peek attempts and whether
     they returned content (a fetch under `--network none` fails — an attempt
     is a model behaviour note, a success is an infra alarm)
@@ -312,16 +313,22 @@ def instance_calls(run: Path, iid: str) -> tuple[str, list]:
 
 ISO_NET_RE = re.compile(r"^isolation: network=none bridge=", re.M)
 ISO_REFS_RE = re.compile(r"^isolation: refs=(\d+) tags=(\d+)", re.M)
+# bind-source paths as the sandbox sees them in /proc/self/mountinfo (docker_rollout.py
+# stages them under a neutral dir, 2026-09-20): none may name the benchmark or the instance
+ISO_MOUNTS_RE = re.compile(r"^isolation: mounts=(.*)$", re.M)
+CUE_RE = re.compile(r"swe[-_ ]?bench", re.I)
 
 
 def isolation_proof(run: Path, iid: str) -> dict:
     log = run / "logs" / f"{iid}.log"
     if not log.exists():
-        return {"network_none": False, "refs_stripped": False}
+        return {"network_none": False, "refs_stripped": False, "mounts_clean": False}
     t = log.read_text(errors="replace")
     m = ISO_REFS_RE.search(t)
+    mm = ISO_MOUNTS_RE.search(t)
     return {"network_none": bool(ISO_NET_RE.search(t)),
-            "refs_stripped": bool(m and int(m.group(1)) <= 1 and int(m.group(2)) == 0)}
+            "refs_stripped": bool(m and int(m.group(1)) <= 1 and int(m.group(2)) == 0),
+            "mounts_clean": bool(mm and not CUE_RE.search(mm.group(1)) and iid not in mm.group(1))}
 
 
 # --- gold overlap --------------------------------------------------------------
@@ -402,6 +409,7 @@ def audit_run(run: Path, require_isolation: bool, gold: dict[str, str]) -> dict:
     c["no_transcript"] = n - len(have)
     c["iso_network_none"] = sum(1 for r in rows.values() if r["isolation"]["network_none"])
     c["iso_refs_stripped"] = sum(1 for r in rows.values() if r["isolation"]["refs_stripped"])
+    c["iso_mounts_clean"] = sum(1 for r in rows.values() if r["isolation"]["mounts_clean"])
 
     def ov_stats(flag: bool):
         xs = [r["overlap"] for r in have if r["exposed"] == flag and r["overlap"] is not None]
@@ -411,7 +419,8 @@ def audit_run(run: Path, require_isolation: bool, gold: dict[str, str]) -> dict:
     # a cell with unreadable transcripts is only clean if it is PROVEN isolated
     verdict_ok = c["exposed"] == 0 and (c["no_transcript"] == 0 or c["iso_network_none"] == n)
     if require_isolation:
-        verdict_ok = verdict_ok and c["iso_network_none"] == n and c["iso_refs_stripped"] == n and n > 0
+        verdict_ok = verdict_ok and c["iso_network_none"] == n and c["iso_refs_stripped"] == n \
+            and c["iso_mounts_clean"] == n and n > 0
     return {"run": run.name, "n": n, "counts": dict(c),
             "gold_overlap": {"exposed": ov_stats(True), "isolated": ov_stats(False)},
             "require_isolation": require_isolation, "ok": verdict_ok, "instances": rows}
@@ -444,7 +453,8 @@ def main() -> int:
               f"git_READ={c.get('git_READ', 0)} git_LIST={c.get('git_LIST', 0)} | "
               f"attempted={c.get('attempted', 0)} ({100 * c.get('attempted', 0) / den:.0f}%) "
               f"EXPOSED={c.get('exposed', 0)} ({100 * c.get('exposed', 0) / den:.0f}%) | "
-              f"isolation proof: network=none {c['iso_network_none']}/{n}, refs stripped {c['iso_refs_stripped']}/{n}")
+              f"isolation proof: network=none {c['iso_network_none']}/{n}, refs stripped {c['iso_refs_stripped']}/{n}, "
+              f"mounts clean {c['iso_mounts_clean']}/{n}")
         go = rep["gold_overlap"]
         print(f"  gold-overlap>=80%: exposed {go['exposed']['ge80']}/{go['exposed']['n']} (med {go['exposed']['median']}), "
               f"isolated {go['isolated']['ge80']}/{go['isolated']['n']} (med {go['isolated']['median']})")

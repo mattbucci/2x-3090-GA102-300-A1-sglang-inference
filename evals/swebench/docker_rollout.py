@@ -45,6 +45,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -319,7 +320,7 @@ def _little_coder_profile_snippet(pkg_root: str, served_name: str, context_windo
 # netopen-2026-09-19.md; R9700 found 45–61 % on their lanes first). The
 # container now runs with no network; only 127.0.0.1:<server port> works,
 # through net_bridge.py over a unix socket the host half forwards to SGLang.
-BRIDGE_SOCK_IN_CONTAINER = "/run/swebench-bridge.sock"
+BRIDGE_SOCK_IN_CONTAINER = "/run/bridge.sock"   # neutral: the path shows in `ps` (bridge argv) and mountinfo
 BRIDGE_SCRIPT_IN_CONTAINER = "/sandbox/net_bridge.py"
 # Every scaffold config in the image points at 127.0.0.1:23334 (opencode.json,
 # the pi models files, OPENAI_BASE_URL for prime/dcode). The container half of
@@ -343,7 +344,7 @@ def start_host_bridge(server_url: str) -> Path:
     run_dir = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
     if not run_dir.is_dir():
         run_dir = Path("/tmp")
-    sock = run_dir / f"swebench-bridge-{os.getpid()}.sock"  # unix paths cap at ~107 bytes
+    sock = run_dir / f"bridge-{os.getpid()}.sock"  # unix paths cap at ~107 bytes; neutral name (mountinfo)
 
     def _die_with_parent():
         try:
@@ -376,19 +377,103 @@ def start_host_bridge(server_url: str) -> Path:
     return sock
 
 
-def network_docker_args(network_mode: str, bridge_sock: Path | None, sessions_dir: Path) -> list[str]:
+def network_docker_args(network_mode: str, bridge_sock: Path | None, stage: Path) -> list[str]:
     """docker-run arguments for the chosen network mode plus the per-instance
-    session-store mount every mode gets (audit_leakage.py reads it)."""
-    args = ["--mount", f"type=bind,src={sessions_dir},dst=/sessions"]
+    session-store mount every mode gets (audit_leakage.py reads it). Every
+    bind source lives under the neutral staging dir (see stage_instance_mounts)."""
+    args = ["--mount", f"type=bind,src={stage / 'sessions'},dst=/sessions"]
     if network_mode == "host":
         return ["--network=host", *args]
-    here = Path(__file__).resolve().parent
     return [
         "--network", "none",
-        "--mount", f"type=bind,src={here / 'net_bridge.py'},dst={BRIDGE_SCRIPT_IN_CONTAINER},readonly",
+        "--mount", f"type=bind,src={stage / 'bridge.py'},dst={BRIDGE_SCRIPT_IN_CONTAINER},readonly",
         "--mount", f"type=bind,src={bridge_sock},dst={BRIDGE_SOCK_IN_CONTAINER}",
         *args,
     ]
+
+
+# --- harness-owned cue hygiene (2026-09-20, after R9700's benchmark-recall
+# finding) ------------------------------------------------------------------
+# /proc/self/mountinfo inside the container prints the HOST source path of
+# every bind mount (`mount` and `df` do not). Mounting straight from
+# evals/swebench/runs/<preset>-<scaffold>-v3/{sessions,logs}/<iid>... handed
+# the sandbox the benchmark name, the instance id, the model and the scaffold
+# in one `cat`. So every per-instance bind source is staged under a neutral
+# temp dir (/var/tmp/rs-XXXX: prompt.md, bridge.py with docstring + comments
+# stripped, an empty sessions/), moved back to <run>/sessions/<iid> after the
+# container exits, and the docker command line is refused if any mount source
+# or the inner script still names the benchmark or the instance. The cues the
+# official sweb.eval image itself carries (/testbed, its "SWE-bench" HEAD
+# commit + /root/.gitconfig) are left alone on purpose: those are the shared
+# cue set both rigs' matrices run under.
+STAGE_ROOT = Path("/var/tmp")
+CUE_RE = re.compile(r"swe[-_ ]?bench", re.I)
+
+
+def strip_python_source(src: str) -> str:
+    """Drop the module/function docstrings and every comment (ast round-trip)."""
+    import ast
+    tree = ast.parse(src)
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            body = node.body
+            if body and isinstance(body[0], ast.Expr) and isinstance(getattr(body[0], "value", None), ast.Constant) \
+                    and isinstance(body[0].value.value, str):
+                body.pop(0)
+                if not body:
+                    body.append(ast.Pass())
+    return ast.unparse(tree) + "\n"
+
+
+def stage_instance_mounts(prompt: str) -> Path:
+    """Create the neutral per-instance staging dir with the bind sources."""
+    import tempfile
+    stage = Path(tempfile.mkdtemp(prefix="rs-", dir=STAGE_ROOT))
+    (stage / "sessions").mkdir()
+    (stage / "prompt.md").write_text(prompt)
+    here = Path(__file__).resolve().parent
+    (stage / "bridge.py").write_text(strip_python_source((here / "net_bridge.py").read_text()))
+    os.chmod(stage, 0o755)
+    return stage
+
+
+def collect_stage(stage: Path, sessions_dir: Path) -> None:
+    """Move the session snapshot to its audited home and drop the staging dir."""
+    if sessions_dir.exists():
+        shutil.rmtree(sessions_dir, ignore_errors=True)   # a re-roll replaces the old snapshot
+    sessions_dir.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.move(str(stage / "sessions"), str(sessions_dir))
+    except Exception as e:  # noqa: BLE001 — root-owned leftovers when the snapshot step never ran
+        print(f"  ! session snapshot not collected ({type(e).__name__}: {e}); left at {stage}", flush=True)
+        return
+    shutil.rmtree(stage, ignore_errors=True)
+
+
+def assert_no_harness_cues(cmd: list[str], iid: str) -> None:
+    """Refuse a docker command whose mount sources, env values or inner script
+    name the benchmark or the instance (the prompt text travels by file, so
+    only the problem statement itself can legitimately carry either)."""
+    hits = []
+    for i, a in enumerate(cmd):
+        if a in ("--name", "--workdir") or (i and cmd[i - 1] in ("--name",)):
+            continue   # container name is host-side only (hostname = container id)
+        if a.startswith("type=bind,src="):
+            src = a.split("src=", 1)[1].split(",", 1)[0]
+            if CUE_RE.search(src) or iid in src:
+                hits.append(f"mount source {src}")
+        elif i and cmd[i - 1] == "-v":
+            src = a.split(":", 1)[0]
+            if CUE_RE.search(src) or iid in src:
+                hits.append(f"mount source {src}")
+        elif i and cmd[i - 1] == "--env":
+            if CUE_RE.search(a) or iid in a:
+                hits.append(f"env {a.split('=', 1)[0]}")
+    inner = cmd[-1]
+    if CUE_RE.search(inner) or iid in inner:
+        hits.append("inner script (visible in `ps` for the whole run)")
+    if hits:
+        raise RuntimeError("harness cue would reach the sandbox: " + "; ".join(hits))
 
 
 def isolation_prelude(network_mode: str, port: int = CONTAINER_SERVER_PORT) -> str:
@@ -418,6 +503,9 @@ def isolation_prelude(network_mode: str, port: int = CONTAINER_SERVER_PORT) -> s
         f"\"$BRIDGE_PY\" -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:{port}/health', timeout=10)\" "
         f"|| {{ echo 'BRIDGE CHECK FAILED: server not reachable through the loopback bridge' >&2; exit 97; }}\n"
         f"echo \"isolation: network=none bridge=127.0.0.1:{port}\" >&2\n"
+        # what the sandbox can read about its own mounts: bind-source paths
+        # (mountinfo field 4) — audit_leakage.py checks this line for cues
+        "echo \"isolation: mounts=$(awk '$5 != \"/\" && $5 !~ /^\\/(proc|sys|dev)/ {print $4}' /proc/self/mountinfo | tr '\\n' ' ')\" >&2\n"
     ) + strip
 
 
@@ -435,6 +523,7 @@ SESSION_SNAPSHOT = (
     "snap .prime/agent/sessions\n"
     "snap .deepagents/.state\n"
     "snap .local/share/rtk/history.db\n"
+    "chown -R --reference=/sessions /sessions 2>/dev/null || true\n"   # host uid via the bind mount's owner
 )
 
 
@@ -1038,6 +1127,7 @@ def main():
         "prompt_delivery": "stdin-file",   # argv-era cells (re-quoted opencode task, self-kill exposure) have no key
         "git_refs_stripped": True,
         "session_snapshot": True,
+        "mount_staging": "neutral",   # bind sources under /var/tmp/rs-*: no benchmark/instance/model/scaffold in mountinfo
     })
     meta["scaffold"] = args.scaffold
     meta["model"] = args.model
@@ -1094,7 +1184,7 @@ def main():
                 )
                 container_name = f"swebench-rollout-{iid}-{int(time.time())}"
                 sessions_dir = out / "sessions" / iid
-                sessions_dir.mkdir(parents=True, exist_ok=True)
+                stage = stage_instance_mounts(prompt)
                 inner = (
                     ACTIVATE_TESTBED
                     + isolation_prelude(args.network_mode)
@@ -1105,8 +1195,8 @@ def main():
                     "docker", "run",
                     *([] if args.keep_containers else ["--rm"]),
                     "--name", container_name,
-                    *network_docker_args(args.network_mode, bridge_sock, sessions_dir),
-                    "-v", f"{prompt_path.resolve()}:{PROMPT_FILE}:ro",
+                    *network_docker_args(args.network_mode, bridge_sock, stage),
+                    "-v", f"{stage / 'prompt.md'}:{PROMPT_FILE}:ro",
                     "--env", f"CLEANUP_PROMPT={CLEANUP_PROMPT}",
                     "--env", "HOME=/root",
                     *scaffold_envs,
@@ -1114,30 +1204,35 @@ def main():
                     image_tag,
                     "bash", "-lc", inner,
                 ]
+                assert_no_harness_cues(cmd, iid)
                 log_path = out / "logs" / f"{iid}.log"
-                proc = subprocess.Popen(
-                    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-                    errors="replace",
-                    start_new_session=True,
-                )
                 try:
-                    stdout, stderr = proc.communicate(timeout=args.timeout)
-                    rc = proc.returncode
-                except subprocess.TimeoutExpired:
+                    proc = subprocess.Popen(
+                        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                        errors="replace",
+                        start_new_session=True,
+                    )
                     try:
-                        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-                    except (ProcessLookupError, PermissionError):
-                        pass
-                    sh("docker", "kill", container_name, check=False, capture=True)
-                    try:
-                        stdout, stderr = proc.communicate(timeout=10)
+                        stdout, stderr = proc.communicate(timeout=args.timeout)
+                        rc = proc.returncode
                     except subprocess.TimeoutExpired:
-                        stdout, stderr = "", ""
-                    rc = 124
+                        try:
+                            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                        except (ProcessLookupError, PermissionError):
+                            pass
+                        sh("docker", "kill", container_name, check=False, capture=True)
+                        try:
+                            stdout, stderr = proc.communicate(timeout=10)
+                        except subprocess.TimeoutExpired:
+                            stdout, stderr = "", ""
+                        rc = 124
+                finally:
+                    collect_stage(stage, sessions_dir)
 
                 elapsed = round(time.time() - t0, 1)
                 log_path.write_text(
-                    f"# command (prompt on stdin: logs/{iid}.prompt.md -> {PROMPT_FILE}, never argv)\n"
+                    f"# command (prompt on stdin: logs/{iid}.prompt.md -> {PROMPT_FILE} via {stage.name}/, never argv; "
+                    f"mounts staged under {STAGE_ROOT})\n"
                     f"# elapsed {elapsed}s   rc={rc}\n"
                     f"# stdout\n{stdout}\n# stderr\n{stderr}\n"
                 )
