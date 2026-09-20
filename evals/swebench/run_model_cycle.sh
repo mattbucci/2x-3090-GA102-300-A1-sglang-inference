@@ -13,6 +13,7 @@
 #   6. If any infra failures: relaunch server, reroll just those instances, stop server
 #   6b. Leak gate (audit_leakage.py --require-isolation): an exposed or unproven cell is never scored
 #   7. Score each scaffold
+#   7b. Benchmark-recall audit on opencode-family lanes (informational; <cell>/recall-audit.json)
 #   8. Regenerate cell JSONs via aggregate_bakeoff.py
 #   9. Print summary
 #
@@ -302,6 +303,21 @@ d = json.load(open('$OUT/scores-docker-summary.json'))
 print(f'  {\"$PRESET\":15s} x {\"$SCAFFOLD\":12s}: {d[\"resolved\"]}/{d[\"total_predictions\"]} = {d[\"resolve_rate_pct\"]}%  (unresolved={d[\"unresolved\"]} empty={d.get(\"empty_patch\",0)} err={d.get(\"error\",0)})')
 "
   fi
+done
+
+# --- Phase 5.5: benchmark-recall audit (informational, never gates) ---
+# How much of an opencode lane's reasoning went to recognising SWE-bench and
+# trying to remember the gold patch (R9700 finding 2026-09-20; their wall hits
+# were 15-30K-token recall thinks). Reads the per-instance session snapshots +
+# the scores just written; receipt at <cell>/recall-audit.json. opencode-family
+# lanes only -- the other scaffolds keep their own session formats.
+for SCAFFOLD in "${NEED_RESCORE[@]}"; do
+  case "$SCAFFOLD" in opencode*) ;; *) continue ;; esac
+  OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-${RUN_TAG}"
+  python "$REPO_DIR/evals/swebench/audit_benchmark_recall.py" --run "$OUT" \
+    --out "$OUT/recall-audit.json" > "$LOG_DIR/recall-audit-$SCAFFOLD.log" 2>&1 \
+    && log "recall audit $SCAFFOLD: $(grep -E '^  (sessions_with_recall|long_thinks_with_recall|wall_hits):' "$LOG_DIR/recall-audit-$SCAFFOLD.log" | tr -s ' \n' ' ')" \
+    || log "recall audit $SCAFFOLD: $(head -1 "$LOG_DIR/recall-audit-$SCAFFOLD.log")"
 done
 
 # --- Phase 6: refresh cell JSONs ---
