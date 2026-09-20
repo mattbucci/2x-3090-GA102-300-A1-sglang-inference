@@ -76,6 +76,11 @@ STDERR_PATTERNS = [
     # docker_rollout.py isolation prelude: the in-container loopback bridge
     # could not reach the server (exit 97) — the scaffold never ran
     (r"BRIDGE CHECK FAILED", "bridge"),
+    # docker run never started the scaffold (rc=125): the per-instance image
+    # vanished between build and run (janitor race, 2026-09-20) or the daemon
+    # refused the container. Re-roll rebuilds the image.
+    (r"Unable to find image '[^']*' locally", "rollout_image_missing"),
+    (r"docker: Error response from daemon", "docker_daemon"),
 ]
 ANYWHERE_PATTERNS = [
     (r"connect ECONN(REFUSED|RESET|ABORTED)", "connection_error"),
