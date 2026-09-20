@@ -438,6 +438,23 @@ SESSION_SNAPSHOT = (
 )
 
 
+# The task prompt reaches every scaffold on STDIN from this read-only file,
+# never as a positional argument (R9700 relay 2026-09-19, reproduced here the
+# same day — see benchmarks/quality/prompt-delivery-audit-2026-09-19.md):
+#   (1) argv self-kill: the issue text was on the scaffold's own argv, so an
+#       agent running `pkill -f "manage.py runserver"` (a phrase from the
+#       issue) SIGTERMed its own scaffold mid-session (django__django-11422);
+#   (2) opencode `run` (1.14.25 here, 1.18.25 there) re-quotes a positional
+#       message containing spaces — every opencode / opencode-dcp session saw
+#       the task wrapped in `"…"` with every inner `"` escaped (176/300 issue
+#       texts contain a `"`); a piped message is used verbatim.
+# The pi family / prime / dcode read a piped stdin as the message (pi and
+# dcode trim whitespace); dcode needs --stdin. The fixed cleanup prompt goes
+# through a bash here-string for the same reason. scaffold_request_audit.py
+# proves verbatim delivery per scaffold before every cycle.
+PROMPT_FILE = "/sandbox/prompt.md"
+
+
 def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
                               timeout: int = 1800, context_window: int = 0) -> tuple[list[str], str]:
     """Return (docker_run_extra_envs, inner_shell_command) for the given
@@ -464,10 +481,10 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             f"git config --global --add safe.directory /testbed\n"
             + _opencode_budget_snippet(served_name, context_window) +
             f"opencode run --dir /testbed --model {model} "
-            f"  --format json --dangerously-skip-permissions \"$PROMPT\" || true\n"
+            f"  --format json --dangerously-skip-permissions < {PROMPT_FILE} || true\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"timeout 120 opencode run --dir /testbed --model {model} "
-            f"  --format json --dangerously-skip-permissions \"$CLEANUP_PROMPT\" || true\n"
+            f"  --format json --dangerously-skip-permissions <<<\"$CLEANUP_PROMPT\" || true\n"
             f"echo === DIFF ===\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
@@ -496,9 +513,9 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             f"git config --global --add safe.directory /testbed\n"
             + _little_coder_budget_snippet("/opt/node/lib/node_modules/little-coder", served_name, context_window) +
             f"cd /testbed\n"
-            f"little-coder --model {oc_model} \"$PROMPT\" || true\n"
+            f"little-coder --model {oc_model} < {PROMPT_FILE} || true\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
-            f"timeout 120 little-coder --model {oc_model} \"$CLEANUP_PROMPT\" || true\n"
+            f"timeout 120 little-coder --model {oc_model} <<<\"$CLEANUP_PROMPT\" || true\n"
             f"echo === DIFF ===\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
@@ -531,9 +548,9 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             f"git config --global --add safe.directory /testbed\n"
             + _little_coder_budget_snippet("/opt/lc-rtk/node_modules/little-coder", served_name, context_window) +
             f"cd /testbed\n"
-            f"/opt/lc-rtk/node_modules/.bin/little-coder -e /opt/rtk-home/.pi/agent/extensions/rtk.ts --model {oc_model} \"$PROMPT\" || true\n"
+            f"/opt/lc-rtk/node_modules/.bin/little-coder -e /opt/rtk-home/.pi/agent/extensions/rtk.ts --model {oc_model} < {PROMPT_FILE} || true\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
-            f"timeout 120 /opt/lc-rtk/node_modules/.bin/little-coder -e /opt/rtk-home/.pi/agent/extensions/rtk.ts --model {oc_model} \"$CLEANUP_PROMPT\" || true\n"
+            f"timeout 120 /opt/lc-rtk/node_modules/.bin/little-coder -e /opt/rtk-home/.pi/agent/extensions/rtk.ts --model {oc_model} <<<\"$CLEANUP_PROMPT\" || true\n"
             f"echo === DIFF ===\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
@@ -560,7 +577,8 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             f"git config --global user.name eval\n"
             f"git config --global --add safe.directory /testbed\n"
             f"cd /testbed\n"
-            f"/usr/local/bin/claw --model {oc_model} prompt \"$PROMPT\" || true\n"
+            f"/usr/local/bin/claw --model {oc_model} prompt \"$(cat {PROMPT_FILE})\" || true\n"  # retired lane: claw takes a positional only (argv-exposed; historical cells)
+
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"timeout 120 /usr/local/bin/claw --model {oc_model} prompt \"$CLEANUP_PROMPT\" || true\n"
             f"echo === DIFF ===\n"
@@ -584,10 +602,10 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             f"git config --global --add safe.directory /testbed\n"
             + _opencode_budget_snippet(served_name, context_window) +
             f"opencode run --dir /testbed --model {model} "
-            f"  --format json --dangerously-skip-permissions \"$PROMPT\" || true\n"
+            f"  --format json --dangerously-skip-permissions < {PROMPT_FILE} || true\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"timeout 120 opencode run --dir /testbed --model {model} "
-            f"  --format json --dangerously-skip-permissions \"$CLEANUP_PROMPT\" || true\n"
+            f"  --format json --dangerously-skip-permissions <<<\"$CLEANUP_PROMPT\" || true\n"
             f"echo === DIFF ===\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
@@ -628,9 +646,9 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             "PRIMEJSON\n"
             + _pi_settings_snippet("/root/.prime/agent") +
             "cd /testbed\n"
-            f"prime-agent --model sglang/{served_name} -p \"$PROMPT\" || true\n"
+            f"prime-agent --model sglang/{served_name} -p < {PROMPT_FILE} || true\n"
             "rm -rf /testbed/.prime /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
-            f"timeout 120 prime-agent --model sglang/{served_name} -p \"$CLEANUP_PROMPT\" || true\n"
+            f"timeout 120 prime-agent --model sglang/{served_name} -p <<<\"$CLEANUP_PROMPT\" || true\n"
             "echo === DIFF ===\n"
             "rm -rf /testbed/.prime /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             "git -C /testbed add -A\n"
@@ -660,9 +678,9 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             # openai:<id>, so deepagents falls back to a fixed 170K-token
             # summarization trigger; with max_input_tokens set it uses
             # fraction 0.85 of the served window.
-            f"dcode -M openai:{served_name} --profile-override '{{\"max_input_tokens\": {int(context_window)}}}' -n \"$PROMPT\" -q --max-turns 60 -S all --allow-fs-tools all --timeout {max(60, timeout - 100)} || true\n"
+            f"dcode -M openai:{served_name} --profile-override '{{\"max_input_tokens\": {int(context_window)}}}' --stdin -q --max-turns 60 -S all --allow-fs-tools all --timeout {max(60, timeout - 100)} < {PROMPT_FILE} || true\n"
             "rm -rf /testbed/.deepagents /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
-            f"timeout 120 dcode -M openai:{served_name} --profile-override '{{\"max_input_tokens\": {int(context_window)}}}' -n \"$CLEANUP_PROMPT\" -q --max-turns 8 -S all --allow-fs-tools all --timeout 100 || true\n"
+            f"timeout 120 dcode -M openai:{served_name} --profile-override '{{\"max_input_tokens\": {int(context_window)}}}' --stdin -q --max-turns 8 -S all --allow-fs-tools all --timeout 100 <<<\"$CLEANUP_PROMPT\" || true\n"
             "echo === DIFF ===\n"
             "rm -rf /testbed/.deepagents /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             "git -C /testbed add -A\n"
@@ -1017,6 +1035,7 @@ def main():
         # loopback bridge to the server, git refs stripped to HEAD, per-instance
         # session-store snapshot under sessions/<iid> for audit_leakage.py
         "network_mode": args.network_mode,
+        "prompt_delivery": "stdin-file",   # argv-era cells (re-quoted opencode task, self-kill exposure) have no key
         "git_refs_stripped": True,
         "session_snapshot": True,
     })
@@ -1065,6 +1084,10 @@ def main():
                     problem_statement=row["problem_statement"],
                     hints=row.get("hints_text", "") or "(none)",
                 )
+                # exact bytes delivered (stdin via PROMPT_FILE) — a receipt per instance
+                prompt_path = out / "logs" / f"{iid}.prompt.md"
+                prompt_path.parent.mkdir(parents=True, exist_ok=True)
+                prompt_path.write_text(prompt)
                 scaffold_envs, inner_with_diff = build_scaffold_invocation(
                     args.scaffold, args.model, served, timeout=args.timeout,
                     context_window=ctx,
@@ -1083,7 +1106,7 @@ def main():
                     *([] if args.keep_containers else ["--rm"]),
                     "--name", container_name,
                     *network_docker_args(args.network_mode, bridge_sock, sessions_dir),
-                    "--env", f"PROMPT={prompt}",
+                    "-v", f"{prompt_path.resolve()}:{PROMPT_FILE}:ro",
                     "--env", f"CLEANUP_PROMPT={CLEANUP_PROMPT}",
                     "--env", "HOME=/root",
                     *scaffold_envs,
@@ -1114,7 +1137,7 @@ def main():
 
                 elapsed = round(time.time() - t0, 1)
                 log_path.write_text(
-                    f"# command (PROMPT in env)\n"
+                    f"# command (prompt on stdin: logs/{iid}.prompt.md -> {PROMPT_FILE}, never argv)\n"
                     f"# elapsed {elapsed}s   rc={rc}\n"
                     f"# stdout\n{stdout}\n# stderr\n{stderr}\n"
                 )

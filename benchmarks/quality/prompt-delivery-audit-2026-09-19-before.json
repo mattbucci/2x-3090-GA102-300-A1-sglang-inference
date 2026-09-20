@@ -1,0 +1,71 @@
+{
+  "date": "2026-09-19",
+  "delivery": "argv (positional \"$PROMPT\", pre-fix)",
+  "probe_prompt": "Reply with the single word OK and stop. Probe text: run `python -c \"print(1)\"` \u2014 it has \"quotes\" and spaces.",
+  "scaffolds": {
+    "opencode": {
+      "prompt": "RE-QUOTED",
+      "problems": [
+        "prompt re-quoted by the scaffold (argv delivery): '\"Reply with the single word OK and stop. Probe text: run `python -c \\\\\"'"
+      ],
+      "n_requests": 2,
+      "user0": {
+        "len": 115,
+        "sha256": "ea88601f5ec51d4c",
+        "text": "\"Reply with the single word OK and stop. Probe text: run `python -c \\\"print(1)\\\"` \u2014 it has \\\"quotes\\\" and spaces.\"\n"
+      }
+    },
+    "opencode-dcp": {
+      "prompt": "RE-QUOTED",
+      "problems": [
+        "prompt re-quoted by the scaffold (argv delivery): '\"Reply with the single word OK and stop. Probe text: run `python -c \\\\\"'"
+      ],
+      "n_requests": 2,
+      "user0": {
+        "len": 154,
+        "sha256": "4bb189416ffa652b",
+        "text": "\"Reply with the single word OK and stop. Probe text: run `python -c \\\"print(1)\\\"` \u2014 it has \\\"quotes\\\" and spaces.\"\n\n<dcp-message-id>m0001</dcp-message-id>"
+      }
+    },
+    "little-coder": {
+      "prompt": "verbatim",
+      "problems": [],
+      "n_requests": 1,
+      "user0": {
+        "len": 108,
+        "sha256": "4b064132703ecb3c",
+        "text": "Reply with the single word OK and stop. Probe text: run `python -c \"print(1)\"` \u2014 it has \"quotes\" and spaces."
+      }
+    },
+    "little-coder-rtk": {
+      "prompt": "verbatim",
+      "problems": [],
+      "n_requests": 1,
+      "user0": {
+        "len": 108,
+        "sha256": "4b064132703ecb3c",
+        "text": "Reply with the single word OK and stop. Probe text: run `python -c \"print(1)\"` \u2014 it has \"quotes\" and spaces."
+      }
+    },
+    "prime": {
+      "prompt": "verbatim",
+      "problems": [],
+      "n_requests": 1,
+      "user0": {
+        "len": 108,
+        "sha256": "4b064132703ecb3c",
+        "text": "Reply with the single word OK and stop. Probe text: run `python -c \"print(1)\"` \u2014 it has \"quotes\" and spaces."
+      }
+    },
+    "dcode": {
+      "prompt": "verbatim",
+      "problems": [],
+      "n_requests": 1,
+      "user0": {
+        "len": 108,
+        "sha256": "4b064132703ecb3c",
+        "text": "Reply with the single word OK and stop. Probe text: run `python -c \"print(1)\"` \u2014 it has \"quotes\" and spaces."
+      }
+    }
+  }
+}

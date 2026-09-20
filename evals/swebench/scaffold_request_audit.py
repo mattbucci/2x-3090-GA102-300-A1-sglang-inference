@@ -38,6 +38,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -49,7 +50,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import docker_rollout as dr  # noqa: E402
 
 CAPTURE_SERVER = r'''
-import json, os, sys, time
+import hashlib, json, os, sys, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 SERVED, CTX = sys.argv[1], int(sys.argv[2])
 EXPECT = os.environ.get("SWEBENCH_API_KEY_EXPECT", "")
@@ -79,6 +80,19 @@ class H(BaseHTTPRequestHandler):
             elif k == "input": slim["input_n"] = len(v) if isinstance(v, list) else 1
             elif k == "tools": slim["tools_n"] = len(v)
             else: slim[k] = v
+        # first user message, verbatim: proves how the task prompt reached the
+        # model (argv re-quoting / trimming / scaffold wrapping are all visible)
+        msgs = body.get("messages") if isinstance(body.get("messages"), list) else body.get("input")
+        if isinstance(msgs, str): msgs = [{"role": "user", "content": msgs}]
+        for m in msgs or []:
+            if not (isinstance(m, dict) and m.get("role") == "user"): continue
+            c = m.get("content")
+            if isinstance(c, list):
+                c = "".join(x.get("text") or x.get("input_text") or "" for x in c if isinstance(x, dict))
+            if isinstance(c, str):
+                slim["user0"] = {"len": len(c), "sha256": hashlib.sha256(c.encode()).hexdigest()[:16],
+                                 "text": c if len(c) <= 4000 else c[:2000] + "\n...\n" + c[-2000:]}
+            break
         LOG.write(json.dumps({"scaffold": open("/cap/current").read().strip(), "path": self.path,
                               "user_agent": self.headers.get("User-Agent"), "auth": self._auth(),
                               "body": slim}) + "\n"); LOG.flush()
@@ -104,17 +118,45 @@ HTTPServer(("127.0.0.1", 23334), H).serve_forever()
 '''
 
 GEN_PATHS = ("/chat/completions", "/responses", "/completions")
-PROBE_PROMPT = "Reply with the single word OK and stop."
+PROBE_PROMPT = "Reply with the single word OK and stop. Probe text: run `python -c \"print(1)\"` — it has \"quotes\" and spaces."
 
 
 def first_run_only(inner: str) -> str:
-    """Keep the scaffold's first invocation (up to the `"$PROMPT"` line); the
-    cleanup run and diff capture are irrelevant for the audit."""
+    """Keep the scaffold's first invocation (up to the line that reads the
+    task from PROMPT_FILE); the cleanup run and diff capture are irrelevant
+    for the audit."""
     lines = inner.splitlines()
     for i, ln in enumerate(lines):
-        if '"$PROMPT"' in ln:
+        if dr.PROMPT_FILE in ln or '"$PROMPT"' in ln:
             return "\n".join(lines[: i + 1]) + "\n"
     return inner
+
+
+PROMPT_MARKER = "single word OK"
+DCP_ID_RE = re.compile(r"\s*<dcp-message-id>[^<]*</dcp-message-id>\s*$")
+
+
+def check_prompt(sc: str, gens: list[dict]) -> tuple[str, list[str]]:
+    """How the task prompt arrived at the model: the first user message of the
+    request that carries it must be PROBE_PROMPT verbatim (whitespace-trimmed
+    is fine: pi and dcode strip). Catches argv re-quoting (opencode `run`
+    wrapped a positional message in `"…"` with inner quotes escaped — every
+    opencode cell before 2026-09-19), scaffold wrapping and loss."""
+    cand = [r for r in gens if PROMPT_MARKER in ((r["body"].get("user0") or {}).get("text") or "")]
+    if not cand:
+        return "MISSING", ["task prompt not found in any user message of a generation request"]
+    t = cand[0]["body"]["user0"]["text"]
+    if sc == "opencode-dcp":  # the DCP plugin tags every user turn; that is the lane under test
+        t = DCP_ID_RE.sub("", t)
+    if t == PROBE_PROMPT:
+        return "verbatim", []
+    if t.strip() == PROBE_PROMPT.strip():
+        return "verbatim*", []   # * = whitespace-trimmed by the scaffold
+    if t.strip().startswith('"') and t.strip().rstrip().endswith('"'):
+        return "RE-QUOTED", [f"prompt re-quoted by the scaffold (argv delivery): {t[:70]!r}"]
+    if PROBE_PROMPT in t:
+        return "WRAPPED", [f"prompt wrapped by the scaffold (+{len(t) - len(PROBE_PROMPT)} chars): {t[:70]!r}"]
+    return "ALTERED", [f"prompt altered: {t[:120]!r}"]
 
 
 def build_driver(scaffolds: list[str], served: str, ctx: int, per_timeout: int) -> str:
@@ -127,10 +169,13 @@ def build_driver(scaffolds: list[str], served: str, ctx: int, per_timeout: int) 
         parts.append("export HOME=/root")
         parts += [f"export {shlex.quote(e)}" for e in kv]
         parts.append(dr.ACTIVATE_TESTBED.rstrip("\n"))
-        parts.append(f"export PROMPT={shlex.quote(PROBE_PROMPT)}")
+        parts.append(f"mkdir -p {os.path.dirname(dr.PROMPT_FILE)} && printf '%s' {shlex.quote(PROBE_PROMPT)} > {dr.PROMPT_FILE}")
         parts.append(f'echo "### {sc} start $(date +%T)" >&2')
         parts.append(f"timeout {per_timeout} bash -c {shlex.quote(first_run_only(inner))} "
-                     f"> /cap/{sc}.out 2> /cap/{sc}.err")
+                     f"> /cap/{sc}.out 2> /cap/{sc}.err &")
+        # argv sweep while the scaffold runs: the task must not be on any
+        # command line the agent's own shell could `pkill -f` (R9700 2026-09-19)
+        parts.append(f"pid=$!; : > /cap/{sc}.ps; while kill -0 $pid 2>/dev/null; do ps -eo args >> /cap/{sc}.ps; sleep 0.3; done; wait $pid")
         parts.append(f'echo "### {sc} rc=$? $(date +%T)" >&2')
     return "\n".join(parts) + "\n"
 
@@ -211,10 +256,13 @@ def main() -> int:
     print(f"[audit] container rc={proc.returncode} in {time.time() - t0:.0f}s", flush=True)
 
     recs = [json.loads(l) for l in (work / "requests.jsonl").read_text().splitlines() if l.strip()]
-    first: dict[str, dict] = {}
+    gens: dict[str, list[dict]] = {}
     for r in recs:
-        if any(r["path"].endswith(p) for p in GEN_PATHS) and r["scaffold"] not in first:
-            first[r["scaffold"]] = r
+        if any(r["path"].endswith(p) for p in GEN_PATHS):
+            gens.setdefault(r["scaffold"], []).append(r)
+    # opencode's first generation call is its title request; policy is
+    # checked on EVERY generation request, the prompt on the one carrying it
+    first = {sc: rs[0] for sc, rs in gens.items()}
     budget_lines: dict[str, list[str]] = {}
     for sc in scaffolds:
         err = (work / f"{sc}.err").read_text(errors="replace") if (work / f"{sc}.err").exists() else ""
@@ -222,16 +270,28 @@ def main() -> int:
 
     verdicts = {}
     ok = True
-    print(f"{'scaffold':18} {'path':22} {'effort':8} {'cap':>6} {'auth':8}  verdict")
+    print(f"{'scaffold':18} {'path':22} {'effort':8} {'cap':>6} {'auth':8} {'prompt':10} {'argv':8} verdict")
     for sc in scaffolds:
         r = first.get(sc)
         if not r:
             ok = False
             verdicts[sc] = {"status": "NO_REQUEST", "problems": ["no generation request captured"]}
-            print(f"{sc:18} {'-':22} {'-':8} {'-':>6} {'-':8}  FAIL no generation request captured (see {work}/{sc}.err)")
+            print(f"{sc:18} {'-':22} {'-':8} {'-':>6} {'-':8} {'-':10} {'-':8} FAIL no generation request captured (see {work}/{sc}.err)")
             continue
         b = r["body"]
-        probs = check_body(sc, r["path"], b, args.served_name, allow, r.get("auth", "missing"))
+        probs = []
+        for g in gens[sc]:
+            for pb in check_body(sc, g["path"], g["body"], args.served_name, allow, g.get("auth", "missing")):
+                if pb not in probs:
+                    probs.append(pb)
+        prompt_how, pprobs = check_prompt(sc, gens[sc])
+        probs += pprobs
+        ps_dump = (work / f"{sc}.ps").read_text(errors="replace") if (work / f"{sc}.ps").exists() else ""
+        argv_how = "clean" if PROMPT_MARKER not in ps_dump else "EXPOSED"
+        if argv_how == "EXPOSED":
+            probs.append("task prompt visible on a container argv (the agent's `pkill -f` can hit its own scaffold)")
+        elif not ps_dump.strip():
+            argv_how = "unswept"
         eff = b.get("reasoning_effort")
         if eff is None and isinstance(b.get("reasoning"), dict):
             eff = b["reasoning"].get("effort")
@@ -239,8 +299,10 @@ def main() -> int:
         status = "OK" if not probs else "FAIL"
         ok &= not probs
         verdicts[sc] = {"status": status, "problems": probs, "path": r["path"], "body": b,
-                        "auth": r.get("auth"), "budget_lines": budget_lines[sc]}
-        print(f"{sc:18} {r['path']:22} {str(eff or '-'):8} {str(cap or '-'):>6} {r.get('auth', '-'):8}  {status} {'; '.join(probs)}")
+                        "auth": r.get("auth"), "prompt": prompt_how, "argv": argv_how, "n_requests": len(gens[sc]),
+                        "user0": next((g["body"]["user0"] for g in gens[sc] if PROMPT_MARKER in ((g["body"].get("user0") or {}).get("text") or "")), None),
+                        "budget_lines": budget_lines[sc]}
+        print(f"{sc:18} {r['path']:22} {str(eff or '-'):8} {str(cap or '-'):>6} {r.get('auth', '-'):8} {prompt_how:10} {argv_how:8} {status} {'; '.join(probs)}")
     if args.receipt:
         Path(args.receipt).write_text(json.dumps({
             "date": time.strftime("%Y-%m-%d %H:%M"), "served_name": args.served_name, "image": image,
