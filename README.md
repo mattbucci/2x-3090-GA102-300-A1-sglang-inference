@@ -109,7 +109,7 @@ Every `mattbucci/*-AWQ` row is built end-to-end from the linked upstream BF16 te
 
 ### MoE coverage matrix
 
-Each MoE base should ship in three flavors: **native** (no expert compression), **REAP** (Cerebras-style pruning, in-house via `scripts/quantize/run_reap.py`), **REAM** (Samsung SAIL merging, in-house via `scripts/quantize/run_ream_qwen3moe.sh`). All entries are self-calibrated AWQ-int4 from the upstream BF16 base. The missing cells are the calibration backlog (Next steps item 6; recipes in [`docs/roadmap.md`](docs/roadmap.md)).
+Each MoE base should ship in three flavors: **native** (no expert compression), **REAP** (Cerebras-style pruning, in-house via `scripts/quantize/run_reap.py`), **REAM** (Samsung SAIL merging, in-house via `scripts/quantize/run_ream_qwen3moe.sh`). All entries are self-calibrated AWQ-int4 from the upstream BF16 base. The missing cells are the calibration backlog (Next steps item 7; recipes in [`docs/roadmap.md`](docs/roadmap.md)).
 
 | Base | Native AWQ | REAP AWQ | REAM AWQ |
 |---|:---:|:---:|:---:|
