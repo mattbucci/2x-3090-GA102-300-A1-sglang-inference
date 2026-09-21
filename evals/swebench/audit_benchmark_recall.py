@@ -19,7 +19,11 @@ so there is no directory/time join: every session in an instance's db belongs
 to that instance (a `run` may open a child session; all are summed). Only
 opencode is covered -- the other scaffolds keep their own session formats.
 v2 (argv-era, --format json) cells have no snapshot and their logs carry no
-reasoning parts, so they cannot be audited retroactively.
+reasoning parts, so they cannot be audited retroactively. Wall hits in the
+qwen38 opencode v3 cell have an EMPTY snapshot (the in-script copy sat after
+the scaffold; the 1800 s SIGKILL never reached it -- `no_snapshot` counts
+them, and that cell's wall column reads 0 by construction); from the next
+lane on docker_rollout.py snapshots the store live before the kill.
 
 Usage:
     python evals/swebench/audit_benchmark_recall.py \\

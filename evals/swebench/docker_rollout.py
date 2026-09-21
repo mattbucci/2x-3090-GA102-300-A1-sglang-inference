@@ -542,6 +542,29 @@ SESSION_SNAPSHOT = (
 )
 
 
+def snapshot_sessions_live(container_name: str, budget_s: int = 90) -> str:
+    """Run SESSION_SNAPSHOT inside a still-running container (docker exec).
+
+    The in-script snapshot sits after the scaffold, so a wall-hit (outer
+    SIGKILL at --timeout) never reached it: the first 52 qwen38 opencode v3
+    instances shipped empty sessions/<iid>/ for exactly the 6 wall hits — the
+    sessions the benchmark-recall audit cares most about (R9700 v4: the
+    runaway think lives in the walled sessions). Called on TimeoutExpired
+    before the kill; the scaffold keeps running while the store is copied, so
+    the wall budget and the empty-diff-at-wall rule are unchanged. Best
+    effort: a hung daemon or a vanished container just means no snapshot.
+    """
+    try:
+        r = subprocess.run(
+            ["docker", "exec", "-e", "HOME=/root", container_name, "bash", "-c", SESSION_SNAPSHOT],
+            capture_output=True, text=True, errors="replace", timeout=budget_s)
+        return "live" if r.returncode == 0 else f"exec rc={r.returncode}: {(r.stderr or '').strip()[-200:]}"
+    except subprocess.TimeoutExpired:
+        return f"exec timed out after {budget_s}s"
+    except Exception as e:  # noqa: BLE001 — never let forensics take the lane down
+        return f"{type(e).__name__}: {e}"
+
+
 # The task prompt reaches every scaffold on STDIN from this read-only file,
 # never as a positional argument (R9700 relay 2026-09-19, reproduced here the
 # same day — see benchmarks/quality/prompt-delivery-audit-2026-09-19.md):
@@ -1232,6 +1255,7 @@ def main():
                         stdout, stderr = proc.communicate(timeout=args.timeout)
                         rc = proc.returncode
                     except subprocess.TimeoutExpired:
+                        snap = snapshot_sessions_live(container_name)
                         try:
                             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
                         except (ProcessLookupError, PermissionError):
@@ -1241,6 +1265,7 @@ def main():
                             stdout, stderr = proc.communicate(timeout=10)
                         except subprocess.TimeoutExpired:
                             stdout, stderr = "", ""
+                        stderr = (stderr or "") + f"\n# wall-hit session snapshot: {snap}\n"
                         rc = 124
                 finally:
                     collect_stage(stage, sessions_dir)
