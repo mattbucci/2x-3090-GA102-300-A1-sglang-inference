@@ -51,7 +51,11 @@ HUNT = re.compile(
     r"cached .{0,40}dataset|search all of /opt|/root/\.cache|\.cache/huggingface"
     r"|find / -name|grep -v swebench-work", re.I)
 LONG_THINK_TOKENS = 3000  # one turn's output tokens
-WALL_S = 1795
+# A wall hit is the harness's SIGKILL at the 1800 s cap (rc=124). `rollout_seconds`
+# is NOT a proxy for it: it starts before the per-instance image build (~1-3 min), so
+# a session that finishes just under the wire can carry 1983 s with rc=0 and a full
+# diff (qwen38 opencode v3 django-15996: 1785 s session, 1983 s elapsed, patched).
+WALL_RC = 124
 SNAPSHOT_DB = ".local/share/opencode/opencode.db"
 
 
@@ -161,7 +165,7 @@ def main() -> int:
                                    f"{sum(r['turns'] - r['long_thinks'] for r in rows)}",
         "reasoning_share_in_long_thinks": round(
             sum(r["long_think_chars"] for r in rows) / max(1, sum(r["reasoning_chars"] for r in rows)), 3),
-        "wall_hits": rate(lambda r: (r["rollout_seconds"] or 0) >= WALL_S),
+        "wall_hits": rate(lambda r: r["rollout_returncode"] == WALL_RC),
         "empty_patches": rate(lambda r: r["empty_patch"]),
         "by_recall_bucket": {},
     }
@@ -170,7 +174,7 @@ def main() -> int:
         if not g:
             continue
         b = {"n": len(g),
-             "wall_hits": sum(1 for r in g if (r["rollout_seconds"] or 0) >= WALL_S),
+             "wall_hits": sum(1 for r in g if r["rollout_returncode"] == WALL_RC),
              "empty_patches": sum(1 for r in g if r["empty_patch"]),
              "median_seconds": statistics.median(r["rollout_seconds"] or 0 for r in g),
              "median_reasoning_chars": statistics.median(r["reasoning_chars"] for r in g)}
