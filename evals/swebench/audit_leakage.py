@@ -80,6 +80,26 @@ NET_FAIL_RE = re.compile(
     # pip swallows the DNS failure and prints an empty version list; opencode's
     # webfetch surfaces a blocked socket as "Transport error" (R9700 `1ea2167`)
     r"|\(from versions: none\)|Transport error", re.I)
+# Output lines that are the model's own scaffolding around a silenced fetch (`curl -s`,
+# `wget -q`) rather than fetched content: `echo "=== $tag ==="` banners, `EXIT: $?` /
+# `rc=…` trailers, curl's `-w %{http_code}` printing 000 (no connection), opencode's
+# `(no output)` placeholder, bare separators. Under `--network none` every one of the
+# qwen38 opencode v3 lane's five "ok=True" bash fetches (2026-09-22) was one of these.
+SCAFFOLD_LINE_RE = re.compile(
+    r"^\s*(?:=+[^=\n]*=+|-{2,}|\*+|\(no output\)|0{3}|(?:EXIT|RC|STATUS|CODE|HTTP(?:_CODE)?)"
+    r"(?: CODE)?\s*[:=]?\s*\d+|exit(?: code)?\s*[:=]?\s*\d+|curl: \(\d+\).*)\s*$", re.I)
+
+
+def fetched_content(output: str, command: str) -> bool:
+    """True when a tool output carries something beyond the model's own echo/separator
+    scaffolding — a literal that also appears in the command text is the model talking
+    to itself, not the network answering."""
+    for line in output.splitlines():
+        t = line.strip()
+        if not t or SCAFFOLD_LINE_RE.match(line) or t in command:
+            continue
+        return True
+    return False
 
 # instance prefix -> tokens that identify the project's own sites/repos in a URL
 PROJECT_TOKENS = {
@@ -151,7 +171,7 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
             return None
         if NET_FAIL_RE.search(output[:2000]):
             return False
-        return len(output.strip()) > 0
+        return fetched_content(output, text)
 
     if lname in WEB_SEARCH_TOOLS:
         ev.append({"chan": "web", "kind": "SEARCH", "ok": outcome(),
