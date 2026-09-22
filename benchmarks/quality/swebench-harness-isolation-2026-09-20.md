@@ -72,3 +72,46 @@ the issue text, the prompt's "Do not modify tests" line.
      between `docker build` and `docker run` (rc=125 `Unable to find image … locally`, empty
      prediction). Now deletes only images older than the lane's `logs/<iid>.log`;
      `audit_predictions.py` classes the failure `infra_rollout_image_missing` (`ae0a8bd`).
+
+## In-flight findings (qwen38 opencode v3, 2026-09-22, 158/300)
+
+Running the lane-close gate on the in-flight cell surfaced two audit defects and one
+harness defect. The audit fixes landed (`d0ecc49`, `06aa9cb`); the harness fix waits for
+the cycle boundary because it changes patch content.
+
+- **`psf__requests-863` is unresolved-by-construction, in every harness version.** The
+  official `swebench/sweb.eval.x86_64.psf_1776_requests-863` image ships an untracked,
+  un-ignored `build/` (1012 KB, `git status --porcelain` → `?? build/`; `.gitignore` lacks
+  it). The re-init keeps the tracked set bit-identical, so the tree is `dirty=1` before the
+  scaffold runs, and the `git add -A && git diff --cached` capture then emits 68 `new file`
+  hunks under `build/lib/requests/**` (218 KB `cacert.pem`, vendored chardet2 / urllib3)
+  around the real 542 B `requests/models.py` change — 873,784 B in this cell. At scoring
+  every SWE-bench 4.1.0 apply method fails on it (`git apply` "already exists",
+  `git apply --reject`, then `patch --batch --fuzz=5 -p1` prints 27,510 "Assuming -R" lines
+  and *reverses* the real hunk; `devstral-opencode-v2/…/psf__requests-863/run_instance.log`).
+  Historical sweep: junk-bearing in 26/32 cells (~874 KB each); the 5–6 clean cells are
+  runs where the model deleted `build/` itself. No other instance shows image-shipped
+  junk (others appear in ≤3/30 cells — model-created). Uniform across models → no
+  leaderboard reorder; absolute scores carry a ≤1/300 floor.
+  - Gate: `audit_leakage.py` required `dirty=0` and would have false-failed the lane
+    close on this instance (157/158). It now requires `dirty == dirty_before`
+    (`docker_rollout.py` prints the image's own untracked count on the `isolation: git=`
+    line from the next lane on); logs without the field fall back to
+    `image_untracked_baseline.json` (`{"psf__requests-863": 1}`). 158/158 after the fix.
+  - Harness (cycle boundary, README next-step 3): write the image's pre-existing untracked
+    paths to `.git/info/exclude` at re-init, so the model sees a clean `git status` and
+    the capture skips them. R9700's sandbox is immune (its base commit `git add -A`s the
+    whole tree), so their requests-863 cells score normally — a cross-rig comparison on
+    that instance is confounded until we match.
+- **Five false `EXPOSED` verdicts.** `outcome()` treated any non-empty tool output as
+  fetched content. All five were `curl -s` / `wget -q` failures wrapped in the model's own
+  scaffolding: `EXIT: 0`, `=== 4.1 ===` loop banners, `---` + `-w %{http_code}` → `000`,
+  opencode's `(no output)` placeholder. `fetched_content()` drops separator / exit-trailer /
+  000 / placeholder lines and literals present in the command text. EXPOSED 5 → 0; the
+  network proof (`isolation: network=none` 158/158) already said the same thing.
+- **`rollout_seconds` is not a wall-hit proxy.** It starts before the per-instance image
+  build (1–3 min); django-15996 finished its session at 1785 s, 1983 s elapsed, rc=0, with a
+  patch. A wall hit is `rollout_returncode == 124` (the harness SIGKILL). `audit_benchmark_recall.py`
+  used `>= 1795 s` (`b34e25b` fixed); `audit_predictions.py` / `ab_lane_receipt.py` already
+  keyed on rc. R9700's copy keys on `WALL_S = 1795` — same over-count if their elapsed spans
+  the build.
