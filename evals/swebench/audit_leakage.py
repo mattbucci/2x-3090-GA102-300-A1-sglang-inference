@@ -16,9 +16,13 @@ only), strips refs to HEAD and snapshots each scaffold's session store to
 `<run>/sessions/<iid>/`. This script closes the loop at lane close:
 
   * proves every instance ran isolated (`isolation: network=none`,
-    `isolation: refs=1 tags=0`, `isolation: git=reinit commits=1 dirty=0` (the
-    tree's history is one `eval@local` commit — the official image's `SWE-bench`
-    HEAD commit is gone — and the re-added tracked set left the tree clean) and
+    `isolation: refs=1 tags=0`, `isolation: git=reinit commits=1 dirty=N
+    dirty_before=N` (the tree's history is one `eval@local` commit — the
+    official image's `SWE-bench` HEAD commit is gone — and the re-added tracked
+    set left the tree exactly as dirty as the image shipped it: 0 everywhere
+    but psf__requests-863, whose image carries an untracked `build/`; logs
+    from before the `dirty_before=` field fall back to
+    image_untracked_baseline.json) and
     an `isolation: mounts=` line whose bind-source paths name neither the
     benchmark nor the instance; `--require-isolation`)
   * scans the transcript for web / network / git-peek attempts and whether
@@ -319,8 +323,20 @@ ISO_REFS_RE = re.compile(r"^isolation: refs=(\d+) tags=(\d+)", re.M)
 # bind-source paths as the sandbox sees them in /proc/self/mountinfo (docker_rollout.py
 # stages them under a neutral dir, 2026-09-20): none may name the benchmark or the instance
 ISO_MOUNTS_RE = re.compile(r"^isolation: mounts=(.*)$", re.M)
-ISO_GIT_RE = re.compile(r"^isolation: git=reinit commits=(\d+) dirty=(\d+) author=(\S+)", re.M)
+ISO_GIT_RE = re.compile(r"^isolation: git=reinit commits=(\d+) dirty=(\d+) author=(\S+)"
+                        r"(?: dirty_before=(\d+))?", re.M)
 CUE_RE = re.compile(r"swe[-_ ]?bench", re.I)
+# `git status --porcelain | wc -l` of the pristine official image, for logs written before
+# docker_rollout.py reported `dirty_before=` itself (psf__requests-863 ships an untracked
+# `build/`; every other Lite image is clean). Keyed by instance id; absent = 0.
+IMAGE_UNTRACKED_BASELINE = Path(__file__).with_name("image_untracked_baseline.json")
+
+
+def image_untracked(iid: str) -> int:
+    try:
+        return int(json.loads(IMAGE_UNTRACKED_BASELINE.read_text()).get(iid, 0))
+    except (OSError, ValueError):
+        return 0
 
 
 def isolation_proof(run: Path, iid: str) -> dict:
@@ -334,8 +350,9 @@ def isolation_proof(run: Path, iid: str) -> dict:
     return {"network_none": bool(ISO_NET_RE.search(t)),
             "refs_stripped": bool(m and int(m.group(1)) <= 1 and int(m.group(2)) == 0),
             "mounts_clean": bool(mm and not CUE_RE.search(mm.group(1)) and iid not in mm.group(1)),
-            "git_reinit": bool(mg and mg.group(1) == "1" and mg.group(2) == "0"
-                               and not CUE_RE.search(mg.group(3)))}
+            "git_reinit": bool(mg and mg.group(1) == "1" and not CUE_RE.search(mg.group(3))
+                               and int(mg.group(2)) == (int(mg.group(4)) if mg.group(4) is not None
+                                                        else image_untracked(iid)))}
 
 
 # --- gold overlap --------------------------------------------------------------

@@ -491,12 +491,17 @@ def isolation_prelude(network_mode: str, port: int = CONTAINER_SERVER_PORT) -> s
     eval@local), so the two matrices share the residual cue set: `/testbed`,
     the `testbed` conda env, the issue text and the prompt's "Do not modify
     tests" line. `git ls-files` + `add -f --pathspec-from-file` keeps the
-    tracked set bit-identical (no .gitignore drift: `dirty=0` on the
-    `isolation: git=` line is what audit_leakage.py gates on); ~1.5 s on
-    django. Release tags, other branches and remotes go with the old store,
+    tracked set bit-identical (no .gitignore drift: audit_leakage.py gates on
+    `dirty=` equalling `dirty_before=` on the `isolation: git=` line —
+    `dirty_before` is the image's own `git status --porcelain` count, 0 for
+    every Lite image except psf__requests-863, which ships an untracked,
+    un-ignored `build/` that the `git add -A` diff capture then sweeps into
+    the patch (874 KB, apply-fails at scoring; excluding it is a cycle-boundary
+    decision, README next steps); ~1.5 s on django. Release tags, other branches and remotes go with the old store,
     so the ref-strip guarantee is preserved (refs=1 tags=0)."""
     strip = (
         "git config --global --add safe.directory /testbed 2>/dev/null || true\n"
+        "DIRTY0=$(git -C /testbed status --porcelain | wc -l)\n"
         "git -C /testbed ls-files -z > /tmp/.tracked.z && rm -rf /testbed/.git "
         "&& git -C /testbed init -q -b main "
         "&& git -C /testbed add -f --pathspec-from-file=/tmp/.tracked.z --pathspec-file-nul "
@@ -504,7 +509,8 @@ def isolation_prelude(network_mode: str, port: int = CONTAINER_SERVER_PORT) -> s
         "|| { echo 'GIT REINIT FAILED' >&2; exit 97; }\n"
         "rm -f /tmp/.tracked.z\n"
         "echo \"isolation: git=reinit commits=$(git -C /testbed rev-list --all | wc -l) "
-        "dirty=$(git -C /testbed status --porcelain | wc -l) author=$(git -C /testbed log -1 --format=%ae)\" >&2\n"
+        "dirty=$(git -C /testbed status --porcelain | wc -l) author=$(git -C /testbed log -1 --format=%ae) "
+        "dirty_before=$DIRTY0\" >&2\n"
         "echo \"isolation: refs=$(git -C /testbed for-each-ref | wc -l) tags=$(git -C /testbed tag | wc -l)\" >&2\n"
     )
     if network_mode == "host":

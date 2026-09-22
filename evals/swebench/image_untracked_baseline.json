@@ -1,0 +1,4 @@
+{
+  "_comment": "Untracked, un-ignored paths the official sweb.eval image ships, as `git -C /testbed status --porcelain | wc -l` on the pristine image. audit_leakage.py uses this for logs that predate the `dirty_before=` field on the `isolation: git=` line (docker_rollout.py reports it since 2026-09-22). Verified: `docker run --rm swebench/sweb.eval.x86_64.psf_1776_requests-863:latest git -C /testbed status --porcelain` -> `?? build/` (1012 KB, not in .gitignore). Every other SWE-bench Lite image: 0.",
+  "psf__requests-863": 1
+}
