@@ -27,5 +27,6 @@ python scripts/eval/eval_comprehensive.py --port 23334 --parallel 4
 | `launch.sh` | Unified model launcher with presets and CLI overrides |
 | `common.sh` | Shared NVIDIA environment (conda, NCCL) |
 | `setup.sh` | Full setup: clone SGLang, create env, install |
+| `gpu_telemetry.sh` | 30 s `nvidia-smi` history to `/var/tmp/gpu-telemetry/` (read-only; keep it running beside long lanes so a server hang has a temperature/power/clock trace) |
 | [`bench/`](bench/) | Benchmark scripts |
 | [`eval/`](eval/) | Quality evaluation |
