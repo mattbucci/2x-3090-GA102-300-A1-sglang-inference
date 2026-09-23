@@ -95,6 +95,7 @@ Capability guardrail on every iteration that touches a checkpoint: **preserve th
 - **Rule 1 — no concurrent calibration + eval.** GPTQ calibration (15+ cores, ~60 GB RAM hessians) + SGLang server (90% VRAM) + opencode-driven traffic exceeds host headroom. Crashed the box 2026-04-25 on Qwen3.5-28B.
 - **Rule 2 — no concurrent rollout + score.** Both spin per-instance docker containers. Concurrent VFS pressure triggers the kernel BUG (above). `run_model_cycle.sh` sequences them; don't bypass.
 - **Cooling profile is load-bearing.** 260 W power cap + `gpu-fan-curve.service` keeps DDR5 below ALARM HIGH and prevents thermal-Python-heap corruption (separate failure from Rule 1/2). Don't disable.
+- **`/tmp` is aged out after 10 days (`systemd-tmpfiles-clean.timer`, daily).** Long-lived queue state there (pid files, `swebench-bakeoff.lock`, poller logs) outlives that on a multi-day cycle — 2026-09-22 the timer deleted both engagement pollers' log dirs under the running processes. `systemd/tmpfiles-swebench-bakeoff.conf` (installed at `/etc/tmpfiles.d/`) excludes the bake-off dirs, the lock and the Claude scratchpads; any NEW long-lived `/tmp/<job>-logs` dir must be added there (or use `setsid` + a dir under `/var/tmp`, 30 d).
 
 ### Conda env split — `quant` vs the serving env
 - **`sglang-v0520`** (current serving env; version-suffixed per stack, resolved by `common.sh` ENV_NAME) — SGLang + CUDA + serving-side compressed_tensors (lacks `.distributed`). Use for `launch.sh`, `validate_capabilities.py`, `probe_*.py`.
