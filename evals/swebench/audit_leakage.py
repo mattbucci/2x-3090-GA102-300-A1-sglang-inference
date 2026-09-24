@@ -72,14 +72,31 @@ NET_BASH_RE = re.compile(
     r"\b(curl|wget|gh\s+(api|pr|issue)|pip3?\s+(download|install)(?!\s+-e)"
     r"|python\S*\s+-m\s+pip\s+(download|install)(?!\s+-e)|git\s+(clone|fetch|pull|ls-remote)\b"
     r"|npm\s+(install|view)|apt(-get)?\s+install)\b", re.I)
+# Inline python (`python -c`, `python - <<EOF`, `python <<EOF`) that opens a URL. The
+# command text is the unit: a heredoc's URL sits lines away from its urlopen().
+# v2-netopen matplotlib-25442 fetched the upstream compare API this way and was only
+# caught because its User-Agent header said "curl".
+PY_EXEC_RE = re.compile(r"\bpython\S*\s+(?:-c\b|-?\s*<<|-\s*$)", re.M)
+PY_FETCH_RE = re.compile(
+    r"\b(?:urlopen|urlretrieve|requests\.(?:get|post|head|request)|httpx\.(?:get|post|Client|AsyncClient)"
+    r"|aiohttp\.ClientSession|http\.client\.HTTPS?Connection|socket\.create_connection)\(")
 NET_FAIL_RE = re.compile(
     r"Could not resolve host|Temporary failure in name resolution|Network is unreachable"
     r"|ENOTFOUND|ECONNREFUSED|EAI_AGAIN|Name or service not known|No address associated"
     r"|fetch failed|Failed to fetch|Connection refused|NewConnectionError|Max retries exceeded"
+    r"|URLError|gaierror|\[Errno -?\d+\]"
     r"|Could not fetch URL|No matching distribution|network error|unable to access"
     # pip swallows the DNS failure and prints an empty version list; opencode's
     # webfetch surfaces a blocked socket as "Transport error" (R9700 `1ea2167`)
     r"|\(from versions: none\)|Transport error", re.I)
+# A Python traceback whose frames pass through the network stack (urllib / http.client /
+# socket / requests / urllib3 / httpx / aiohttp) is a fetch that raised before returning
+# content. The exception line itself is often cut off by the model's `| head -5`
+# (django-13964, v3: `python -c "urlopen(...)" 2>&1 | head -5` ended at h.request()).
+PY_NET_TRACEBACK_RE = re.compile(
+    r"Traceback \(most recent call last\):(?:\n.*){0,24}?\n\s*File \"[^\"\n]*"
+    r"(?:urllib/request\.py|http/client\.py|/socket\.py|urllib3/|requests/(?:adapters|sessions|api)\.py"
+    r"|httpx/|aiohttp/)[^\"\n]*\"")
 # Output lines that are the model's own scaffolding around a silenced fetch (`curl -s`,
 # `wget -q`) rather than fetched content: `echo "=== $tag ==="` banners, `EXIT: $?` /
 # `rc=…` trailers, curl's `-w %{http_code}` printing 000 (no connection), opencode's
@@ -100,6 +117,74 @@ def fetched_content(output: str, command: str) -> bool:
             continue
         return True
     return False
+
+# pip options that consume the next token, so a bare `pip download --no-deps -d /tmp/x
+# 2>/dev/null` (no requirement anywhere) is recognised as the no-op it is: pip exits
+# with "You must give at least one requirement" before touching the network.
+PIP_VALUE_OPTS = {
+    "-d", "--dest", "-t", "--target", "-i", "--index-url", "--extra-index-url", "-f",
+    "--find-links", "-c", "--constraint", "--platform", "--python-version",
+    "--implementation", "--abi", "--prefix", "--root", "--timeout", "--retries", "--proxy",
+    "--trusted-host", "--cache-dir", "--log", "--progress-bar", "--exists-action",
+    "--config-settings", "--global-option", "--install-option", "--report", "--src",
+    "--upgrade-strategy", "--use-feature", "--use-deprecated", "--cert", "--client-cert",
+}
+PIP_CMD_RE = re.compile(r"\b(?:pip3?|python\S*\s+-m\s+pip)\s+(?:download|install)\b(.*)", re.I | re.S)
+REDIRECT_RE = re.compile(r"\d*>{1,2}&?\S*|\d*<\S*")
+
+
+def pip_has_requirement(segment: str) -> bool:
+    """False for a pip download/install segment that names nothing to fetch."""
+    m = PIP_CMD_RE.search(segment)
+    if not m:
+        return True
+    args = REDIRECT_RE.sub(" ", m.group(1)).split("|", 1)[0].split()
+    skip = False
+    for tok in args:
+        if skip:
+            skip = False
+            continue
+        if tok in ("-r", "--requirement", "-e", "--editable"):
+            return True
+        if tok.startswith("-"):
+            skip = tok in PIP_VALUE_OPTS
+            continue
+        return True
+    return False
+
+
+
+
+def command_segments(text: str) -> list[str]:
+    """Split a shell command at list separators (`;`, `&&`, `||`, newline — not
+    pipes, which share one stream) outside quotes. A net tool is classified on
+    its own segment: the 120-char snippet window used to read `find … -path
+    "*pytest*"` two commands later as an UPSTREAM fetch (qwen38 opencode v3
+    pytest-8365, 2026-09-24)."""
+    segs, buf, q, i = [], [], None, 0
+    while i < len(text):
+        c = text[i]
+        if q:
+            buf.append(c)
+            if c == q:
+                q = None
+        elif c in "'\"":
+            q = c
+            buf.append(c)
+        elif c == "\\" and i + 1 < len(text):
+            buf.append(text[i:i + 2])
+            i += 1
+        elif c == "\n" or c == ";" or text.startswith("&&", i) or text.startswith("||", i):
+            segs.append("".join(buf))
+            buf = []
+            if c not in "\n;":
+                i += 1
+        else:
+            buf.append(c)
+        i += 1
+    segs.append("".join(buf))
+    return [s.strip() for s in segs if s.strip()]
+
 
 # instance prefix -> tokens that identify the project's own sites/repos in a URL
 PROJECT_TOKENS = {
@@ -169,7 +254,7 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
             return False
         if output is None:
             return None
-        if NET_FAIL_RE.search(output[:2000]):
+        if NET_FAIL_RE.search(output[:2000]) or PY_NET_TRACEBACK_RE.search(output[:4000]):
             return False
         return fetched_content(output, text)
 
@@ -182,20 +267,43 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
         ev.append({"chan": "web", "kind": "UPSTREAM" if url_is_upstream(inst, url) else "OTHER",
                    "ok": outcome(), "evidence": f"{name}: {url[:160]}"})
         return ev
-    # bash-like tools
-    m = NET_BASH_RE.search(text)
-    if m:
-        urls = URL_RE.findall(text)
+    # bash-like tools: one event per list segment that touches the network,
+    # classified on that segment's own text (URLs / project tokens), never on
+    # its neighbours.
+    # The outcome stays a reading of the shared output — a `pip -q`/`gh` that
+    # fetched quietly still shows in a following `ls` (v2-netopen: 5 such
+    # cells at gold overlap 1.0), so a compound command is never cleared on
+    # its tool alone.
+    segments = command_segments(text)
+    compound = len(segments) > 1
+    for seg in segments:
+        m = NET_BASH_RE.search(seg)
+        if not m or not pip_has_requirement(seg):
+            continue
+        # a segment without a URL of its own borrows the command's (a heredoc
+        # / variable two lines up); a project URL anywhere beside a fetch is
+        # strong evidence, unlike a neighbouring `*pytest*` glob
+        urls = URL_RE.findall(seg) or URL_RE.findall(text)
         if urls:
             kind = "UPSTREAM" if any(url_is_upstream(inst, u) for u in urls) else "OTHER"
             evidence = f"{name}: {m.group(0)} {urls[0][:140]}"
         else:
-            snippet = text[m.start():m.start() + 120].replace("\n", "⏎")
+            snippet = seg[m.start():m.start() + 120]
             words = re.sub(r"\S*/testbed/\S*", "", snippet).lower()
             kind = "UPSTREAM" if (m.group(0).lower().startswith("gh ") or any(
                 re.search(rf"(?<![\w-]){re.escape(t)}(?![\w-])", words) for t in project_tokens(inst))) else "OTHER"
             evidence = f"{name}: {snippet}"
+        if compound:
+            evidence += " [segment]"
         ev.append({"chan": "web", "kind": kind, "ok": outcome(), "evidence": evidence})
+    py = PY_FETCH_RE.search(text) if PY_EXEC_RE.search(text) else None
+    if py:
+        urls = URL_RE.findall(text)
+        words = re.sub(r"\S*/testbed/\S*", "", text).lower()
+        kind = "UPSTREAM" if (any(url_is_upstream(inst, u) for u in urls) if urls else any(
+            re.search(rf"(?<![\w-]){re.escape(t)}(?![\w-])", words) for t in project_tokens(inst))) else "OTHER"
+        ev.append({"chan": "web", "kind": kind, "ok": outcome(),
+                   "evidence": f"{name}: python {py.group(0)} {(urls[0][:140] if urls else '')}".rstrip()})
     g = GIT_DEFINITIONAL_RE.search(text)
     if g:
         ev.append({"chan": "git", "kind": "READ" if GIT_READ_RE.search(text) else "LIST",

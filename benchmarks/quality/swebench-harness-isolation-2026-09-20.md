@@ -115,3 +115,26 @@ the cycle boundary because it changes patch content.
   used `>= 1795 s` (`b34e25b` fixed); `audit_predictions.py` / `ab_lane_receipt.py` already
   keyed on rc. R9700's copy keys on `WALL_S = 1795` — same over-count if their elapsed spans
   the build.
+- **Lane-close re-audit of the closed qwen38 opencode v3 cell (2026-09-24, 300/300) — one
+  false `EXPOSED`, two classifier blind spots.** The Phase-4.5 gate would have `exit 1`-ed
+  the whole cycle unscored, so the fix is audit-side (attribution), not gate semantics.
+  (a) `pytest-8365`: an argument-less `pip download --no-deps 2>/dev/null` inside a compound
+  command whose *other* segments (`git show --stat`, `ls`, `find … "*pytest*"`) named the
+  project — `classify_call` read the whole command as one UPSTREAM fetch and the local
+  segments' output as fetched content. Now each `;`/`&&`/`||`/newline segment is classified
+  on its own (quote-aware `command_segments()`), a `pip` with no requirement is not a fetch
+  (`pip_has_requirement()`), and the outcome stays the conservative shared-output reading —
+  the first attempt (deterministic-tool-without-success-signature → not fetched) un-exposed
+  5 *real* quiet fetches in the netopen cell (`pip … -q | tail -2; ls /tmp/…`, `gh pr diff`,
+  gold overlap 1.0) and was reverted. (b) Inline-python fetches (`python -c` / heredoc with
+  `urlopen` / `requests.get` / `httpx` / `http.client` / `socket.create_connection`) were never
+  detected — `matplotlib-25442`'s "curl" was a `User-Agent: "curl"` string inside a urllib
+  heredoc. Detected now (`PY_EXEC_RE` + `PY_FETCH_RE`); a traceback whose frames pass through
+  the network stack counts as a failed fetch even when the model's `| head -5` cut the
+  `URLError` line (`django-13964`: `PY_NET_TRACEBACK_RE`). v3: attempted 148 → 159, EXPOSED
+  1 → 0, all four proofs 300/300. Same classifier on the stored netopen cell: 168 → **186/299
+  (62 %)** exposed — 18 real python/gh/pip fetches the 2026-09-19 study missed
+  (`astropy-6938`, `django-11283/13658`, `matplotlib-22835/23299`, `requests-2148`,
+  `xarray-3364`, `pytest-6116`, `sklearn-14983`, `sphinx-8435`, eight sympy). The study's
+  56 % is a floor; its receipt is left as published. Offline cases:
+  `scripts/eval/test_audit_leakage_segments.py` (15).
