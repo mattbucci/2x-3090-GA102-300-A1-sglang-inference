@@ -96,3 +96,12 @@ The 256K re-roll queue restarted 2026-09-13 14:45 with every `qwen38` lane from 
 opencode + little-coder for `qwen36-dense`, `qwen36`, `qwen36-ream`, `qwen35-moe`, little-coder then
 opencode for the three coders, and `devstral` opencode. Cells that ran under an earlier harness
 are never re-labelled — they stay as receipts until the re-rolled cell lands.
+
+## Residual at 32K (in-flight, 2026-09-24)
+
+First `length` finish of the v3 campaign at `qwen38-opencode-v3` 275/300: `sympy__sympy-19254`
+ran one step to exactly 32768 output tokens at 77K input, opencode `run` ended the session on
+`"reason":"length"`, nothing had been edited → empty patch, rc=0, 1675 s. At the 8K cap this
+shape was 62–69 % of qwen38's empties; at 32K it is 1/275. `audit_predictions.py` now classes it
+`model_output_budget` (a model verdict on the budget, not infra — no re-roll) so lane close
+separates it from `model_silent` and the 124-walls (`model_timeout`).

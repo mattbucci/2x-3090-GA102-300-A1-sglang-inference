@@ -99,6 +99,8 @@ ANYWHERE_PATTERNS = [
 ]
 # Back-compat alias (external callers / tests import this name).
 INFRA_PATTERNS = STDERR_PATTERNS + ANYWHERE_PATTERNS
+# A scaffold step that hit the output budget (see classify_log docstring).
+OUTPUT_BUDGET_RE = re.compile(r'"(?:reason|stopReason|finish_reason)"\s*:\s*"length"')
 
 
 def split_log_sections(log_text: str) -> tuple[str, str]:
@@ -115,6 +117,13 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float) -> 
     Categories:
       - real_diff: prediction has a non-empty patch
       - model_silent: model returned no patch but ran normally (no infra error)
+      - model_output_budget: the session ended on a `length` finish — one
+        step (a think) filled the whole OUTPUT_BUDGET (32768) and the
+        scaffold ended the run there with nothing edited (opencode `run`
+        treats `length` as terminal; pi aborts the turn). A model verdict
+        on this budget, not infra: same combo overflows again on retry.
+        First seen qwen38 opencode v3 sympy-19254 (1/275; at the old 8K
+        cap this class was 62-69 % of qwen38's empties).
       - model_timeout: scaffold agent hit the per-instance wall-clock cap
         (rc=124 from GNU `timeout`, elapsed at/above the timeout boundary,
         empty diff). This IS a model verdict on the (model, scaffold,
@@ -152,6 +161,14 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float) -> 
     # Rollout subprocess died non-zero with no patch and no pattern
     if rollout_rc not in (0, None):
         return ("infra_rollout_nonzero_rc", f"rc={rollout_rc}")
+
+    # Clean exit, no edit, and the event stream shows a step that ran into
+    # the output budget (opencode step_finish `"reason":"length"`; pi
+    # `stopReason`/`finish_reason` length). stdout only: the model may read
+    # repo text, but this exact JSON shape is the scaffold's, not a file's.
+    m = OUTPUT_BUDGET_RE.search(stdout_sec)
+    if m:
+        return ("model_output_budget", m.group(0))
 
     # Very fast empty completion suggests server returned 200 with empty content
     # — could be model silence OR server returning empty body. Lacking a
@@ -228,6 +245,8 @@ def main():
     print(f"  real_diff:         {len(by_category.get('real_diff', []))}")
     print(f"  model_silent:      {len(by_category.get('model_silent', []))}")
     print(f"  model_silent_fast: {len(by_category.get('model_silent_fast', []))}  (elapsed < 5s, model returned empty fast)")
+    print(f"  model_output_budget: {len(by_category.get('model_output_budget', []))}  (a step hit the output budget; run ended unedited)")
+    print(f"  model_timeout:     {len(by_category.get('model_timeout', []))}  (rc=124 wall-clock cap)")
     infra_total = sum(len(v) for k, v in by_category.items() if k.startswith("infra_"))
     print(f"  INFRA total:       {infra_total}")
     for k, v in sorted(by_category.items()):
@@ -244,6 +263,8 @@ def main():
         "total": total,
         "real_diff": len(by_category.get("real_diff", [])),
         "model_silent": len(by_category.get("model_silent", [])) + len(by_category.get("model_silent_fast", [])),
+        "model_output_budget": len(by_category.get("model_output_budget", [])),
+        "model_timeout": len(by_category.get("model_timeout", [])),
         "infra_total": infra_total,
         "by_category": {k: len(v) for k, v in sorted(by_category.items())},
         "reroll_instance_ids": reroll_ids,
