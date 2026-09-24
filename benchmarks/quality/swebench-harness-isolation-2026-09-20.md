@@ -138,3 +138,15 @@ the cycle boundary because it changes patch content.
   `xarray-3364`, `pytest-6116`, `sklearn-14983`, `sphinx-8435`, eight sympy). The study's
   56 % is a floor; its receipt is left as published. Offline cases:
   `scripts/eval/test_audit_leakage_segments.py` (15).
+- **Live wall-hit snapshot was hollow on HOME-overridden lanes (2026-09-24, opencode-dcp v3
+  first wall, django-11019).** `snapshot_sessions_live()` (`dc67a38`) exec'd with a hard-wired
+  `HOME=/root`; the DCP lane keeps its opencode store under `/opt/dcp-home` (RTK: `/opt/rtk-home`),
+  so the exec copied nothing and still logged `# wall-hit session snapshot: live` (`snap()` returns 0
+  on a missing path). Fixed: the exec uses the scaffold's own HOME (`scaffold_home()`, the last
+  `--env HOME=` in the scaffold envs) and the verdict carries the copied file count
+  (`live files=5 home=/opt/dcp-home`) so an empty snapshot is legible. Verified on the live
+  container into a scratch dir: 0 files under `/root`, 5 under `/opt/dcp-home`. The running
+  opencode-dcp lane's process predates the fix, so that cell's walled sessions stay blind (like the
+  opencode cell's); the finished-instance in-script snapshot was always correct (it runs under the
+  scaffold's `$HOME`), and DCP engagement on walled instances is captured by the live poller.
+  Forensics only — wall budget, patch capture and scoring are untouched.

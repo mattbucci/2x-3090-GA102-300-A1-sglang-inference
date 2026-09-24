@@ -548,7 +548,19 @@ SESSION_SNAPSHOT = (
 )
 
 
-def snapshot_sessions_live(container_name: str, budget_s: int = 90) -> str:
+def scaffold_home(scaffold_envs: list[str]) -> str:
+    """The HOME the scaffold actually runs under: the last `--env HOME=…` in
+    the scaffold's env list wins (docker takes the last occurrence), else the
+    harness default /root. opencode-dcp -> /opt/dcp-home, little-coder-rtk ->
+    /opt/rtk-home, everything else /root."""
+    home = "/root"
+    for i, tok in enumerate(scaffold_envs):
+        if tok == "--env" and i + 1 < len(scaffold_envs) and scaffold_envs[i + 1].startswith("HOME="):
+            home = scaffold_envs[i + 1][len("HOME="):]
+    return home
+
+
+def snapshot_sessions_live(container_name: str, home: str = "/root", budget_s: int = 90) -> str:
     """Run SESSION_SNAPSHOT inside a still-running container (docker exec).
 
     The in-script snapshot sits after the scaffold, so a wall-hit (outer
@@ -559,12 +571,23 @@ def snapshot_sessions_live(container_name: str, budget_s: int = 90) -> str:
     before the kill; the scaffold keeps running while the store is copied, so
     the wall budget and the empty-diff-at-wall rule are unchanged. Best
     effort: a hung daemon or a vanished container just means no snapshot.
+
+    `home` must be the scaffold's HOME (scaffold_home()): the first version
+    hard-wired HOME=/root, so on the qwen38 opencode-dcp v3 lane (store under
+    /opt/dcp-home) the exec found nothing, copied nothing and still reported
+    "live" — `snap()` returns 0 on a missing path (django-11019, 2026-09-24).
+    The verdict now carries the copied file count so an empty snapshot reads
+    as one (`live files=0`).
     """
     try:
         r = subprocess.run(
-            ["docker", "exec", "-e", "HOME=/root", container_name, "bash", "-c", SESSION_SNAPSHOT],
+            ["docker", "exec", "-e", f"HOME={home}", container_name, "bash", "-c",
+             SESSION_SNAPSHOT + "find /sessions -type f 2>/dev/null | wc -l\n"],
             capture_output=True, text=True, errors="replace", timeout=budget_s)
-        return "live" if r.returncode == 0 else f"exec rc={r.returncode}: {(r.stderr or '').strip()[-200:]}"
+        if r.returncode != 0:
+            return f"exec rc={r.returncode}: {(r.stderr or '').strip()[-200:]}"
+        n = (r.stdout or "").strip().splitlines()[-1:] or ["?"]
+        return f"live files={n[0].strip()} home={home}"
     except subprocess.TimeoutExpired:
         return f"exec timed out after {budget_s}s"
     except Exception as e:  # noqa: BLE001 — never let forensics take the lane down
@@ -1261,7 +1284,7 @@ def main():
                         stdout, stderr = proc.communicate(timeout=args.timeout)
                         rc = proc.returncode
                     except subprocess.TimeoutExpired:
-                        snap = snapshot_sessions_live(container_name)
+                        snap = snapshot_sessions_live(container_name, scaffold_home(scaffold_envs))
                         try:
                             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
                         except (ProcessLookupError, PermissionError):
