@@ -54,3 +54,25 @@ Consequences and handling:
 ## Standing numbers for the loop
 
 Per hourly wakeup: busy % over the last window, idle-gap count ≥ 5 min (should equal instances completed), median `post` for the current lane (0 s = cleanup pass runs; 120 s = it does not), decode tok/s from the server's `Decode batch` lines (60–65 tok/s at 50–70K tokens of context, the qwen38 preset's expected range). One tool: [`evals/swebench/lane_overhead.py`](../../evals/swebench/lane_overhead.py) (`--telemetry` duty cycle + gap histogram, `--rollout-log` build step medians, `--run` pre / session / post per cell).
+
+## Server-side decode profile during the live lanes
+
+From the `bakeoff-sglang` container's `Decode batch` / `Prefill batch` lines over each lane (single-request throughout — `#running-req: 1` on 100 % of decode lines, so this is the single-user number the project optimises for):
+
+**Decode tok/s is a clean, stable function of context depth** (qwen38 preset, TP=2, 260 W cap), identical across both lanes:
+
+| context | 0–20K | 20–40K | 40–60K | 60–80K | 80–100K | 100–120K | 120–140K | 140–160K | 160–180K |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| tok/s (median) | 67 | 65 | 63 | 61 | 60 | 58 | 56 | 55 | 54 | 52 |
+
+≈ −1.5 tok/s per 20K tokens; p10–p90 within ±1 tok/s in every bin (no thermal or batching variance — the busy-clock is pinned at the power cap). Matches the [workload profile](../qwen38-agentic-workload-profile-2026-09-10.md) (55 % of the bandwidth roofline); nothing regressed. **Prefill is not the cost:** radix cache hit is 97–98 %, median 373–474 genuinely-new tokens per prefill batch — the re-prefill after each tool turn is nearly free, so ~86 % of server time is decode as the profile says. The serving levers in README item 2 (NGRAM spec-decode, `lm_head` INT8) act on exactly this decode curve.
+
+**DCP changes the server workload, not just the plugin's own bookkeeping** — over the first 95 DCP instances vs the 300 opencode instances, per instance:
+
+| | opencode | opencode+DCP |
+|---|---:|---:|
+| decode tokens / instance | 21.1K | **50.0K** |
+| decode-line context median | 63K | **49K** |
+| prefill batches / instance (tool turns) | 24 | **53** |
+
+DCP prunes/compresses conversation context, so the model decodes at a **shorter** median depth (49K vs 63K → a few tok/s faster per step) but runs **more than twice** the turns and generates **2.4× the output tokens** per instance — the longer agentic sessions the engagement receipt already showed (median 1,197 s vs 730 s). Net: DCP's GPU cost per instance is higher, and its wall time is dominated by more-but-shorter decode passes plus the per-instance harness tax above — the plugin is doing work, the question the scored cell answers is whether that extra work resolves more instances.
