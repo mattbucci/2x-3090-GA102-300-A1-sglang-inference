@@ -1,0 +1,42 @@
+{
+  "preset": "qwen38",
+  "verdict": "PASS",
+  "serve_mode": "docker",
+  "image": "sglang-cuda-3090:local",
+  "image_id": "b8ce541a152426b187b46afeb4e32b559fca44cc90c701f26dd321ee55be8f54",
+  "date": "2026-09-27T15:37:14",
+  "steps": {
+    "stop": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "responses_api": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "bench": {
+      "status": "SKIP",
+      "detail": ""
+    },
+    "rollout": {
+      "status": "PASS",
+      "detail": "rc=0 preds=1 nonempty=1 meta=ok budget_lines=1"
+    },
+    "boot": {
+      "status": "PASS",
+      "detail": "214s to /health; /v1/models=[qwen38]"
+    },
+    "scaffold_audit": {
+      "status": "PASS",
+      "detail": "api_auth=True opencode:auth=ok dcode:auth=ok"
+    },
+    "leak_audit": {
+      "status": "PASS",
+      "detail": "Using the latest cached version of the dataset since princeton-nlp/SWE-bench_Lite couldn't be found on the Hugging Face Hub (offline mode is enabled)."
+    },
+    "api_auth": {
+      "status": "PASS",
+      "detail": "anon /v1/models -> 401"
+    }
+  }
+}

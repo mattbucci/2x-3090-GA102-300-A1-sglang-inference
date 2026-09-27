@@ -1,0 +1,38 @@
+{
+  "note": "meta.json run record of the SPEC_DECODE=1 docker smoke (1-instance opencode rollout) that gated the v4 relaunch",
+  "run": {
+    "started_at": "2026-09-27 15:30:26",
+    "scaffold": "opencode",
+    "model": "sglang/qwen38",
+    "served_name": "qwen38",
+    "dataset": "princeton-nlp/SWE-bench_Lite",
+    "split": "test",
+    "timeout_sec": 1800,
+    "context_window": 262144,
+    "context_window_source": "server /v1/models max_model_len",
+    "output_budget": 32768,
+    "thinking": "max (template default; no reasoning_effort sent)",
+    "serve_mode": "docker",
+    "serve_image": "sglang-cuda-3090:local",
+    "serve_image_id": "sha256:b8ce541a152426b187b46afeb4e32b559fca44cc90c701f26dd321ee55be8f54",
+    "api_auth": true,
+    "served_config": {
+      "speculative_algorithm": "DSPARK",
+      "speculative_num_draft_tokens": 9,
+      "speculative_draft_model_path": "qwen38-dspark",
+      "kv_cache_dtype": "fp8_e4m3",
+      "dtype": "bfloat16",
+      "context_length": 262144,
+      "max_total_num_tokens": 307659,
+      "mem_fraction_static": 0.85,
+      "chunked_prefill_size": 8192,
+      "version": "0.5.20"
+    },
+    "network_mode": "none",
+    "prompt_delivery": "stdin-file",
+    "git_refs_stripped": true,
+    "git_history": "reinit-1-commit",
+    "session_snapshot": true,
+    "mount_staging": "neutral"
+  }
+}
