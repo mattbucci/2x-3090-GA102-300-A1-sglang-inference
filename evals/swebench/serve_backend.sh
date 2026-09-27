@@ -30,6 +30,8 @@
 #                            would roll a cell under a preset nobody committed)
 #   SERVE_GPUS               --gpus value (default all)
 # launch.sh knobs (QUANT MEM CTX KV_DTYPE MAX_RUNNING TP DTYPE CHUNKED EXTRA_ARGS DRY_RUN
+#   SPEC_DECODE SPEC_CTX DSPARK_DRAFT — the per-preset spec-decode opt-ins; SPEC_FOR in
+#   run_all_cycles.sh sets SPEC_DECODE per cycle
 # OVERRIDE_ARGS ENABLE_CUSTOM_AR CUDA_VISIBLE_DEVICES) are forwarded into the
 # container when set. MODEL= overrides must use the in-container path (/models/...).
 #
@@ -60,7 +62,7 @@ SERVE_CONTAINER="${SERVE_CONTAINER:-bakeoff-sglang}"
 SERVE_GPUS="${SERVE_GPUS:-all}"
 SERVE_TRUST_REMOTE_CODE="${SERVE_TRUST_REMOTE_CODE:-1}"
 SERVE_ALLOW_STALE_IMAGE="${SERVE_ALLOW_STALE_IMAGE:-0}"
-SERVE_LAUNCH_KNOBS=(QUANT MEM CTX KV_DTYPE MAX_RUNNING TP DTYPE CHUNKED EXTRA_ARGS OVERRIDE_ARGS ENABLE_CUSTOM_AR CUDA_VISIBLE_DEVICES DRY_RUN)
+SERVE_LAUNCH_KNOBS=(QUANT MEM CTX KV_DTYPE MAX_RUNNING TP DTYPE CHUNKED EXTRA_ARGS OVERRIDE_ARGS ENABLE_CUSTOM_AR CUDA_VISIBLE_DEVICES DRY_RUN SPEC_DECODE SPEC_CTX DSPARK_DRAFT)
 
 _serve_log() { echo "[serve:${SERVE_MODE:-?} $(date +%H:%M:%S)] $*"; }
 

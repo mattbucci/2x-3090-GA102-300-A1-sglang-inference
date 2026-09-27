@@ -511,6 +511,42 @@ apply_preset() {
             REASONING="--reasoning-parser qwen3"
             CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
+            # SPEC_DECODE opt-in: DSpark speculative decoding with RedHatAI's
+            # Qwen3.8-27B-speculator.dspark (gamma 8, 5-layer sliding-window
+            # draft; vLLM speculators config flattened to the SGLang layout by
+            # scripts/specforge/flatten_dspark_speculators_config.py, linked at
+            # drafts/qwen38-dspark). Validated on CUDA 2026-09-27 (same-server
+            # A/B, greedy): 1.54x / 1.47x / 1.39x decode at 60-tok / 34K / 49K
+            # dense prose, 2.79x on predictable text — R9700's Triton 0.24x
+            # at-depth cliff does NOT reproduce on sm_86 (receipt
+            # benchmarks/quality/dspark-cuda-depth-ab-2026-09-27.md).
+            # Needs patch 099 (DSparkWorkerV2 pp_proxy_tensors kwarg).
+            # BF16 target: the draft ships BF16 and the aux hidden states it
+            # reads from the target must match (same rule as the qwen36
+            # DFlash opt-in). --speculative-num-draft-tokens must equal
+            # block_size + 1 (= 9; boot rejects anything else);
+            # --disable-overlap-schedule + the mamba extra_buffer radix
+            # strategy are the spec-family boot requirements on DeltaNet
+            # hybrids. The window stays at the preset's true 256K: with the
+            # preset's fp8_e4m3 KV the pool is 307,659 tokens at
+            # --context-length 262144 (draft weights cost 2.38 GB/card;
+            # verified at 250,550 actual tokens, 58.5 vs 48.4 tok/s no-spec).
+            # A bf16-KV DSpark server only reaches 153K — do not "fix" the
+            # window down to 128K, fix the KV dtype. SPEC_CTX overrides.
+            if [[ -n "${SPEC_DECODE:-}" ]]; then
+                DSPARK_DRAFT="${DSPARK_DRAFT:-$MODELS_DIR/drafts/qwen38-dspark}"
+                [[ -f "$DSPARK_DRAFT/config.json" ]] || { echo "ERROR: qwen38 SPEC_DECODE: DSpark draft not found at $DSPARK_DRAFT (run scripts/specforge/flatten_dspark_speculators_config.py)" >&2; exit 1; }
+                CTX="${SPEC_CTX:-262144}"
+                DTYPE="bfloat16"
+                EXTRA_ARGS="$EXTRA_ARGS \
+                    --speculative-algorithm DSPARK \
+                    --speculative-draft-model-path $DSPARK_DRAFT \
+                    --speculative-draft-model-quantization unquant \
+                    --speculative-num-draft-tokens 9 \
+                    --speculative-attention-mode decode \
+                    --disable-overlap-schedule \
+                    --mamba-radix-cache-strategy extra_buffer"
+            fi
             ;;
         qwen35-dense)
             # Qwen3.5-27B Dense AWQ (R9700 self-cal at hf-mattbucci/Qwen3.5-

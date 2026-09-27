@@ -1107,6 +1107,32 @@ def served_context_window(server_url: str, served: str) -> int | None:
     return None
 
 
+# Serving-config provenance for meta.json (v4 campaign, 2026-09-27): the fields
+# that decide decode speed / wall rate but are invisible in the argv the cell
+# was rolled with. SGLang's /get_server_info returns the flattened server_args
+# plus the runtime pool; take only what matters and never the key material.
+SERVER_INFO_KEYS = ("speculative_algorithm", "speculative_num_draft_tokens",
+                    "speculative_draft_model_path", "kv_cache_dtype", "dtype",
+                    "context_length", "max_total_num_tokens", "mem_fraction_static",
+                    "chunked_prefill_size", "version")
+
+
+def served_config(server_url: str) -> dict | None:
+    """Subset of /get_server_info (SERVER_INFO_KEYS); None if unavailable."""
+    try:
+        req = urllib.request.Request(f"{server_url}/get_server_info", headers=_auth_headers())
+        with urllib.request.urlopen(req, timeout=30) as r:
+            info = json.loads(r.read())
+    except Exception:
+        return None
+    if not isinstance(info, dict):
+        return None
+    out = {k: info.get(k) for k in SERVER_INFO_KEYS if info.get(k) is not None}
+    if isinstance(out.get("speculative_draft_model_path"), str):
+        out["speculative_draft_model_path"] = os.path.basename(out["speculative_draft_model_path"].rstrip("/"))
+    return out or None
+
+
 # pi (little-coder) prints this when the model id is not in the provider's
 # models.json and it clones the first entry (32K). With the per-run models
 # file below it must never appear; if it does, the context budget was NOT
@@ -1187,6 +1213,9 @@ def main():
         "serve_image": os.environ.get("SWEBENCH_SERVE_IMAGE"),
         "serve_image_id": os.environ.get("SWEBENCH_SERVE_IMAGE_ID"),
         "api_auth": api_auth_enabled(),
+        # the serving config the cell actually ran under (spec-decode algorithm,
+        # KV dtype, pool) — v4 cells serve qwen38 with DSpark, v3 = no-spec
+        "served_config": served_config(args.server_url),
         # answer-leakage controls (2026-09-19): no container network beyond the
         # loopback bridge to the server, git refs stripped to HEAD, per-instance
         # session-store snapshot under sessions/<iid> for audit_leakage.py

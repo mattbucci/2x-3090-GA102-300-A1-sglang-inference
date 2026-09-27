@@ -49,6 +49,11 @@ QUEUE="${QUEUE:-qwen38 coder-30b-eval qwen36 coder-reap-25b qwen36-ream qwen35-m
 POLL_SECS="${POLL_SECS:-60}"
 WAIT_FOR_PID="${WAIT_FOR_PID:-}"
 SCAFFOLDS_FOR="${SCAFFOLDS_FOR:-}"
+# SPEC_FOR="preset:1 preset:1" — cycles that serve with the preset's SPEC_DECODE
+# opt-in (v4 campaign, 2026-09-27: qwen38 on DSpark at the same 256K window;
+# every other preset stays no-spec until its opt-in is validated at 256K).
+# The value is exported verbatim as SPEC_DECODE for that cycle only.
+SPEC_FOR="${SPEC_FOR:-}"
 
 LOG_ROOT="/tmp/run-model-cycle-logs"
 mkdir -p "$LOG_ROOT"
@@ -77,7 +82,7 @@ if [ -n "$WAIT_FOR_PID" ]; then
   fi
 fi
 
-log "queue: $QUEUE"
+log "queue: $QUEUE${SPEC_FOR:+  spec: $SPEC_FOR}  run_tag: ${RUN_TAG:-<cycle default>}"
 QUEUE_START=$(date +%s)
 
 for PRESET in $QUEUE; do
@@ -90,10 +95,15 @@ for PRESET in $QUEUE; do
   for kv in $SCAFFOLDS_FOR; do
     [ "${kv%%:*}" = "$PRESET" ] && LANES="${kv#*:}"
   done
+  SPEC=""
+  for kv in $SPEC_FOR; do
+    [ "${kv%%:*}" = "$PRESET" ] && SPEC="${kv#*:}"
+  done
   CYCLE_ENV=()
   [ -n "$LANES" ] && CYCLE_ENV+=("SCAFFOLDS=${LANES//,/ }")
+  [ -n "$SPEC" ] && CYCLE_ENV+=("SPEC_DECODE=$SPEC")
 
-  log "=== START $PRESET${LANES:+ (lanes: ${LANES//,/ })} ==="
+  log "=== START $PRESET${LANES:+ (lanes: ${LANES//,/ })}${SPEC:+ (SPEC_DECODE=$SPEC)} ==="
   env "${CYCLE_ENV[@]}" bash "$REPO_DIR/evals/swebench/run_model_cycle.sh" "$PRESET" \
     > "$WRAPPER_LOG" 2>&1
   RC=$?

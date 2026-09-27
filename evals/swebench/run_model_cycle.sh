@@ -38,9 +38,13 @@
 #                   tracked evals/swebench/serve_mode.conf). docker = the OCI
 #                   image (SERVE_IMAGE, default sglang-cuda-3090:local) with a
 #                   per-cycle API key every scaffold receives; see serve_backend.sh
-#   RUN_TAG         run-dir suffix (default v3). Bump it when a harness defect
-#                   invalidates every prior cell; aggregate_bakeoff.py keeps the
-#                   highest version per (preset, scaffold)
+#   RUN_TAG         run-dir suffix (default v4). Bump it when a harness defect
+#                   invalidates every prior cell or the serving config changes
+#                   for the campaign (v4 = spec-decode where validated, via
+#                   SPEC_DECODE from run_all_cycles.sh SPEC_FOR); aggregate_bakeoff.py
+#                   keeps the highest version per (preset, scaffold)
+#   SPEC_DECODE     forwarded to launch.sh (serve_backend.sh knob): the preset's
+#                   spec-decode opt-in (qwen38 = DSpark at the same 256K window)
 #   PAUSE_FILE      while this path exists the cycle waits before touching the
 #                   GPU (default /tmp/run-model-cycle-logs/PAUSE) — the hook for
 #                   stack flips / image rebuilds at a cycle boundary
@@ -67,7 +71,7 @@ TIMEOUT="${TIMEOUT:-1800}"
 SERVER_TIMEOUT="${SERVER_TIMEOUT:-720}"
 LOG_DIR="${LOG_DIR:-/tmp/run-model-cycle-logs/$PRESET}"
 PAUSE_FILE="${PAUSE_FILE:-/tmp/run-model-cycle-logs/PAUSE}"
-RUN_TAG="${RUN_TAG:-v3}"
+RUN_TAG="${RUN_TAG:-v4}"  # v4 2026-09-27: spec-decode where validated (SPEC_FOR); v3 = the no-spec reference cells
 
 mkdir -p "$LOG_DIR"
 # Self-heal the score flock dir. run_all_cycles.sh creates /tmp/loop-bakeoff-logs
