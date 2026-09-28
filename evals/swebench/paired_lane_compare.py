@@ -10,6 +10,13 @@ compared with the SAME N instances of v3, not with v3's 300-instance average
 (the queue rolls instances in dataset order, so the first 30 are astropy/django
 — easier than the tail; a naive "30 vs 300" read would over-credit spec).
 
+Infra rows (the rollout never reached the scaffold: `rollout_error` set or a
+non-zero / -1 `rollout_returncode` with no patch — e.g. the per-instance image
+build failing) are excluded from the pairing on EITHER side and counted
+separately; the cycle re-rolls them at lane close (audit_predictions.py), so
+reading them as empties would charge a registry blip to the model. rc 124 is
+a wall, not infra.
+
 Usage: paired_lane_compare.py runs/qwen38-opencode-v3 runs/qwen38-opencode-v4 [--wall 1795] [--json out]
 Informational only — never a scoring input. Full-300 rule still applies to any
 resolved-rate claim.
@@ -29,6 +36,16 @@ def load(run):
 def wall(r, wall_s):
     return r.get("rollout_returncode") == 124 or (r.get("rollout_seconds") or 0) >= wall_s
 
+def infra(r):
+    """Rollout never reached the scaffold (same shape audit_predictions.py
+    classes infra_rollout_nonzero_rc and re-rolls). rc 124 = wall, kept."""
+    if (r.get("model_patch") or "").strip():
+        return False
+    if r.get("rollout_error"):
+        return True
+    rc = r.get("rollout_returncode")
+    return rc not in (0, None, 124)
+
 def summarize(rows, ids, wall_s):
     secs = [rows[i].get("rollout_seconds") or 0 for i in ids]
     return {
@@ -47,7 +64,10 @@ def main():
     ap.add_argument("--json")
     a = ap.parse_args()
     ref, new = load(a.ref), load(a.new)
-    ids = [i for i in new if i in ref]        # new-lane order (= roll order)
+    both = [i for i in new if i in ref]       # new-lane order (= roll order)
+    infra_ids = {"ref": [i for i in both if infra(ref[i])], "new": [i for i in both if infra(new[i])]}
+    skip = set(infra_ids["ref"]) | set(infra_ids["new"])
+    ids = [i for i in both if i not in skip]
     if not ids:
         print("no paired instances yet"); return
     sr, sn = summarize(ref, ids, a.wall), summarize(new, ids, a.wall)
@@ -59,7 +79,8 @@ def main():
     out = {"ref": str(a.ref), "new": str(a.new), "paired": len(ids), "wall_s": a.wall,
            "ref_summary": sr, "new_summary": sn,
            "speedup_median": round(st.median(ratios), 2) if ratios else None,
-           "unpaired_new": len(new) - len(ids),
+           "unpaired_new": len(new) - len(both),
+           "infra_excluded": infra_ids,
            "flips": {
                "wall_to_done": sum(wall(ref[i], a.wall) and not wall(new[i], a.wall) for i in ids),
                "done_to_wall": sum(not wall(ref[i], a.wall) and wall(new[i], a.wall) for i in ids),
@@ -67,7 +88,8 @@ def main():
                "patch_to_empty": sum(bool((ref[i].get("model_patch") or "").strip()) and not (new[i].get("model_patch") or "").strip() for i in ids),
            }}
     name = lambda p: pathlib.Path(p).name
-    print(f"paired {len(ids)} instances  ({name(a.ref)} vs {name(a.new)}; wall >= {a.wall:.0f}s or rc 124)")
+    print(f"paired {len(ids)} instances  ({name(a.ref)} vs {name(a.new)}; wall >= {a.wall:.0f}s or rc 124)"
+          + (f"  [infra excluded: ref {len(infra_ids['ref'])}, new {len(infra_ids['new'])} — re-rolled at lane close]" if skip else ""))
     print(f"{'':14}{'walls':>7}{'empty':>7}{'median s':>10}{'mean s':>9}{'sum h':>8}")
     for lab, s_ in (("ref", sr), ("new", sn)):
         print(f"{lab:14}{s_['walls']:>7}{s_['empty']:>7}{s_['median_s']:>10}{s_['mean_s']:>9}{s_['sum_h']:>8}")
