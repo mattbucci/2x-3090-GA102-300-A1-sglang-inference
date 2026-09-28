@@ -378,9 +378,17 @@ def make_specdec_comparison_chart():
     x = np.arange(len(models))
     w = 0.27  # three bars per model: AWQ int4 | FP8 | +draft
     AWQC, FP8C, SPECC = "#58a6ff", "#d29922", "#3fb950"
-    xlabels = [f'{m["name"]}\n{m["kind"]}  •  ctx {m["ctx_k"]}K' for m in models]
+    # One group per (model, depth). `ctx_label` overrides the "ctx NK" text
+    # (the DSpark depth ladder has a 60-token row); `measured` = stack + date.
+    xlabels = []
+    for m in models:
+        ctx = m.get("ctx_label") or f'ctx {m["ctx_k"]}K'
+        lbl = f'{m["name"]}\n{m["kind"]}\n{ctx}'
+        if m.get("measured"):
+            lbl += f'\n{m["measured"]}'
+        xlabels.append(lbl)
 
-    fig, ax = plt.subplots(1, 1, figsize=(11, 6))
+    fig, ax = plt.subplots(1, 1, figsize=(max(11, 2.4 * len(models) + 1.5), 6.5))
     y_top = max(m["spec_toks"] for m in models) * 1.30
 
     seen = set()
@@ -409,7 +417,7 @@ def make_specdec_comparison_chart():
             stub = y_top * 0.06
             ax.bar(x[i], stub, w, color=FP8C, alpha=0.35, hatch="xxx",
                    edgecolor=FP8C, zorder=5,
-                   label=_lbl("fp8", "FP8 W8A8 — ✗ won't compile on sm_86"))
+                   label=_lbl("fp8", "FP8 W8A8 — ✗ not on this lane (see note)"))
             ax.text(x[i], stub + 2.0, f'✗ FP8\n{m.get("fp8_note", "sm_86")}',
                     ha="center", va="bottom", fontsize=7.5, color=FP8C,
                     fontweight="bold")
@@ -420,7 +428,7 @@ def make_specdec_comparison_chart():
                 f'{spec:.0f}\n{m["spec_draft"]}\n{m["speedup_x"]:.2f}×',
                 ha="center", fontsize=8, color=SPECC, fontweight="bold")
 
-    ax.set_xticks(x); ax.set_xticklabels(xlabels, fontsize=9)
+    ax.set_xticks(x); ax.set_xticklabels(xlabels, fontsize=8.5)
     ax.set_ylabel("tok/s (single user)")
     ax.set_title("Single-user decode — AWQ int4 vs FP8 vs +draft (spec-decode), 2×3090 sm_86",
                  fontsize=12.5, fontweight="bold", pad=10)
@@ -429,10 +437,12 @@ def make_specdec_comparison_chart():
     ax.grid(True, axis="y", linestyle="--")
     ax.set_ylim(bottom=0, top=y_top)
 
-    fig.suptitle(f'{data["title"]}\n{data["subtitle"]}',
-                 fontsize=12, fontweight="bold", y=1.02)
+    import textwrap
+    sub = "\n".join(textwrap.wrap(data["subtitle"], width=int(fig.get_figwidth() * 9)))
+    fig.suptitle(f'{data["title"]}\n{sub}', fontsize=12, fontweight="bold", y=1.04)
     if data.get("footnote"):
-        fig.text(0.5, -0.04, data["footnote"], ha="center", fontsize=8,
+        note = "\n".join(textwrap.wrap(data["footnote"], width=int(fig.get_figwidth() * 15)))
+        fig.text(0.5, -0.02, note, ha="center", va="top", fontsize=8,
                  color="#8b949e", style="italic")
     fig.tight_layout()
     out = os.path.join(BENCH_DIR, "specdec_comparison.png")

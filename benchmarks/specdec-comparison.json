@@ -1,7 +1,7 @@
 {
   "title": "Speculative decoding on our AWQ targets",
-  "subtitle": "2x RTX 3090 (24GB), SGLang v0.5.12 / TP=2 — measured 2026-05-29 — drafts: lmsys EAGLE3 + z-lab DFlash, BF16 (--speculative-draft-model-quantization unquant)",
-  "footnote": "FP8 bars are MEASURED-unavailable (2026-06-26): FP8 W8A8 MoE does NOT compile on Ampere sm_86 — the Triton fused-MoE kernel rejects e4m3 (fp8e4nv); sm_86 Triton only supports e5m2/fp8e5. The engine quantizes weights fine, then SIGQUITs on the first forward. Same-weights control on Qwen3-Coder-30B-REAP: AWQ-int4 decodes 211 tok/s short where FP8 crashes. Even where FP8 IS native (R9700 gfx1201) AWQ-int4 still wins single-user M=1 decode (Coder-30B AWQ 56 vs FP8 38 tok/s) — decode is weight-byte-bound and FP8 is 2x int4. FP8 is the R9700 RDNA4 lane. Receipt: benchmarks/fp8-vs-awq-coder-reap.json.",
+  "subtitle": "2x RTX 3090 (24GB), TP=2. Qwen3.8-27B DSpark: SGLang v0.5.20, measured 2026-09-27 on the SHIPPED config (SPEC_DECODE=1: fp8_e4m3 KV, true 262144 window, 307K-token pool, bf16 draft). EAGLE3 / DFlash rows: v0.5.12, 2026-05-29, BF16 drafts.",
+  "footnote": "DSpark rows: greedy, fresh prefill (flush_cache), 500-tok dense-prose outputs (400-tok code at 60-tok), 2 runs, median; 60-tok / 49K baselines = the same-day no-spec A/B, 130K / 250K baselines = the standing qwen38 depth sweep (bench_long_context, 100-tok outputs; 250K spec point at 250,550 actual vs 261,916). Live bake-off traffic (temp 1.0, opencode): accept length median 3.10 over the first 3,199 decode batches, 92 tok/s median. FP8 bars: not on this lane - the FP8 W8A8 MoE kernel does not compile on Ampere sm_86 (Triton rejects e4m3) and single-user decode is weight-byte-bound, so AWQ int4 wins even where FP8 is native (R9700: Coder-30B AWQ 56 vs FP8 38 tok/s). Receipts: benchmarks/quality/dspark-cuda-2026-09-27/, benchmarks/fp8-vs-awq-coder-reap.json.",
   "models": [
     {
       "name": "Qwen3-Coder-30B-A3B",
@@ -16,7 +16,8 @@
       "spec_draft_repo": "lmsys/SGLang-EAGLE3-Qwen3-Coder-30B-A3B-Instruct-SpecForge",
       "spec_ladder": "steps=4 topk=4 draft=8",
       "accept_len": 4.12,
-      "speedup_x": 1.65
+      "speedup_x": 1.65,
+      "measured": "v0.5.12 \u00b7 2026-05-29"
     },
     {
       "name": "Qwen3.6-35B-A3B",
@@ -31,7 +32,80 @@
       "spec_draft_repo": "z-lab/Qwen3.6-35B-A3B-DFlash",
       "spec_ladder": "default DFLASH",
       "accept_len": 5.62,
-      "speedup_x": 4.1
+      "speedup_x": 4.1,
+      "measured": "v0.5.12 \u00b7 2026-05-29"
+    },
+    {
+      "name": "Qwen3.8-27B",
+      "kind": "dense / AWQ + fp8 KV",
+      "preset": "qwen38 (SPEC_DECODE=1)",
+      "fp8_toks": null,
+      "fp8_note": "R9700 lane",
+      "spec_draft": "DSpark",
+      "spec_draft_repo": "RedHatAI/Qwen3.8-27B-speculator.dspark (config flattened to the SGLang draft layout)",
+      "spec_ladder": "DSPARK gamma=8 (--speculative-num-draft-tokens 9), flashinfer verify, --speculative-attention-mode decode, --mamba-radix-cache-strategy extra_buffer",
+      "accept_len": null,
+      "measured": "v0.5.20 \u00b7 2026-09-27",
+      "baseline_note": "same-day no-spec A/B (nospec-results.json)",
+      "ctx_k": 0.06,
+      "ctx_label": "60-tok prompt",
+      "awq_toks": 77.8,
+      "spec_toks": 124.7,
+      "speedup_x": 1.6
+    },
+    {
+      "name": "Qwen3.8-27B",
+      "kind": "dense / AWQ + fp8 KV",
+      "preset": "qwen38 (SPEC_DECODE=1)",
+      "fp8_toks": null,
+      "fp8_note": "R9700 lane",
+      "spec_draft": "DSpark",
+      "spec_draft_repo": "RedHatAI/Qwen3.8-27B-speculator.dspark (config flattened to the SGLang draft layout)",
+      "spec_ladder": "DSPARK gamma=8 (--speculative-num-draft-tokens 9), flashinfer verify, --speculative-attention-mode decode, --mamba-radix-cache-strategy extra_buffer",
+      "accept_len": null,
+      "measured": "v0.5.20 \u00b7 2026-09-27",
+      "baseline_note": "same-day no-spec A/B (nospec-results-long.json)",
+      "ctx_k": 49,
+      "ctx_label": "ctx 49K",
+      "awq_toks": 67.0,
+      "spec_toks": 90.2,
+      "speedup_x": 1.35
+    },
+    {
+      "name": "Qwen3.8-27B",
+      "kind": "dense / AWQ + fp8 KV",
+      "preset": "qwen38 (SPEC_DECODE=1)",
+      "fp8_toks": null,
+      "fp8_note": "R9700 lane",
+      "spec_draft": "DSpark",
+      "spec_draft_repo": "RedHatAI/Qwen3.8-27B-speculator.dspark (config flattened to the SGLang draft layout)",
+      "spec_ladder": "DSPARK gamma=8 (--speculative-num-draft-tokens 9), flashinfer verify, --speculative-attention-mode decode, --mamba-radix-cache-strategy extra_buffer",
+      "accept_len": null,
+      "measured": "v0.5.20 \u00b7 2026-09-27",
+      "baseline_note": "qwen38 depth sweep 2026-08-30 @131,072 actual",
+      "ctx_k": 130,
+      "ctx_label": "ctx 130K",
+      "awq_toks": 57.7,
+      "spec_toks": 74.8,
+      "speedup_x": 1.3
+    },
+    {
+      "name": "Qwen3.8-27B",
+      "kind": "dense / AWQ + fp8 KV",
+      "preset": "qwen38 (SPEC_DECODE=1)",
+      "fp8_toks": null,
+      "fp8_note": "R9700 lane",
+      "spec_draft": "DSpark",
+      "spec_draft_repo": "RedHatAI/Qwen3.8-27B-speculator.dspark (config flattened to the SGLang draft layout)",
+      "spec_ladder": "DSPARK gamma=8 (--speculative-num-draft-tokens 9), flashinfer verify, --speculative-attention-mode decode, --mamba-radix-cache-strategy extra_buffer",
+      "accept_len": null,
+      "measured": "v0.5.20 \u00b7 2026-09-27",
+      "baseline_note": "qwen38 depth sweep 2026-08-30 @261,916 actual; spec @250,550 actual, 1 run",
+      "ctx_k": 250,
+      "ctx_label": "ctx 250K",
+      "awq_toks": 48.3,
+      "spec_toks": 58.5,
+      "speedup_x": 1.21
     }
   ]
 }
