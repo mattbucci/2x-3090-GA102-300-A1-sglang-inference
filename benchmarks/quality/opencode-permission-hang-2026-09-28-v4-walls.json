@@ -1,0 +1,157 @@
+{
+ "run": "evals/swebench/runs/qwen38-opencode-v4",
+ "wall_s": 1795.0,
+ "tally": {
+  "generating": 6,
+  "permission_hang": 3
+ },
+ "rows": [
+  {
+   "last_part_type": "reasoning",
+   "last_part_ms": 1790562410022,
+   "in_subagent": false,
+   "n_parts": 650,
+   "n_sessions": 1,
+   "class": "generating",
+   "chars": 0,
+   "instance_id": "django__django-11564",
+   "wall": true,
+   "rc": 124,
+   "rollout_seconds": 1986.8,
+   "empty": true
+  },
+  {
+   "last_part_type": "tool",
+   "last_part_ms": 1790566947372,
+   "in_subagent": false,
+   "n_parts": 396,
+   "n_sessions": 1,
+   "tool": "bash",
+   "status": "running",
+   "input": "{\"command\": \"python runtests.py --parallel 4 > /tmp/final_full.log 2>&1; grep -E \\\"^Ran \\\" /tmp/final_full.log; grep -E \\\"^(FAIL|ERROR):\\\" /tmp/final_full.log | sed 's/0x[0-9a-f]*/0xADDR/' | sort > /tmp/final_failures.txt; sed 's/0x[0xADDR]",
+   "class": "permission_hang",
+   "outside_paths": [
+    "/0xADDR/",
+    "/tmp/base_failures.txt",
+    "/tmp/base_norm.txt",
+    "/tmp/final_failures.txt",
+    "/tmp/final_full.log",
+    "/tmp/final_norm.txt"
+   ],
+   "instance_id": "django__django-11742",
+   "wall": true,
+   "rc": 124,
+   "rollout_seconds": 1981.1,
+   "empty": true
+  },
+  {
+   "last_part_type": "reasoning",
+   "last_part_ms": 1790591308480,
+   "in_subagent": false,
+   "n_parts": 407,
+   "n_sessions": 1,
+   "class": "generating",
+   "chars": 0,
+   "instance_id": "django__django-13448",
+   "wall": true,
+   "rc": 124,
+   "rollout_seconds": 1973.7,
+   "empty": true
+  },
+  {
+   "last_part_type": "reasoning",
+   "last_part_ms": 1790608715625,
+   "in_subagent": false,
+   "n_parts": 460,
+   "n_sessions": 1,
+   "class": "generating",
+   "chars": 0,
+   "instance_id": "django__django-14730",
+   "wall": true,
+   "rc": 124,
+   "rollout_seconds": 1976.8,
+   "empty": true
+  },
+  {
+   "last_part_type": "reasoning",
+   "last_part_ms": 1790616858053,
+   "in_subagent": false,
+   "n_parts": 704,
+   "n_sessions": 1,
+   "class": "generating",
+   "chars": 0,
+   "instance_id": "django__django-15213",
+   "wall": true,
+   "rc": 124,
+   "rollout_seconds": 1973.9,
+   "empty": true
+  },
+  {
+   "last_part_type": "reasoning",
+   "last_part_ms": 1790618700213,
+   "in_subagent": false,
+   "n_parts": 235,
+   "n_sessions": 1,
+   "class": "generating",
+   "chars": 0,
+   "instance_id": "django__django-15252",
+   "wall": true,
+   "rc": 124,
+   "rollout_seconds": 1976.6,
+   "empty": true
+  },
+  {
+   "last_part_type": "tool",
+   "last_part_ms": 1790627396711,
+   "in_subagent": false,
+   "n_parts": 307,
+   "n_sessions": 1,
+   "tool": "bash",
+   "status": "running",
+   "input": "{\"command\": \"pkill -f \\\"runtests.py --parallel\\\" 2>/dev/null; git stash -q && python tests/runtests.py file_uploads.tests.DirectoryCreationTests.test_readonly_root template_tests.test_loaders.FileSystemLoaderTests.test_permissions_error adm",
+   "class": "permission_hang",
+   "outside_paths": [
+    "/tmp/base_failures.txt"
+   ],
+   "instance_id": "django__django-15789",
+   "wall": true,
+   "rc": 124,
+   "rollout_seconds": 1977.2,
+   "empty": true
+  },
+  {
+   "last_part_type": "reasoning",
+   "last_part_ms": 1790638286710,
+   "in_subagent": false,
+   "n_parts": 467,
+   "n_sessions": 1,
+   "class": "generating",
+   "chars": 0,
+   "instance_id": "django__django-16408",
+   "wall": true,
+   "rc": 124,
+   "rollout_seconds": 1974.5,
+   "empty": true
+  },
+  {
+   "last_part_type": "tool",
+   "last_part_ms": 1790641475135,
+   "in_subagent": true,
+   "n_parts": 219,
+   "n_sessions": 2,
+   "tool": "bash",
+   "status": "running",
+   "input": "{\"command\": \"cat /etc/resolv.conf 2>/dev/null; getent hosts github.com; getent hosts pypi.org; echo ---; curl -sS -m 8 -o /dev/null -w '%{http_code}\\\\n' --resolve github.com:443:140.82.115.4 https://github.com/ 2>&1 | head -3\", \"description",
+   "class": "permission_hang",
+   "outside_paths": [
+    "/etc/resolv.conf",
+    "/github.com/"
+   ],
+   "instance_id": "django__django-16820",
+   "wall": true,
+   "rc": 124,
+   "rollout_seconds": 1974.7,
+   "empty": true
+  }
+ ]
+}

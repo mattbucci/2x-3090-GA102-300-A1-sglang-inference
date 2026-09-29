@@ -3,7 +3,7 @@
 cell against its v3 no-spec reference while v4 is still rolling.
 
 For every instance present in BOTH predictions.jsonl files: wall hits
-(rollout_seconds >= WALL_S or rc 124), empty patches, rollout_seconds
+(rc 124; rollout_seconds >= WALL_S only for rows without a returncode), empty patches, rollout_seconds
 (median / mean / sum) and the per-instance speed ratio. Pairing on instance id
 is what makes a partial cell readable at all: the first N v4 instances are
 compared with the SAME N instances of v3, not with v3's 300-instance average
@@ -34,7 +34,16 @@ def load(run):
     return rows
 
 def wall(r, wall_s):
-    return r.get("rollout_returncode") == 124 or (r.get("rollout_seconds") or 0) >= wall_s
+    """rc 124 is the wall (the host `timeout` killing the scaffold).
+    `rollout_seconds` spans the per-instance image build (~175-300 s), so a
+    run that FINISHED (rc 0) after a slow build + long session reads >= 1795 s
+    without ever hitting the cap — 2 such rows per arm at 107 pairs
+    (django-16229 in both). The seconds threshold is only the fallback for
+    rows that carry no returncode."""
+    rc = r.get("rollout_returncode")
+    if rc is not None:
+        return rc == 124
+    return (r.get("rollout_seconds") or 0) >= wall_s
 
 def infra(r):
     """Rollout never reached the scaffold (same shape audit_predictions.py
@@ -88,7 +97,7 @@ def main():
                "patch_to_empty": sum(bool((ref[i].get("model_patch") or "").strip()) and not (new[i].get("model_patch") or "").strip() for i in ids),
            }}
     name = lambda p: pathlib.Path(p).name
-    print(f"paired {len(ids)} instances  ({name(a.ref)} vs {name(a.new)}; wall >= {a.wall:.0f}s or rc 124)"
+    print(f"paired {len(ids)} instances  ({name(a.ref)} vs {name(a.new)}; wall = rc 124)"
           + (f"  [infra excluded: ref {len(infra_ids['ref'])}, new {len(infra_ids['new'])} — re-rolled at lane close]" if skip else ""))
     print(f"{'':14}{'walls':>7}{'empty':>7}{'median s':>10}{'mean s':>9}{'sum h':>8}")
     for lab, s_ in (("ref", sr), ("new", sn)):
