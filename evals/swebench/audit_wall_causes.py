@@ -20,8 +20,12 @@ subagents):
   tool_stuck        open tool part, open > ceiling + slack, no outside path
   tool_running      open tool part inside its ceiling (time exhausted)
   generating        open reasoning/text part (model mid-response at the wall)
-  step_boundary     last part is step-start (request in flight / no part yet)
-  finished          last part is step-finish or a completed part
+  step_boundary     last part is step-start (request in flight / no part yet),
+                    or the last part completed within `slack` of the kill
+                    (12471: step-finish reason=tool-calls 0.6 s before the
+                    wall -- the next tool part was never created)
+  finished          last part completed > slack before the kill (the model was
+                    done; whatever ran on after it was not the model)
   no_snapshot       no db (pre-capture-at-wall cells are blind on walls)
 
 Usage: audit_wall_causes.py <run_dir> [--walls-only] [--project /testbed]
@@ -92,7 +96,7 @@ def ceiling_s(tool, inp):
             return 120.0
     return 30.0
 
-def classify(run, iid, project, end_ts=None, slack_s=120.0):
+def classify(run, iid, project, end_ts=None, slack_s=120.0, wall=False):
     """end_ts: when the rollout ended (the per-instance log's mtime — written
     at exit; the wall-hit snapshot is taken up to ~90 s earlier, hence slack)."""
     db_dir = pathlib.Path(run) / "sessions" / iid / ".local/share/opencode"
@@ -143,6 +147,18 @@ def classify(run, iid, project, end_ts=None, slack_s=120.0):
         info["class"] = "step_boundary"
     else:
         info["class"] = "finished"
+        if t == "step-finish":
+            info["finish_reason"] = d.get("reason")
+    # On a wall, a completed last part only means "finished" if the model had
+    # actually stopped: a part that ended within `slack` of the kill is a step
+    # boundary (the next request / tool part had not been written yet). A
+    # clean exit ends right after its last part by construction -- not a wall.
+    if wall and info["class"] == "finished" and end_ts:
+        ended = d.get("state", {}).get("time", {}).get("end") if t == "tool" else (d.get("time") or {}).get("end")
+        ended_s = (ended or tc) / 1000.0
+        info["ended_before_kill_s"] = round(end_ts - ended_s)
+        if end_ts - ended_s <= slack_s:
+            info["class"] = "step_boundary"
     return info
 
 def main():
@@ -163,7 +179,7 @@ def main():
             continue
         lg = pathlib.Path(a.run) / "logs" / f"{iid}.log"
         end_ts = lg.stat().st_mtime if lg.exists() else None
-        c = classify(a.run, iid, a.project, end_ts)
+        c = classify(a.run, iid, a.project, end_ts, wall=bool(w))
         c.update({"instance_id": iid, "wall": w, "rc": r.get("rollout_returncode"),
                   "rollout_seconds": r.get("rollout_seconds"),
                   "empty": not (r.get("model_patch") or "").strip()})
