@@ -3,16 +3,22 @@
 opencode session snapshot (`<run>/sessions/<iid>/.local/share/opencode/
 opencode.db`, sqlite since opencode 1.14). Built for wall hits: a wall is
 "model still working" only if the last part is an open reasoning/text/tool
-part; an open `bash`/`read`/`edit` part whose target sits OUTSIDE the project
-dir is opencode's `external_directory` permission prompt (default `ask` even
-under --dangerously-skip-permissions in 1.14.25) — headless `opencode run`
-never answers it, so the instance idles to the wall with the server empty.
-That is a harness hang, not a model wall.
+part. An open tool part that has been open LONGER than its own execution
+ceiling (bash: the requested `timeout`, default 120 s; other tools ~30 s) never
+executed: that is opencode's `external_directory` permission prompt (default
+`ask` even under --dangerously-skip-permissions in 1.14.25; the check runs
+before the command) — headless `opencode run` never answers it, so the
+instance idles to the wall with the server empty. A harness hang, not a model
+wall. An open part still inside its ceiling at the wall is the model running
+out of budget (test suite, `sleep`) — it would have walled with or without the
+prompt, so it is NOT charged to the harness even when an outside path is
+present (`permission_possible` records the ambiguity).
 
 Terminal classes (last part across all sessions of the instance, incl. task
 subagents):
-  permission_hang   open tool part, input references a path outside --project
-  tool_running      open tool part inside the project (test suite, long cmd)
+  permission_hang   open tool part, open > ceiling + slack, outside path
+  tool_stuck        open tool part, open > ceiling + slack, no outside path
+  tool_running      open tool part inside its ceiling (time exhausted)
   generating        open reasoning/text part (model mid-response at the wall)
   step_boundary     last part is step-start (request in flight / no part yet)
   finished          last part is step-finish or a completed part
@@ -77,7 +83,18 @@ def last_parts(db_dir):
             con.close()
     return sessions, parts
 
-def classify(run, iid, project):
+def ceiling_s(tool, inp):
+    """Longest the tool could legitimately stay open once it started executing."""
+    if tool == "bash":
+        try:
+            return float(inp.get("timeout", 120000)) / 1000.0
+        except (TypeError, ValueError):
+            return 120.0
+    return 30.0
+
+def classify(run, iid, project, end_ts=None, slack_s=120.0):
+    """end_ts: when the rollout ended (the per-instance log's mtime — written
+    at exit; the wall-hit snapshot is taken up to ~90 s earlier, hence slack)."""
     db_dir = pathlib.Path(run) / "sessions" / iid / ".local/share/opencode"
     if not (db_dir / "opencode.db").exists():
         return {"class": "no_snapshot"}
@@ -94,10 +111,18 @@ def classify(run, iid, project):
         info["input"] = json.dumps(st.get("input", {}))[:240]
         if st.get("status") in ("running", "pending"):
             ext = outside_paths(d.get("tool"), st.get("input", {}), project)
+            start = ((st.get("time") or {}).get("start") or tc) / 1000.0
+            ceil = ceiling_s(d.get("tool"), st.get("input", {}))
+            open_s = (end_ts - start) if end_ts else None
+            info.update({"open_s": round(open_s) if open_s is not None else None, "ceiling_s": ceil})
             if ext:
-                info["class"] = "permission_hang"; info["outside_paths"] = ext[:6]
+                info["outside_paths"] = ext[:6]
+            if open_s is not None and open_s > ceil + slack_s:
+                info["class"] = "permission_hang" if ext else "tool_stuck"
             else:
                 info["class"] = "tool_running"
+                if ext:
+                    info["permission_possible"] = True
         else:
             info["class"] = "finished"
     elif t in ("reasoning", "text"):
@@ -108,8 +133,6 @@ def classify(run, iid, project):
         info["class"] = "step_boundary"
     else:
         info["class"] = "finished"
-    # any permission-shaped open tool part earlier in the run (a hang always
-    # sits at the tail, so this is a consistency check)
     return info
 
 def main():
@@ -128,7 +151,9 @@ def main():
         w = is_wall(r, a.wall) if r else None
         if a.walls_only and not w:
             continue
-        c = classify(a.run, iid, a.project)
+        lg = pathlib.Path(a.run) / "logs" / f"{iid}.log"
+        end_ts = lg.stat().st_mtime if lg.exists() else None
+        c = classify(a.run, iid, a.project, end_ts)
         c.update({"instance_id": iid, "wall": w, "rc": r.get("rollout_returncode"),
                   "rollout_seconds": r.get("rollout_seconds"),
                   "empty": not (r.get("model_patch") or "").strip()})
@@ -138,12 +163,12 @@ def main():
         tally[c["class"]] = tally.get(c["class"], 0) + 1
     print(f"{a.run}: n={len(rows)} walls_only={a.walls_only}  classes={json.dumps(tally)}")
     for c in rows:
-        if c["class"] in ("permission_hang", "tool_running", "generating", "step_boundary") or c["wall"]:
+        if c["class"] in ("permission_hang", "tool_stuck", "tool_running", "generating", "step_boundary") or c["wall"]:
             extra = ""
-            if c["class"] == "permission_hang":
-                extra = f" outside={c['outside_paths']}"
+            if c["class"] in ("permission_hang", "tool_stuck"):
+                extra = f" open={c.get('open_s')}s ceiling={c.get('ceiling_s')}s outside={c.get('outside_paths')}"
             elif c["class"] in ("tool_running",):
-                extra = f" {c.get('tool')} {c.get('input','')[:100]}"
+                extra = f" open={c.get('open_s')}s/{c.get('ceiling_s')}s{' (outside path)' if c.get('permission_possible') else ''} {c.get('tool')} {c.get('input','')[:90]}"
             elif c["class"] == "generating":
                 extra = f" {c.get('last_part_type')} chars={c.get('chars')}"
             sub = " (subagent)" if c.get("in_subagent") else ""

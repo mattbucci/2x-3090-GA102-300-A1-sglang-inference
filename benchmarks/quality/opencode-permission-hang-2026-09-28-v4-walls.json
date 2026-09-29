@@ -3,7 +3,8 @@
  "wall_s": 1795.0,
  "tally": {
   "generating": 6,
-  "permission_hang": 3
+  "tool_running": 3,
+  "permission_hang": 1
  },
  "rows": [
   {
@@ -29,7 +30,8 @@
    "tool": "bash",
    "status": "running",
    "input": "{\"command\": \"python runtests.py --parallel 4 > /tmp/final_full.log 2>&1; grep -E \\\"^Ran \\\" /tmp/final_full.log; grep -E \\\"^(FAIL|ERROR):\\\" /tmp/final_full.log | sed 's/0x[0-9a-f]*/0xADDR/' | sort > /tmp/final_failures.txt; sed 's/0x[0xADDR]",
-   "class": "permission_hang",
+   "open_s": 84,
+   "ceiling_s": 3600.0,
    "outside_paths": [
     "/0xADDR/",
     "/tmp/base_failures.txt",
@@ -38,6 +40,8 @@
     "/tmp/final_full.log",
     "/tmp/final_norm.txt"
    ],
+   "class": "tool_running",
+   "permission_possible": true,
    "instance_id": "django__django-11742",
    "wall": true,
    "rc": 124,
@@ -109,10 +113,13 @@
    "tool": "bash",
    "status": "running",
    "input": "{\"command\": \"pkill -f \\\"runtests.py --parallel\\\" 2>/dev/null; git stash -q && python tests/runtests.py file_uploads.tests.DirectoryCreationTests.test_readonly_root template_tests.test_loaders.FileSystemLoaderTests.test_permissions_error adm",
-   "class": "permission_hang",
+   "open_s": 231,
+   "ceiling_s": 600.0,
    "outside_paths": [
     "/tmp/base_failures.txt"
    ],
+   "class": "tool_running",
+   "permission_possible": true,
    "instance_id": "django__django-15789",
    "wall": true,
    "rc": 124,
@@ -142,15 +149,39 @@
    "tool": "bash",
    "status": "running",
    "input": "{\"command\": \"cat /etc/resolv.conf 2>/dev/null; getent hosts github.com; getent hosts pypi.org; echo ---; curl -sS -m 8 -o /dev/null -w '%{http_code}\\\\n' --resolve github.com:443:140.82.115.4 https://github.com/ 2>&1 | head -3\", \"description",
-   "class": "permission_hang",
+   "open_s": 1526,
+   "ceiling_s": 120.0,
    "outside_paths": [
     "/etc/resolv.conf",
     "/github.com/"
    ],
+   "class": "permission_hang",
    "instance_id": "django__django-16820",
    "wall": true,
    "rc": 124,
    "rollout_seconds": 1974.7,
+   "empty": true
+  },
+  {
+   "last_part_type": "tool",
+   "last_part_ms": 1790649268521,
+   "in_subagent": false,
+   "n_parts": 477,
+   "n_sessions": 1,
+   "tool": "bash",
+   "status": "running",
+   "input": "{\"command\": \"sleep 260; git -C /testbed status --short; tail -c 600 /tmp/baseline_suite.log\", \"description\": \"Wait for baseline suite to finish\", \"timeout\": 300000}",
+   "open_s": 256,
+   "ceiling_s": 300.0,
+   "outside_paths": [
+    "/tmp/baseline_suite.log"
+   ],
+   "class": "tool_running",
+   "permission_possible": true,
+   "instance_id": "matplotlib__matplotlib-23299",
+   "wall": true,
+   "rc": 124,
+   "rollout_seconds": 1970.7,
    "empty": true
   }
  ]
