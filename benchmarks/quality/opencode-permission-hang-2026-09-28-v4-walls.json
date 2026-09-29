@@ -4,7 +4,7 @@
  "tally": {
   "generating": 6,
   "tool_running": 3,
-  "permission_hang": 1
+  "permission_hang": 2
  },
  "rows": [
   {
@@ -13,6 +13,7 @@
    "in_subagent": false,
    "n_parts": 650,
    "n_sessions": 1,
+   "n_open_tool_parts": 0,
    "class": "generating",
    "chars": 0,
    "instance_id": "django__django-11564",
@@ -27,6 +28,7 @@
    "in_subagent": false,
    "n_parts": 396,
    "n_sessions": 1,
+   "n_open_tool_parts": 1,
    "tool": "bash",
    "status": "running",
    "input": "{\"command\": \"python runtests.py --parallel 4 > /tmp/final_full.log 2>&1; grep -E \\\"^Ran \\\" /tmp/final_full.log; grep -E \\\"^(FAIL|ERROR):\\\" /tmp/final_full.log | sed 's/0x[0-9a-f]*/0xADDR/' | sort > /tmp/final_failures.txt; sed 's/0x[0xADDR]",
@@ -54,6 +56,7 @@
    "in_subagent": false,
    "n_parts": 407,
    "n_sessions": 1,
+   "n_open_tool_parts": 0,
    "class": "generating",
    "chars": 0,
    "instance_id": "django__django-13448",
@@ -68,6 +71,7 @@
    "in_subagent": false,
    "n_parts": 460,
    "n_sessions": 1,
+   "n_open_tool_parts": 0,
    "class": "generating",
    "chars": 0,
    "instance_id": "django__django-14730",
@@ -82,6 +86,7 @@
    "in_subagent": false,
    "n_parts": 704,
    "n_sessions": 1,
+   "n_open_tool_parts": 0,
    "class": "generating",
    "chars": 0,
    "instance_id": "django__django-15213",
@@ -96,6 +101,7 @@
    "in_subagent": false,
    "n_parts": 235,
    "n_sessions": 1,
+   "n_open_tool_parts": 0,
    "class": "generating",
    "chars": 0,
    "instance_id": "django__django-15252",
@@ -110,6 +116,7 @@
    "in_subagent": false,
    "n_parts": 307,
    "n_sessions": 1,
+   "n_open_tool_parts": 1,
    "tool": "bash",
    "status": "running",
    "input": "{\"command\": \"pkill -f \\\"runtests.py --parallel\\\" 2>/dev/null; git stash -q && python tests/runtests.py file_uploads.tests.DirectoryCreationTests.test_readonly_root template_tests.test_loaders.FileSystemLoaderTests.test_permissions_error adm",
@@ -132,6 +139,7 @@
    "in_subagent": false,
    "n_parts": 467,
    "n_sessions": 1,
+   "n_open_tool_parts": 0,
    "class": "generating",
    "chars": 0,
    "instance_id": "django__django-16408",
@@ -146,6 +154,7 @@
    "in_subagent": true,
    "n_parts": 219,
    "n_sessions": 2,
+   "n_open_tool_parts": 1,
    "tool": "bash",
    "status": "running",
    "input": "{\"command\": \"cat /etc/resolv.conf 2>/dev/null; getent hosts github.com; getent hosts pypi.org; echo ---; curl -sS -m 8 -o /dev/null -w '%{http_code}\\\\n' --resolve github.com:443:140.82.115.4 https://github.com/ 2>&1 | head -3\", \"description",
@@ -168,6 +177,7 @@
    "in_subagent": false,
    "n_parts": 477,
    "n_sessions": 1,
+   "n_open_tool_parts": 1,
    "tool": "bash",
    "status": "running",
    "input": "{\"command\": \"sleep 260; git -C /testbed status --short; tail -c 600 /tmp/baseline_suite.log\", \"description\": \"Wait for baseline suite to finish\", \"timeout\": 300000}",
@@ -182,6 +192,28 @@
    "wall": true,
    "rc": 124,
    "rollout_seconds": 1970.7,
+   "empty": true
+  },
+  {
+   "last_part_type": "tool",
+   "last_part_ms": 1790651968392,
+   "in_subagent": true,
+   "n_parts": 75,
+   "n_sessions": 2,
+   "n_open_tool_parts": 1,
+   "tool": "bash",
+   "status": "running",
+   "input": "{\"command\": \"cd /tmp && PYTHONPATH=/testbed/lib python -c \\\"\\nimport numpy as np\\nimport matplotlib\\nmatplotlib.use('Agg')\\nimport matplotlib.pyplot as plt\\nfrom mpl_toolkits.mplot3d.art3d import Poly3DCollection\\n\\nfig = plt.figure()\\nax =",
+   "open_s": 1567,
+   "ceiling_s": 120.0,
+   "outside_paths": [
+    "/tmp"
+   ],
+   "class": "permission_hang",
+   "instance_id": "matplotlib__matplotlib-23562",
+   "wall": true,
+   "rc": 124,
+   "rollout_seconds": 1980.6,
    "empty": true
   }
  ]

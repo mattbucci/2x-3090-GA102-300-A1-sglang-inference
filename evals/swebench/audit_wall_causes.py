@@ -102,9 +102,19 @@ def classify(run, iid, project, end_ts=None, slack_s=120.0):
     if not parts:
         return {"class": "no_snapshot", "note": "db has no parts"}
     tc, sid, d = parts[-1]
+    # A step can issue parallel tool calls; the newest part may then be a
+    # completed sibling while an earlier-created one is still open (23562: a
+    # finished `read` hid the hung `bash` beside it). Judge by the open leaf
+    # tool part, not the newest part. `task` parts are subagent containers --
+    # the subagent's own open part is the leaf.
+    open_leaf = [(pc, ps, pd) for pc, ps, pd in parts
+                 if pd.get("type") == "tool" and pd.get("tool") != "task"
+                 and (pd.get("state") or {}).get("status") in ("running", "pending")]
+    if open_leaf:
+        tc, sid, d = max(open_leaf, key=lambda x: ((x[2].get("state") or {}).get("time") or {}).get("start") or x[0])
     t = d.get("type")
     info = {"last_part_type": t, "last_part_ms": tc, "in_subagent": bool(sessions.get(sid)),
-            "n_parts": len(parts), "n_sessions": len(sessions)}
+            "n_parts": len(parts), "n_sessions": len(sessions), "n_open_tool_parts": len(open_leaf)}
     if t == "tool":
         st = d.get("state", {})
         info["tool"] = d.get("tool"); info["status"] = st.get("status")
