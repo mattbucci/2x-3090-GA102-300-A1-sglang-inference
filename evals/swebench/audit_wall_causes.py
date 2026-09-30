@@ -26,7 +26,17 @@ subagents):
                     wall -- the next tool part was never created)
   finished          last part completed > slack before the kill (the model was
                     done; whatever ran on after it was not the model)
-  no_snapshot       no db (pre-capture-at-wall cells are blind on walls)
+  env_destroyed     the container userland is gone: every bash call after
+                    some point fails to spawn (`NotFound: ChildProcess.spawn`).
+                    sphinx-8474 (v4): `for base in ('/tmp/mt_lt'): shutil.rmtree
+                    (base, ignore_errors=True)` -- a str, not a tuple -- rmtree'd
+                    '/' from its first character; /testbed, /opt, /usr and
+                    /etc/passwd went with it (docker exec fails too, so no
+                    snapshot), 12.6 min of probing to the wall. Read from the
+                    opencode json stream in the per-instance log, so it works
+                    without a db. Model-side; nothing left the sandbox.
+  no_snapshot       no db (pre-capture-at-wall cells are blind on walls; the
+                    `snapshot` field carries the wall-hit exec verdict if any)
 
 Usage: audit_wall_causes.py <run_dir> [--walls-only] [--project /testbed]
        [--wall 1795] [--json out]
@@ -96,15 +106,65 @@ def ceiling_s(tool, inp):
             return 120.0
     return 30.0
 
+DESTROYED_RE = re.compile(r"^NotFound: (ChildProcess\.spawn|FileSystem\.access)")
+
+def stream_events(run, iid):
+    """The opencode `--format json` event stream captured in logs/<iid>.log
+    (tool_use events carry the completed/error state of the part)."""
+    lg = pathlib.Path(run) / "logs" / f"{iid}.log"
+    if not lg.exists():
+        return []
+    ev = []
+    for line in lg.read_text(errors="replace").splitlines():
+        if line.startswith('{"type":'):
+            try:
+                ev.append(json.loads(line))
+            except ValueError:
+                pass
+    return ev
+
+def env_destroyed(run, iid):
+    """First bash part whose spawn failed with every later bash call failing
+    the same way (>= 2 in the streak), plus the last command that ran before
+    it -- the destroyer. None when the shell stayed alive to the end."""
+    last_ok, first_bad, n_bad = None, None, 0
+    for e in stream_events(run, iid):
+        p = e.get("part") or {}
+        if p.get("type") != "tool" or p.get("tool") != "bash":
+            continue
+        st = p.get("state") or {}
+        out = str(st.get("output") or st.get("error") or "")
+        if st.get("status") == "error" and DESTROYED_RE.match(out):
+            if first_bad is None:
+                first_bad = (e.get("timestamp") or 0) / 1000.0
+            n_bad += 1
+        else:
+            first_bad, n_bad = None, 0          # shell came back: not destroyed
+            if st.get("status") == "completed":
+                last_ok = (e.get("timestamp"), str((st.get("input") or {}).get("command", "")))
+    if first_bad is None or n_bad < 2:
+        return None
+    return {"destroyed_at": first_bad, "n_failed_bash": n_bad,
+            "destroyer": (last_ok[1] if last_ok else "")[:240]}
+
+def snapshot_verdict(run, iid):
+    lg = pathlib.Path(run) / "logs" / f"{iid}.log"
+    if not lg.exists():
+        return None
+    m = re.search(r"^# wall-hit session snapshot: (.*)$", lg.read_text(errors="replace"), re.M)
+    return m.group(1).strip() if m else None
+
 def classify(run, iid, project, end_ts=None, slack_s=120.0, wall=False):
     """end_ts: when the rollout ended (the per-instance log's mtime — written
     at exit; the wall-hit snapshot is taken up to ~90 s earlier, hence slack)."""
     db_dir = pathlib.Path(run) / "sessions" / iid / ".local/share/opencode"
-    if not (db_dir / "opencode.db").exists():
-        return {"class": "no_snapshot"}
+    destroyed = env_destroyed(run, iid)
+    if not (db_dir / "opencode.db").exists() or not last_parts(db_dir)[1]:
+        info = {"class": "no_snapshot", "snapshot": snapshot_verdict(run, iid)}
+        if (db_dir / "opencode.db").exists():
+            info["note"] = "db has no parts"
+        return _mark_destroyed(info, destroyed, end_ts)
     sessions, parts = last_parts(db_dir)
-    if not parts:
-        return {"class": "no_snapshot", "note": "db has no parts"}
     tc, sid, d = parts[-1]
     # A step can issue parallel tool calls; the newest part may then be a
     # completed sibling while an earlier-created one is still open (23562: a
@@ -159,6 +219,15 @@ def classify(run, iid, project, end_ts=None, slack_s=120.0, wall=False):
         info["ended_before_kill_s"] = round(end_ts - ended_s)
         if end_ts - ended_s <= slack_s:
             info["class"] = "step_boundary"
+    return _mark_destroyed(info, destroyed, end_ts)
+
+def _mark_destroyed(info, destroyed, end_ts):
+    if destroyed:
+        info["class"] = "env_destroyed"
+        info["destroyer"] = destroyed["destroyer"]
+        info["n_failed_bash"] = destroyed["n_failed_bash"]
+        if end_ts:
+            info["destroyed_before_end_s"] = round(end_ts - destroyed["destroyed_at"])
     return info
 
 def main():
@@ -189,7 +258,7 @@ def main():
         tally[c["class"]] = tally.get(c["class"], 0) + 1
     print(f"{a.run}: n={len(rows)} walls_only={a.walls_only}  classes={json.dumps(tally)}")
     for c in rows:
-        if c["class"] in ("permission_hang", "tool_stuck", "tool_running", "generating", "step_boundary") or c["wall"]:
+        if c["class"] in ("permission_hang", "tool_stuck", "tool_running", "generating", "step_boundary", "env_destroyed") or c["wall"]:
             extra = ""
             if c["class"] in ("permission_hang", "tool_stuck"):
                 extra = f" open={c.get('open_s')}s ceiling={c.get('ceiling_s')}s outside={c.get('outside_paths')}"
@@ -197,6 +266,10 @@ def main():
                 extra = f" open={c.get('open_s')}s/{c.get('ceiling_s')}s{' (outside path)' if c.get('permission_possible') else ''} {c.get('tool')} {c.get('input','')[:90]}"
             elif c["class"] == "generating":
                 extra = f" {c.get('last_part_type')} chars={c.get('chars')}"
+            elif c["class"] == "env_destroyed":
+                extra = f" {c.get('destroyed_before_end_s')}s before the end, {c.get('n_failed_bash')} dead bash calls; destroyer: {c.get('destroyer','')[:100]!r}"
+            elif c["class"] == "no_snapshot" and c.get("snapshot"):
+                extra = f" ({c['snapshot'][:80]})"
             sub = " (subagent)" if c.get("in_subagent") else ""
             print(f"  {c['instance_id']:<34} wall={str(c['wall']):<5} rc={str(c['rc']):<4} s={str(c['rollout_seconds']):<7} {c['class']}{sub}{extra}")
     if a.json:
