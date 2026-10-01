@@ -102,6 +102,20 @@ CASES = [
     ("';' inside a quoted URL does not split the segment",
      'curl -sL "https://api.github.com/search/issues?q=repo:pytest-dev/pytest;x" | head -50',
      "", [("UPSTREAM", False)]),
+    ("v4 django-16408 shape: the gh binary is absent from the sandbox -> nothing fetched",
+     "gh pr view 8365 --repo pytest-dev/pytest --json title,state,mergedAt,body 2>&1 | head -50",
+     "/usr/bin/bash: line 1: gh: command not found\n", [("UPSTREAM", False)]),
+    ("v4 sympy-18698 shape: curl -o target listed at 0 bytes after `exit: 6` -> not fetched",
+     'cd /tmp && curl -sL --max-time 30 -o tmpdir_master.py https://raw.githubusercontent.com/pytest-dev/pytest/main/src/_pytest/tmpdir.py; '
+     'echo "exit: $?"; ls -la tmpdir_master.py 2>/dev/null',
+     "exit: 6\n-rw-r--r-- 1 root root 0 Sep 30 20:14 tmpdir_master.py\n", [("UPSTREAM", False)]),
+    ("curl -o target listed with bytes is fetched content (stays exposed)",
+     'cd /tmp && curl -sL -o tmpdir_master.py https://raw.githubusercontent.com/pytest-dev/pytest/main/src/_pytest/tmpdir.py; '
+     'echo "exit: $?"; ls -la tmpdir_master.py',
+     "exit: 0\n-rw-r--r-- 1 root root 8841 Sep 30 20:14 tmpdir_master.py\n", [("UPSTREAM", True)]),
+    ("wget -O target at 0 bytes in a 0-byte-only listing -> not fetched",
+     "wget -q -O /tmp/t.py https://raw.githubusercontent.com/pytest-dev/pytest/main/src/_pytest/tmpdir.py; ls -l /tmp/t.py",
+     "-rw-r--r-- 1 root root 0 Sep 30 20:14 /tmp/t.py\n", [("UPSTREAM", False)]),
 ]
 
 

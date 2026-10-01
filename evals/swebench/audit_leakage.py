@@ -88,7 +88,10 @@ NET_FAIL_RE = re.compile(
     r"|Could not fetch URL|No matching distribution|network error|unable to access"
     # pip swallows the DNS failure and prints an empty version list; opencode's
     # webfetch surfaces a blocked socket as "Transport error" (R9700 `1ea2167`)
-    r"|\(from versions: none\)|Transport error", re.I)
+    r"|\(from versions: none\)|Transport error"
+    # the fetch binary itself is absent from the sandbox image -- nothing ran
+    # (qwen38 opencode v4 django-16408: `gh pr view … 2>&1 | head` -> "gh: command not found")
+    r"|\b(?:gh|curl|wget|aria2c|pip3?|npm): command not found|command not found: (?:gh|curl|wget|aria2c|pip3?|npm)\b", re.I)
 # A Python traceback whose frames pass through the network stack (urllib / http.client /
 # socket / requests / urllib3 / httpx / aiohttp) is a fetch that raised before returning
 # content. The exception line itself is often cut off by the model's `| head -5`
@@ -107,10 +110,33 @@ SCAFFOLD_LINE_RE = re.compile(
     r"(?: CODE)?\s*[:=]?\s*\d+|exit(?: code)?\s*[:=]?\s*\d+|curl: \(\d+\).*)\s*$", re.I)
 
 
+# `curl -o F` / `wget -O F` targets named in a command; a following `ls -l` that lists
+# that file at 0 bytes is the fetch failing (curl -s swallows "(6) Could not resolve",
+# the model's `echo "exit: $?"` trailer is neutral scaffolding) -- qwen38 opencode v4
+# sympy-18698: `curl -sL -o polytools_master.py …; echo "exit: $?"; ls -la …` printed
+# `exit: 6` + `-rw-r--r-- 1 root root 0 Sep 30 20:14 polytools_master.py`.
+DL_TARGET_RE = re.compile(r"(?:^|\s)(?:-[a-zA-Z]*[oO]|--output(?:-document)?)[\s=]+([^\s;|&]+)")
+
+
+def download_target_empty(output: str, command: str) -> bool:
+    """True when every download target the command names is listed at 0 bytes."""
+    names = {Path(t.strip("'\"")).name for t in DL_TARGET_RE.findall(command)}
+    names.discard("-")
+    if not names:
+        return False
+    for name in names:
+        if not re.search(r"^[-bcdlps][-rwxsStT]{9}[+@.]?\s+\d+\s+\S+\s+\S+\s+0\s+\S+\s+\d+\s+\S+\s+(?:\S*/)?"
+                         + re.escape(name) + r"\s*$", output, re.M):
+            return False
+    return True
+
+
 def fetched_content(output: str, command: str) -> bool:
     """True when a tool output carries something beyond the model's own echo/separator
     scaffolding — a literal that also appears in the command text is the model talking
     to itself, not the network answering."""
+    if download_target_empty(output, command):
+        return False
     for line in output.splitlines():
         t = line.strip()
         if not t or SCAFFOLD_LINE_RE.match(line) or t in command:
