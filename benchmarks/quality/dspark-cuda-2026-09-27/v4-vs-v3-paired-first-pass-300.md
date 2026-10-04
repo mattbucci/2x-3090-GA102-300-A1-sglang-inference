@@ -34,3 +34,5 @@ Steady from the first hour (3.0 / 88) to the last; no drift at depth. The no-spe
 ## Verdict
 
 Spec does not wall more, did not error, and shortens the model-bound phase by ~27 % on the full lane: `SPEC_FOR=qwen38:1` stays on for the rest of the v4 cycle (opencode-dcp → little-coder → little-coder-rtk → prime → dcode). Resolved-rate is compared only after Phase 7 scoring (rejection-sampled spec leaves the output distribution unchanged; any delta is sampling noise plus the wall effect above).
+
+> **Erratum 2026-10-04:** two of the v4 walls (`pytest-8365`, `sympy-13915`) carried a non-diff `model_patch` (wall-hit `=== DIFF ===` marker collision with a `ps`-echoed inner script — see `benchmarks/quality/dcp-lane-close-qwen38-v4-2026-10-04/README.md`). Read as empties, the v4 row is **empty 35** (not 33) and the flips are empty→patch 36 / patch→empty 18; walls, medians and the verdict are unchanged.

@@ -47,6 +47,13 @@ import argparse, json, pathlib, re, shutil, sqlite3, tempfile
 PATH_RE = re.compile(r"(?<![\w.\-])/(?:[\w.\-+]+/)*[\w.\-+]*")
 SHELL_BUILTIN_PATHS = ("/dev/null", "/dev/stdout", "/dev/stderr", "/dev/fd/", "/proc/self")
 
+
+def real_patch(r) -> str:
+    """model_patch unless it is not a diff (wall-hit marker collision with a
+    `ps`-ed inner script — see paired_lane_compare.patch): then "" (empty)."""
+    p = (r.get("model_patch") or "").strip()
+    return p if p.startswith(("diff ", "--- ", "Index: ")) else ""
+
 def load_preds(run):
     rows = {}
     p = pathlib.Path(run) / "predictions.jsonl"
@@ -251,7 +258,7 @@ def main():
         c = classify(a.run, iid, a.project, end_ts, wall=bool(w))
         c.update({"instance_id": iid, "wall": w, "rc": r.get("rollout_returncode"),
                   "rollout_seconds": r.get("rollout_seconds"),
-                  "empty": not (r.get("model_patch") or "").strip()})
+                  "empty": not real_patch(r)})
         rows.append(c)
     tally = {}
     for c in rows:

@@ -45,10 +45,20 @@ def wall(r, wall_s):
         return rc == 124
     return (r.get("rollout_seconds") or 0) >= wall_s
 
+def patch(r) -> str:
+    """model_patch, or "" when the field is not a diff. A wall-hit row never
+    prints the real `=== DIFF ===` marker, and if the session `ps`-ed the inner
+    script (the marker sits in its `bash -lc` argv) the extractor's rfind lands
+    on that echoed copy and captures the JSON event tail after it instead
+    (qwen38 v4 walls pytest-8365, sympy-13915, sympy-20212; dcp-v3 pytest-5103).
+    Such a "patch" cannot apply — it is an empty for every reading here."""
+    p = (r.get("model_patch") or "").strip()
+    return p if p.startswith(("diff ", "--- ", "Index: ")) else ""
+
 def infra(r):
     """Rollout never reached the scaffold (same shape audit_predictions.py
     classes infra_rollout_nonzero_rc and re-rolls). rc 124 = wall, kept."""
-    if (r.get("model_patch") or "").strip():
+    if patch(r):
         return False
     if r.get("rollout_error"):
         return True
@@ -60,7 +70,7 @@ def summarize(rows, ids, wall_s):
     return {
         "n": len(ids),
         "walls": sum(wall(rows[i], wall_s) for i in ids),
-        "empty": sum(not (rows[i].get("model_patch") or "").strip() for i in ids),
+        "empty": sum(not patch(rows[i]) for i in ids),
         "median_s": round(st.median(secs), 1) if secs else None,
         "mean_s": round(st.mean(secs), 1) if secs else None,
         "sum_h": round(sum(secs) / 3600, 2),
@@ -93,8 +103,8 @@ def main():
            "flips": {
                "wall_to_done": sum(wall(ref[i], a.wall) and not wall(new[i], a.wall) for i in ids),
                "done_to_wall": sum(not wall(ref[i], a.wall) and wall(new[i], a.wall) for i in ids),
-               "empty_to_patch": sum((not (ref[i].get("model_patch") or "").strip()) and bool((new[i].get("model_patch") or "").strip()) for i in ids),
-               "patch_to_empty": sum(bool((ref[i].get("model_patch") or "").strip()) and not (new[i].get("model_patch") or "").strip() for i in ids),
+               "empty_to_patch": sum((not patch(ref[i])) and bool(patch(new[i])) for i in ids),
+               "patch_to_empty": sum(bool(patch(ref[i])) and not patch(new[i]) for i in ids),
            }}
     name = lambda p: pathlib.Path(p).name
     print(f"paired {len(ids)} instances  ({name(a.ref)} vs {name(a.new)}; wall = rc 124)"
@@ -106,7 +116,7 @@ def main():
     print("\n  instance                                   ref s   new s  ref  new")
     for i in ids:
         r0, r1 = ref[i], new[i]
-        tag = lambda r: ("WALL" if wall(r, a.wall) else ("empty" if not (r.get("model_patch") or "").strip() else "patch"))
+        tag = lambda r: ("WALL" if wall(r, a.wall) else ("empty" if not patch(r) else "patch"))
         print(f"  {i:42}{(r0.get('rollout_seconds') or 0):>7.0f}{(r1.get('rollout_seconds') or 0):>8.0f}  {tag(r0):5}{tag(r1):5}")
     if a.json:
         pathlib.Path(a.json).write_text(json.dumps(out, indent=2))
