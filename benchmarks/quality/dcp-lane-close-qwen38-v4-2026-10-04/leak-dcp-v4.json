@@ -1,0 +1,5067 @@
+{
+ "run": "qwen38-opencode-dcp-v4",
+ "n": 300,
+ "counts": {
+  "web_none": 119,
+  "git_clean": 251,
+  "attempted": 152,
+  "exposed": 0,
+  "web_UPSTREAM": 152,
+  "git_LIST": 36,
+  "git_READ": 11,
+  "web_OTHER": 27,
+  "isolated": 298,
+  "no_transcript": 2,
+  "iso_network_none": 298,
+  "iso_refs_stripped": 298,
+  "iso_mounts_clean": 298,
+  "iso_git_reinit": 298
+ },
+ "gold_overlap": {
+  "exposed": {
+   "n": 0,
+   "ge80": 0,
+   "median": null
+  },
+  "isolated": {
+   "n": 254,
+   "ge80": 58,
+   "median": 0.143
+  }
+ },
+ "require_isolation": true,
+ "ok": false,
+ "instances": {
+  "astropy__astropy-12907": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "astropy__astropy-14182": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.125,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/astropy/astropy/main/astropy/io/ascii/rst.py"
+   ]
+  },
+  "astropy__astropy-14365": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/astropy/astropy/files/10667923/qdp.patch",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/astropy/astropy/main/astropy/io/ascii/qdp.py"
+   ]
+  },
+  "astropy__astropy-14995": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: curl https://raw.githubusercontent.com/astropy/astropy/v5.2.2/astropy/nddata/mixins/ndarithmetic.py [segment]",
+    "web UPSTREAM ok=False: bash: curl https://raw.githubusercontent.com/astropy/astropy/v5.3.0/astropy/nddata/mixins/ndarithmetic.py [segment]",
+    "web UPSTREAM ok=False: bash: curl https://raw.githubusercontent.com/astropy/astropy/v5.3.2/astropy/nddata/mixins/ndarithmetic.py [segment]",
+    "web UPSTREAM ok=False: bash: curl https://raw.githubusercontent.com/astropy/astropy/v5.3.0/astropy/nddata/mixins/ndarithmetic.py [segment]"
+   ]
+  },
+  "astropy__astropy-6938": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/astropy/astropy/main/astropy/io/fits/fitsrec.py"
+   ]
+  },
+  "astropy__astropy-7746": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/astropy/astropy/issues/7426"
+   ]
+  },
+  "django__django-10914": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.07692307692307693,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://code.djangoproject.com/ticket/17044",
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/commits?q=repo:django/django+17044"
+   ]
+  },
+  "django__django-10924": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: curl https://raw.githubusercontent.com/django/django/stable/4.2.x/django/forms/fields.py",
+    "web UPSTREAM ok=False: bash: curl https://raw.githubusercontent.com/django/django/stable/4.2.x/django/forms/fields.py [segment]",
+    "web UPSTREAM ok=False: bash: curl https://raw.githubusercontent.com/django/django/4.2/django/forms/fields.py [segment]",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/forms/fields.py"
+   ]
+  },
+  "django__django-11001": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-11019": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/pull/11010.diff"
+   ]
+  },
+  "django__django-11039": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-11049": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.16666666666666666,
+   "evidence": [
+    "git LIST ok=False: bash: git -C /testbed log --all",
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/commits?q=repo:django/django+33549",
+    "web UPSTREAM ok=False: webfetch: https://code.djangoproject.com/ticket/33549"
+   ]
+  },
+  "django__django-11099": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-11133": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-11179": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-11283": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.42857142857142855,
+   "evidence": []
+  },
+  "django__django-11422": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.4,
+   "evidence": []
+  },
+  "django__django-11564": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: curl https://api.github.com/repos/django/django/commits?path=django/templatetags/static.py&sha=stable/3.1.x&per_page=30",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/3.1.x/django/templatetags/static.py",
+    "web OTHER ok=False: bash: curl https://pypi.org [segment]",
+    "web OTHER ok=False: bash: curl https://raw.githubusercontent.com [segment]",
+    "git LIST ok=True: bash: .git/packed-refs"
+   ]
+  },
+  "django__django-11583": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/repos/django/django/commits?path=django/utils/autoreload.py&since=2019-07-01&until=2020-12-31&per_page=100",
+    "git READ ok=True: bash: git -C /testbed rev-list --all"
+   ]
+  },
+  "django__django-11620": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-11630": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "LIST",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.25,
+   "evidence": [
+    "git LIST ok=True: bash: .git/refs/heads"
+   ]
+  },
+  "django__django-11742": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.05555555555555555,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/3.1.x/django/db/models/fields/__init__.py"
+   ]
+  },
+  "django__django-11797": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.6666666666666666,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/commits?q=repo:django/django+31866",
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/issues/31866"
+   ]
+  },
+  "django__django-11815": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/main/django/db/migrations/serializer.py",
+    "git READ ok=True: bash: git -C /testbed log --all",
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org"
+   ]
+  },
+  "django__django-11848": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-11905": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.625,
+   "evidence": [
+    "git READ ok=True: bash: git -C /testbed log --all",
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/pull/11873",
+    "web UPSTREAM ok=False: bash: python urlopen( https://pypi.org/simple/django/"
+   ]
+  },
+  "django__django-11910": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/3.1.x/django/db/migrations/autodetector.py"
+   ]
+  },
+  "django__django-11964": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "LIST",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "git LIST ok=False: bash: git -C /testbed log --all"
+   ]
+  },
+  "django__django-11999": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.3333333333333333,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: curl https://api.github.com/repos/django/django [segment]",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/3.1.x/django/db/models/fields/__init__.py"
+   ]
+  },
+  "django__django-12113": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "LIST",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "git LIST ok=True: bash: git -C /testbed describe --tags"
+   ]
+  },
+  "django__django-12125": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": []
+  },
+  "django__django-12184": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org"
+   ]
+  },
+  "django__django-12284": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/db/models/fields/__init__.py",
+    "web UPSTREAM ok=False: webfetch: https://code.djangoproject.com/ticket/30931"
+   ]
+  },
+  "django__django-12286": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/3.1.x/django/core/checks/translation.py",
+    "git LIST ok=True: bash: git log --all",
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/issues/31030"
+   ]
+  },
+  "django__django-12308": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-12453": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: bash: python urlopen( https://github.com"
+   ]
+  },
+  "django__django-12470": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/db/models/sql/query.py",
+    "web UPSTREAM ok=False: bash: python urlopen( https://pypi.org/simple/django/"
+   ]
+  },
+  "django__django-12497": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-12589": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.4,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: pip download django==3.1.16 --no-deps -d /tmp/dl31 2>&1 | tail -3 [segment]"
+   ]
+  },
+  "django__django-12700": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-12708": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "git LIST ok=True: bash: git -C /testbed log --all",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/3.1.x/django/db/backends/base/schema.py",
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/blob/stable/3.1.x/django/db/backends/base/schema.py"
+   ]
+  },
+  "django__django-12747": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: python urlopen( https://raw.githubusercontent.com/django/django/stable/4.2.x/django/db/models/deletion.py"
+   ]
+  },
+  "django__django-12856": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/3.2.x/django/db/models/base.py"
+   ]
+  },
+  "django__django-12908": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-12915": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.8,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/issues/31573"
+   ]
+  },
+  "django__django-12983": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-13028": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-13033": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-13158": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.16666666666666666,
+   "evidence": []
+  },
+  "django__django-13220": {
+   "source": "none",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": false,
+    "refs_stripped": false,
+    "mounts_clean": false,
+    "git_reinit": false
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-13230": {
+   "source": "none",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": false,
+    "refs_stripped": false,
+    "mounts_clean": false,
+    "git_reinit": false
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-13265": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: python urlopen( https://raw.githubusercontent.com/django/django/stable/4.2.x/django/db/migrations/autodetector.py"
+   ]
+  },
+  "django__django-13315": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-13321": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-13401": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.2,
+   "evidence": []
+  },
+  "django__django-13447": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://code.djangoproject.com/ticket/33870",
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/commits?q=repo:django/django+%22app_list%22+model",
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django"
+   ]
+  },
+  "django__django-13448": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-13551": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/4.2/django/contrib/auth/tokens.py",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/contrib/auth/tokens.py",
+    "web UPSTREAM ok=False: webfetch: https://pypi.org/pypi/Django/4.2/json",
+    "web UPSTREAM ok=False: webfetch: https://docs.django.io/en/stable/_modules/django/contrib/auth/tokens.html"
+   ]
+  },
+  "django__django-13590": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/3.1/django/db/models/sql/query.py",
+    "web UPSTREAM ok=False: bash: pip download django==3.2.0 --no-deps -d /tmp/dj 2>&1 | tail -3"
+   ]
+  },
+  "django__django-13658": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.8,
+   "evidence": []
+  },
+  "django__django-13660": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-13710": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/issues?q=Use%20Admin%20Inline%20verbose_name%20as%20default%20for%20Inline%20verbose_name_plural",
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org"
+   ]
+  },
+  "django__django-13757": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org"
+   ]
+  },
+  "django__django-13768": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.125,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/commits?q=repo:django/django+send_robust+logger",
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org"
+   ]
+  },
+  "django__django-13925": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-13933": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.8,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/pull/13933.diff",
+    "web OTHER ok=False: bash: python urlopen( https://github.com"
+   ]
+  },
+  "django__django-13964": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-14016": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/commit/bb0b6e526340e638522e093765e534df4e4393d2.patch",
+    "web OTHER ok=False: bash: curl https://github.com [segment]"
+   ]
+  },
+  "django__django-14017": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-14155": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "git LIST ok=True: bash: git -C /testbed log --all",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/urls/resolvers.py",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/tests/urlpatterns_reverse/tests.py",
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/raw/stable/4.2.x/django/urls/resolvers.py"
+   ]
+  },
+  "django__django-14238": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-14382": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/pull/11270/files",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.0.x/django/core/management/templates.py",
+    "web UPSTREAM ok=False: bash: git ls-remote https://github.com/django/django",
+    "git LIST ok=False: bash: git ls-remote"
+   ]
+  },
+  "django__django-14411": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-14534": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web OTHER ok=False: bash: pip install pytest -q 2>&1 | tail -2 [segment]"
+   ]
+  },
+  "django__django-14580": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-14608": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.06666666666666667,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/main/django/forms/formsets.py",
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/blob/stable/3.1.x/django/forms/formsets.py"
+   ]
+  },
+  "django__django-14667": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org"
+   ]
+  },
+  "django__django-14672": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-14730": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.16666666666666666,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/pull/14730/files",
+    "web UPSTREAM ok=False: webfetch: https://docs.djangoproject.com/en/4.0/ref/checks/",
+    "web UPSTREAM ok=False: bash: curl https://github.com/django/django/pull/14730.diff [segment]",
+    "web OTHER ok=False: bash: curl https://pypi.org/simple/ [segment]",
+    "git LIST ok=True: bash: git for-each-ref"
+   ]
+  },
+  "django__django-14752": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://code.djangoproject.com/query?summary=~'Refactor+AutocompleteJsonView'&format=csv"
+   ]
+  },
+  "django__django-14787": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/utils/decorators.py"
+   ]
+  },
+  "django__django-14855": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-14915": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-14997": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-14999": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: curl https://api.github.com/search/commits?q=repo:django/django+RenameModel+db_table",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/db/migrations/operations/models.py",
+    "web OTHER ok=False: bash: curl https://raw.githubusercontent.com [segment]",
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org"
+   ]
+  },
+  "django__django-15061": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-15202": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.16666666666666666,
+   "evidence": []
+  },
+  "django__django-15213": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.3333333333333333,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/db/models/sql/where.py",
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/blob/stable/4.2.x/django/db/models/sql/where.py"
+   ]
+  },
+  "django__django-15252": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-15320": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.3333333333333333,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/db/models/expressions.py"
+   ]
+  },
+  "django__django-15347": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-15388": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org"
+   ]
+  },
+  "django__django-15400": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.16666666666666666,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/4.2/django/utils/functional.py"
+   ]
+  },
+  "django__django-15498": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "git LIST ok=True: bash: git log --all",
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/commits?q=repo:django/django+d6aff369ad3",
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/commit/d6aff369ad3"
+   ]
+  },
+  "django__django-15695": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: python urlopen( https://raw.githubusercontent.com/django/django/stable/4.1.x/django/db/migrations/operations/models.py"
+   ]
+  },
+  "django__django-15738": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-15781": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-15789": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.13043478260869565,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/main/django/utils/html.py"
+   ]
+  },
+  "django__django-15790": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: curl https://raw.githubusercontent.com/django/django/stable/4.2.x/django/core/checks/templates.py",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/core/checks/templates.py"
+   ]
+  },
+  "django__django-15814": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://code.djangoproject.com/ticket/35300"
+   ]
+  },
+  "django__django-15819": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/issues/15623",
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/pull/15816"
+   ]
+  },
+  "django__django-15851": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-15902": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-15996": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/issues/35538",
+    "git LIST ok=True: bash: git tag"
+   ]
+  },
+  "django__django-16041": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-16046": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/utils/numberformat.py",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/4.2.8/django/utils/numberformat.py",
+    "git READ ok=True: bash: git -C /testbed log --all"
+   ]
+  },
+  "django__django-16139": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/5.2.x/django/contrib/auth/forms.py",
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/blob/main/django/contrib/auth/forms.py"
+   ]
+  },
+  "django__django-16229": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "LIST",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "git LIST ok=False: bash: git log --all"
+   ]
+  },
+  "django__django-16255": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-16379": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-16400": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.8333333333333334,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://code.djangoproject.com/ticket/32655",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/contrib/auth/management/__init__.py",
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/commits?q=repo:django/django+32655"
+   ]
+  },
+  "django__django-16408": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.25,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/pull/16408/files",
+    "web UPSTREAM ok=False: webfetch: https://patch-diff.githubusercontent.com/raw/django/django/pull/16408.diff"
+   ]
+  },
+  "django__django-16527": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-16595": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-16816": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-16820": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.27586206896551724,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/issues?q=squashing+migrations+index_together"
+   ]
+  },
+  "django__django-16873": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": []
+  },
+  "django__django-16910": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/commit/b3db6c8dcb5145f7d45eff517bcd96460475c879",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/db/models/sql/compiler.py",
+    "git LIST ok=True: bash: git -C /testbed log --oneline --all"
+   ]
+  },
+  "django__django-17051": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/django/django/pull/17051.diff"
+   ]
+  },
+  "django__django-17087": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-18869": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.14285714285714285,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/search?q=repo%3Amatplotlib%2Fmatplotlib+%22Add+easily+comparable+version+info%22&type=issues",
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:matplotlib/matplotlib+%22easily+comparable+version+info%22",
+    "git LIST ok=True: bash: git -C /testbed log --oneline --all"
+   ]
+  },
+  "matplotlib__matplotlib-22711": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.1111111111111111,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-22835": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5714285714285714,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/matplotlib/matplotlib/main/lib/matplotlib/artist.py"
+   ]
+  },
+  "matplotlib__matplotlib-23299": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/matplotlib/matplotlib/issues/23794"
+   ]
+  },
+  "matplotlib__matplotlib-23314": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-23476": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "LIST",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web OTHER ok=False: bash: python urlopen( https://api.github.com",
+    "git LIST ok=True: bash: .git/refs/heads"
+   ]
+  },
+  "matplotlib__matplotlib-23562": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/matplotlib/matplotlib/v3.6.0/lib/mpl_toolkits/mplot3d/art3d.py"
+   ]
+  },
+  "matplotlib__matplotlib-23563": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/matplotlib/matplotlib/issues/23568",
+    "web UPSTREAM ok=False: webfetch: https://github.com/matplotlib/matplotlib/commit/149a0398b3"
+   ]
+  },
+  "matplotlib__matplotlib-23913": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: bash: python urlopen( https://api.github.com"
+   ]
+  },
+  "matplotlib__matplotlib-23964": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-23987": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.3333333333333333,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: python urlopen( https://raw.githubusercontent.com/matplotlib/matplotlib/v3.6.1/lib/matplotlib/figure.py"
+   ]
+  },
+  "matplotlib__matplotlib-24149": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-24265": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.020833333333333332,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/matplotlib/matplotlib/issues?q=seaborn-colorblind+keyerror"
+   ]
+  },
+  "matplotlib__matplotlib-24334": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.14285714285714285,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:matplotlib/matplotlib+set_ticks+validates+kwargs+ticklabels",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/matplotlib/matplotlib/v3.7.0/lib/matplotlib/axis.py"
+   ]
+  },
+  "matplotlib__matplotlib-24970": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/matplotlib/matplotlib/main/lib/matplotlib/colors.py",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/matplotlib/matplotlib/main/lib/matplotlib/colors.py"
+   ]
+  },
+  "matplotlib__matplotlib-25079": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/matplotlib/matplotlib/issues/24345"
+   ]
+  },
+  "matplotlib__matplotlib-25311": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git READ ok=False: bash: git -C /testbed log --all",
+    "web UPSTREAM ok=False: bash: curl https://api.github.com/search/issues?q=repo:matplotlib/matplotlib+draggable+legend+in:title+type:issue",
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:matplotlib/matplotlib+draggable+legend+in:title+type:issue",
+    "web UPSTREAM ok=False: webfetch: https://github.com/matplotlib/matplotlib/issues?q=unable+to+pickle+figure+with+draggable+legend"
+   ]
+  },
+  "matplotlib__matplotlib-25332": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.15384615384615385,
+   "evidence": [
+    "git READ ok=True: bash: git log --all",
+    "web UPSTREAM ok=False: webfetch: https://github.com/matplotlib/matplotlib/issues/25136"
+   ]
+  },
+  "matplotlib__matplotlib-25433": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.3333333333333333,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-25442": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: bash: python urlopen( https://github.com"
+   ]
+  },
+  "matplotlib__matplotlib-25498": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "LIST",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "git LIST ok=True: bash: git -C /testbed describe --tags",
+    "web OTHER ok=False: bash: python urlopen( https://api.github.com"
+   ]
+  },
+  "matplotlib__matplotlib-26011": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0625,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-26020": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "mwaskom__seaborn-2848": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "LIST",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: bash: git -C /testbed log --all"
+   ]
+  },
+  "mwaskom__seaborn-3010": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "mwaskom__seaborn-3190": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:mwaskom/seaborn+%22boolean+data%22",
+    "git LIST ok=True: bash: git log --all"
+   ]
+  },
+  "mwaskom__seaborn-3407": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "pallets__flask-4045": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: pip download Flask==2.0.2 --no-deps -d /tmp/flaskcheck 2>&1 | tail -5"
+   ]
+  },
+  "pallets__flask-4992": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.4,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/pallets/flask/main/src/flask/config.py"
+   ]
+  },
+  "pallets__flask-5063": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/pallets/flask/main/src/flask/cli.py"
+   ]
+  },
+  "psf__requests-1963": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web OTHER ok=False: bash: python socket.create_connection("
+   ]
+  },
+  "psf__requests-2148": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.3333333333333333,
+   "evidence": [
+    "web OTHER ok=False: bash: python urlopen( http://httpbin.org"
+   ]
+  },
+  "psf__requests-2317": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web OTHER ok=True: bash: curl http://localhost:8080/status/200 [segment]",
+    "web OTHER ok=True: bash: curl http://10.160.160.8:8080/status/200 [segment]"
+   ]
+  },
+  "psf__requests-2674": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "LIST",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.07692307692307693,
+   "evidence": [
+    "web OTHER ok=True: bash: python socket.create_connection(",
+    "git LIST ok=True: bash: git -C /testbed log --oneline --all"
+   ]
+  },
+  "psf__requests-3362": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5714285714285714,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/psf/requests/pull/3759",
+    "git LIST ok=True: bash: git -C /testbed log --all"
+   ]
+  },
+  "psf__requests-863": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.00019376089905057158,
+   "evidence": [
+    "web OTHER ok=True: bash: python urlopen( http://127.0.0.1:%s/headers",
+    "web OTHER ok=True: bash: python urlopen( http://127.0.0.1:%s/headers",
+    "web OTHER ok=True: bash: python requests.get( http://127.0.0.1:%d/headers",
+    "web OTHER ok=True: bash: python requests.get( http://127.0.0.1:%d/",
+    "web OTHER ok=True: bash: python requests.get( http://127.0.0.1:%d/"
+   ]
+  },
+  "pydata__xarray-3364": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:pydata/xarray+type:issue+in:title+%22Ignore+missing+variables+when+concatenating+datasets%22",
+    "web UPSTREAM ok=False: bash: curl https://raw.githubusercontent.com/pydata/xarray/v0.14.0/xarray/core/concat.py [segment]",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/pydata/xarray/v0.14.0/xarray/core/concat.py"
+   ]
+  },
+  "pydata__xarray-4094": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/pydata/xarray/issues?q=to_unstacked_dataset"
+   ]
+  },
+  "pydata__xarray-4248": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "LIST",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: bash: .git/refs/heads"
+   ]
+  },
+  "pydata__xarray-4493": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "pydata__xarray-5131": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "pylint-dev__pylint-5859": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/search?q=repo%3APyCQA%2Fpylint+%22notes+option+ignores+note+tags%22&type=issues",
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:PyCQA/pylint+notes+ignores+note+tags+punctuat"
+   ]
+  },
+  "pylint-dev__pylint-6506": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:PyCQA/pylint+%22Traceback+printed+for+unrecognized+option%22",
+    "web UPSTREAM ok=False: webfetch: https://github.com/PyCQA/pylint/issues/4577"
+   ]
+  },
+  "pylint-dev__pylint-7080": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "pylint-dev__pylint-7114": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "pylint-dev__pylint-7228": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.2222222222222222,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/PyCQA/pylint/issues/6061"
+   ]
+  },
+  "pylint-dev__pylint-7993": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/repos/PyCQA/pylint/issues/5277",
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/repos/PyCQA/pylint/commits?path=pylint/reporters/text.py&since=2023-06-01T00:00:00Z&until=2024-06-01T00:00:00Z&per_page=100"
+   ]
+  },
+  "pytest-dev__pytest-11143": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "pytest-dev__pytest-11148": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: curl https://api.github.com/repos/pytest-dev/pytest/issues/10463",
+    "web UPSTREAM ok=False: webfetch: https://github.com/pytest-dev/pytest/issues/10463"
+   ]
+  },
+  "pytest-dev__pytest-5103": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:pytest-dev/pytest+%22Unroll+the+iterable%22",
+    "web UPSTREAM ok=False: bash: curl https://api.github.com/search/issues?q=repo:pytest-dev/pytest+%22Unroll+the+iterable%22 [segment]",
+    "git LIST ok=False: bash: git -C /testbed log --oneline --all",
+    "web UPSTREAM ok=False: bash: curl https://api.github.com/search/issues?q=repo:pytest-dev/pytest+unroll+all+any"
+   ]
+  },
+  "pytest-dev__pytest-5221": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.14285714285714285,
+   "evidence": [
+    "web OTHER ok=False: bash: python urlopen( https://api.github.com"
+   ]
+  },
+  "pytest-dev__pytest-5227": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://docs.pytest.org/en/5.0.0/changelog.html",
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org",
+    "git READ ok=True: bash: git -C /testbed log --all"
+   ]
+  },
+  "pytest-dev__pytest-5413": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: bash: git tag",
+    "web UPSTREAM ok=False: webfetch: https://github.com/pytest-dev/pytest/issues/5503"
+   ]
+  },
+  "pytest-dev__pytest-5495": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: pip download \"pytest==6.2.5\" --no-deps -d /tmp/p6 -q 2>&1 | tail -3 [segment]"
+   ]
+  },
+  "pytest-dev__pytest-5692": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:pytest-dev/pytest+%22Hostname+and+timestamp%22",
+    "web UPSTREAM ok=False: bash: curl https://api.github.com/search/issues?q=repo:pytest-dev/pytest+%22Hostname+and+timestamp%22",
+    "web OTHER ok=False: bash: curl https://api.github.com/ [segment]"
+   ]
+  },
+  "pytest-dev__pytest-6116": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "pytest-dev__pytest-7168": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "pytest-dev__pytest-7220": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/pytest-dev/pytest/issues/7294"
+   ]
+  },
+  "pytest-dev__pytest-7373": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.6666666666666666,
+   "evidence": []
+  },
+  "pytest-dev__pytest-7432": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "pytest-dev__pytest-7490": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web OTHER ok=False: bash: python urlopen( https://api.github.com"
+   ]
+  },
+  "pytest-dev__pytest-8365": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "pytest-dev__pytest-8906": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "pytest-dev__pytest-9359": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-10297": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.625,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-10508": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-10949": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:scikit-learn/scikit-learn+warn_on_dtype+DataFrame"
+   ]
+  },
+  "scikit-learn__scikit-learn-11040": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/search?q=repo%3Ascikit-learn%2Fscikit-learn+float+n_neighbors&type=issues",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/scikit-learn/scikit-learn/0.20/sklearn/neighbors/base.py"
+   ]
+  },
+  "scikit-learn__scikit-learn-11281": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.6,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-12471": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/scikit-learn/scikit-learn/0.22.0/sklearn/preprocessing/_encoders.py"
+   ]
+  },
+  "scikit-learn__scikit-learn-13142": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-13241": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.3333333333333333,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/scikit-learn/scikit-learn/issues/9153",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/scikit-learn/scikit-learn/0.21/sklearn/decomposition/kernel_pca.py",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/scikit-learn/scikit-learn/1.5/sklearn/decomposition/_kernel_pca.py",
+    "web UPSTREAM ok=False: bash: pip download scikit-learn==1.2.0 --no-deps -d /tmp/ckp 2>&1 | tail -3 [segment]",
+    "git READ ok=True: bash: git -C /testbed log --all"
+   ]
+  },
+  "scikit-learn__scikit-learn-13439": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.6666666666666666,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-13496": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.45454545454545453,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-13497": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.25,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/search?q=repo%3Ascikit-learn%2Fscikit-learn+%22Comparing+string+to+array%22&type=issues",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/scikit-learn/scikit-learn/main/sklearn/feature_selection/mutual_info_.py"
+   ]
+  },
+  "scikit-learn__scikit-learn-13584": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/scikit-learn/scikit-learn/0.21/sklearn/utils/_pprint.py",
+    "web UPSTREAM ok=False: bash: pip download scikit-learn==0.21 --no-deps -d /tmp/sk21 2>&1 | tail -2",
+    "web UPSTREAM ok=False: webfetch: https://github.com/scikit-learn/scikit-learn/blob/0.22/sklearn/utils/_pprint.py"
+   ]
+  },
+  "scikit-learn__scikit-learn-13779": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:scikit-learn/scikit-learn+Voting+estimator+will+fail+at+fit+if+weights+are+passed"
+   ]
+  },
+  "scikit-learn__scikit-learn-14087": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.2,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-14092": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.8,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/repos/scikit-learn/scikit-learn/commits?path=sklearn/neighbors/nca.py&per_page=100"
+   ]
+  },
+  "scikit-learn__scikit-learn-14894": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.625,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/scikit-learn/scikit-learn/0.23/sklearn/svm/base.py"
+   ]
+  },
+  "scikit-learn__scikit-learn-14983": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.16666666666666666,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/scikit-learn/scikit-learn/pull/15515/files",
+    "web UPSTREAM ok=False: bash: python urlopen( https://raw.githubusercontent.com/scikit-learn/scikit-learn/0.22/sklearn/model_selection/_split.py"
+   ]
+  },
+  "scikit-learn__scikit-learn-15512": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/scikit-learn/scikit-learn/0.22/sklearn/cluster/_affinity_propagation.py"
+   ]
+  },
+  "scikit-learn__scikit-learn-15535": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-25500": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.6666666666666666,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/scikit-learn/scikit-learn/1.3.0/sklearn/isotonic.py",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/scikit-learn/scikit-learn/v1.3.0/sklearn/isotonic.py"
+   ]
+  },
+  "scikit-learn__scikit-learn-25570": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-25638": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/scikit-learn/scikit-learn/issues?q=Support+nullable+pandas+dtypes+in+unique_labels"
+   ]
+  },
+  "scikit-learn__scikit-learn-25747": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/search?q=repo%3Ascikit-learn%2Fscikit-learn+%22FeatureUnion+not+working+when+aggregating%22&type=issues",
+    "web OTHER ok=False: bash: python urlopen( https://api.github.com"
+   ]
+  },
+  "sphinx-doc__sphinx-10325": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sphinx-doc/sphinx/v8.0.0/sphinx/ext/autodoc/__init__.py",
+    "web UPSTREAM ok=False: bash: curl https://raw.githubusercontent.com/sphinx-doc/sphinx/v5.1.0/sphinx/ext/autodoc/__init__.py [segment]",
+    "web OTHER ok=False: bash: curl https://pypi.org/simple/ [segment]"
+   ]
+  },
+  "sphinx-doc__sphinx-10451": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: pip download sphinx==5.1.1 --no-deps -d /tmp/sp511 2>&1 | tail -3"
+   ]
+  },
+  "sphinx-doc__sphinx-11445": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "sphinx-doc__sphinx-7686": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.16666666666666666,
+   "evidence": []
+  },
+  "sphinx-doc__sphinx-7738": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sphinx-doc/sphinx/3.1.0/sphinx/ext/napoleon/docstring.py"
+   ]
+  },
+  "sphinx-doc__sphinx-7975": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sphinx-doc/sphinx/3.3.0/sphinx/environment/adapters/indexentries.py",
+    "web UPSTREAM ok=False: webfetch: https://pypi.org/pypi/sphinx/3.3.0/"
+   ]
+  },
+  "sphinx-doc__sphinx-8273": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.09523809523809523,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sphinx-doc/sphinx/issues/8987",
+    "web UPSTREAM ok=False: webfetch: https://github.com/search?q=repo%3Asphinx-doc%2Fsphinx+%22man_make_section_directory%22&type=issues",
+    "web UPSTREAM ok=False: bash: pip download sphinx==3.3.0 --no-deps -d /tmp/x1 2>&1 | tail -3 [segment]",
+    "web UPSTREAM ok=False: bash: pip download sphinx==4.0.0 --no-deps -d /tmp/x2 2>&1 | tail -3 [segment]"
+   ]
+  },
+  "sphinx-doc__sphinx-8282": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:sphinx-doc/sphinx+autodoc_typehints+overloaded+in:title"
+   ]
+  },
+  "sphinx-doc__sphinx-8435": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sphinx-doc/sphinx/issues/9127"
+   ]
+  },
+  "sphinx-doc__sphinx-8474": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sphinx-doc/sphinx/commit/66dda1fc50249e9da62e79380251d8795b8e36df"
+   ]
+  },
+  "sphinx-doc__sphinx-8506": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sphinx-doc/sphinx/issues/8239",
+    "web UPSTREAM ok=False: webfetch: https://github.com/sphinx-doc/sphinx/pull/7770/files"
+   ]
+  },
+  "sphinx-doc__sphinx-8595": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: curl https://api.github.com/search/issues?q=repo:sphinx-doc/sphinx+empty+__all__+in:title"
+   ]
+  },
+  "sphinx-doc__sphinx-8627": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/search?q=repo%3Asphinx-doc%2Fsphinx+%22struct.Struct%22&type=issues",
+    "web UPSTREAM ok=False: webfetch: https://www.sphinx-doc.org/en/3.5/changes.html",
+    "web UPSTREAM ok=False: bash: python urlopen( https://pypi.org/pypi/Sphinx/json",
+    "git LIST ok=True: bash: git -C /testbed log --all"
+   ]
+  },
+  "sphinx-doc__sphinx-8713": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sphinx-doc__sphinx-8721": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sphinx-doc/sphinx/3.5.1/sphinx/ext/viewcode.py",
+    "git LIST ok=True: bash: git log --all",
+    "web UPSTREAM ok=False: bash: curl https://raw.githubusercontent.com/sphinx-doc/sphinx/3.5.1/sphinx/ext/viewcode.py [segment]",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sphinx-doc/sphinx/master/sphinx/ext/viewcode.py"
+   ]
+  },
+  "sphinx-doc__sphinx-8801": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sphinx-doc/sphinx/issues?q=annotation+only+member+in+superclass"
+   ]
+  },
+  "sympy__sympy-11400": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.16666666666666666,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues?q=sinc+ccode"
+   ]
+  },
+  "sympy__sympy-11870": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues/12310",
+    "web OTHER ok=False: bash: pip install pytest 2>&1 | tail -3"
+   ]
+  },
+  "sympy__sympy-11897": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "git LIST ok=False: bash: git log --oneline --all",
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/pull/11298/files",
+    "web UPSTREAM ok=False: bash: curl https://github.com/sympy/sympy/pull/11298.diff [segment]",
+    "web OTHER ok=False: bash: curl https://pypi.org [segment]",
+    "web UPSTREAM ok=False: bash: curl https://raw.githubusercontent.com/sympy/sympy/master/setup.py [segment]"
+   ]
+  },
+  "sympy__sympy-12171": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "LIST",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.25,
+   "evidence": [
+    "git LIST ok=False: bash: git -C /testbed log --oneline --all"
+   ]
+  },
+  "sympy__sympy-12236": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-12419": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-12454": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web OTHER ok=False: bash: pip install pytest 2>&1 | tail -2"
+   ]
+  },
+  "sympy__sympy-12481": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "sympy__sympy-13031": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "git LIST ok=False: bash: git log --oneline --all",
+    "web UPSTREAM ok=False: bash: gh api repos/sympy/sympy/issues/11965/timeline --paginate -q '.[] | select(.event==\"cross-referenced\" or .event==\"closed",
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/repos/sympy/sympy/issues/11965/timeline?per_page=100",
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/commit/27e9ee425819fa09a4cbb8179fb38939cc693249.patch"
+   ]
+  },
+  "sympy__sympy-13043": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/integrals/intpoly.py"
+   ]
+  },
+  "sympy__sympy-13146": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: bash: git log --oneline --all",
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues/10030",
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues/10030"
+   ]
+  },
+  "sympy__sympy-13177": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/core/mod.py",
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/blame/47d05b0/sympy/core/mod.py"
+   ]
+  },
+  "sympy__sympy-13437": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web OTHER ok=False: bash: pip install pytest 2>&1 | tail -3"
+   ]
+  },
+  "sympy__sympy-13471": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/core/numbers.py",
+    "web OTHER ok=False: bash: pip install pytest 2>&1 | tail -2"
+   ]
+  },
+  "sympy__sympy-13480": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-13647": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web OTHER ok=False: bash: pip install pytest 2>&1 | tail -2"
+   ]
+  },
+  "sympy__sympy-13773": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.043478260869565216,
+   "evidence": [
+    "web OTHER ok=False: bash: python urlopen( https://pypi.python.org"
+   ]
+  },
+  "sympy__sympy-13895": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "LIST",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: bash: git -C /testbed log --all",
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org"
+   ]
+  },
+  "sympy__sympy-13915": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: bash: pip install pytest 2>&1 | tail -3 [segment]"
+   ]
+  },
+  "sympy__sympy-13971": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-14024": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-14308": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "READ",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "git READ ok=False: bash: git -C /testbed log --all",
+    "web OTHER ok=True: bash: Curl\\|Gradient\\|Div\\|Cross\\|Dot\\b\" /testbed/sympy/vector/tests/*.py /testbed/sympy/printing/pretty/tests/*.py 2>/dev/nul"
+   ]
+  },
+  "sympy__sympy-14317": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.06666666666666667,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues/21190"
+   ]
+  },
+  "sympy__sympy-14396": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.45454545454545453,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/v1.2/sympy/polys/polyoptions.py",
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org"
+   ]
+  },
+  "sympy__sympy-14774": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-14817": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/blob/master/sympy/printing/pretty/pretty.py#L1140",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/printing/pretty/pretty.py",
+    "git READ ok=True: bash: git log --oneline --all"
+   ]
+  },
+  "sympy__sympy-15011": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.375,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/utilities/lambdify.py"
+   ]
+  },
+  "sympy__sympy-15308": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.3333333333333333,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: python urlopen( https://raw.githubusercontent.com/sympy/sympy/master/sympy/printing/latex.py"
+   ]
+  },
+  "sympy__sympy-15345": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/printing/mathematica.py"
+   ]
+  },
+  "sympy__sympy-15346": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-15609": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": []
+  },
+  "sympy__sympy-15678": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.42857142857142855,
+   "evidence": []
+  },
+  "sympy__sympy-16106": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/printing/mathml.py",
+    "web UPSTREAM ok=False: bash: pip download sympy==1.9 --no-deps -q 2>&1 | tail -2 [segment]"
+   ]
+  },
+  "sympy__sympy-16281": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/commits/master/sympy/printing/pretty/pretty.py",
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues?q=Product+pretty+print+improved",
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org"
+   ]
+  },
+  "sympy__sympy-16503": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "READ",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: bash: pip install pytest 2>&1 | tail -2 [segment]",
+    "git READ ok=True: bash: git -C /testbed log --all",
+    "git LIST ok=True: bash: git log --all",
+    "web OTHER ok=False: bash: python socket.create_connection("
+   ]
+  },
+  "sympy__sympy-16792": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "sympy__sympy-16988": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web OTHER ok=False: bash: pip install pytest 2>&1 | tail -2"
+   ]
+  },
+  "sympy__sympy-17022": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues/18717",
+    "web UPSTREAM ok=False: bash: pip download sympy==1.5 --no-deps -d /tmp/sympy15 2>&1 | tail -2 [segment]",
+    "git LIST ok=True: bash: git branch -a"
+   ]
+  },
+  "sympy__sympy-17139": {
+   "source": "opencode.db",
+   "web": "OTHER",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web OTHER ok=False: bash: pip install pytest 2>&1 | tail -2"
+   ]
+  },
+  "sympy__sympy-17630": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.3333333333333333,
+   "evidence": []
+  },
+  "sympy__sympy-17655": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.058823529411764705,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues?q=%22Unexpected+exception+when+multiplying+geometry.Point%22"
+   ]
+  },
+  "sympy__sympy-18057": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues/16984"
+   ]
+  },
+  "sympy__sympy-18087": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.2857142857142857,
+   "evidence": [
+    "web UPSTREAM ok=False: bash: python urlopen( https://api.github.com/search/issues?q=repo:sympy/sympy+Simplify+of+simple+trig+expression+fails&per_page=5"
+   ]
+  },
+  "sympy__sympy-18189": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-18199": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "sympy__sympy-18532": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-18621": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-18698": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/polys/polytools.py"
+   ]
+  },
+  "sympy__sympy-18835": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.14285714285714285,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/utilities/iterables.py",
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/blob/master/sympy/utilities/iterables.py"
+   ]
+  },
+  "sympy__sympy-19007": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues?q=wrong%20matrix%20element%20fetched%20from%20blockmatrix",
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues/12712",
+    "git LIST ok=True: bash: git -C /testbed log --all"
+   ]
+  },
+  "sympy__sympy-19254": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues?q=dmp_zz_mignotte_bound"
+   ]
+  },
+  "sympy__sympy-19487": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-20049": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.045454545454545456,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/physics/vector/point.py"
+   ]
+  },
+  "sympy__sympy-20154": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.6666666666666666,
+   "evidence": []
+  },
+  "sympy__sympy-20212": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-20322": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/pull/20312/files",
+    "web OTHER ok=False: bash: pip download https://pypi.org [segment]",
+    "web OTHER ok=False: bash: python urlopen( https://pypi.org"
+   ]
+  },
+  "sympy__sympy-20442": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.6,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/physics/units/util.py",
+    "git LIST ok=True: bash: git -C /testbed log --all"
+   ]
+  },
+  "sympy__sympy-20590": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-20639": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/printing/pretty/pretty.py"
+   ]
+  },
+  "sympy__sympy-21055": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.30434782608695654,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues/21455"
+   ]
+  },
+  "sympy__sympy-21171": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": []
+  },
+  "sympy__sympy-21379": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.8,
+   "evidence": []
+  },
+  "sympy__sympy-21612": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-21614": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues?q=Wrong+Derivative+kind+attribute",
+    "web OTHER ok=False: bash: pip install pytest 2>&1 | tail -2"
+   ]
+  },
+  "sympy__sympy-21627": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.3333333333333333,
+   "evidence": []
+  },
+  "sympy__sympy-21847": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-22005": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "sympy__sympy-22714": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://api.github.com/search/issues?q=repo:sympy/sympy+%22Imaginary+coordinates+are+not+permitted%22"
+   ]
+  },
+  "sympy__sympy-22840": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.14285714285714285,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/simplify/cse_main.py",
+    "git LIST ok=True: bash: git log --all",
+    "web OTHER ok=False: bash: pip install pytest 2>&1 | tail -2 [segment]"
+   ]
+  },
+  "sympy__sympy-23117": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues/18662"
+   ]
+  },
+  "sympy__sympy-23191": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/vector/vector.py",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/vector/scalar.py",
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/printing/pretty/pretty.py"
+   ]
+  },
+  "sympy__sympy-23262": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "git LIST ok=False: bash: git log --oneline --all",
+    "web UPSTREAM ok=False: webfetch: https://github.com/sympy/sympy/issues/22288"
+   ]
+  },
+  "sympy__sympy-24066": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/physics/units/unitsystem.py"
+   ]
+  },
+  "sympy__sympy-24102": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/master/sympy/parsing/mathematica.py"
+   ]
+  },
+  "sympy__sympy-24152": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": []
+  },
+  "sympy__sympy-24213": {
+   "source": "opencode.db",
+   "web": "none",
+   "git": "clean",
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "sympy__sympy-24909": {
+   "source": "opencode.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: webfetch: https://raw.githubusercontent.com/sympy/sympy/sympy-1.14.0/sympy/physics/units/prefixes.py"
+   ]
+  }
+ }
+}
