@@ -116,19 +116,55 @@ SCAFFOLD_LINE_RE = re.compile(
 # sympy-18698: `curl -sL -o polytools_master.py …; echo "exit: $?"; ls -la …` printed
 # `exit: 6` + `-rw-r--r-- 1 root root 0 Sep 30 20:14 polytools_master.py`.
 DL_TARGET_RE = re.compile(r"(?:^|\s)(?:-[a-zA-Z]*[oO]|--output(?:-document)?)[\s=]+([^\s;|&]+)")
+# A local tool complaining that a file is missing is the sandbox talking, never the
+# network answering: `diff: X: No such file or directory`, `ls: cannot access 'X': …`.
+# Under `--network none` a `curl -s -o X … && diff X …` chain prints only these
+# (qwen38 opencode-dcp v4 astropy-14995, 2026-10-04: `-o` target never created, so
+# the 0-byte `ls -l` rule below had nothing to match).
+LOCAL_ERR_LINE_RE = re.compile(
+    r"^\s*[\w./+-]+: (?:cannot (?:access|open|stat|read) )?'?[^\n]*?'?: No such file or directory\s*$", re.I)
+# curl's own `-w %{http_code}` reporting 000 is a definitive "no connection" even when a
+# compound command's other (local) segments printed real output around it
+# (django-11999: `pip show django | head -3; python -c …; curl -s -o /dev/null -w "%{http_code}" … | tail -1` -> `000`).
+HTTP_CODE_W_RE = re.compile(r"%\{http_code\}")
+HTTP_000_RE = re.compile(r"(?:^|\s)000(?=\s|$)", re.M)
+# A fetch piped into `python … json.load(sys.stdin)` that dies at char 0 received an
+# empty body — the network returned nothing (matplotlib-25311). Only honoured when
+# the traceback is the sole non-scaffold output, so a fetch that printed anything
+# else still reads as content.
+PIPED_PY_RE = re.compile(r"\|\s*python\S*\b")
+JSON_EMPTY_RE = re.compile(r"JSONDecodeError: Expecting value: line 1 column 1 \(char 0\)")
+# `git log --oneline` lines of the sandbox's own (re-initialised) history are local
+# output even when they share a compound command with a silent fetch
+# (pytest-5103: `git remote -v; git log --oneline --all | head; curl -s … | head` ->
+# `9c17c3d base`). Not applied when the same command also fetches through git
+# (`git fetch/pull/clone/ls-remote`): there the log lines CAN be the network answering.
+GIT_LOG_CMD_RE = re.compile(r"\bgit\b[^;|&\n]*\blog\b")
+GIT_NET_CMD_RE = re.compile(r"\bgit\b[^;|&\n]*\b(?:fetch|pull|clone|ls-remote|remote\s+add|submodule)\b")
+GIT_ONELINE_RE = re.compile(r"^[0-9a-f]{7,40}(?: \([^)]*\))? \S.*$")
 
 
 def download_target_empty(output: str, command: str) -> bool:
-    """True when every download target the command names is listed at 0 bytes."""
+    """True when every download target the command names that the output mentions is
+    either listed at 0 bytes or reported missing by a following local tool (and at
+    least one is mentioned) — the fetch never produced the file."""
     names = {Path(t.strip("'\"")).name for t in DL_TARGET_RE.findall(command)}
     names.discard("-")
     if not names:
         return False
+    mentioned = 0
     for name in names:
-        if not re.search(r"^[-bcdlps][-rwxsStT]{9}[+@.]?\s+\d+\s+\S+\s+\S+\s+0\s+\S+\s+\d+\s+\S+\s+(?:\S*/)?"
-                         + re.escape(name) + r"\s*$", output, re.M):
+        esc = re.escape(name)
+        zero = re.search(r"^[-bcdlps][-rwxsStT]{9}[+@.]?\s+\d+\s+\S+\s+\S+\s+0\s+\S+\s+\d+\s+\S+\s+(?:\S*/)?"
+                         + esc + r"\s*$", output, re.M)
+        missing = re.search(r"'?(?:\S*/)?" + esc + r"'?: No such file or directory", output)
+        present = re.search(r"^[-bcdlps][-rwxsStT]{9}[+@.]?\s+\d+\s+\S+\s+\S+\s+[1-9]\d*\s+\S+\s+\d+\s+\S+\s+(?:\S*/)?"
+                            + esc + r"\s*$", output, re.M)
+        if present:
             return False
-    return True
+        if zero or missing:
+            mentioned += 1
+    return mentioned > 0
 
 
 def fetched_content(output: str, command: str) -> bool:
@@ -137,9 +173,20 @@ def fetched_content(output: str, command: str) -> bool:
     to itself, not the network answering."""
     if download_target_empty(output, command):
         return False
+    if HTTP_CODE_W_RE.search(command) and HTTP_000_RE.search(output):
+        return False
+    if PIPED_PY_RE.search(command) and JSON_EMPTY_RE.search(output):
+        rest = [ln for ln in output.splitlines() if ln.strip() and not SCAFFOLD_LINE_RE.match(ln)
+                and ln.strip() not in command and not LOCAL_ERR_LINE_RE.match(ln)
+                and not ln.startswith(("Traceback", "  File ", "    ")) and "JSONDecodeError" not in ln]
+        if not rest:
+            return False
+    local_git_log = bool(GIT_LOG_CMD_RE.search(command)) and not GIT_NET_CMD_RE.search(command)
     for line in output.splitlines():
         t = line.strip()
-        if not t or SCAFFOLD_LINE_RE.match(line) or t in command:
+        if not t or SCAFFOLD_LINE_RE.match(line) or LOCAL_ERR_LINE_RE.match(line) or t in command:
+            continue
+        if local_git_log and GIT_ONELINE_RE.match(t):
             continue
         return True
     return False
