@@ -1,0 +1,103 @@
+diff --git a/python/sglang/srt/function_call/qwen3_coder_detector.py b/python/sglang/srt/function_call/qwen3_coder_detector.py
+index 18a645c..87dfaf8 100644
+--- a/python/sglang/srt/function_call/qwen3_coder_detector.py
++++ b/python/sglang/srt/function_call/qwen3_coder_detector.py
+@@ -236,20 +236,43 @@ class Qwen3CoderDetector(BaseFormatDetector):
+             if start_idx == -1:
+                 start_idx = text.find(self.tool_call_prefix)
+             normal_text = text[:start_idx] if start_idx > 0 else ""
+ 
+             return StreamingParseResult(normal_text=normal_text, calls=calls)
+ 
+         except Exception as e:
+             logger.error(f"Error in detect_and_parse: {e}")
+             return StreamingParseResult(normal_text=text)
+ 
++    def _emit_text(self, chunks: List[str], segment: str) -> None:
++        """Queue ``segment`` as normal text for this increment.
++
++        Whitespace that sits between two tool calls (the ``\n`` after
++        ``</tool_call>``) is dropped once a call has been emitted in this
++        stream.  The one-shot parser never returns it, and in streaming it is
++        actively harmful: an increment that spans the end of call N and the
++        start of call N+1 yields ONE result whose ``normal_text`` the server
++        sends BEFORE the result's tool-call deltas, so the client sees a
++        content delta between call N's name and its closing ``}`` (or its
++        whole argument body).  Clients that track the "current block" rather
++        than ``index`` (pi-ai 0.68 / little-coder 1.1) then open a fresh,
++        nameless tool call for the orphaned deltas: a phantom ``{}`` call that
++        the agent executes ("Your tool call had an empty name"), and when the
++        whole body lands after the text, the real call goes out with ``{}``
++        and the phantom carries its arguments.  Seen in 8.9 % of multi-call
++        turns (168/1898) on the qwen38 little-coder lane under DSpark spec,
++        where multi-token increments make the span routine.
++        """
++        if self.current_tool_id >= 0 and not segment.strip():
++            return
++        chunks.append(segment)
++
+     def parse_streaming_increment(
+         self, new_text: str, tools: List[Tool]
+     ) -> StreamingParseResult:
+         """
+         Robust cursor-based streaming parser.
+         """
+         self._buffer += new_text
+ 
+         # Guard against empty buffer
+         if not self._buffer:
+@@ -433,21 +456,21 @@ class Qwen3CoderDetector(BaseFormatDetector):
+             # -------------------------------------------------------
+             # If current position is not the start of a tag (i.e., doesn't start with <), it might be plain text,
+             # or a newline between two tags.
+             # But we need to be careful not to output truncated tags like "<fun" as text.
+ 
+             next_open_angle = current_slice.find("<")
+ 
+             if next_open_angle == -1:
+                 # This entire segment is plain text
+                 if not self.is_inside_tool_call:
+-                    normal_text_chunks.append(current_slice)
++                    self._emit_text(normal_text_chunks, current_slice)
+                 # [FIX] If inside tool call, discard this text (usually \n), don't append
+                 self.parsed_pos += len(current_slice)
+                 continue
+ 
+             elif next_open_angle == 0:
+                 # Looks like a Tag, but doesn't match any known Tag above
+ 
+                 possible_tags = [
+                     self.tool_call_start_token,
+                     self.tool_call_end_token,
+@@ -461,29 +484,29 @@ class Qwen3CoderDetector(BaseFormatDetector):
+                 for tag in possible_tags:
+                     if tag.startswith(current_slice):
+                         is_potential_tag = True
+                         break
+ 
+                 if is_potential_tag:
+                     break  # Wait for more
+                 else:
+                     # Just a plain '<' symbol
+                     if not self.is_inside_tool_call:
+-                        normal_text_chunks.append("<")
++                        self._emit_text(normal_text_chunks, "<")
+                     self.parsed_pos += 1
+                     continue
+ 
+             else:
+                 # '<' is in the middle
+                 text_segment = current_slice[:next_open_angle]
+                 if not self.is_inside_tool_call:
+-                    normal_text_chunks.append(text_segment)
++                    self._emit_text(normal_text_chunks, text_segment)
+                 # [FIX] If inside tool call, discard whitespace/text before Tag
+                 self.parsed_pos += next_open_angle
+                 continue
+ 
+         # Memory Cleanup: Slice the buffer
+         # Keep unparsed part, discard parsed part
+         if self.parsed_pos > 0:
+             self._buffer = self._buffer[self.parsed_pos :]
+             self.parsed_pos = 0
+ 

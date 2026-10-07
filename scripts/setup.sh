@@ -2,7 +2,7 @@
 # SGLang setup for 2x RTX 3090
 #
 # Clones SGLang v0.5.20 and applies the local patches in patches/*.patch
-# (idempotent — git apply --check skips already-applied). 29 patches; verified
+# (idempotent — git apply --check skips already-applied). 31 patches; verified
 # byte-identical to the live tree by the 3-gate pristine replay — scripted,
 # scripts/test_patch_gates.sh (flipped from v0.5.18 2026-09-19, v0.5.19 skipped;
 # 21 applied clean, 7 re-ported — 059 moved with upstream's ServerArgs split
