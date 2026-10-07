@@ -127,16 +127,33 @@ def run_dir(path: str) -> None:
         txt = open(p, errors="replace").read()
         m = re.search(r"# elapsed ([\d.]+)s\s+rc=(\d+)", txt)
         ts = [int(x) / 1000 for x in re.findall(r'"timestamp":(\d{13})', txt)]
-        if not m or not ts:
+        if not m:
             continue
         el, rc = float(m.group(1)), int(m.group(2))
         end = os.path.getmtime(p)
         start = end - el
+        sessions = len(set(re.findall(r'"sessionID":"([^"]+)"', txt)))
+        steps = len(re.findall(r'"reason":"stop"', txt))
+        if not ts:
+            # pi lanes (little-coder / -rtk): no event stream in the log; the
+            # session snapshot's jsonl rows carry ISO timestamps (one file per
+            # session: main + the cleanup pass).
+            iid = os.path.basename(p)[:-4]
+            files = sorted(glob.glob(os.path.join(path, "sessions", iid, ".pi/agent/sessions/*/*.jsonl")))
+            ts, steps, sessions = [], 0, len(files)
+            for f in files:
+                for line in open(f, errors="replace"):
+                    mm = re.search(r'"timestamp":"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?)Z"', line)
+                    if mm:
+                        ts.append(datetime.fromisoformat(mm.group(1) + "+00:00").timestamp())
+                    if '"role":"assistant"' in line and '"stopReason":"stop"' in line:
+                        steps += 1
+        if not ts:
+            continue
         rows.append(dict(el=el, rc=rc, pre=min(ts) - start, sess=max(ts) - min(ts), post=end - max(ts),
-                         sessions=len(set(re.findall(r'"sessionID":"([^"]+)"', txt))),
-                         steps=len(re.findall(r'"reason":"stop"', txt))))
+                         sessions=sessions, steps=steps))
     if not rows:
-        print(f"{path}: no opencode-style event logs")
+        print(f"{path}: no opencode-style event logs or pi session snapshots")
         return
     ok = [r for r in rows if r["rc"] == 0 and r["el"] < WALL_S]
     walls = [r for r in rows if r["rc"] == 124]
