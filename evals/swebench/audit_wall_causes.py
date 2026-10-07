@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Classify what a rolled instance was doing when its rollout ended, from the
-opencode session snapshot (`<run>/sessions/<iid>/.local/share/opencode/
-opencode.db`, sqlite since opencode 1.14). Built for wall hits: a wall is
+session snapshot: opencode's `<run>/sessions/<iid>/.local/share/opencode/
+opencode.db` (sqlite since opencode 1.14) or pi's (little-coder / -rtk)
+`<run>/sessions/<iid>/.pi/agent/sessions/*/*.jsonl`. Built for wall hits: a wall is
 "model still working" only if the last part is an open reasoning/text/tool
 part. An open tool part that has been open LONGER than its own execution
 ceiling (bash: the requested `timeout`, default 120 s; other tools ~30 s) never
@@ -35,8 +36,21 @@ subagents):
                     snapshot), 12.6 min of probing to the wall. Read from the
                     opencode json stream in the per-instance log, so it works
                     without a db. Model-side; nothing left the sandbox.
-  no_snapshot       no db (pre-capture-at-wall cells are blind on walls; the
-                    `snapshot` field carries the wall-hit exec verdict if any)
+  no_snapshot       no db / no jsonl (pre-capture-at-wall cells are blind on
+                    walls; the `snapshot` field carries the wall-hit exec
+                    verdict if any)
+
+pi lanes (`format: pi`): one jsonl per session, the scaffold runs a main
+session then a `timeout 120` cleanup session (`in_cleanup` marks a kill that
+landed in the second one -- the model was done with the task). pi writes an
+assistant row only when the response completes, so a trailing toolResult /
+user row at the kill means a request was in flight (`generating`, with
+`in_flight_s` instead of chars); a toolCall with no toolResult is the open
+leaf (bash / ShellSession ceiling = its `timeout` arg in seconds, default
+120). pi has no permission prompt (its bash whitelist rejects synchronously),
+so an over-ceiling open call is `tool_stuck`, never `permission_hang`;
+`outside_paths` is still recorded. `n_empty_name_calls` counts the model's
+empty-name tool calls (pi answers them with a nudge user row).
 
 Usage: audit_wall_causes.py <run_dir> [--walls-only] [--project /testbed]
        [--wall 1795] [--json out]
@@ -74,6 +88,7 @@ def is_wall(r, wall_s):
 def outside_paths(tool, inp, project):
     """Paths the tool input touches that resolve outside the project dir."""
     cands = []
+    tool = {"shellsession": "bash"}.get(str(tool).lower(), str(tool).lower())
     if tool in ("read", "edit", "write", "glob", "grep", "list", "ls"):
         for k in ("filePath", "path", "file_path"):
             if inp.get(k): cands.append(str(inp[k]))
@@ -161,11 +176,111 @@ def snapshot_verdict(run, iid):
     m = re.search(r"^# wall-hit session snapshot: (.*)$", lg.read_text(errors="replace"), re.M)
     return m.group(1).strip() if m else None
 
+
+def _iso_s(ts):
+    """pi row timestamps are ISO-8601 with a Z suffix -> epoch seconds."""
+    from datetime import datetime
+    try:
+        return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+def pi_session_files(run, iid):
+    return sorted((pathlib.Path(run) / "sessions" / iid / ".pi/agent/sessions").glob("*/*.jsonl"))
+
+def pi_rows(files):
+    """All `message` rows across the instance's pi sessions, time-ordered:
+    (ts, session_index, message)."""
+    rows = []
+    for si, f in enumerate(files):
+        for line in f.read_text(errors="replace").splitlines():
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            if d.get("type") != "message" or not isinstance(d.get("message"), dict):
+                continue
+            ts = _iso_s(d.get("timestamp"))
+            if ts is not None:
+                rows.append((ts, si, d["message"]))
+    rows.sort(key=lambda x: x[0])
+    return rows
+
+def pi_ceiling_s(tool, args):
+    if str(tool).lower() in ("bash", "shellsession"):
+        try:
+            return float(args.get("timeout", 120))
+        except (TypeError, ValueError):
+            return 120.0
+    return 30.0
+
+def classify_pi(files, project, end_ts=None, slack_s=120.0, wall=False):
+    rows = pi_rows(files)
+    if not rows:
+        return {"class": "no_snapshot", "note": "pi jsonl has no message rows"}
+    calls, results, n_empty = {}, {}, 0
+    for ts, si, m in rows:
+        if m.get("role") == "assistant":
+            for c in m.get("content") or []:
+                if isinstance(c, dict) and c.get("type") == "toolCall":
+                    if not c.get("name"):
+                        n_empty += 1
+                    calls[c.get("id")] = {"name": c.get("name") or "", "args": c.get("arguments") or {},
+                                          "ts": ts, "si": si}
+        elif m.get("role") == "toolResult":
+            results[m.get("toolCallId")] = ts
+    open_calls = [(cid, c) for cid, c in calls.items() if cid not in results]
+    ts, si, m = rows[-1]
+    info = {"format": "pi", "n_sessions": len(files), "n_rows": len(rows), "n_tool_calls": len(calls),
+            "n_open_tool_parts": len(open_calls), "n_empty_name_calls": n_empty,
+            "in_cleanup": si > 0, "last_part_type": m.get("role"), "last_part_ms": int(ts * 1000)}
+    if open_calls:
+        cid, c = max(open_calls, key=lambda x: x[1]["ts"])
+        info.update({"last_part_type": "tool", "tool": c["name"], "status": "running",
+                     "input": json.dumps(c["args"])[:240], "in_cleanup": c["si"] > 0})
+        ext = outside_paths(c["name"], c["args"], project)
+        ceil = pi_ceiling_s(c["name"], c["args"])
+        open_s = (end_ts - c["ts"]) if end_ts else None
+        info.update({"open_s": round(open_s) if open_s is not None else None, "ceiling_s": ceil})
+        if ext:
+            info["outside_paths"] = ext[:6]
+        if open_s is not None and open_s > ceil + slack_s:
+            info["class"] = "tool_stuck"
+        else:
+            info["class"] = "tool_running"
+        return info
+    gap = (end_ts - ts) if end_ts else None
+    if m.get("role") in ("toolResult", "user"):
+        # the next request was in flight: pi only writes the assistant row on completion
+        info["in_flight_s"] = round(gap) if gap is not None else None
+        if not wall:
+            info["class"] = "finished"
+            info["note"] = "cleanup session cut by its own timeout" if si > 0 else "exit mid-request"
+        elif gap is not None and gap <= slack_s:
+            info["class"] = "step_boundary"
+        else:
+            info["class"] = "generating"
+        return info
+    info["stop_reason"] = m.get("stopReason")
+    info["class"] = "finished"
+    if wall and gap is not None:
+        info["ended_before_kill_s"] = round(gap)
+        if gap <= slack_s:
+            info["class"] = "step_boundary"
+    return info
+
 def classify(run, iid, project, end_ts=None, slack_s=120.0, wall=False):
     """end_ts: when the rollout ended (the per-instance log's mtime — written
     at exit; the wall-hit snapshot is taken up to ~90 s earlier, hence slack)."""
     db_dir = pathlib.Path(run) / "sessions" / iid / ".local/share/opencode"
     destroyed = env_destroyed(run, iid)
+    if not (db_dir / "opencode.db").exists():
+        pi_files = pi_session_files(run, iid)
+        if pi_files:
+            info = classify_pi(pi_files, project, end_ts, slack_s, wall)
+            if info["class"] == "no_snapshot":
+                info["snapshot"] = snapshot_verdict(run, iid)
+            return _mark_destroyed(info, destroyed, end_ts)
     if not (db_dir / "opencode.db").exists() or not last_parts(db_dir)[1]:
         info = {"class": "no_snapshot", "snapshot": snapshot_verdict(run, iid)}
         if (db_dir / "opencode.db").exists():
@@ -272,12 +387,13 @@ def main():
             elif c["class"] in ("tool_running",):
                 extra = f" open={c.get('open_s')}s/{c.get('ceiling_s')}s{' (outside path)' if c.get('permission_possible') else ''} {c.get('tool')} {c.get('input','')[:90]}"
             elif c["class"] == "generating":
-                extra = f" {c.get('last_part_type')} chars={c.get('chars')}"
+                extra = (f" request in flight {c.get('in_flight_s')}s" if c.get("format") == "pi"
+                         else f" {c.get('last_part_type')} chars={c.get('chars')}")
             elif c["class"] == "env_destroyed":
                 extra = f" {c.get('destroyed_before_end_s')}s before the end, {c.get('n_failed_bash')} dead bash calls; destroyer: {c.get('destroyer','')[:100]!r}"
             elif c["class"] == "no_snapshot" and c.get("snapshot"):
                 extra = f" ({c['snapshot'][:80]})"
-            sub = " (subagent)" if c.get("in_subagent") else ""
+            sub = " (subagent)" if c.get("in_subagent") else (" (cleanup)" if c.get("in_cleanup") else "")
             print(f"  {c['instance_id']:<34} wall={str(c['wall']):<5} rc={str(c['rc']):<4} s={str(c['rollout_seconds']):<7} {c['class']}{sub}{extra}")
     if a.json:
         pathlib.Path(a.json).write_text(json.dumps({"run": a.run, "wall_s": a.wall, "tally": tally, "rows": rows}, indent=1))
