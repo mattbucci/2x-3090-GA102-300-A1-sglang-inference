@@ -76,8 +76,10 @@ result's tool-call deltas, so the client sees a content delta between call N's n
 pi-ai 0.68 tracks the *current block* rather than `index`, so the displaced deltas open a fresh nameless
 tool call that the agent executes (`Your tool call had an empty name`); in 5 turns the whole argument body
 was displaced — the real call went out with `{}` and the phantom carried its arguments (victims: websearch 2,
-bash 2, read 1). opencode (AI SDK) and pi-ai 0.83 (the rtk + prime lanes) resolve by `index` and are
-immune — **an A/B confound against the rtk lane** (control pays it, rtk does not); DSpark's multi-token
+bash 2, read 1). opencode (AI SDK) and every pi-ai from 0.83.0 through 1.0.4 (latest, 2026-10-05 — `ensureToolCallBlock`
+keys on `index`, one text block per message; verified in the 1.0.4 tarball) resolve by `index` and are
+immune; our rtk + prime lanes run 0.83.0, and any published `little-coder` ≤1.20.0 pins
+`pi-coding-agent ^0.83.0` → 0.83.0, so only the 1.1.0 control lane (`@mariozechner/pi-ai` 0.68.1) pays it — **an A/B confound against the rtk lane** (control pays it, rtk does not); DSpark's multi-token
 increments make the span routine. 0 non-whitespace inter-call prose in 1,939 sandwiched text blocks, so the
 whitespace drop covers the whole observed class. Unit test cases 7–8, `patches/README.md` 065. Live tree +
 serving image at the cycle boundary.
