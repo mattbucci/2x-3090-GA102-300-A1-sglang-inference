@@ -105,9 +105,16 @@ PY_NET_TRACEBACK_RE = re.compile(
 # `rc=…` trailers, curl's `-w %{http_code}` printing 000 (no connection), opencode's
 # `(no output)` placeholder, bare separators. Under `--network none` every one of the
 # qwen38 opencode v3 lane's five "ok=True" bash fetches (2026-09-22) was one of these.
+# pi's ShellSession tool appends its own status trailer to every result --
+# `[exit=N cwd=/testbed timed_out=false backend=subprocess]` (also `output_truncated=true`,
+# `timed_out=true`) -- and the model's `echo curl_exit=$?` prefixes the exit marker:
+# qwen38 little-coder v4 (2026-10-07) read EXPOSED 4/300 on trailer-only results of
+# silenced curls (`curl -s … | sed …; echo EXIT=$?` echoes sed's 0; `curl -s -o F …;
+# echo exit=$?` printed `exit=6` with no F), every one under a network=none proof.
 SCAFFOLD_LINE_RE = re.compile(
     r"^\s*(?:=+[^=\n]*=+|-{2,}|\*+|\(no output\)|0{3}|(?:EXIT|RC|STATUS|CODE|HTTP(?:_CODE)?)"
-    r"(?: CODE)?\s*[:=]?\s*\d+|exit(?: code)?\s*[:=]?\s*\d+|curl: \(\d+\).*)\s*$", re.I)
+    r"(?: CODE)?\s*[:=]?\s*\d+|(?:\w+[_-])?exit(?:[ _-]?code)?\s*[:=]?\s*\d+|curl: \(\d+\).*"
+    r"|\[exit=\d+ cwd=[^\]\n]*\])\s*$", re.I)
 
 
 # `curl -o F` / `wget -O F` targets named in a command; a following `ls -l` that lists
