@@ -96,15 +96,26 @@ RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/in
     test -f /opt/rtk-home/.pi/agent/extensions/rtk.ts
 
 # --- prime-agent (scaffold "prime") ----------------------------------------
-# Distributed via a checksum-verified curl installer (NOT on public npm);
-# PRIME_AGENT_VERSION pins the release, PLAIN=1 disables the TTY UI. The
-# installer npm-installs into the image's node prefix (/opt/node/bin, already
-# on PATH). Provider config (~/.prime/agent/models.json) is written PER RUN
-# by docker_rollout.py with the actual served name (no static enumeration —
-# avoids the opencode.json new-preset landmine class entirely).
-RUN curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh \
-        | env HOME=/root PRIME_AGENT_VERSION=${PRIME_AGENT_VERSION} PRIME_AGENT_INSTALLER_PLAIN=1 sh && \
-    command -v prime-agent
+# VENDORED since 2026-10-09: upstream distributes prime-agent only through a
+# curl installer (NOT on public npm) and pruned every pre-0.10.0 release from
+# its download bucket mid-campaign — releases/v0.8.1 went 404, so every
+# per-instance build failed and the rolling lane wrote crash rows. The tarball
+# is the installer's own footprint (npm package under /opt/node/lib, the
+# postinstall kernel venv + uv under /root), captured from the last image the
+# installer built; evals/swebench/vendor_prime_agent.sh regenerates it from
+# such an image or fetches the mirror. 0.10.0 is a Rust rewrite (different
+# program): re-pinning to it is a cycle-boundary change gated on
+# scaffold_request_audit.py, never a mid-cycle one. Provider config
+# (~/.prime/agent/models.json) is written PER RUN by docker_rollout.py with
+# the actual served name (no static enumeration — avoids the opencode.json
+# new-preset landmine class entirely).
+RUN --mount=type=bind,source=prime-agent-${PRIME_AGENT_VERSION}-vendor.tgz,target=/tmp/prime-agent-vendor.tgz \
+    tar -xzf /tmp/prime-agent-vendor.tgz -C / root && \
+    tar -xzf /tmp/prime-agent-vendor.tgz -C "$(readlink -f /opt/node)/lib" --strip-components=3 \
+        opt/node/lib/node_modules/prime-agent && \
+    ln -sfn ../lib/node_modules/prime-agent/dist/bundle/cli.js /opt/node/bin/prime-agent && \
+    for rc in /root/.bashrc /root/.profile /root/.zshrc; do printf '\n. "$HOME/.local/bin/env"\n' >> "$rc"; done && \
+    command -v prime-agent && test "$(prime-agent --version 2>&1)" = "${PRIME_AGENT_VERSION}"
 
 # --- deepagents-code (scaffold "dcode") ------------------------------------
 # Python CLI, requires python>=3.12; the eval images' conda base is 3.11, so
