@@ -20,8 +20,10 @@ only), strips refs to HEAD and snapshots each scaffold's session store to
     dirty_before=N` (the tree's history is one `eval@local` commit — the
     official image's `SWE-bench` HEAD commit is gone — and the re-added tracked
     set left the tree exactly as dirty as the image shipped it: 0 everywhere
-    but psf__requests-863, whose image carries an untracked `build/`; logs
-    from before the `dirty_before=` field fall back to
+    but psf__requests-863, whose image carries an untracked `build/`; since
+    2026-10-08 the prelude writes that baseline to `.git/info/exclude` and
+    reports `excluded=K`, so the check is `dirty + excluded == dirty_before`;
+    logs from before the `dirty_before=` field fall back to
     image_untracked_baseline.json) and
     an `isolation: mounts=` line whose bind-source paths name neither the
     benchmark nor the instance; `--require-isolation`)
@@ -532,7 +534,7 @@ ISO_REFS_RE = re.compile(r"^isolation: refs=(\d+) tags=(\d+)", re.M)
 # stages them under a neutral dir, 2026-09-20): none may name the benchmark or the instance
 ISO_MOUNTS_RE = re.compile(r"^isolation: mounts=(.*)$", re.M)
 ISO_GIT_RE = re.compile(r"^isolation: git=reinit commits=(\d+) dirty=(\d+) author=(\S+)"
-                        r"(?: dirty_before=(\d+))?", re.M)
+                        r"(?: dirty_before=(\d+))?(?: excluded=(\d+))?", re.M)
 CUE_RE = re.compile(r"swe[-_ ]?bench", re.I)
 # `git status --porcelain | wc -l` of the pristine official image, for logs written before
 # docker_rollout.py reported `dirty_before=` itself (psf__requests-863 ships an untracked
@@ -559,8 +561,9 @@ def isolation_proof(run: Path, iid: str) -> dict:
             "refs_stripped": bool(m and int(m.group(1)) <= 1 and int(m.group(2)) == 0),
             "mounts_clean": bool(mm and not CUE_RE.search(mm.group(1)) and iid not in mm.group(1)),
             "git_reinit": bool(mg and mg.group(1) == "1" and not CUE_RE.search(mg.group(3))
-                               and int(mg.group(2)) == (int(mg.group(4)) if mg.group(4) is not None
-                                                        else image_untracked(iid)))}
+                               and int(mg.group(2)) + int(mg.group(5) or 0)
+                               == (int(mg.group(4)) if mg.group(4) is not None
+                                   else image_untracked(iid)))}
 
 
 # --- gold overlap --------------------------------------------------------------

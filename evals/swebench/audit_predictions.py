@@ -20,6 +20,9 @@ Infrastructure failure patterns:
   - `Internal Server Error` / `5\\d\\d ` HTTP errors
     → SGLang returning 5xx
   - Exit code != 0 from rollout subprocess
+  - rc=124 rows rolled before capture-at-wall (2026-10-08): the harness
+    never read /testbed at the wall, so the empty (or `ps`-echoed) patch is
+    a harness artefact, not the model's — `infra_wall_capture_defect`
 
 Output:
   - `audit-report.json` next to predictions.jsonl
@@ -111,8 +114,19 @@ def split_log_sections(log_text: str) -> tuple[str, str]:
     return log_text[:i], log_text[i + len("\n# stderr\n"):]
 
 
-def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float) -> tuple[str, str | None]:
+DIFF_HEADS = ("diff ", "--- ", "Index: ")
+
+
+def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float,
+                 patch_source: str | None = None) -> tuple[str, str | None]:
     """Return (category, matched_pattern_or_None).
+
+    `patch_source` is the predictions.jsonl field docker_rollout.py writes
+    since capture-at-wall (2026-10-08): `stdout` (normal exit), `wall-exec`
+    (rc 124, patch read from the still-running container's /testbed),
+    `stdout-fallback` (the exec failed but the container had finished and
+    printed a real diff) or `wall-exec-failed`. Rows without the field were
+    rolled under the old convention.
 
     Categories:
       - real_diff: prediction has a non-empty patch
@@ -125,17 +139,32 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float) -> 
         First seen qwen38 opencode v3 sympy-19254 (1/275; at the old 8K
         cap this class was 62-69 % of qwen38's empties).
       - model_timeout: scaffold agent hit the per-instance wall-clock cap
-        (rc=124 from GNU `timeout`, elapsed at/above the timeout boundary,
-        empty diff). This IS a model verdict on the (model, scaffold,
-        instance) tuple — same combo will loop the same way on retry — so
-        we keep it OUT of the reroll list to avoid burning hours of doomed
-        re-rolls. Cross-cycle data 2026-05-25 (4 cycles × 3 scaffolds):
-        81% of "infra" failures were this pattern, zero chronic across
-        runs, distributed by instance count per repo. Counts toward the
-        denominator as "model couldn't converge in 1800s" — matrix
-        accuracy preserved.
+        (rc=124, elapsed at/above the timeout boundary) and the tree was
+        clean when docker_rollout.py read it at the wall. This IS a model
+        verdict on the (model, scaffold, instance) tuple — same combo will
+        loop the same way on retry — so we keep it OUT of the reroll list to
+        avoid burning hours of doomed re-rolls. Cross-cycle data 2026-05-25
+        (4 cycles × 3 scaffolds): 81% of "infra" failures were this
+        pattern, zero chronic across runs, distributed by instance count
+        per repo. Counts toward the denominator as "model couldn't converge
+        in 1800s" — matrix accuracy preserved. A wall hit WITH edits on
+        disk is real_diff (capture-at-wall, 2026-10-08) — the row's
+        `model_timeout: true` keeps resolved-at-wall separable.
+      - infra_wall_capture_defect: rc=124 row whose patch was never read
+        from the tree — rolled before capture-at-wall (no `patch_source`),
+        or the wall-hit exec failed (`wall-exec-failed`). Empty by
+        construction (the in-script diff sits after the scaffold and its
+        cleanup pass), or a `ps`-echoed `=== DIFF ===` tail that is not a
+        diff. Re-rolled like any harness failure; a finished-inside-the-wall
+        row that already printed a real diff is kept as real_diff.
       - infra_<sub>: matched an infrastructure failure pattern
     """
+    if rollout_rc == 124 and patch_source not in ("wall-exec", "stdout-fallback"):
+        if (patch or "").lstrip().startswith(DIFF_HEADS):
+            return ("real_diff", None)
+        return ("infra_wall_capture_defect",
+                f"rc=124 patch_source={patch_source or 'pre-capture'} patch_len={len(patch or '')}")
+
     has_patch = bool((patch or "").strip())
     if has_patch:
         return ("real_diff", None)
@@ -227,7 +256,8 @@ def main():
                 except OSError:
                     pass
 
-            category, match = classify_log(log_text, rollout_rc, patch, elapsed)
+            category, match = classify_log(log_text, rollout_rc, patch, elapsed,
+                                           d.get("patch_source"))
             entry = {
                 "instance_id": iid,
                 "patch_len": len(patch),
@@ -246,7 +276,7 @@ def main():
     print(f"  model_silent:      {len(by_category.get('model_silent', []))}")
     print(f"  model_silent_fast: {len(by_category.get('model_silent_fast', []))}  (elapsed < 5s, model returned empty fast)")
     print(f"  model_output_budget: {len(by_category.get('model_output_budget', []))}  (a step hit the output budget; run ended unedited)")
-    print(f"  model_timeout:     {len(by_category.get('model_timeout', []))}  (rc=124 wall-clock cap)")
+    print(f"  model_timeout:     {len(by_category.get('model_timeout', []))}  (rc=124 wall-clock cap, tree clean at the wall)")
     infra_total = sum(len(v) for k, v in by_category.items() if k.startswith("infra_"))
     print(f"  INFRA total:       {infra_total}")
     for k, v in sorted(by_category.items()):

@@ -495,22 +495,34 @@ def isolation_prelude(network_mode: str, port: int = CONTAINER_SERVER_PORT) -> s
     `dirty=` equalling `dirty_before=` on the `isolation: git=` line —
     `dirty_before` is the image's own `git status --porcelain` count, 0 for
     every Lite image except psf__requests-863, which ships an untracked,
-    un-ignored `build/` that the `git add -A` diff capture then sweeps into
-    the patch (874 KB, apply-fails at scoring; excluding it is a cycle-boundary
-    decision, README next steps); ~1.5 s on django. Release tags, other branches and remotes go with the old store,
-    so the ref-strip guarantee is preserved (refs=1 tags=0)."""
+    un-ignored `build/`). Whatever the image already had untracked is written
+    to the new store's `.git/info/exclude` (anchored, glob-escaped) together
+    with the image's own exclude file, so the `git add -A` diff capture never
+    sweeps image residue into the patch — requests-863's `build/` made an
+    874 KB patch that apply-failed at scoring in 26/32 cells (2026-09-22 to
+    2026-10-08). The line reports `excluded=K`; the gate accepts
+    `dirty + excluded == dirty_before`. ~1.5 s on django. Release tags, other
+    branches and remotes go with the old store, so the ref-strip guarantee is
+    preserved (refs=1 tags=0)."""
     strip = (
         "git config --global --add safe.directory /testbed 2>/dev/null || true\n"
-        "DIRTY0=$(git -C /testbed status --porcelain | wc -l)\n"
+        # one status pass: the dirty count AND the untracked baseline (-z, so
+        # no porcelain quoting; `?? path` -> `/path` with glob chars escaped)
+        "git -C /testbed status --porcelain -z | tr '\\0' '\\n' > /tmp/.status0\n"
+        "DIRTY0=$(wc -l < /tmp/.status0)\n"
+        "sed -n 's/^?? //p' /tmp/.status0 | sed 's/[][*?\\\\]/\\\\&/g; s/^/\\//' > /tmp/.exclude0\n"
+        "cat /testbed/.git/info/exclude > /tmp/.exclude1 2>/dev/null || : > /tmp/.exclude1\n"
         "git -C /testbed ls-files -z > /tmp/.tracked.z && rm -rf /testbed/.git "
         "&& git -C /testbed init -q -b main "
         "&& git -C /testbed add -f --pathspec-from-file=/tmp/.tracked.z --pathspec-file-nul "
         "&& git -C /testbed -c user.name=eval -c user.email=eval@local commit -q -m base "
         "|| { echo 'GIT REINIT FAILED' >&2; exit 97; }\n"
-        "rm -f /tmp/.tracked.z\n"
+        "mkdir -p /testbed/.git/info && cat /tmp/.exclude1 /tmp/.exclude0 >> /testbed/.git/info/exclude\n"
+        "EXCL=$(wc -l < /tmp/.exclude0)\n"
+        "rm -f /tmp/.tracked.z /tmp/.status0 /tmp/.exclude0 /tmp/.exclude1\n"
         "echo \"isolation: git=reinit commits=$(git -C /testbed rev-list --all | wc -l) "
         "dirty=$(git -C /testbed status --porcelain | wc -l) author=$(git -C /testbed log -1 --format=%ae) "
-        "dirty_before=$DIRTY0\" >&2\n"
+        "dirty_before=$DIRTY0 excluded=$EXCL\" >&2\n"
         "echo \"isolation: refs=$(git -C /testbed for-each-ref | wc -l) tags=$(git -C /testbed tag | wc -l)\" >&2\n"
     )
     if network_mode == "host":
@@ -568,9 +580,9 @@ def snapshot_sessions_live(container_name: str, home: str = "/root", budget_s: i
     instances shipped empty sessions/<iid>/ for exactly the 6 wall hits — the
     sessions the benchmark-recall audit cares most about (R9700 v4: the
     runaway think lives in the walled sessions). Called on TimeoutExpired
-    before the kill; the scaffold keeps running while the store is copied, so
-    the wall budget and the empty-diff-at-wall rule are unchanged. Best
-    effort: a hung daemon or a vanished container just means no snapshot.
+    before the kill (then capture_diff_live() reads the work tree the same
+    way); the scaffold keeps running while the store is copied. Best effort:
+    a hung daemon or a vanished container just means no snapshot.
 
     `home` must be the scaffold's HOME (scaffold_home()): the first version
     hard-wired HOME=/root, so on the qwen38 opencode-dcp v3 lane (store under
@@ -592,6 +604,69 @@ def snapshot_sessions_live(container_name: str, home: str = "/root", budget_s: i
         return f"exec timed out after {budget_s}s"
     except Exception as e:  # noqa: BLE001 — never let forensics take the lane down
         return f"{type(e).__name__}: {e}"
+
+
+# Scaffold scratch dirs the in-script capture `rm -rf`s before its `git add
+# -A` (the union over scaffolds); the wall-hit capture excludes them by
+# pathspec instead, since the scaffold is still running when it reads the tree.
+WALL_DIFF_EXCLUDES = (".claw", ".opencode", ".sandbox-tmp", ".sandbox-home", ".cache",
+                      ".prime", ".deepagents")
+
+
+def capture_diff_live(container_name: str, budget_s: int = 60) -> tuple[str | None, str]:
+    """Capture-at-wall: read /testbed's diff from a still-running container.
+
+    Returns (diff, note); diff is None when the capture itself failed (exec
+    error / timeout / vanished container), "" when it ran and the tree is
+    clean. Until 2026-10-08 a wall hit was an empty patch *by construction*:
+    the in-script `=== DIFF ===` + `git diff --cached` sits after the scaffold
+    (and its 120 s cleanup pass), so the outer SIGKILL at --timeout never
+    reached it — complete, model-verified fixes were lost (qwen38 dcp v4
+    django-14999 / sympy-17022 finished at T−50…−90 s and died in the cleanup
+    pass; rtk v4 requests-863 / xarray-3364 lost their edits behind a stuck
+    foreground tool). R9700's sandbox diffs the tree after its in-container
+    kill and a third of their walls carry a patch (42/124 opencode v4); the
+    user ruled this a harness defect, fixed mid-cycle, so the convention is
+    now the same on both rigs: a wall hit is `rc=124` + whatever is on disk,
+    tagged `model_timeout: true` in predictions.jsonl so resolved-at-wall
+    stays separable.
+
+    Mechanics: a private index (GIT_INDEX_FILE) seeded from HEAD, so a `git`
+    the model is running at that instant neither blocks us (index.lock) nor
+    sees its index change; `add -A` over the tree minus WALL_DIFF_EXCLUDES,
+    then `diff --cached` — the same pathspec the in-script capture gets by
+    `rm -rf`. Bytes are decoded without newline translation (the stdout path
+    runs through a text pipe that folds CRLF). The scaffold is killed only
+    after this returns, so the wall budget is unchanged (+≤60 s of capture,
+    like the session snapshot before it)."""
+    ex = " ".join(f"':(exclude){d}'" for d in WALL_DIFF_EXCLUDES)
+    script = (
+        "export GIT_INDEX_FILE=/tmp/.wall-index; rm -f \"$GIT_INDEX_FILE\"\n"
+        "g() { git -C /testbed -c safe.directory=/testbed \"$@\"; }\n"
+        "g read-tree HEAD || exit 3\n"
+        f"g add -A -- . {ex} || exit 4\n"
+        f"g diff --cached -- . {ex}\n"
+    )
+    try:
+        r = subprocess.run(["docker", "exec", container_name, "bash", "-c", script],
+                           capture_output=True, timeout=budget_s)
+    except subprocess.TimeoutExpired:
+        return None, f"FAILED exec timed out after {budget_s}s"
+    except Exception as e:  # noqa: BLE001 — never let forensics take the lane down
+        return None, f"FAILED {type(e).__name__}: {e}"
+    if r.returncode != 0:
+        err = (r.stderr or b"").decode("utf-8", "replace").strip()[-200:]
+        return None, f"FAILED exec rc={r.returncode}: {err}"
+    diff = (r.stdout or b"").decode("utf-8", "replace")
+    return diff, f"ok bytes={len(diff)}"
+
+
+def _looks_like_diff(p: str) -> bool:
+    """A patch the scorer can read. The stdout extractor's `rfind` lands on a
+    `ps`-echoed copy of the marker when the session listed the inner script
+    (the marker sits in its `bash -lc` argv) and returns the JSON event tail
+    after it — not a diff (qwen38 v4 pytest-8365, sympy-13915, sympy-20212)."""
+    return p.lstrip().startswith(("diff ", "--- ", "Index: "))
 
 
 # The task prompt reaches every scaffold on STDIN from this read-only file,
@@ -1314,6 +1389,7 @@ def main():
                         rc = proc.returncode
                     except subprocess.TimeoutExpired:
                         snap = snapshot_sessions_live(container_name, scaffold_home(scaffold_envs))
+                        wall_diff, wall_note = capture_diff_live(container_name)
                         try:
                             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
                         except (ProcessLookupError, PermissionError):
@@ -1323,7 +1399,8 @@ def main():
                             stdout, stderr = proc.communicate(timeout=10)
                         except subprocess.TimeoutExpired:
                             stdout, stderr = "", ""
-                        stderr = (stderr or "") + f"\n# wall-hit session snapshot: {snap}\n"
+                        stderr = (stderr or "") + (f"\n# wall-hit session snapshot: {snap}\n"
+                                                   f"# wall-hit diff capture: {wall_note}\n")
                         rc = 124
                 finally:
                     collect_stage(stage, sessions_dir)
@@ -1340,7 +1417,21 @@ def main():
                     print(f"  CONTEXT-BUDGET TRIPWIRE: pi reported '{PI_FALLBACK_MARKER}' — the per-run "
                           f"models file was not honoured; this instance ran at the 32K fallback", flush=True)
 
-                diff = _extract_diff_from_stdout(stdout)
+                if rc == 124:
+                    # capture-at-wall (2026-10-08): the patch is what was on
+                    # disk when the wall hit, never the stdout tail (empty or
+                    # a `ps`-echoed marker). If the exec itself failed, the
+                    # stdout path is accepted only when it is a real diff
+                    # (container finished in the race); otherwise the row is
+                    # `wall-exec-failed` and audit_predictions re-rolls it.
+                    if wall_diff is not None:
+                        diff, patch_source = wall_diff, "wall-exec"
+                    else:
+                        cand = _extract_diff_from_stdout(stdout)
+                        diff = cand if _looks_like_diff(cand) else ""
+                        patch_source = "stdout-fallback" if diff else "wall-exec-failed"
+                else:
+                    diff, patch_source = _extract_diff_from_stdout(stdout), "stdout"
                 (out / "predictions" / f"{iid}.diff").write_text(diff)
                 entry = {
                     "instance_id": iid,
@@ -1349,12 +1440,15 @@ def main():
                     "rollout_returncode": rc,
                     "rollout_seconds": elapsed,
                     "rollout_scaffold": args.scaffold,
+                    "model_timeout": rc == 124,
+                    "patch_source": patch_source,
                 }
                 fp.write(json.dumps(entry) + "\n")
                 fp.flush()
 
                 non_empty = "yes" if diff.strip() else "EMPTY"
-                print(f"  done rc={rc} elapsed={elapsed}s diff={non_empty} ({len(diff)}B)", flush=True)
+                tag = "" if patch_source == "stdout" else f" [{patch_source}]"
+                print(f"  done rc={rc} elapsed={elapsed}s diff={non_empty} ({len(diff)}B){tag}", flush=True)
 
                 if diff.strip():
                     empty_streak = 0

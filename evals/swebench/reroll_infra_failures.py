@@ -50,6 +50,10 @@ def main():
     ap.add_argument("--scaffold", required=True,
                     choices=["opencode", "little-coder", "claw-code"])
     ap.add_argument("--timeout", type=int, default=1800)
+    ap.add_argument("--max-empty-streak", type=int, default=30,
+                    help="docker_rollout.py abort threshold for the re-roll pass; the lane runs at 30. "
+                         "The re-roll set is hard by selection (every pre-capture wall re-rolls since "
+                         "2026-10-08), so the rollout default of 10 would abort it mid-list.")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print what would be re-rolled, don't actually do it")
     args = ap.parse_args()
@@ -78,7 +82,7 @@ def main():
         log_path = logs_dir / f"{iid}.log"
         log_text = log_path.read_text(errors="replace") if log_path.exists() else ""
         cat, _match = classify_log(log_text, d.get("rollout_returncode"), patch,
-                                     d.get("rollout_seconds", 0))
+                                     d.get("rollout_seconds", 0), d.get("patch_source"))
         if cat.startswith("infra_"):
             infra_ids.append(iid)
         else:
@@ -116,6 +120,7 @@ def main():
         "--out", str(cell_dir),
         "--skip-existing",
         "--timeout", str(args.timeout),
+        "--max-empty-streak", str(args.max_empty_streak),
         "--instance-ids", *infra_ids,
     ]
     print(f"\n+ {' '.join(cmd[:8])} ... ({len(infra_ids)} instance-ids)")
