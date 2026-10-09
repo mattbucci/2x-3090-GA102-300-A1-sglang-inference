@@ -66,6 +66,73 @@ DOCKER_CTX = THIS_DIR / "docker"
 # with the Dynamic Context Pruning plugin (isolated HOME, see Dockerfile).
 SUPPORTED_SCAFFOLDS = ("opencode", "opencode-dcp", "little-coder", "little-coder-rtk", "claw-code", "prime", "dcode")
 
+# --- scaffold pins ------------------------------------------------------------
+# A cell is ONE scaffold version end to end. Every row and meta.json run record
+# carries `scaffold_pin` (derived from the Dockerfile ARGs, so it cannot drift
+# from the image) and a resume (--skip-existing, Phase-4 re-roll) refuses a
+# cell whose rows ran under a different pin — a changed pin is a NEW cell; the
+# old one gets a quarantine suffix (`-pi068`, 2026-10-09). The little-coder
+# lanes name the pi backend the npm pin bundles (verified inside the image).
+LITTLE_CODER_PI = {
+    "1.1.0": "@mariozechner/pi-coding-agent@0.68.1",
+    "1.19.0": "@earendil-works/pi-coding-agent@0.83.0",
+}
+# Rows written before 2026-10-09 carry no scaffold_pin: what those lanes ran.
+# Only little-coder changed — the control lane was the global 1.1.0 install
+# until the R9700 ask (154ef56) re-pinned it to the rtk lane's 1.19.0 prefix so
+# the RTK A/B stops being a pi-0.68-vs-0.83 comparison. Every other scaffold's
+# legacy pin is its current one.
+LEGACY_SCAFFOLD_PINS = {"little-coder": "little-coder@1.1.0/@mariozechner/pi-coding-agent@0.68.1"}
+
+
+def dockerfile_args() -> dict[str, str]:
+    """`ARG NAME=VALUE` pins from Dockerfile.rollout (trailing comments dropped)."""
+    out = {}
+    for line in DOCKERFILE.read_text().splitlines():
+        m = re.match(r"^ARG\s+([A-Z_]+)=(\S+)", line)
+        if m:
+            out[m.group(1)] = m.group(2)
+    return out
+
+
+def scaffold_pin(scaffold: str) -> str:
+    """The version pin a lane's rows carry (see the section comment above)."""
+    a = dockerfile_args()
+    lc_ver = a["LITTLE_CODER_RTK_VERSION"]   # both little-coder lanes run the /opt/lc-rtk prefix
+    lc = f"little-coder@{lc_ver}/{LITTLE_CODER_PI.get(lc_ver, 'pi-coding-agent@unverified')}"
+    return {
+        "opencode": f"opencode-ai@{a['OPENCODE_VERSION']}",
+        "opencode-dcp": f"opencode-ai@{a['OPENCODE_VERSION']}+opencode-dcp@{a['OPENCODE_DCP_VERSION']}",
+        "little-coder": lc,
+        "little-coder-rtk": f"{lc}+rtk@{a['RTK_VERSION']}",
+        "prime": f"prime-agent@{a['PRIME_AGENT_VERSION']}",
+        "dcode": f"deepagents-code@{a['DCODE_VERSION']}",
+        "claw-code": "claw-code@retired-2026-08-30",
+    }[scaffold]
+
+
+def check_cell_pin(predictions_path: Path, scaffold: str) -> tuple[bool, str]:
+    """(ok, message) — ok when every existing row of the cell ran under the pin
+    this code rolls for `scaffold` (rows without the field count as the legacy
+    pin). Called before any resume touches the file (docker_rollout.py
+    --skip-existing; reroll_infra_failures.py BEFORE it strips)."""
+    want = scaffold_pin(scaffold)
+    legacy = LEGACY_SCAFFOLD_PINS.get(scaffold, want)
+    seen: dict[str, int] = {}
+    for line in predictions_path.read_text().splitlines():
+        try:
+            d = json.loads(line)
+        except Exception:
+            continue
+        pin = d.get("scaffold_pin") or legacy
+        seen[pin] = seen.get(pin, 0) + 1
+    bad = {pin: n for pin, n in seen.items() if pin != want}
+    if bad:
+        return False, (f"SCAFFOLD PIN MISMATCH: {predictions_path} holds {bad} rows but this code rolls "
+                       f"{want!r} — a changed pin is a new cell: rename the old dir with a quarantine "
+                       f"suffix and roll fresh (never mix pins inside one predictions.jsonl)")
+    return True, f"scaffold pin {want!r} ({sum(seen.values())} existing rows match)"
+
 
 def parse_args():
     p = argparse.ArgumentParser()
@@ -733,7 +800,18 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
         # NOT benign — pi cloned the first packaged entry and ran every preset
         # at contextWindow 32768 (compaction loops / aborted sessions; see
         # benchmarks/quality/rtk-lane-close-qwen38-2026-09-11.md).
+        # Runs the 1.19.0 prefix (/opt/lc-rtk, the rtk lane's install — same
+        # @earendil-works pi 0.83 backend, same bg-shell/browser tool roster)
+        # WITHOUT the rtk extension and with HOME=/root (no extensions live
+        # there; headless pi skips auto-discovery anyway), so rtk itself is
+        # the only difference from little-coder-rtk. Until 2026-10-09 the
+        # control ran the global 1.1.0 install (@mariozechner pi 0.68.1) —
+        # the A/B was a pi-version comparison (R9700 ask 154ef56); those
+        # cells are quarantined `-pi068`. The global install stays in the
+        # image until the cycle boundary (per-instance images are rebuilt
+        # from the Dockerfile as lanes roll — a mid-cycle edit would mix).
         oc_model = f"llamacpp/{served_name}"
+        lc = "/opt/lc-rtk/node_modules/.bin/little-coder"
         envs = [
             "--env", f"LLAMACPP_API_KEY={api_key()}",
         ]
@@ -742,11 +820,11 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             f"git config --global user.email eval@local\n"
             f"git config --global user.name eval\n"
             f"git config --global --add safe.directory /testbed\n"
-            + _little_coder_budget_snippet("/opt/node/lib/node_modules/little-coder", served_name, context_window) +
+            + _little_coder_budget_snippet("/opt/lc-rtk/node_modules/little-coder", served_name, context_window) +
             f"cd /testbed\n"
-            f"little-coder --model {oc_model} < {PROMPT_FILE} || true\n"
+            f"{lc} --model {oc_model} < {PROMPT_FILE} || true\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
-            f"timeout 120 little-coder --model {oc_model} <<<\"$CLEANUP_PROMPT\" || true\n"
+            f"timeout 120 {lc} --model {oc_model} <<<\"$CLEANUP_PROMPT\" || true\n"
             f"echo === DIFF ===\n"
             f"rm -rf /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             f"git -C /testbed add -A\n"
@@ -761,10 +839,11 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
         # jsonl records the PRE-mutation command — engagement was verified
         # with an rtk-shim log showing `rtk rewrite git status` -> executed
         # `rtk git status` (2026-08-31).
-        # Uses the lane's OWN little-coder 1.19.0 prefix (/opt/lc-rtk): rtk's
-        # extension needs the current @earendil-works pi; the control lane's
-        # 1.1.0 bundle (@mariozechner pi) ignores it — verified, commands
-        # stayed unrewritten. HOME override wins (scaffold envs append after
+        # Uses the little-coder 1.19.0 prefix (/opt/lc-rtk): rtk's extension
+        # needs the current @earendil-works pi; the old 1.1.0 control bundle
+        # (@mariozechner pi) ignored it — verified, commands stayed
+        # unrewritten. Since 2026-10-09 the control lane runs the SAME prefix
+        # without -e. HOME override wins (scaffold envs append after
         # --env HOME=/root; docker takes the last occurrence).
         oc_model = f"llamacpp/{served_name}"
         envs = [
@@ -1226,6 +1305,12 @@ def main():
     args = parse_args()
 
     served = args.served_name or args.model.split("/", 1)[-1]
+    pin = scaffold_pin(args.scaffold)
+    if args.skip_existing and (Path(args.out) / "predictions.jsonl").exists():
+        ok, msg = check_cell_pin(Path(args.out) / "predictions.jsonl", args.scaffold)
+        print(f"  resume: {msg}", flush=True)
+        if not ok:
+            return 2
     print(f"Preflight: canary chat completion against {args.server_url} (model={served})...", flush=True)
     ok, info = preflight_canary(args.server_url, served)
     if not ok:
@@ -1276,6 +1361,7 @@ def main():
         "dataset": args.dataset,
         "split": args.split,
         "timeout_sec": args.timeout,
+        "scaffold_pin": scaffold_pin(args.scaffold),   # see check_cell_pin
         "context_window": ctx,
         "context_window_source": ctx_src,
         # harness policy this run rolled under (see OUTPUT_BUDGET / thinking
@@ -1440,6 +1526,7 @@ def main():
                     "rollout_returncode": rc,
                     "rollout_seconds": elapsed,
                     "rollout_scaffold": args.scaffold,
+                    "scaffold_pin": pin,
                     "model_timeout": rc == 124,
                     "patch_source": patch_source,
                 }

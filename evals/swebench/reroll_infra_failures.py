@@ -32,9 +32,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Import the audit classifier
+# Import the audit classifier + the rollout's scaffold roster / pin guard
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from audit_predictions import classify_log, INFRA_PATTERNS  # noqa: E402
+from docker_rollout import SUPPORTED_SCAFFOLDS, check_cell_pin  # noqa: E402
 
 
 def main():
@@ -47,8 +48,10 @@ def main():
                     help="docker_rollout --model value (e.g. sglang/coder-30b-eval)")
     ap.add_argument("--served-name", required=True,
                     help="docker_rollout --served-name value")
-    ap.add_argument("--scaffold", required=True,
-                    choices=["opencode", "little-coder", "claw-code"])
+    # the full roster: the hand-written 3-name list rejected every other lane
+    # at Phase 4 (argparse rc=2, cell left with its infra rows — latent until
+    # 2026-10-09, no cycle had reached Phase 4 before)
+    ap.add_argument("--scaffold", required=True, choices=SUPPORTED_SCAFFOLDS)
     ap.add_argument("--timeout", type=int, default=1800)
     ap.add_argument("--max-empty-streak", type=int, default=30,
                     help="docker_rollout.py abort threshold for the re-roll pass; the lane runs at 30. "
@@ -63,6 +66,14 @@ def main():
     logs_dir = cell_dir / "logs"
     if not pred_path.exists():
         print(f"ERROR: predictions.jsonl not found at {pred_path}", file=sys.stderr)
+        return 2
+
+    # 0. Pin guard BEFORE the strip: a cell rolled under another scaffold pin
+    # (the pre-2026-10-09 little-coder control, pi 0.68) must not be re-rolled
+    # by this code's pin — rename it with a quarantine suffix instead.
+    ok, msg = check_cell_pin(pred_path, args.scaffold)
+    print(f"  {msg}")
+    if not ok:
         return 2
 
     # 1. Audit: read predictions + classify
