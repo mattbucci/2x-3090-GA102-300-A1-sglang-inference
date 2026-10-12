@@ -119,6 +119,69 @@ CASES = [
 ]
 
 
+# --- loopback channel (qwen38 little-coder v4 sympy-13773 / rtk pytest-5103, 2026-10-11) ---
+SYMPY = "sympy__sympy-13773"
+UVICORN_401 = "status 401\ndate : Sun, 11 Oct 2026 11:40:43 GMT\nserver : uvicorn\ncontent-length : 24\n" \
+              "content-type : application/json\nb'{\"error\":\"Unauthorized\"}'\n"
+BRIDGE_CASES = [
+    # (name, inst, command, output, expected (chan, kind, ok) events)
+    ("absolute-URI GET through the bridge answers uvicorn 401 -> bridge PROBE + web UPSTREAM failed",
+     SYMPY, "python - <<'EOF'\nimport http.client\nc = http.client.HTTPConnection('127.0.0.1', 23334, timeout=15)\n"
+            "c.request('GET', 'https://raw.githubusercontent.com/sympy/sympy/master/README.md')\nr = c.getresponse()\n"
+            "print('status', r.status)\nfor k, v in r.getheaders(): print(k, ':', v)\nprint(r.read()[:800])\nEOF",
+     UVICORN_401, [("loopback", "BRIDGE", False), ("web", "UPSTREAM", False)]),
+    ("self-dispatch to /v1/chat/completions naming the project -> bridge SELF, no web event",
+     SYMPY, "python - <<'EOF'\nimport socket, json\nKEY = 'x'\nbody = json.dumps({'model': 'qwen38', 'messages': "
+            "[{'role': 'user', 'content': 'which sympy PR fixed __matmul__?'}]}).encode()\n"
+            "req = 'POST /v1/chat/completions HTTP/1.1\\r\\nHost: 127.0.0.1:23334\\r\\nAuthorization: Bearer ' + KEY\n"
+            "s = socket.create_connection(('127.0.0.1', 23334), timeout=25)\ns.sendall(req.encode() + body)\nprint(s.recv(65536))\nEOF",
+     "finish: stop usage: {'prompt_tokens': 326, 'completion_tokens': 14797}\nCONTENT >>>\nPR #13775 added a check\n",
+     [("loopback", "SELF", True)]),
+    ("health probe via urlopen -> bridge PROBE",
+     SYMPY, "python - <<'EOF'\nimport urllib.request\nr = urllib.request.urlopen('http://127.0.0.1:23334/health', timeout=10)\n"
+            "print('health:', r.status, r.read()[:200])\nEOF", "health: 200 b''\n", [("loopback", "BRIDGE", False)]),
+    ("raw socket GET of / and /openapi.json -> bridge PROBE (server banner is not content)",
+     SYMPY, "python - <<'EOF'\nimport socket\ns = socket.create_connection(('127.0.0.1', 23334), timeout=15)\n"
+            "s.sendall(b'GET / HTTP/1.1\\r\\nHost: 127.0.0.1:23334\\r\\n\\r\\n')\nprint(s.recv(65536))\nEOF",
+     "/ -> b'HTTP/1.1 200 OK' | b'\"SGLang is running\"'\n/openapi.json -> b'HTTP/1.1 200 OK' | b'{\"openapi\":\"3.1.0\"'\n",
+     [("loopback", "BRIDGE", False)]),
+    ("bridge + a direct remote URL that resolved content -> web UPSTREAM stays exposed",
+     SYMPY, "python - <<'EOF'\nimport urllib.request\nurllib.request.urlopen('http://127.0.0.1:23334/health')\n"
+            "print(urllib.request.urlopen('https://raw.githubusercontent.com/sympy/sympy/master/sympy/matrices/common.py').read()[:300])\nEOF",
+     "b'\"\"\"A module that handles matrices.\"\"\"\nfrom sympy.core import Add'\n",
+     [("loopback", "BRIDGE", True), ("web", "UPSTREAM", True)]),
+    ("bridge + a direct remote URL that failed DNS -> web UPSTREAM failed",
+     SYMPY, "python - <<'EOF'\nimport urllib.request\nfor url in ['http://127.0.0.1:23334/https://raw.githubusercontent.com/sympy/sympy/x.py', "
+            "'http://raw.githubusercontent.com/sympy/sympy/x.py']:\n    try: print(urllib.request.urlopen(url).read()[:100])\n"
+            "    except Exception as e: print('ERR', url[:60], repr(e))\nEOF",
+     "ERR http://127.0.0.1:23334/https://raw.githubusercontent.com <HTTPError 401: 'Unauthorized'>\n"
+     "ERR http://raw.githubusercontent.com/sympy/sympy/x.py URLError(gaierror(-3, 'Temporary failure in name resolution'))\n",
+     [("loopback", "BRIDGE", False), ("web", "UPSTREAM", False)]),
+    ("curl of the bridge's /health -> bridge PROBE, not web",
+     SYMPY, "curl -s http://127.0.0.1:23334/health; echo rc=$?", "rc=0\n", [("loopback", "BRIDGE", False)]),
+    ("a local dev server on another loopback port named with the project token is not a fetch",
+     "django__django-11001", "python -c \"import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/django/admin/').read()[:80])\"",
+     "b'<!DOCTYPE html><title>Django admin</title>'\n", [("loopback", "LOCAL", True)]),
+    ("pytest-5103 shape: urlopen self-dispatch with a project token in the prompt -> bridge SELF only",
+     "pytest-dev__pytest-5103", "python3 - <<'EOF'\nimport json, urllib.request\nurl = \"http://127.0.0.1:23334/v1/chat/completions\"\n"
+            "q = 'In the pytest (pytest-dev/pytest) GitHub repo, which PR implemented unrolling all/any?'\n"
+            "req = urllib.request.Request(url, data=json.dumps({'model':'qwen38','messages':[{'role':'user','content':q}]}).encode())\n"
+            "print(urllib.request.urlopen(req).read())\nEOF",
+     "=== content ===\nPR #11923: Unroll the iterable for all/any calls to get better reports\n", [("loopback", "SELF", True)]),
+]
+
+
+def run_bridge_cases() -> int:
+    fails = 0
+    for name, inst, cmd, out, want in BRIDGE_CASES:
+        got = [(e["chan"], e["kind"], e["ok"]) for e in classify_call(inst, "bash", {"command": cmd}, out, None)
+               if e["chan"] in ("web", "loopback")]
+        ok = got == want
+        fails += not ok
+        print(f"[{'PASS' if ok else 'FAIL'}] {name}\n       got {got} want {want}")
+    return fails
+
+
 def main() -> int:
     assert command_segments("a; b && c || d\ne") == ["a", "b", "c", "d", "e"]
     assert command_segments("echo 'a;b' && x") == ["echo 'a;b'", "x"]
@@ -128,8 +191,10 @@ def main() -> int:
         ok = got == want
         failed += not ok
         print(f"[{'PASS' if ok else 'FAIL'}] {name}\n       got {got} want {want}")
-    print(f"\n{len(CASES) - failed}/{len(CASES)} passed")
-    return 1 if failed else 0
+    bfailed = run_bridge_cases()
+    total = len(CASES) + len(BRIDGE_CASES)
+    print(f"\n{total - failed - bfailed}/{total} passed")
+    return 1 if failed or bfailed else 0
 
 
 if __name__ == "__main__":

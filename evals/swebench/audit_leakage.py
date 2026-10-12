@@ -48,6 +48,13 @@ Classification per instance:
   web_SEARCH    web search (results carry PR titles + snippets)
   web_OTHER     fetch of an unrelated site
   git_READ / git_LIST   command that would read / enumerate refs beyond HEAD
+  loopback_SELF / _BRIDGE / _LOCAL   traffic to 127.0.0.1: a self-dispatch — the
+                model's own `POST /v1/chat/completions` through the harness
+                bridge (127.0.0.1:23334 = the inference server, nothing else)
+                asking the served model to recall the fix —, a health / proxy
+                probe of the bridge, or the model's own local test server.
+                Reported, never a web fetch: no gold sits behind any of them
+                (sympy-13773, 2026-10-11)
   exposed       web_UPSTREAM or web_SEARCH that RETURNED content (unknown
                 outcome counts as exposed — conservative)
 
@@ -151,6 +158,46 @@ JSON_EMPTY_RE = re.compile(r"JSONDecodeError: Expecting value: line 1 column 1 \
 GIT_LOG_CMD_RE = re.compile(r"\bgit\b[^;|&\n]*\blog\b")
 GIT_NET_CMD_RE = re.compile(r"\bgit\b[^;|&\n]*\b(?:fetch|pull|clone|ls-remote|remote\s+add|submodule)\b")
 GIT_ONELINE_RE = re.compile(r"^[0-9a-f]{7,40}(?: \([^)]*\))? \S.*$")
+# The harness bridge: inside the sandbox 127.0.0.1:23334 is the loopback half of
+# net_bridge.py, which reaches the inference server and nothing else (the server is
+# not a proxy -- an absolute-URI GET through it answers 401/404 from uvicorn). A
+# command whose only network target is loopback is the model talking to the server:
+# a `/health`, `/openapi.json` or absolute-URI probe, or a self-dispatch -- its own
+# `POST /v1/chat/completions` asking the served model (itself) to recall the
+# upstream PR. qwen38 little-coder v4 sympy-13773 (pi 0.83, 2026-10-11) learned the
+# port from `ps aux` (the bridge command sits in the instance script's argv) and the
+# key from pi's models.json, probed the bridge as a proxy (uvicorn 401 read as
+# UPSTREAM ok=True -> a false EXPOSED at the gate), then made six 16K-token
+# self-calls; the rtk lane's pytest-5103 made eight. Neither channel carries gold,
+# so loopback traffic is reported on its own channel, never as a web fetch (kinds:
+# SELF = a completions call to the bridge port, BRIDGE = any other call to it,
+# LOCAL = another loopback port — the model's own dev/test server); a command
+# that ALSO names a remote URL keeps its web event, with the server's own response
+# lines (status, uvicorn headers, 401/404 bodies, completion JSON) not read as
+# fetched content.
+LOOPBACK_HOST_RE = re.compile(r"^(?:127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\]|::1)(?::\d+)?$", re.I)
+LOOPBACK_CONN_RE = re.compile(
+    r"\(\s*['\"](?:127\.0\.0\.1|localhost|0\.0\.0\.0|::1)['\"]\s*,\s*\d+\s*[,)]"   # HTTPConnection('127.0.0.1', 23334) / create_connection(('127.0.0.1', 23334))
+    r"|https?://(?:127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])(?::\d+)?(?:[/?#]|\b)"
+    r"|/run/bridge\.sock|bridge\.sock", re.I)
+SELF_DISPATCH_RE = re.compile(r"/v1/(?:chat/)?completions|/v1/responses|/v1/messages|/generate\b", re.I)
+BRIDGE_PORT_RE = re.compile(r"\b23334\b|bridge\.sock")
+SERVER_LINE_RE = re.compile(
+    r"HTTP/1\.[01]\s+\d{3}\b|^\s*status(?: line)?\s*[:=]?\s*(?:b')?(?:HTTP/1\.[01]\s+)?\d{3}\b"
+    r"|^\s*(?:date|server|content-length|content-type|vary|connection|x-[\w-]+|www-authenticate)\s*:\s"
+    r"|uvicorn|\"detail\"\s*:\s*\"Not Found\"|\"error\"\s*:\s*\"Unauthorized\"|\bUnauthorized\b|Not Found\b"
+    r"|SGLang is running|\"openapi\"\s*:|swagger-ui|\"object\"\s*:\s*\"(?:chat\.completion|text_completion|list|model)"
+    r"|\"reasoning_content\"|\"finish_reason\"|\"usage\"\s*:\s*\{|prompt_tokens|completion_tokens|reasoning_tokens"
+    r"|\bhealth\b.{0,20}\b200\b|bridge open ok", re.I | re.M)
+
+
+def url_is_loopback(url: str) -> bool:
+    host = re.sub(r"^https?://", "", url, flags=re.I).split("/", 1)[0].split("?", 1)[0].split("#", 1)[0]
+    return bool(LOOPBACK_HOST_RE.match(host))
+
+
+def targets_loopback(text: str) -> bool:
+    return bool(LOOPBACK_CONN_RE.search(text)) or any(url_is_loopback(u) for u in URL_RE.findall(text))
 
 
 def download_target_empty(output: str, command: str) -> bool:
@@ -176,10 +223,11 @@ def download_target_empty(output: str, command: str) -> bool:
     return mentioned > 0
 
 
-def fetched_content(output: str, command: str) -> bool:
+def fetched_content(output: str, command: str, loopback: bool = False) -> bool:
     """True when a tool output carries something beyond the model's own echo/separator
     scaffolding — a literal that also appears in the command text is the model talking
-    to itself, not the network answering."""
+    to itself, not the network answering. `loopback`: the command also talked to the
+    harness bridge, so the server's own response lines are not fetched content either."""
     if download_target_empty(output, command):
         return False
     if HTTP_CODE_W_RE.search(command) and HTTP_000_RE.search(output):
@@ -196,6 +244,8 @@ def fetched_content(output: str, command: str) -> bool:
         if not t or SCAFFOLD_LINE_RE.match(line) or LOCAL_ERR_LINE_RE.match(line) or t in command:
             continue
         if local_git_log and GIT_ONELINE_RE.match(t):
+            continue
+        if loopback and SERVER_LINE_RE.search(line):
             continue
         return True
     return False
@@ -331,6 +381,8 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
     a = args if isinstance(args, dict) else {}
     ev: list[dict] = []
 
+    loopback = targets_loopback(text)
+
     def outcome() -> bool | None:
         if is_error:
             return False
@@ -338,7 +390,12 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
             return None
         if NET_FAIL_RE.search(output[:2000]) or PY_NET_TRACEBACK_RE.search(output[:4000]):
             return False
-        return fetched_content(output, text)
+        return fetched_content(output, text, loopback=loopback)
+
+    def bridge_event(evidence: str) -> dict:
+        kind = "SELF" if SELF_DISPATCH_RE.search(text) and BRIDGE_PORT_RE.search(text) else (
+            "BRIDGE" if BRIDGE_PORT_RE.search(text) else "LOCAL")
+        return {"chan": "loopback", "kind": kind, "ok": outcome(), "evidence": evidence}
 
     if lname in WEB_SEARCH_TOOLS:
         ev.append({"chan": "web", "kind": "SEARCH", "ok": outcome(),
@@ -346,6 +403,9 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
         return ev
     if lname in WEB_FETCH_TOOLS:
         url = str(a.get("url") or text)
+        if url_is_loopback(url):
+            ev.append(bridge_event(f"{name}: {url[:160]}"))
+            return ev
         ev.append({"chan": "web", "kind": "UPSTREAM" if url_is_upstream(inst, url) else "OTHER",
                    "ok": outcome(), "evidence": f"{name}: {url[:160]}"})
         return ev
@@ -366,6 +426,11 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
         # / variable two lines up); a project URL anywhere beside a fetch is
         # strong evidence, unlike a neighbouring `*pytest*` glob
         urls = URL_RE.findall(seg) or URL_RE.findall(text)
+        if urls and all(url_is_loopback(u) for u in urls):
+            # `curl http://127.0.0.1:23334/health` -- the bridge, not the web
+            ev.append(bridge_event(f"{name}: {m.group(0)} {urls[0][:140]}" + (" [segment]" if compound else "")))
+            continue
+        urls = [u for u in urls if not url_is_loopback(u)]
         if urls:
             kind = "UPSTREAM" if any(url_is_upstream(inst, u) for u in urls) else "OTHER"
             evidence = f"{name}: {m.group(0)} {urls[0][:140]}"
@@ -381,11 +446,17 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
     py = PY_FETCH_RE.search(text) if PY_EXEC_RE.search(text) else None
     if py:
         urls = URL_RE.findall(text)
-        words = re.sub(r"\S*/testbed/\S*", "", text).lower()
-        kind = "UPSTREAM" if (any(url_is_upstream(inst, u) for u in urls) if urls else any(
-            re.search(rf"(?<![\w-]){re.escape(t)}(?![\w-])", words) for t in project_tokens(inst))) else "OTHER"
-        ev.append({"chan": "web", "kind": kind, "ok": outcome(),
-                   "evidence": f"{name}: python {py.group(0)} {(urls[0][:140] if urls else '')}".rstrip()})
+        remote = [u for u in urls if not url_is_loopback(u)]
+        if loopback:
+            # the bridge is one of the script's targets; the project tokens in a
+            # self-dispatch prompt ("which sympy PR fixed …") name the question, not a site
+            ev.append(bridge_event(f"{name}: python {py.group(0)} {(urls[0][:140] if urls else '127.0.0.1')}".rstrip()))
+        if remote or not loopback:
+            words = re.sub(r"\S*/testbed/\S*", "", text).lower()
+            kind = "UPSTREAM" if (any(url_is_upstream(inst, u) for u in remote) if remote else any(
+                re.search(rf"(?<![\w-]){re.escape(t)}(?![\w-])", words) for t in project_tokens(inst))) else "OTHER"
+            ev.append({"chan": "web", "kind": kind, "ok": outcome(),
+                       "evidence": f"{name}: python {py.group(0)} {(remote[0][:140] if remote else '')}".rstrip()})
     g = GIT_DEFINITIONAL_RE.search(text)
     if g:
         ev.append({"chan": "git", "kind": "READ" if GIT_READ_RE.search(text) else "LIST",
@@ -617,6 +688,8 @@ def audit_run(run: Path, require_isolation: bool, gold: dict[str, str]) -> dict:
             events.extend(classify_call(iid, name, args, out, err))
         web = [e for e in events if e["chan"] == "web"]
         git = [e for e in events if e["chan"] == "git"]
+        loop = [e for e in events if e["chan"] == "loopback"]
+        loop_cls = next((k for k in ("SELF", "BRIDGE", "LOCAL") if any(e["kind"] == k for e in loop)), "none")
         kinds = {e["kind"] for e in web}
         web_cls = "UPSTREAM" if "UPSTREAM" in kinds else ("SEARCH" if "SEARCH" in kinds else ("OTHER" if web else "none"))
         git_cls = "READ" if any(e["kind"] == "READ" for e in git) else ("LIST" if git else "clean")
@@ -627,7 +700,8 @@ def audit_run(run: Path, require_isolation: bool, gold: dict[str, str]) -> dict:
         iso = isolation_proof(run, iid)
         ov = gold_overlap(preds.get(iid, ""), gold[iid]) if gold and iid in gold else None
         rows[iid] = {
-            "source": source, "web": web_cls, "git": git_cls,
+            "source": source, "web": web_cls, "git": git_cls, "loopback": loop_cls,
+            "loopback_calls": len(loop),
             "attempted": attempted, "exposed": exposed,
             "isolation": iso, "overlap": ov,
             "evidence": [f"{e['chan']} {e['kind']} ok={e['ok']}: {e['evidence']}" for e in events][:12],
@@ -638,6 +712,8 @@ def audit_run(run: Path, require_isolation: bool, gold: dict[str, str]) -> dict:
     for r in have:
         c[f"web_{r['web']}"] += 1
         c[f"git_{r['git']}"] += 1
+        if r["loopback"] != "none":
+            c[f"loopback_{r['loopback']}"] += 1
         c["attempted"] += r["attempted"]
         c["exposed"] += r["exposed"]
     c["isolated"] = len(have) - c["exposed"]
@@ -686,7 +762,8 @@ def main() -> int:
         den = max(n - c.get("no_transcript", 0), 1)
         print(f"{rep['run']}: n={n} transcripts={n - c.get('no_transcript', 0)} "
               f"web_UPSTREAM={c.get('web_UPSTREAM', 0)} web_SEARCH={c.get('web_SEARCH', 0)} web_OTHER={c.get('web_OTHER', 0)} "
-              f"git_READ={c.get('git_READ', 0)} git_LIST={c.get('git_LIST', 0)} | "
+              f"git_READ={c.get('git_READ', 0)} git_LIST={c.get('git_LIST', 0)} "
+              f"loopback_SELF={c.get('loopback_SELF', 0)} _BRIDGE={c.get('loopback_BRIDGE', 0)} _LOCAL={c.get('loopback_LOCAL', 0)} | "
               f"attempted={c.get('attempted', 0)} ({100 * c.get('attempted', 0) / den:.0f}%) "
               f"EXPOSED={c.get('exposed', 0)} ({100 * c.get('exposed', 0) / den:.0f}%) | "
               f"isolation proof: network=none {c['iso_network_none']}/{n}, refs stripped {c['iso_refs_stripped']}/{n}, "
