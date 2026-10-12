@@ -24,7 +24,7 @@ What we **don't** ship: random community quants. Every `mattbucci/*-AWQ` is cali
 
 ![Single-user decode tok/s vs context length — all AWQ presets, unified 256K x-axis](benchmarks/all_models_context.png)
 
-![SWE-bench Lite resolve rate per preset × scaffold, full-300 cells](benchmarks/bakeoff_swebench_lite.png)
+![SWE-bench Lite resolve rate per preset × scaffold under the isolated harness — landed full-300 cells as bars, queued/in-test cells marked pending](benchmarks/bakeoff_swebench_lite.png)
 
 ![Speculative decoding — AWQ int4 vs +draft single-user decode; Qwen3.8-27B DSpark on the shipped config (fp8 KV, true 256K) at 60-tok / 49K / 130K / 250K](benchmarks/specdec_comparison.png)
 

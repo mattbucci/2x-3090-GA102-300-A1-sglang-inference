@@ -513,8 +513,8 @@ def make_decode_bar_chart(all_data):
     print(f"  {out}")
 
 
-# Scaffold display order for the bake-off chart: the live 2026-08-31 roster
-# first, retired scaffolds (claw-code) last so historical cells still show.
+# Scaffold display order for the bake-off chart: the live 2026-08-31 roster.
+# claw-code (retired 2026-08-31) is not plotted — its cell JSONs stay as receipts.
 BAKEOFF_SCAFFOLDS = [
     ("opencode",         "#58a6ff", "opencode"),
     ("opencode-dcp",     "#1f6feb", "opencode + DCP"),
@@ -522,18 +522,36 @@ BAKEOFF_SCAFFOLDS = [
     ("little-coder-rtk", "#2ea043", "little-coder + RTK"),
     ("prime",            "#d2a8ff", "prime"),
     ("dcode",            "#f0883e", "dcode"),
-    ("claw-code",        "#8b949e", "claw-code (retired)"),
 ]
+BAKEOFF_QUEUE_FALLBACK = ["qwen38", "coder-30b-eval", "qwen36", "coder-reap-25b", "qwen36-ream",
+                          "qwen35-moe", "coder-30b-ream", "qwen36-dense", "devstral", "gemma4",
+                          "nemotron3-omni"]
+
+
+def bakeoff_queue():
+    """Presets in the bake-off queue, read from run_all_cycles.sh's default QUEUE
+    so the chart's pending cells track the campaign, not a second list."""
+    path = os.path.join(REPO, "evals", "swebench", "run_all_cycles.sh")
+    try:
+        m = re.search(r'^QUEUE="\$\{QUEUE:-([^}]+)\}"', open(path).read(), re.M)
+        if m:
+            return m.group(1).split()
+    except OSError:
+        pass
+    return BAKEOFF_QUEUE_FALLBACK
 
 
 def make_bakeoff_chart():
     """SWE-bench Lite resolve rate per preset × scaffold, from the per-cell
     JSONs `benchmarks/quality/bakeoff-<preset>-<scaffold>.json` that
-    `evals/swebench/aggregate_bakeoff.py` writes. Cells under 300 predictions
-    are hatched — the full-300 rule: partial cells are not comparable.
-    Superseded cells (`"superseded"` set; the pre-2026-09-11 scaffold-budget
-    receipts) are skipped."""
+    `evals/swebench/aggregate_bakeoff.py` writes. The grid is the campaign
+    queue × the live scaffold roster: a landed cell is a solid bar (hatched
+    when under 300 predictions — the full-300 rule), a cell the queue has not
+    scored yet is a dashed "pending" placeholder. Superseded cells (`"superseded"`
+    set; the pre-2026-09-13 scaffold-budget / network=host receipts) and retired
+    scaffolds are not plotted."""
     from matplotlib.patches import Patch
+    roster = [sc for sc, _, _ in BAKEOFF_SCAFFOLDS]
     cells = {}
     for path in glob.glob(os.path.join(BENCH_DIR, "quality", "bakeoff-*.json")):
         try:
@@ -542,55 +560,59 @@ def make_bakeoff_chart():
             continue
         if not d.get("preset") or not d.get("scaffold") or d.get("resolved") is None:
             continue
-        if d.get("superseded"):
-            # bakeoff-*-ctx32k.json etc.: cells whose scaffold ran below the
-            # served window (2026-09-11 harness fix); kept as receipts, not plotted
+        if d.get("superseded") or d["scaffold"] not in roster:
             continue
         cells[(d["preset"], d["scaffold"])] = d
-    if not cells:
-        print("  SKIP bake-off chart (no cell JSONs)")
+    queue = bakeoff_queue()
+    landed = {p for p, _ in cells}
+    presets = sorted(landed, key=lambda p: -max(c["resolve_rate_pct"] for (pp, _), c in cells.items() if pp == p))
+    presets += [p for p in queue if p not in landed]
+    if not presets:
+        print("  SKIP bake-off chart (no cells, no queue)")
         return
-    scaffolds = [s for s in BAKEOFF_SCAFFOLDS if any(k[1] == s[0] for k in cells)]
-    presets = sorted({k[0] for k in cells},
-                     key=lambda p: -max(c["resolve_rate_pct"] for (pp, _), c in cells.items() if pp == p))
-    x = np.arange(len(presets)); n = len(scaffolds); w = min(0.8 / n, 0.26)
+    x = np.arange(len(presets)); n = len(BAKEOFF_SCAFFOLDS); w = min(0.8 / n, 0.26)
+    top = max([c["resolve_rate_pct"] for c in cells.values()] + [56.0]) * 1.25
+    ph = top * 0.12    # placeholder height for pending cells
     fig, ax = plt.subplots(figsize=(max(11, 1.6 * len(presets)), 6))
-    partial = False
-    for j, (sc, color, label) in enumerate(scaffolds):
+    partial = pending = False
+    for j, (sc, color, label) in enumerate(BAKEOFF_SCAFFOLDS):
         off = (j - (n - 1) / 2) * w
         for i, p in enumerate(presets):
             c = cells.get((p, sc))
             if not c:
+                pending = True
+                ax.bar(x[i] + off, ph, w, fill=False, edgecolor=color, linewidth=0.9,
+                       linestyle=(0, (2, 1.5)), alpha=0.75, zorder=4)
+                ax.text(x[i] + off, ph / 2, "pending", ha="center", va="center", rotation=90,
+                        fontsize=7, color=color, alpha=0.9)
                 continue
             full = c.get("total_predictions", 0) >= 300
             partial |= not full
             rate = c["resolve_rate_pct"]
             ax.bar(x[i] + off, rate, w, color=color, alpha=0.95 if full else 0.55,
-                   hatch=None if full else "////", edgecolor="#0d1117", linewidth=0.6,
-                   zorder=5, label=label if i == 0 or (p, sc) == next(k for k in cells if k[1] == sc) else None)
+                   hatch=None if full else "////", edgecolor="#0d1117", linewidth=0.6, zorder=5)
             ax.text(x[i] + off, rate + 0.8, f"{rate:.1f}", ha="center", fontsize=7.5,
                     color=color, fontweight="bold")
-    # de-duplicate legend entries (one per scaffold)
-    handles, labels = ax.get_legend_handles_labels()
-    seen, hl = set(), []
-    for h, l in zip(handles, labels):
-        if l not in seen:
-            seen.add(l); hl.append((h, l))
+    hl = [(Patch(facecolor=color), label) for _, color, label in BAKEOFF_SCAFFOLDS]
     if partial:
         hl.append((Patch(facecolor="#8b949e", alpha=0.55, hatch="////", edgecolor="#0d1117"),
                    "partial cell (< 300) — not comparable"))
+    if pending:
+        hl.append((Patch(fill=False, edgecolor="#8b949e", linestyle=(0, (2, 1.5))),
+                   "pending — in the re-roll queue, scored at its cycle's close"))
     ax.legend([h for h, _ in hl], [l for _, l in hl], loc="upper right", framealpha=0.5,
-              edgecolor="#30363d", facecolor="#161b22", fontsize=8.5)
+              edgecolor="#30363d", facecolor="#161b22", fontsize=8.5, ncol=2)
     ax.set_xticks(x); ax.set_xticklabels(presets, fontsize=9, rotation=20, ha="right")
     ax.set_ylabel("SWE-bench Lite resolved (%)")
-    ax.set_ylim(0, max(c["resolve_rate_pct"] for c in cells.values()) * 1.25)
+    ax.set_ylim(0, top)
     ax.set_title("SWE-bench Lite (300 instances) — resolve rate per preset × scaffold, 256K single-user",
                  fontsize=12.5, fontweight="bold", pad=10)
     ax.grid(True, axis="y", linestyle="--")
     dates = sorted(str(c.get("timestamp", ""))[:10] for c in cells.values() if c.get("timestamp"))
-    ax.text(0.0, -0.22, "v2 Docker harness, swebench scorer 4.1.0, AWQ-int4 presets at full context, "
-            "one attempt per instance (resolved / 300); "
-            + (f"cell receipts {dates[0]} .. {dates[-1]}" if dates else ""),
+    ax.text(0.0, -0.22, "isolated Docker harness (network=none, served 262K window, 32K output budget, "
+            "template-default thinking), swebench scorer 4.1.0, one attempt per instance (resolved / 300); "
+            + (f"landed cells {dates[0]} .. {dates[-1]}; " if dates else "no cell scored under it yet; ")
+            + "superseded pre-2026-09-13 receipts and the retired claw-code column are not plotted",
             transform=ax.transAxes, fontsize=7.5, color="#8b949e")
     fig.tight_layout()
     out = os.path.join(BENCH_DIR, "bakeoff_swebench_lite.png")
@@ -665,6 +687,9 @@ def make_kv_capacity_chart(all_data):
 
 
 if __name__ == "__main__":
+    import sys
+    if sys.argv[1:] == ["bakeoff"]:          # regenerate only the bake-off chart
+        make_bakeoff_chart(); sys.exit(0)
     print("Generating benchmark charts...\n")
 
     all_data = {}
