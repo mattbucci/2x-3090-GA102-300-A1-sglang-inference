@@ -127,8 +127,10 @@ the pi-0.68 cell, all three patched here).
    so this needs a second header the scaffold sets).
 2. `audit_benchmark_recall.py`: count `loopback_SELF` calls as recall attempts (self-oracle) alongside
    in-session recall thinks; relay the shape to R9700 (their sandbox bridge may be discoverable the same way).
-3. Restore the `docker logs -f` server.log follower (died at the 2026-10-09 re-pin relaunch; Phase 4 and
-   `run_model_cycle.sh:156` read `server.log`) — check impact before Phases 2–4 run.
+3. ~~Restore the `docker logs -f` server.log follower~~ — done 2026-10-11 21:24 PDT: the follower died with
+   the 2026-10-09 re-pin relaunch (the container kept running); restarted with `--since` the last written
+   second, gap-free, so `prompt_sawtooth.py --server-log` covers the whole cycle again. Only the sawtooth
+   and the boot-timeout tail read `server.log`; nothing in Phases 2–8 does.
 4. Patch 065 → live tree + serving image (3-gate, `bench_regression.sh`); upstream PR for 063 + 065.
 5. Multi-stage `Dockerfile.rollout` (scaffold installs once) + prime-agent 0.10.0 re-pin; DCP cleanup pass;
    opencode permission block.
