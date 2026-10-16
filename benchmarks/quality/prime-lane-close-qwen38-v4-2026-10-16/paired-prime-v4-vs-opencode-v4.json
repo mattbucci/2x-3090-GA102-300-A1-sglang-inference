@@ -1,0 +1,47 @@
+{
+  "ref": "evals/swebench/runs/qwen38-opencode-v4",
+  "new": "evals/swebench/runs/qwen38-prime-v4",
+  "paired": 290,
+  "wall_s": 1795.0,
+  "ref_summary": {
+    "n": 290,
+    "walls": 33,
+    "empty": 35,
+    "median_s": 799.2,
+    "mean_s": 955.7,
+    "sum_h": 76.99
+  },
+  "new_summary": {
+    "n": 290,
+    "walls": 30,
+    "empty": 32,
+    "median_s": 912.2,
+    "mean_s": 1054.2,
+    "sum_h": 84.92
+  },
+  "speedup_median": 0.85,
+  "unpaired_new": 0,
+  "infra_excluded": {
+    "ref": [
+      "django__django-11905",
+      "django__django-11910",
+      "django__django-11964",
+      "django__django-11999",
+      "django__django-12113",
+      "django__django-12125",
+      "django__django-12184",
+      "django__django-13315"
+    ],
+    "new": [
+      "django__django-12470",
+      "django__django-13265",
+      "django__django-13315"
+    ]
+  },
+  "flips": {
+    "wall_to_done": 17,
+    "done_to_wall": 14,
+    "empty_to_patch": 27,
+    "patch_to_empty": 24
+  }
+}
