@@ -76,6 +76,13 @@ from pathlib import Path
 # --- classifiers (web channel ported from R9700 audit_git_peek.py) -----------
 WEB_FETCH_TOOLS = {"webfetch", "web_fetch", "fetch", "codesearch"}
 WEB_SEARCH_TOOLS = {"websearch", "web_search", "web-search", "search"}
+# Tools whose argument IS python source run in a kernel (prime-agent `ipython`). The
+# whole `code` is inline python: `requests.get(upstream)` typed straight into the
+# kernel has no `python -c` around it, and qwen38 prime v4 (2026-10-16) made 102 such
+# calls over 96 instances that the `python -c` / heredoc rule never saw (attempted
+# read 59/300; the shell-shaped ones through `subprocess.run(['curl', …])` were caught).
+PY_CODE_TOOLS = {"ipython", "python", "python_repl", "execute_python", "run_python",
+                 "execute_code", "code_interpreter", "jupyter"}
 URL_RE = re.compile(r"https?://[^\s'\"<>)\]]+", re.I)
 NET_BASH_RE = re.compile(
     r"\b(curl|wget|gh\s+(api|pr|issue)|pip3?\s+(download|install)(?!\s+-e)"
@@ -98,9 +105,17 @@ NET_FAIL_RE = re.compile(
     # pip swallows the DNS failure and prints an empty version list; opencode's
     # webfetch surfaces a blocked socket as "Transport error" (R9700 `1ea2167`)
     r"|\(from versions: none\)|Transport error"
+    # a kernel-side fetch wrapped in `try/except … print(type(e).__name__)` prints only
+    # the exception class (prime ipython, 2026-10-16: `ERR ConnectionError`,
+    # `requests.exceptions.ConnectionError: …`, `ConnectError`, `NameResolutionError`);
+    # anchored to a line start (after an optional label) so a fetched source file that
+    # merely mentions the class mid-line is not read as a failure
+    r"|^\s*(?:(?:ERR(?:OR)?|EXC(?:EPTION)?|FAIL(?:ED|URE)?|Exception|caught|net(?:work)?)\b\s*[:=-]?\s*)?"
+    r"(?:[\w.]*\.)?(?:ConnectionError|ConnectError|NameResolutionError|ConnectTimeout|ReadTimeout"
+    r"|HTTPError\b[^\n]*\b(?:503|502|504)|SSLError|ProxyError|InvalidURL|URLError|gaierror)\b"
     # the fetch binary itself is absent from the sandbox image -- nothing ran
     # (qwen38 opencode v4 django-16408: `gh pr view … 2>&1 | head` -> "gh: command not found")
-    r"|\b(?:gh|curl|wget|aria2c|pip3?|npm): command not found|command not found: (?:gh|curl|wget|aria2c|pip3?|npm)\b", re.I)
+    r"|\b(?:gh|curl|wget|aria2c|pip3?|npm): command not found|command not found: (?:gh|curl|wget|aria2c|pip3?|npm)\b", re.I | re.M)
 # A Python traceback whose frames pass through the network stack (urllib / http.client /
 # socket / requests / urllib3 / httpx / aiohttp) is a fetch that raised before returning
 # content. The exception line itself is often cut off by the model's `| head -5`
@@ -120,10 +135,41 @@ PY_NET_TRACEBACK_RE = re.compile(
 # qwen38 little-coder v4 (2026-10-07) read EXPOSED 4/300 on trailer-only results of
 # silenced curls (`curl -s … | sed …; echo EXIT=$?` echoes sed's 0; `curl -s -o F …;
 # echo exit=$?` printed `exit=6` with no F), every one under a network=none proof.
+# A kernel tool (prime `ipython`) runs the fetch through `subprocess.run(…,
+# capture_output=True)` and prints its own probe of the result: `len: 0`, `6 0`
+# (`print(r.returncode, len(r.stdout))`), `rc=6 len=0`, an empty `STDERR:` label.
+# curl's stderr went into a Python variable, so nothing shell-shaped survives; qwen38
+# prime v4 (2026-10-16) read EXPOSED 4/300 on exactly these under a network=none proof
+# (django-12284 `len: 0`, django-14730 `6 0`). A line made only of label:number
+# tokens, of one or two small integers, or of a bare upper-case label is the model
+# talking to itself; a CLI usage error (`uv pip download` -> `For more information,
+# try '--help'.`) is the tool refusing to run.
 SCAFFOLD_LINE_RE = re.compile(
     r"^\s*(?:=+[^=\n]*=+|-{2,}|\*+|\(no output\)|0{3}|(?:EXIT|RC|STATUS|CODE|HTTP(?:_CODE)?)"
     r"(?: CODE)?\s*[:=]?\s*\d+|(?:\w+[_-])?exit(?:[ _-]?code)?\s*[:=]?\s*\d+|curl: \(\d+\).*"
-    r"|\[exit=\d+ cwd=[^\]\n]*\])\s*$", re.I)
+    r"|\[exit=\d+ cwd=[^\]\n]*\]"
+    r"|(?:(?:rc|ret(?:code|urncode)?|exit(?:code)?|code|status|len(?:gth)?|size|bytes|n|count|lines)"
+    r"\s*[:=]\s*-?\d+\s*[,;]?\s*){1,4}"
+    r"|-?\d{1,3}(?:\s+\d{1,7})?"
+    r"|[A-Z][A-Z_ ]{1,24}:"
+    r"|For more information, try '--help'\.|error: (?:unrecognized subcommand|unexpected argument|no such command)\b.*"
+    r"|usage: \S.*)\s*$", re.I)
+# A `python -c` / `bash -c` snippet that died parsing never ran its fetch: the
+# traceback echo (`File "<string>", line 1` + the source line + caret + `SyntaxError:`)
+# is not fetched content even when the model prefixed it with a `RAW:` label
+# (prime v4 sympy-15678: the shell ate the quotes around the urlopen URL).
+PY_SYNTAX_BLOCK_RE = re.compile(
+    r"^[^\n]*(?:File \"<(?:string|stdin|ipython[^\">]*)>\"|Cell In\[\d+\]), line \d+\n(?:[^\n]*\n){0,8}?"
+    r"\s*(?:Syntax|Indentation|Tab)Error:[^\n]*", re.M)
+# The model echoing its own exception under a FAIL/ERR label (`NET FAIL Request.__init__()
+# got an unexpected keyword argument 'timeout'`, `FAIL: ModuleNotFoundError No module named
+# 'requests'`) is the kernel talking; so are the caret + `SyntaxError:` lines that survive a
+# `| tail -2` (prime v4 django-11179, sympy-22714).
+MODEL_EXC_LINE_RE = re.compile(
+    r"^\s*(?:(?:[A-Z][A-Z_]*\s+)?(?:FAIL(?:ED|URE)?|ERR(?:OR)?|EXC(?:EPTION)?)\s*[:=-]?\s*"
+    r"[^\n]*?(?:\b\w*(?:Error|Exception|Timeout)\b|got an unexpected|No module named|is not defined|Traceback"
+    r"|has no attribute|not supported|timed out)[^\n]*"
+    r"|\^+|(?:Syntax|Indentation|Tab)Error:.*)\s*$")
 
 
 # `curl -o F` / `wget -O F` targets named in a command; a following `ls -l` that lists
@@ -143,7 +189,8 @@ LOCAL_ERR_LINE_RE = re.compile(
 # compound command's other (local) segments printed real output around it
 # (django-11999: `pip show django | head -3; python -c …; curl -s -o /dev/null -w "%{http_code}" … | tail -1` -> `000`).
 HTTP_CODE_W_RE = re.compile(r"%\{http_code\}")
-HTTP_000_RE = re.compile(r"(?:^|\s)000(?=\s|$)", re.M)
+# `-w "%{http_code}"` prints no newline, so `… || echo CURL_FAIL` glues on: `000CURL_FAIL`
+HTTP_000_RE = re.compile(r"(?:^|\s)000(?=\s|$|[A-Z_]{2,})", re.M)
 # A fetch piped into `python … json.load(sys.stdin)` that dies at char 0 received an
 # empty body — the network returned nothing (matplotlib-25311). Only honoured when
 # the traceback is the sole non-scaffold output, so a fetch that printed anything
@@ -175,7 +222,11 @@ GIT_ONELINE_RE = re.compile(r"^[0-9a-f]{7,40}(?: \([^)]*\))? \S.*$")
 # that ALSO names a remote URL keeps its web event, with the server's own response
 # lines (status, uvicorn headers, 401/404 bodies, completion JSON) not read as
 # fetched content.
-LOOPBACK_HOST_RE = re.compile(r"^(?:127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\]|::1)(?::\d+)?$", re.I)
+# a placeholder host (`http://%s:%d`, `http://{host}:{port}`, `http://$HOST`) is the
+# project's own test-server fixture being formatted in (prime v4 requests-3362:
+# `from tests.testserver.server import Server`), never a remote
+LOOPBACK_HOST_RE = re.compile(
+    r"^(?:127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\]|::1|%s|%\(\w+\)s|\{\w*\}|\$\{?\w+\}?)(?::(?:\d+|%d|\{\w*\}|\$\{?\w+\}?))?$", re.I)
 LOOPBACK_CONN_RE = re.compile(
     r"\(\s*['\"](?:127\.0\.0\.1|localhost|0\.0\.0\.0|::1)['\"]\s*,\s*\d+\s*[,)]"   # HTTPConnection('127.0.0.1', 23334) / create_connection(('127.0.0.1', 23334))
     r"|https?://(?:127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])(?::\d+)?(?:[/?#]|\b)"
@@ -232,6 +283,7 @@ def fetched_content(output: str, command: str, loopback: bool = False) -> bool:
         return False
     if HTTP_CODE_W_RE.search(command) and HTTP_000_RE.search(output):
         return False
+    output = PY_SYNTAX_BLOCK_RE.sub("", output)
     if PIPED_PY_RE.search(command) and JSON_EMPTY_RE.search(output):
         rest = [ln for ln in output.splitlines() if ln.strip() and not SCAFFOLD_LINE_RE.match(ln)
                 and ln.strip() not in command and not LOCAL_ERR_LINE_RE.match(ln)
@@ -241,7 +293,8 @@ def fetched_content(output: str, command: str, loopback: bool = False) -> bool:
     local_git_log = bool(GIT_LOG_CMD_RE.search(command)) and not GIT_NET_CMD_RE.search(command)
     for line in output.splitlines():
         t = line.strip()
-        if not t or SCAFFOLD_LINE_RE.match(line) or LOCAL_ERR_LINE_RE.match(line) or t in command:
+        if not t or SCAFFOLD_LINE_RE.match(line) or LOCAL_ERR_LINE_RE.match(line) \
+                or MODEL_EXC_LINE_RE.match(line) or t in command:
             continue
         if local_git_log and GIT_ONELINE_RE.match(t):
             continue
@@ -315,7 +368,9 @@ def command_segments(text: str) -> list[str]:
             buf.append(c)
         i += 1
     segs.append("".join(buf))
-    return [s.strip() for s in segs if s.strip()]
+    # a `# …` comment line is not a command: prime v4 pytest-7490 wrote
+    # `# Check pip download cache / wheels on disk` above a local `find`
+    return [s.strip() for s in segs if s.strip() and not s.strip().startswith("#")]
 
 
 # instance prefix -> tokens that identify the project's own sites/repos in a URL
@@ -443,7 +498,7 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
         if compound:
             evidence += " [segment]"
         ev.append({"chan": "web", "kind": kind, "ok": outcome(), "evidence": evidence})
-    py = PY_FETCH_RE.search(text) if PY_EXEC_RE.search(text) else None
+    py = PY_FETCH_RE.search(text) if (PY_EXEC_RE.search(text) or lname in PY_CODE_TOOLS) else None
     if py:
         urls = URL_RE.findall(text)
         remote = [u for u in urls if not url_is_loopback(u)]
