@@ -74,7 +74,10 @@ from collections import Counter
 from pathlib import Path
 
 # --- classifiers (web channel ported from R9700 audit_git_peek.py) -----------
-WEB_FETCH_TOOLS = {"webfetch", "web_fetch", "fetch", "codesearch"}
+# dcode (deepagents-code) names its fetch tool `fetch_url` and its args carry only
+# `url` — no net verb for NET_BASH_RE, so the bash-like fallback dropped all 151 of
+# qwen38 dcode v4's fetches (2026-10-18). Add any new scaffold's fetch tool here.
+WEB_FETCH_TOOLS = {"webfetch", "web_fetch", "fetch", "fetch_url", "codesearch"}
 WEB_SEARCH_TOOLS = {"websearch", "web_search", "web-search", "search"}
 # Tools whose argument IS python source run in a kernel (prime-agent `ipython`). The
 # whole `code` is inline python: `requests.get(upstream)` typed straight into the
@@ -83,6 +86,9 @@ WEB_SEARCH_TOOLS = {"websearch", "web_search", "web-search", "search"}
 # read 59/300; the shell-shaped ones through `subprocess.run(['curl', …])` were caught).
 PY_CODE_TOOLS = {"ipython", "python", "python_repl", "execute_python", "run_python",
                  "execute_code", "code_interpreter", "jupyter"}
+# Same for a JS kernel (dcode `js_eval`): `fetch(` / `https.get(` typed straight into node.
+JS_CODE_TOOLS = {"js_eval", "node", "javascript", "execute_js", "run_js"}
+JS_FETCH_RE = re.compile(r"\b(?:fetch|https?\.(?:get|request)|axios(?:\.(?:get|post))?|got|undici\.request)\(")
 URL_RE = re.compile(r"https?://[^\s'\"<>)\]]+", re.I)
 NET_BASH_RE = re.compile(
     r"\b(curl|wget|gh\s+(api|pr|issue)|pip3?\s+(download|install)(?!\s+-e)"
@@ -143,9 +149,14 @@ PY_NET_TRACEBACK_RE = re.compile(
 # (django-12284 `len: 0`, django-14730 `6 0`). A line made only of label:number
 # tokens, of one or two small integers, or of a bare upper-case label is the model
 # talking to itself; a CLI usage error (`uv pip download` -> `For more information,
-# try '--help'.`) is the tool refusing to run.
+# try '--help'.`) is the tool refusing to run. dcode's `execute` tool appends its own
+# trailer -- `[Command succeeded with exit code 0]` / `Exit code: 6` + `[Command failed
+# with exit code 6]` -- and prints `<no output>` for an empty stdout: qwen38 dcode v4
+# (2026-10-18) read EXPOSED 1/300 on `curl -sI https://pypi.org | head -3; echo "exit: $?"`
+# (head's 0, no header line) and `curl -sL -o F … && ls -la F` (exit 6, ls never ran).
 SCAFFOLD_LINE_RE = re.compile(
-    r"^\s*(?:=+[^=\n]*=+|-{2,}|\*+|\(no output\)|0{3}|(?:EXIT|RC|STATUS|CODE|HTTP(?:_CODE)?)"
+    r"^\s*(?:=+[^=\n]*=+|-{2,}|\*+|\(no output\)|<no output>|\[Command (?:succeeded|failed) with exit code \d+\]"
+    r"|0{3}|(?:EXIT|RC|STATUS|CODE|HTTP(?:_CODE)?)"
     r"(?: CODE)?\s*[:=]?\s*\d+|(?:\w+[_-])?exit(?:[ _-]?code)?\s*[:=]?\s*\d+|curl: \(\d+\).*"
     r"|\[exit=\d+ cwd=[^\]\n]*\]"
     r"|(?:(?:rc|ret(?:code|urncode)?|exit(?:code)?|code|status|len(?:gth)?|size|bytes|n|count|lines)"
@@ -499,6 +510,8 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
             evidence += " [segment]"
         ev.append({"chan": "web", "kind": kind, "ok": outcome(), "evidence": evidence})
     py = PY_FETCH_RE.search(text) if (PY_EXEC_RE.search(text) or lname in PY_CODE_TOOLS) else None
+    if py is None and lname in JS_CODE_TOOLS:
+        py = JS_FETCH_RE.search(text)
     if py:
         urls = URL_RE.findall(text)
         remote = [u for u in urls if not url_is_loopback(u)]
@@ -601,12 +614,20 @@ def calls_from_pi_files(files):
 
 
 def calls_from_dcode_db(db: Path):
-    """deepagents-code langgraph SqliteSaver (msgpack + ext types)."""
+    """deepagents-code langgraph SqliteSaver (msgpack + ext types): AIMessage
+    tool_calls + ToolMessage results linked by tool_call_id (the result's
+    ``status`` is "error" on a raised tool; a failed fetch_url comes back
+    ``status=success`` with a JSON ``{"error": "... Could not resolve ..."}``
+    body, which NET_FAIL_RE reads). Before 2026-10-18 the outputs were not
+    paired and every dcode fetch under network=none read as outcome unknown."""
     import msgpack  # serving env has it
 
     def dec(b):
         return msgpack.unpackb(b, raw=False, ext_hook=lambda code, data: dec(data), strict_map_key=False)
 
+    calls: dict[str, tuple] = {}
+    results: dict[str, tuple[str, bool]] = {}
+    order: list[str] = []
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
         for (tid,) in con.execute("select distinct thread_id from checkpoints"):
@@ -621,9 +642,21 @@ def calls_from_dcode_db(db: Path):
                     if m[1] == "AIMessage":
                         for tc in m[2].get("tool_calls") or []:
                             if isinstance(tc, dict):
-                                yield tc.get("name") or "", tc.get("args") or {}, None, None
+                                cid = str(tc.get("id") or len(order))
+                                calls[cid] = (tc.get("name") or "", tc.get("args") or {})
+                                order.append(cid)
+                    elif m[1] == "ToolMessage":
+                        c = m[2].get("content")
+                        if isinstance(c, list):
+                            c = " ".join(str(x.get("text", "")) if isinstance(x, dict) else str(x) for x in c)
+                        results[str(m[2].get("tool_call_id"))] = (
+                            str(c) if c is not None else "", m[2].get("status") == "error")
     finally:
         con.close()
+    for cid in order:
+        name, args = calls[cid]
+        out, err = results.get(cid, (None, None))
+        yield name, args, out, err
 
 
 def instance_calls(run: Path, iid: str) -> tuple[str, list]:

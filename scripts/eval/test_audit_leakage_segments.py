@@ -229,6 +229,50 @@ PRIME_CASES = [
 ]
 
 
+# dcode (deepagents-code) tool shapes, qwen38 dcode v4 close 2026-10-18: its `fetch_url`
+# tool carries only `url` (no net verb for the bash fallback -- 151 fetches were
+# invisible), a failed fetch comes back status=success with a JSON error body, and
+# its `execute` tool appends `[Command succeeded|failed with exit code N]` trailers
+# and prints `<no output>` for an empty stdout.
+DCODE_CASES = [
+    # (name, inst, tool, args, output, is_error, expected (chan, kind, ok) events)
+    ("fetch_url of the upstream raw file, DNS failure in a JSON error body -> UPSTREAM failed",
+     "django__django-11049", "fetch_url",
+     {"url": "https://raw.githubusercontent.com/django/django/stable/4.2.x/django/db/models/fields/__init__.py"},
+     '{"error": "Fetch URL error: Could not resolve hostname \'raw.githubusercontent.com\': [Errno -3] Temporary failure in name resolution", '
+     '"url": "https://raw.githubusercontent.com/django/django/stable/4.2.x/django/db/models/fields/__init__.py", "category": "validation"}',
+     False, [("web", "UPSTREAM", False)]),
+    ("fetch_url of an unrelated host with a real body -> OTHER fetched (a project-domain doc site reads UPSTREAM)",
+     "django__django-11049", "fetch_url", {"url": "https://peps.python.org/pep-0008/"},
+     "<html><body><h1>PEP 8</h1><p>Style Guide for Python Code ...</p></body></html>", False, [("web", "OTHER", True)]),
+    ("execute: `curl -sI pypi | head -3; echo exit: $?` printed head's 0 + the tool trailer, no header line -> failed",
+     "django__django-11049", "execute", {"command": 'timeout 8 curl -sI https://pypi.org 2>&1 | head -3; echo "exit: $?"'},
+     "exit: 0\n\n[Command succeeded with exit code 0]", False, [("web", "OTHER", False)]),
+    ("execute: `curl -sL -o F upstream && ls F` -> `<no output>` + exit 6 trailer (ls never ran) -> UPSTREAM failed",
+     "django__django-11049", "execute",
+     {"command": "cd /tmp && timeout 60 curl -sL -o django30.tgz https://files.pythonhosted.org/packages/source/d/django/django-3.0.tar.gz && ls -la django30.tgz"},
+     "<no output>\n\nExit code: 6\n[Command failed with exit code 6]", False, [("web", "UPSTREAM", False)]),
+    ("execute: a curl that printed headers above the success trailer is still fetched content",
+     "django__django-11049", "execute", {"command": "curl -sI https://pypi.org | head -3"},
+     "HTTP/2 200\ncontent-type: text/html\n\n[Command succeeded with exit code 0]", False, [("web", "OTHER", True)]),
+    ("js_eval: fetch() of the upstream commits API typed into node, printed ENOTFOUND -> UPSTREAM failed",
+     "django__django-11049", "js_eval",
+     {"code": "const r = await fetch('https://api.github.com/repos/django/django/commits?path=django/forms/fields.py');\nconsole.log(r.status);"},
+     "TypeError: fetch failed\n  cause: Error: getaddrinfo ENOTFOUND api.github.com", False, [("web", "UPSTREAM", False)]),
+]
+
+
+def run_dcode_cases() -> int:
+    fails = 0
+    for name, inst, tool, args, out, err, want in DCODE_CASES:
+        got = [(e["chan"], e["kind"], e["ok"]) for e in classify_call(inst, tool, args, out, err)
+               if e["chan"] in ("web", "loopback")]
+        ok = got == want
+        fails += not ok
+        print(f"[{'PASS' if ok else 'FAIL'}] {name}\n       got {got} want {want}")
+    return fails
+
+
 def run_prime_cases() -> int:
     fails = 0
     for name, inst, code, out, want in PRIME_CASES:
@@ -262,9 +306,10 @@ def main() -> int:
         print(f"[{'PASS' if ok else 'FAIL'}] {name}\n       got {got} want {want}")
     bfailed = run_bridge_cases()
     pfailed = run_prime_cases()
-    total = len(CASES) + len(BRIDGE_CASES) + len(PRIME_CASES)
-    print(f"\n{total - failed - bfailed - pfailed}/{total} passed")
-    return 1 if failed or bfailed or pfailed else 0
+    dfailed = run_dcode_cases()
+    total = len(CASES) + len(BRIDGE_CASES) + len(PRIME_CASES) + len(DCODE_CASES)
+    print(f"\n{total - failed - bfailed - pfailed - dfailed}/{total} passed")
+    return 1 if failed or bfailed or pfailed or dfailed else 0
 
 
 if __name__ == "__main__":
