@@ -168,7 +168,7 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
     return out
 
 
-SCAFFOLDS = ("opencode", "opencode-dcp", "little-coder", "little-coder-rtk", "claw-code", "prime", "dcode")  # claw-code deprecated 2026-08-30; historical cells still parse
+SCAFFOLDS = ("opencode", "opencode-dcp", "little-coder", "little-coder-rtk", "claw-code", "prime", "dcode", "omp")  # claw-code deprecated 2026-08-30; historical cells still parse; omp added 2026-10-18
 
 
 def discover_runs(runs_dir: Path):

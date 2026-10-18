@@ -2,7 +2,8 @@
 """Classify what a rolled instance was doing when its rollout ended, from the
 session snapshot: opencode's `<run>/sessions/<iid>/.local/share/opencode/
 opencode.db` (sqlite since opencode 1.14), pi's (little-coder / -rtk)
-`<run>/sessions/<iid>/.pi/agent/sessions/*/*.jsonl` or prime-agent's
+`<run>/sessions/<iid>/.pi/agent/sessions/*/*.jsonl`, omp's
+`<run>/sessions/<iid>/.omp/agent/sessions/*/*.jsonl` or prime-agent's
 `<run>/sessions/<iid>/.prime/agent/sessions/*.jsonl` (same rows, flat, `ipython`
 tool: ceiling ~30 s applies). Built for wall hits: a wall is
 "model still working" only if the last part is an open reasoning/text/tool
@@ -188,10 +189,11 @@ def _iso_s(ts):
         return None
 
 def pi_session_files(run, iid):
-    # pi nests a per-cwd dir; prime-agent (same jsonl rows) stores flat under .prime/
+    # pi and omp nest a per-cwd dir; prime-agent (same jsonl rows) stores flat under .prime/
     base = pathlib.Path(run) / "sessions" / iid
     return sorted((base / ".pi/agent/sessions").glob("*/*.jsonl")) + \
-        sorted((base / ".prime/agent/sessions").glob("*.jsonl"))
+        sorted((base / ".prime/agent/sessions").glob("*.jsonl")) + \
+        sorted((base / ".omp/agent/sessions").glob("*/*.jsonl"))
 
 def pi_rows(files):
     """All `message` rows across the instance's pi sessions, time-ordered:

@@ -88,6 +88,15 @@ PY_CODE_TOOLS = {"ipython", "python", "python_repl", "execute_python", "run_pyth
                  "execute_code", "code_interpreter", "jupyter"}
 # Same for a JS kernel (dcode `js_eval`): `fetch(` / `https.get(` typed straight into node.
 JS_CODE_TOOLS = {"js_eval", "node", "javascript", "execute_js", "run_js"}
+# omp's single `eval` REPL tool carries the kernel in its `language` arg ('py' | 'js');
+# classify_call routes it to the python / JS rule above by that value.
+EVAL_LANG_TOOLS = {"eval"}
+# Tools whose `path` doubles as a URL: omp's `read` fetches http(s) targets (read.ts
+# -> fetch.ts), so a URL path is a web fetch, not a file read.
+URL_PATH_TOOLS = {"read"}
+# Tools that wrap `gh` under their own schema (omp `github`: op + repo/pr/query, no
+# command text for NET_BASH_RE) — every op is a GitHub round-trip.
+GH_WRAPPER_TOOLS = {"github"}
 JS_FETCH_RE = re.compile(r"\b(?:fetch|https?\.(?:get|request)|axios(?:\.(?:get|post))?|got|undici\.request)\(")
 URL_RE = re.compile(r"https?://[^\s'\"<>)\]]+", re.I)
 NET_BASH_RE = re.compile(
@@ -446,6 +455,18 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
     lname = (name or "").lower()
     a = args if isinstance(args, dict) else {}
     ev: list[dict] = []
+    if lname in EVAL_LANG_TOOLS:
+        lang = str(a.get("language") or "js").lower()   # omp eval defaults to JS
+        lname = "python" if lang in ("py", "python") else "js_eval"
+    if lname in URL_PATH_TOOLS and re.match(r"https?://", str(a.get("path") or ""), re.I):
+        lname, a = "fetch", {**a, "url": a.get("path")}
+    if lname in GH_WRAPPER_TOOLS:
+        target = " ".join(str(a.get(k)) for k in ("repo", "pr", "run", "query", "path") if a.get(k))
+        ev.append({"chan": "web", "kind": "UPSTREAM" if url_is_upstream(inst, target) or any(
+            re.search(rf"(?<![\w-]){re.escape(t)}(?![\w-])", target.lower()) for t in project_tokens(inst)) else "OTHER",
+                   "ok": None if output is None else (False if is_error else fetched_content(output, text)),
+                   "evidence": f"{name}: {a.get('op')} {target[:140]}".rstrip()})
+        return ev
 
     loopback = targets_loopback(text)
 
@@ -510,21 +531,23 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
             evidence += " [segment]"
         ev.append({"chan": "web", "kind": kind, "ok": outcome(), "evidence": evidence})
     py = PY_FETCH_RE.search(text) if (PY_EXEC_RE.search(text) or lname in PY_CODE_TOOLS) else None
+    kernel = "python"
     if py is None and lname in JS_CODE_TOOLS:
         py = JS_FETCH_RE.search(text)
+        kernel = "js"
     if py:
         urls = URL_RE.findall(text)
         remote = [u for u in urls if not url_is_loopback(u)]
         if loopback:
             # the bridge is one of the script's targets; the project tokens in a
             # self-dispatch prompt ("which sympy PR fixed …") name the question, not a site
-            ev.append(bridge_event(f"{name}: python {py.group(0)} {(urls[0][:140] if urls else '127.0.0.1')}".rstrip()))
+            ev.append(bridge_event(f"{name}: {kernel} {py.group(0)} {(urls[0][:140] if urls else '127.0.0.1')}".rstrip()))
         if remote or not loopback:
             words = re.sub(r"\S*/testbed/\S*", "", text).lower()
             kind = "UPSTREAM" if (any(url_is_upstream(inst, u) for u in remote) if remote else any(
                 re.search(rf"(?<![\w-]){re.escape(t)}(?![\w-])", words) for t in project_tokens(inst))) else "OTHER"
             ev.append({"chan": "web", "kind": kind, "ok": outcome(),
-                       "evidence": f"{name}: python {py.group(0)} {(remote[0][:140] if remote else '')}".rstrip()})
+                       "evidence": f"{name}: {kernel} {py.group(0)} {(remote[0][:140] if remote else '')}".rstrip()})
     g = GIT_DEFINITIONAL_RE.search(text)
     if g:
         ev.append({"chan": "git", "kind": "READ" if GIT_READ_RE.search(text) else "LIST",
@@ -585,8 +608,9 @@ def calls_from_opencode_storage(storage: Path):
 
 
 def calls_from_pi_files(files):
-    """pi-ai session jsonl (little-coder, prime): assistant toolCall blocks +
-    toolResult messages linked by id."""
+    """pi-ai session jsonl (little-coder, prime, omp — same toolCall /
+    toolResult entry shape): assistant toolCall blocks + toolResult messages
+    linked by id."""
     calls: dict[str, tuple] = {}
     results: dict[str, tuple[str, bool]] = {}
     order: list[str] = []
@@ -668,7 +692,7 @@ def instance_calls(run: Path, iid: str) -> tuple[str, list]:
     st = s / ".local/share/opencode/storage"
     if st.is_dir():
         return "opencode.storage", list(calls_from_opencode_storage(st))
-    for rel in (".pi/agent/sessions", ".prime/agent/sessions"):
+    for rel in (".pi/agent/sessions", ".prime/agent/sessions", ".omp/agent/sessions"):
         d = s / rel
         if d.is_dir():
             files = sorted(d.rglob("*.jsonl"))

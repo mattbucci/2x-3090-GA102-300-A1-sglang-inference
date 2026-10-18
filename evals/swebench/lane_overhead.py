@@ -137,11 +137,12 @@ def run_dir(path: str) -> None:
         if not ts:
             # pi lanes (little-coder / -rtk / prime): no event stream in the log;
             # the session snapshot's jsonl rows carry ISO timestamps (one file per
-            # session: main + the cleanup pass). pi nests a per-cwd dir, prime
-            # (same jsonl format) stores flat under .prime/agent/sessions/.
+            # session: main + the cleanup pass). pi and omp nest a per-cwd dir,
+            # prime (same jsonl format) stores flat under .prime/agent/sessions/.
             iid = os.path.basename(p)[:-4]
             files = sorted(glob.glob(os.path.join(path, "sessions", iid, ".pi/agent/sessions/*/*.jsonl"))
-                           + glob.glob(os.path.join(path, "sessions", iid, ".prime/agent/sessions/*.jsonl")))
+                           + glob.glob(os.path.join(path, "sessions", iid, ".prime/agent/sessions/*.jsonl"))
+                           + glob.glob(os.path.join(path, "sessions", iid, ".omp/agent/sessions/*/*.jsonl")))
             ts, steps, sessions = [], 0, len(files)
             for f in files:
                 for line in open(f, errors="replace"):

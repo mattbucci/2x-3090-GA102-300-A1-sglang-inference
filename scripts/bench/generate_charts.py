@@ -522,6 +522,7 @@ BAKEOFF_SCAFFOLDS = [
     ("little-coder-rtk", "#2ea043", "little-coder + RTK"),
     ("prime",            "#d2a8ff", "prime"),
     ("dcode",            "#f0883e", "dcode"),
+    ("omp",              "#f778ba", "omp"),
 ]
 BAKEOFF_QUEUE_FALLBACK = ["qwen38", "coder-30b-eval", "qwen36", "coder-reap-25b", "qwen36-ream",
                           "qwen35-moe", "coder-30b-ream", "qwen36-dense", "devstral", "gemma4",
