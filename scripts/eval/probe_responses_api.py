@@ -16,6 +16,18 @@ What this checks, in order:
      `arguments` parse as JSON — reasoning items are allowed in front of it.
   3. a request with a deliberately wrong `model` is rejected with 404
      (proves the validator is live, so a served-name drift will be loud).
+  4. history merge (patch 066): the step-2 output items are echoed back the
+     way langchain-openai does it — the `message` item keeps its `phase`
+     ("commentary"), the `function_call` item has none — plus a
+     `function_call_output`. Upstream v0.5.20 only merges consecutive
+     assistant items when `phase` is equal, so this history rendered as TWO
+     assistant turns (text<|im_end|> then the call) and the model learned to
+     end its turn after the announcement text: qwen38 dcode v4 = 190/300
+     sessions dead on a text-only turn. The probe sends the same history
+     with and without `phase` and requires identical `usage.input_tokens`
+     (a split turn costs the extra assistant header + <think></think> + end
+     tokens, ~10 per step). Wire-level, so it gates the IMAGE, not the host
+     tree.
 
 Usage:
   python scripts/eval/probe_responses_api.py [--port 23334] [--model ID]
@@ -127,7 +139,47 @@ def main() -> int:
     receipt["steps"]["wrong_model"] = {"http": st2, "body": resp2 if not ok_404 else "404 as expected"}
     print(f"wrong model: http={st2} -> {'ok (validator live)' if ok_404 else 'FAIL (expected 404)'}")
 
-    receipt["ok"] = ok_call and ok_404
+    # --- step 4: phase-tagged history must merge into one assistant turn ---
+    echo = [o for o in out if o.get("type") in ("reasoning", "message", "function_call")]
+    if not any(o.get("type") == "message" for o in echo):
+        # the model skipped the text part; insert the shape langchain would
+        # echo for a "\n\n" text block so the phase path is still exercised
+        idx = next((i for i, o in enumerate(echo) if o.get("type") == "function_call"), len(echo))
+        echo.insert(idx, {"type": "message", "role": "assistant", "id": "msg_probe",
+                          "phase": "commentary", "status": "completed",
+                          "content": [{"type": "output_text", "text": "\n\n", "annotations": []}]})
+    for o in echo:
+        if o.get("type") == "message":
+            o["phase"] = o.get("phase") or "commentary"
+    call_ids = [o.get("call_id") for o in echo if o.get("type") == "function_call"]
+    hist = [{"role": "user", "content": PROMPT}] + echo + [
+        {"type": "function_call_output", "call_id": cid, "output": "Paris: 18C, overcast"}
+        for cid in call_ids if cid]
+    hist += [{"role": "user", "content": "Thanks. Now the weather in Rome, same tool."}]
+
+    def _strip_phase(items):
+        return [{k: v for k, v in o.items() if k != "phase"} if isinstance(o, dict) else o for o in items]
+
+    def _input_tokens(items):
+        pl = {"model": model, "input": items, "tools": TOOLS, "tool_choice": "auto",
+              "max_output_tokens": 16}
+        st_, r_ = _req(f"{base}/v1/responses", pl, args.api_key, timeout=120)
+        u = (r_ or {}).get("usage") if isinstance(r_, dict) else None
+        return st_, (u or {}).get("input_tokens"), (None if st_ == 200 else r_)
+
+    st_a, tok_a, err_a = _input_tokens(hist)
+    st_b, tok_b, err_b = _input_tokens(_strip_phase(hist))
+    ok_merge = st_a == 200 and st_b == 200 and tok_a is not None and tok_a == tok_b
+    receipt["steps"]["history_merge"] = {
+        "http": [st_a, st_b], "input_tokens_with_phase": tok_a,
+        "input_tokens_without_phase": tok_b, "n_calls_echoed": len(call_ids),
+        "error": err_a or err_b,
+    }
+    print(f"history merge: input_tokens with phase={tok_a} without={tok_b} "
+          f"(http {st_a}/{st_b}) -> "
+          f"{'ok (one assistant turn)' if ok_merge else 'FAIL (phase-tagged history splits the assistant turn — patch 066 missing)'}")
+
+    receipt["ok"] = ok_call and ok_404 and ok_merge
     if args.json:
         with open(args.json, "w") as f:
             json.dump(receipt, f, indent=1)

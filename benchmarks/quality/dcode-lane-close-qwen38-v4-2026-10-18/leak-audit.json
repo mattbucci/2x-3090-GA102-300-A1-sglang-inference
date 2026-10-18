@@ -1,0 +1,5545 @@
+{
+ "run": "qwen38-dcode-v4",
+ "n": 300,
+ "counts": {
+  "web_none": 147,
+  "git_clean": 249,
+  "attempted": 143,
+  "exposed": 0,
+  "web_UPSTREAM": 143,
+  "web_OTHER": 10,
+  "git_LIST": 41,
+  "git_READ": 10,
+  "loopback_BRIDGE": 1,
+  "isolated": 300,
+  "no_transcript": 0,
+  "iso_network_none": 300,
+  "iso_refs_stripped": 300,
+  "iso_mounts_clean": 300,
+  "iso_git_reinit": 300
+ },
+ "gold_overlap": {
+  "exposed": {
+   "n": 0,
+   "ge80": 0,
+   "median": null
+  },
+  "isolated": {
+   "n": 84,
+   "ge80": 36,
+   "median": 0.5
+  }
+ },
+ "require_isolation": true,
+ "ok": true,
+ "instances": {
+  "astropy__astropy-12907": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "astropy__astropy-14182": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "astropy__astropy-14365": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/astropy/astropy/main/astropy/io/ascii/qdp.py"
+   ]
+  },
+  "astropy__astropy-14995": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "astropy__astropy-6938": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/astropy/astropy/issues/6934"
+   ]
+  },
+  "astropy__astropy-7746": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-10914": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.3333333333333333,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/commits?q=repo:django/django+%22Set+default+FILE_UPLOAD_PERMISSIONS%22"
+   ]
+  },
+  "django__django-10924": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-11001": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://code.djangoproject.com/ticket/30558"
+   ]
+  },
+  "django__django-11019": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/pull/11010.diff"
+   ]
+  },
+  "django__django-11039": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/3.0/django/core/management/commands/sqlmigrate.py"
+   ]
+  },
+  "django__django-11049": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/db/models/fields/__init__.py",
+    "web OTHER ok=False: execute: curl https://pypi.org [segment]",
+    "web UPSTREAM ok=False: execute: curl https://files.pythonhosted.org/packages/source/d/django/django-3.0.tar.gz [segment]"
+   ]
+  },
+  "django__django-11099": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-11133": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/issues/31703"
+   ]
+  },
+  "django__django-11179": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-11283": {
+   "source": "deepagents.db",
+   "web": "OTHER",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: execute: git log --oneline --all",
+    "web OTHER ok=False: execute: python urlopen( https://pypi.org"
+   ]
+  },
+  "django__django-11422": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/3.0/django/utils/autoreload.py"
+   ]
+  },
+  "django__django-11564": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/4.0/django/core/files/storage.py"
+   ]
+  },
+  "django__django-11583": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:django/django+embedded+null+byte"
+   ]
+  },
+  "django__django-11620": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "git LIST ok=False: execute: git log --all",
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/blob/stable/2.2.x/django/views/debug.py#L480-L500"
+   ]
+  },
+  "django__django-11630": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/issues/29817"
+   ]
+  },
+  "django__django-11742": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/issues/10321"
+   ]
+  },
+  "django__django-11797": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-11815": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-11848": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/main/django/utils/http.py",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/main/tests/utils_tests/test_http.py",
+    "git LIST ok=True: execute: .git/packed-refs"
+   ]
+  },
+  "django__django-11905": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://patch-diff.githubusercontent.com/raw/django/django/pull/11873.diff"
+   ]
+  },
+  "django__django-11910": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: execute: git log --all"
+   ]
+  },
+  "django__django-11964": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:django/django+TextChoices+IntegerChoices+differing+type",
+    "git LIST ok=True: execute: git -C /testbed log --all"
+   ]
+  },
+  "django__django-11999": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: execute: python urlopen( https://api.github.com/repos/django/django/commits?path=django/db/models/options.py&until=2020-09-30&per_page=5",
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/commit/22777b1a9a8c5b1e167a9806f4515f686f4d916f",
+    "git LIST ok=True: execute: git branch -a"
+   ]
+  },
+  "django__django-12113": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-12125": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-12184": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-12284": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://code.djangoproject.com/ticket/32406",
+    "web UPSTREAM ok=False: fetch_url: https://www.djangoproject.com/weblog/2020/",
+    "web UPSTREAM ok=False: fetch_url: https://docs.djangoproject.com/en/3.1/whatsnew/3.1/"
+   ]
+  },
+  "django__django-12286": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-12308": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/issues/31431"
+   ]
+  },
+  "django__django-12453": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: execute: git tag",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/3.1/django/db/backends/base/creation.py",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/3.1/tests/migration_test_data_persistence/tests.py"
+   ]
+  },
+  "django__django-12470": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-12497": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-12589": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:django/django+%22tricky+field+annotation%22"
+   ]
+  },
+  "django__django-12700": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: execute: pip download django==3.1.2 --no-deps -d /tmp/dj312 2>&1 | tail -3 [segment]"
+   ]
+  },
+  "django__django-12708": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://code.djangoproject.com/ticket/28858"
+   ]
+  },
+  "django__django-12747": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-12856": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:django/django+%22Add+check+for+fields+of+UniqueConstraints%22"
+   ]
+  },
+  "django__django-12908": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-12915": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.8,
+   "evidence": []
+  },
+  "django__django-12983": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/4.1/django/utils/text.py",
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/raw/4.2/django/utils/text.py",
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/issues/34294"
+   ]
+  },
+  "django__django-13028": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-13033": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-13158": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/3.2.x/django/db/models/sql/query.py"
+   ]
+  },
+  "django__django-13220": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/main/django/core/exceptions.py",
+    "git LIST ok=True: execute: git log --all",
+    "git LIST ok=True: execute: git log --all"
+   ]
+  },
+  "django__django-13230": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-13265": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-13315": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-13321": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: execute: git log --oneline --all"
+   ]
+  },
+  "django__django-13401": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/3.2.x/django/db/models/fields/__init__.py"
+   ]
+  },
+  "django__django-13447": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/contrib/admin/sites.py"
+   ]
+  },
+  "django__django-13448": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://docs.djangoproject.com/en/3.1/releases/3.1.3/",
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/repos/django/django/commits/53b6f489c8663721d2b0723029f6e9926e9c3a0c"
+   ]
+  },
+  "django__django-13551": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-13590": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/3.2.x/django/db/models/sql/query.py"
+   ]
+  },
+  "django__django-13658": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/4.2.x/tests/admin_scripts/tests.py"
+   ]
+  },
+  "django__django-13660": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-13710": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/main/django/contrib/admin/options.py"
+   ]
+  },
+  "django__django-13757": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://code.djangoproject.com/ticket/34213"
+   ]
+  },
+  "django__django-13768": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "READ",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "git READ ok=False: execute: git log --all"
+   ]
+  },
+  "django__django-13925": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-13933": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/pull/13933.diff"
+   ]
+  },
+  "django__django-13964": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-14016": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/4.2/django/db/models/query_utils.py"
+   ]
+  },
+  "django__django-14017": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/main/django/db/models/query_utils.py"
+   ]
+  },
+  "django__django-14155": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-14238": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/db/models/fields/__init__.py"
+   ]
+  },
+  "django__django-14382": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/pull/11270/files"
+   ]
+  },
+  "django__django-14411": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-14534": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/pull/14534.diff"
+   ]
+  },
+  "django__django-14580": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-14608": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/4.0.x/django/forms/formsets.py"
+   ]
+  },
+  "django__django-14667": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/pull/14667"
+   ]
+  },
+  "django__django-14672": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-14730": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/4.0.x/django/db/models/fields/related.py"
+   ]
+  },
+  "django__django-14752": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://code.djangoproject.com/ticket/33494"
+   ]
+  },
+  "django__django-14787": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://code.djangoproject.com/ticket/34306",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/5.1.x/django/utils/decorators.py",
+    "git READ ok=True: execute: git log --oneline --all"
+   ]
+  },
+  "django__django-14855": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-14915": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-14997": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: execute: git log --all"
+   ]
+  },
+  "django__django-14999": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-15061": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-15202": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/4.1/django/core/validators.py"
+   ]
+  },
+  "django__django-15213": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "READ",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git READ ok=False: execute: git log --all"
+   ]
+  },
+  "django__django-15252": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/pull/14760.diff",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/4.1.x/django/core/management/commands/migrate.py",
+    "web UPSTREAM ok=False: execute: python urlopen( https://docs.djangoproject.com/en/4.1/releases/4.1/",
+    "git LIST ok=True: execute: git log --oneline --all"
+   ]
+  },
+  "django__django-15320": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: execute: pip install pytest 2>&1 | tail -2",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/4.1/django/db/models/expressions.py"
+   ]
+  },
+  "django__django-15347": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/issues/14890"
+   ]
+  },
+  "django__django-15388": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-15400": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-15498": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-15695": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/4.1.x/django/db/migrations/operations/models.py",
+    "git LIST ok=True: execute: git branch -a"
+   ]
+  },
+  "django__django-15738": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-15781": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-15789": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/utils/html.py"
+   ]
+  },
+  "django__django-15790": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/pull/33010"
+   ]
+  },
+  "django__django-15814": {
+   "source": "deepagents.db",
+   "web": "OTHER",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: execute: pip install pytest -q 2>&1 | tail -2 [segment]"
+   ]
+  },
+  "django__django-15819": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/issues/34365"
+   ]
+  },
+  "django__django-15851": {
+   "source": "deepagents.db",
+   "web": "OTHER",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web OTHER ok=False: execute: pip install pytest -q 2>&1 | tail -2 [segment]"
+   ]
+  },
+  "django__django-15902": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/4.1.x/django/forms/formsets.py"
+   ]
+  },
+  "django__django-15996": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/main/django/db/migrations/serializer.py"
+   ]
+  },
+  "django__django-16041": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/4.2.x/django/forms/formsets.py"
+   ]
+  },
+  "django__django-16046": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:django/django+%22string+index+out+of+range%22+numberformat"
+   ]
+  },
+  "django__django-16139": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/4.2/django/contrib/auth/forms.py"
+   ]
+  },
+  "django__django-16229": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: execute: git branch -a"
+   ]
+  },
+  "django__django-16255": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-16379": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "django__django-16400": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/issues?q=%22migrate+management+command+does+not+respect+database+parameter+when+adding+Permissions%22"
+   ]
+  },
+  "django__django-16408": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/pull/16408/files"
+   ]
+  },
+  "django__django-16527": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-16595": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "django__django-16816": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-16820": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "django__django-16873": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/stable/5.0.x/django/template/defaultfilters.py"
+   ]
+  },
+  "django__django-16910": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/main/django/db/models/sql/query.py",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/django/django/main/django/db/models/sql/compiler.py"
+   ]
+  },
+  "django__django-17051": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/django/django/pull/17051.diff"
+   ]
+  },
+  "django__django-17087": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-18869": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:matplotlib/matplotlib+%22easily+comparable+version+info%22",
+    "git LIST ok=False: execute: git tag",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/matplotlib/matplotlib/v3.5.0/lib/matplotlib/__init__.py",
+    "git LIST ok=True: execute: git branch -a"
+   ]
+  },
+  "matplotlib__matplotlib-22711": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "READ",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "git READ ok=False: execute: git log --oneline --all"
+   ]
+  },
+  "matplotlib__matplotlib-22835": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: execute: git log --all"
+   ]
+  },
+  "matplotlib__matplotlib-23299": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-23314": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-23476": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-23562": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/repos/matplotlib/matplotlib/issues/4067"
+   ]
+  },
+  "matplotlib__matplotlib-23563": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/matplotlib/matplotlib/v3.6.0/lib/mpl_toolkits/mplot3d/art3d.py"
+   ]
+  },
+  "matplotlib__matplotlib-23913": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/matplotlib/matplotlib/v3.6.0/lib/matplotlib/legend.py"
+   ]
+  },
+  "matplotlib__matplotlib-23964": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-23987": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/matplotlib/matplotlib/v3.6.1/lib/matplotlib/figure.py"
+   ]
+  },
+  "matplotlib__matplotlib-24149": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-24265": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/matplotlib/matplotlib/v3.6.1/lib/matplotlib/style/core.py"
+   ]
+  },
+  "matplotlib__matplotlib-24334": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/matplotlib/matplotlib/commit/332937997",
+    "git LIST ok=False: execute: git tag",
+    "web OTHER ok=False: fetch_url: https://pypi.org",
+    "git READ ok=True: execute: git branch -a"
+   ]
+  },
+  "matplotlib__matplotlib-24970": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/matplotlib/matplotlib/v3.7.0/lib/matplotlib/colors.py",
+    "git READ ok=False: execute: git log --all",
+    "git LIST ok=True: execute: git describe --tags"
+   ]
+  },
+  "matplotlib__matplotlib-25079": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-25311": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/matplotlib/matplotlib/issues/25655",
+    "web OTHER ok=False: execute: python urlopen( https://pypi.org"
+   ]
+  },
+  "matplotlib__matplotlib-25332": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/matplotlib/matplotlib/main/lib/matplotlib/cbook.py",
+    "git LIST ok=True: execute: git branch -a"
+   ]
+  },
+  "matplotlib__matplotlib-25433": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: execute: pip download matplotlib==3.8.0 --no-deps -d /tmp/mpl380 2>&1 | tail -3 [segment]"
+   ]
+  },
+  "matplotlib__matplotlib-25442": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: execute: git log --oneline --all",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/matplotlib/matplotlib/v3.7.0/lib/matplotlib/offsetbox.py"
+   ]
+  },
+  "matplotlib__matplotlib-25498": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: execute: git branch -a"
+   ]
+  },
+  "matplotlib__matplotlib-26011": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "matplotlib__matplotlib-26020": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "mwaskom__seaborn-2848": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "mwaskom__seaborn-3010": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/mwaskom/seaborn/main/seaborn/_stats/regression.py"
+   ]
+  },
+  "mwaskom__seaborn-3190": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: execute: git log --oneline --all",
+    "web UPSTREAM ok=False: fetch_url: https://github.com/mwaskom/seaborn/issues/2847"
+   ]
+  },
+  "mwaskom__seaborn-3407": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/mwaskom/seaborn/issues/2752"
+   ]
+  },
+  "pallets__flask-4045": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: execute: git log -3 --all",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/pallets/flask/2.1.0/src/flask/blueprints.py",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/pallets/flask/2.1.0/tests/test_blueprints.py"
+   ]
+  },
+  "pallets__flask-4992": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.36363636363636365,
+   "evidence": []
+  },
+  "pallets__flask-5063": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: execute: git log --oneline --all",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/pallets/flask/3.0.0/src/flask/cli.py"
+   ]
+  },
+  "psf__requests-1963": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/psf/requests/issues/1513"
+   ]
+  },
+  "psf__requests-2148": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/requests/requests/issues/2180"
+   ]
+  },
+  "psf__requests-2317": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "psf__requests-2674": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "BRIDGE",
+   "loopback_calls": 2,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/psf/requests/pull/2999.diff",
+    "web UPSTREAM ok=False: execute: pip download requests==2.8.0 --no-deps -d /tmp/reqs28 2>&1 | tail -3 [segment]",
+    "loopback BRIDGE ok=False: execute: python urlopen( http://127.0.0.1:23334/get",
+    "loopback BRIDGE ok=False: execute: python urlopen( http://127.0.0.1:23334/"
+   ]
+  },
+  "psf__requests-3362": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "psf__requests-863": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: execute: git log --all"
+   ]
+  },
+  "pydata__xarray-3364": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/xarray/xarray/main/xarray/core/concat.py",
+    "git LIST ok=False: execute: git tag"
+   ]
+  },
+  "pydata__xarray-4094": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "pydata__xarray-4248": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:pydata/xarray+%22show+units+in+dataset+overview%22",
+    "git LIST ok=True: execute: git -C /testbed log --all"
+   ]
+  },
+  "pydata__xarray-4493": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "pydata__xarray-5131": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "pylint-dev__pylint-5859": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/PyCQA/pylint/main/pylint/checkers/misc.py"
+   ]
+  },
+  "pylint-dev__pylint-6506": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: execute: pip download pylint==2.14.0 --no-deps -d /tmp/p214 2>&1 | tail -3 [segment]"
+   ]
+  },
+  "pylint-dev__pylint-7080": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: execute: git log --oneline -3 --all",
+    "web UPSTREAM ok=False: fetch_url: https://github.com/PyCQA/pylint/issues/7684",
+    "web OTHER ok=False: execute: python urlopen( https://pypi.org"
+   ]
+  },
+  "pylint-dev__pylint-7114": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/PyCQA/pylint/main/pylint/lint/expand_modules.py"
+   ]
+  },
+  "pylint-dev__pylint-7228": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/PyCQA/pylint/v3.0.0/pylint/config/argument.py",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/PyCQA/pylint/v3.0.0/pylint/config/arguments_manager.py"
+   ]
+  },
+  "pylint-dev__pylint-7993": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "pytest-dev__pytest-11143": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "pytest-dev__pytest-11148": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: execute: git tag",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/pytest-dev/pytest/main/src/_pytest/pathlib.py"
+   ]
+  },
+  "pytest-dev__pytest-5103": {
+   "source": "deepagents.db",
+   "web": "OTHER",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: execute: python urlopen( https://api.github.com",
+    "git LIST ok=True: execute: git branch -a"
+   ]
+  },
+  "pytest-dev__pytest-5221": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "pytest-dev__pytest-5227": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/pytest-dev/pytest/issues?q=Improve+default+logging+format",
+    "git LIST ok=False: execute: git tag"
+   ]
+  },
+  "pytest-dev__pytest-5413": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:pytest-dev/pytest+in:title+%22pytest.raises+context+variable%22"
+   ]
+  },
+  "pytest-dev__pytest-5495": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/pytest-dev/pytest/issues/7249",
+    "git LIST ok=True: execute: git branch -a"
+   ]
+  },
+  "pytest-dev__pytest-5692": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "pytest-dev__pytest-6116": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "pytest-dev__pytest-7168": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "pytest-dev__pytest-7220": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: execute: git branch -a"
+   ]
+  },
+  "pytest-dev__pytest-7373": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "pytest-dev__pytest-7432": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/pytest-dev/pytest/issues/8039"
+   ]
+  },
+  "pytest-dev__pytest-7490": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "pytest-dev__pytest-8365": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:pytest-dev/pytest+7355"
+   ]
+  },
+  "pytest-dev__pytest-8906": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/pytest-dev/pytest/issues/7269"
+   ]
+  },
+  "pytest-dev__pytest-9359": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-10297": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-10508": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/scikit-learn/scikit-learn/0.20/sklearn/preprocessing/label.py"
+   ]
+  },
+  "scikit-learn__scikit-learn-10949": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/scikit-learn/scikit-learn/issues/11565"
+   ]
+  },
+  "scikit-learn__scikit-learn-11040": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-11281": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-12471": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/scikit-learn/scikit-learn/0.21/sklearn/preprocessing/_encoders.py"
+   ]
+  },
+  "scikit-learn__scikit-learn-13142": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-13241": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-13439": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.6666666666666666,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-13496": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.6666666666666666,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-13497": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-13584": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:scikit-learn/scikit-learn+print_changed_only+vector+values"
+   ]
+  },
+  "scikit-learn__scikit-learn-13779": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-14087": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.16666666666666666,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/scikit-learn/scikit-learn/main/sklearn/linear_model/logistic.py"
+   ]
+  },
+  "scikit-learn__scikit-learn-14092": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: execute: git log --all",
+    "web UPSTREAM ok=False: fetch_url: https://github.com/scikit-learn/scikit-learn/issues/13666"
+   ]
+  },
+  "scikit-learn__scikit-learn-14894": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/scikit-learn/scikit-learn/issues?q=ZeroDivisionError+%22in+%22_sparse_fit"
+   ]
+  },
+  "scikit-learn__scikit-learn-14983": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/scikit-learn/scikit-learn/0.23.0/sklearn/model_selection/_split.py"
+   ]
+  },
+  "scikit-learn__scikit-learn-15512": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: execute: python urlopen( https://api.github.com/search/issues?q=repo:scikit-learn/scikit-learn+affinity+propagation+13104"
+   ]
+  },
+  "scikit-learn__scikit-learn-15535": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-25500": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-25570": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-25638": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "scikit-learn__scikit-learn-25747": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/scikit-learn/scikit-learn/pull/25955/files",
+    "git LIST ok=True: execute: git log --all"
+   ]
+  },
+  "sphinx-doc__sphinx-10325": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sphinx-doc/sphinx/v5.0.0/sphinx/ext/autodoc/__init__.py"
+   ]
+  },
+  "sphinx-doc__sphinx-10451": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sphinx-doc__sphinx-11445": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git READ ok=False: execute: git log --all",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sphinx-doc/sphinx/master/sphinx/util/rst.py"
+   ]
+  },
+  "sphinx-doc__sphinx-7686": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/sphinx-doc/sphinx/issues/7507"
+   ]
+  },
+  "sphinx-doc__sphinx-7738": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sphinx-doc__sphinx-7975": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sphinx-doc/sphinx/3.2.1/sphinx/environment/adapters/indexentries.py"
+   ]
+  },
+  "sphinx-doc__sphinx-8273": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sphinx-doc/sphinx/v3.3.0/sphinx/builders/manpage.py"
+   ]
+  },
+  "sphinx-doc__sphinx-8282": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sphinx-doc__sphinx-8435": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sphinx-doc__sphinx-8474": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sphinx-doc__sphinx-8506": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/sphinx-doc/sphinx/pull/7770/files"
+   ]
+  },
+  "sphinx-doc__sphinx-8595": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": []
+  },
+  "sphinx-doc__sphinx-8627": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: execute: git log --all"
+   ]
+  },
+  "sphinx-doc__sphinx-8713": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sphinx-doc__sphinx-8721": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sphinx-doc/sphinx/3.x/sphinx/ext/viewcode.py"
+   ]
+  },
+  "sphinx-doc__sphinx-8801": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-11400": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/repos/sympy/sympy/issues/11287",
+    "git LIST ok=True: execute: git branch -a"
+   ]
+  },
+  "sympy__sympy-11870": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sympy/sympy/master/sympy/simplify/trigsimp.py"
+   ]
+  },
+  "sympy__sympy-11897": {
+   "source": "deepagents.db",
+   "web": "OTHER",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: execute: pip install pytest 2>&1 | tail -3 [segment]"
+   ]
+  },
+  "sympy__sympy-12171": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sympy/sympy/1.4/sympy/printing/mathematica.py"
+   ]
+  },
+  "sympy__sympy-12236": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-12419": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-12454": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-12481": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/sympy/sympy/issues?q=Permutation+constructor+fails+with+non-disjoint+cycles"
+   ]
+  },
+  "sympy__sympy-13031": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-13043": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web OTHER ok=False: execute: pip install pytest 2>&1 | tail -3 [segment]",
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sympy/sympy/master/sympy/integrals/intpoly.py"
+   ]
+  },
+  "sympy__sympy-13146": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:sympy/sympy+%22Exponent+doesn%27t+fully+simplify%22"
+   ]
+  },
+  "sympy__sympy-13177": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "sympy__sympy-13437": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-13471": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/sympy/sympy/issues?q=pickle+float+python+2+3"
+   ]
+  },
+  "sympy__sympy-13480": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-13647": {
+   "source": "deepagents.db",
+   "web": "OTHER",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web OTHER ok=False: execute: pip install pytest -q 2>&1 | tail -2 [segment]"
+   ]
+  },
+  "sympy__sympy-13773": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=False: execute: git log --all",
+    "web UPSTREAM ok=False: fetch_url: https://github.com/sympy/sympy/issues/11818",
+    "web OTHER ok=False: execute: python urlopen( https://pypi.org"
+   ]
+  },
+  "sympy__sympy-13895": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-13915": {
+   "source": "deepagents.db",
+   "web": "OTHER",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: execute: python -m pip install pytest 2>&1 | tail -3 [segment]",
+    "git LIST ok=True: execute: git log --all"
+   ]
+  },
+  "sympy__sympy-13971": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-14024": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-14308": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: execute: git log --all"
+   ]
+  },
+  "sympy__sympy-14317": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/sympy/sympy/issues?q=latex+printer+same+order+of+monomials",
+    "git READ ok=True: execute: git branch -a"
+   ]
+  },
+  "sympy__sympy-14396": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.07692307692307693,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/sympy/sympy/issues/9716"
+   ]
+  },
+  "sympy__sympy-14774": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-14817": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "READ",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git READ ok=True: execute: git log --all"
+   ]
+  },
+  "sympy__sympy-15011": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": []
+  },
+  "sympy__sympy-15308": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:sympy/sympy+%22LaTeX+printing+for+Matrix+Expression%22"
+   ]
+  },
+  "sympy__sympy-15345": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "sympy__sympy-15346": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-15609": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-15678": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sympy/sympy/master/sympy/geometry/util.py"
+   ]
+  },
+  "sympy__sympy-16106": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-16281": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/sympy/sympy/issues?q=Product+pretty+print+could+be+improved"
+   ]
+  },
+  "sympy__sympy-16503": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:sympy/sympy+in:title+%22Bad+centering%22"
+   ]
+  },
+  "sympy__sympy-16792": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-16988": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: execute: git log --all"
+   ]
+  },
+  "sympy__sympy-17022": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/sympy/sympy/issues/14839"
+   ]
+  },
+  "sympy__sympy-17139": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": []
+  },
+  "sympy__sympy-17630": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-17655": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-18057": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sympy/sympy/master/sympy/core/sympify.py",
+    "web OTHER ok=False: execute: pip install pytest 2>&1 | tail -2 [segment]"
+   ]
+  },
+  "sympy__sympy-18087": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-18189": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-18199": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sympy/sympy/master/sympy/ntheory/residue_ntheory.py"
+   ]
+  },
+  "sympy__sympy-18532": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: execute: python urlopen( https://raw.githubusercontent.com/sympy/sympy/master/sympy/core/basic.py"
+   ]
+  },
+  "sympy__sympy-18621": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-18698": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-18835": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sympy/sympy/master/sympy/utilities/iterables.py",
+    "git LIST ok=True: execute: git log --all"
+   ]
+  },
+  "sympy__sympy-19007": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/sympy/sympy/issues/18607",
+    "git LIST ok=False: execute: git log --all"
+   ]
+  },
+  "sympy__sympy-19254": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "READ",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/sympy/sympy/pulls?q=knuth-cohen",
+    "git READ ok=True: execute: git branch -a",
+    "web OTHER ok=False: execute: curl https://pypi.org [segment]",
+    "web OTHER ok=False: execute: curl https://raw.githubusercontent.com [segment]"
+   ]
+  },
+  "sympy__sympy-19487": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://github.com/sympy/sympy/issues/17441"
+   ]
+  },
+  "sympy__sympy-20049": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.075,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sympy/sympy/master/sympy/physics/vector/point.py"
+   ]
+  },
+  "sympy__sympy-20154": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sympy/sympy/master/sympy/utilities/iterables.py"
+   ]
+  },
+  "sympy__sympy-20212": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-20322": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sympy/sympy/master/sympy/simplify/radsimp.py"
+   ]
+  },
+  "sympy__sympy-20442": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-20590": {
+   "source": "deepagents.db",
+   "web": "OTHER",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": [
+    "web OTHER ok=False: execute: pip install pytest -q 2>&1 | tail -2 [segment]"
+   ]
+  },
+  "sympy__sympy-20639": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web UPSTREAM ok=False: execute: pip download sympy==1.7.1 -d /tmp/sympy171 --no-deps -q 2>&1 | tail -2 [segment]",
+    "web OTHER ok=False: execute: pip download https://pypi.org [segment]",
+    "web OTHER ok=False: execute: python urlopen( https://pypi.org"
+   ]
+  },
+  "sympy__sympy-21055": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "LIST",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "git LIST ok=True: execute: git tag"
+   ]
+  },
+  "sympy__sympy-21171": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-21379": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.2857142857142857,
+   "evidence": []
+  },
+  "sympy__sympy-21612": {
+   "source": "deepagents.db",
+   "web": "OTHER",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: execute: pip install antlr4-python3-runtime 2>&1 | tail -2 [segment]"
+   ]
+  },
+  "sympy__sympy-21614": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://api.github.com/search/issues?q=repo:sympy/sympy+Wrong+Derivative+kind+attribute"
+   ]
+  },
+  "sympy__sympy-21627": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-21847": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-22005": {
+   "source": "deepagents.db",
+   "web": "OTHER",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": [
+    "web OTHER ok=False: execute: pip install pytest 2>&1 | tail -1 [segment]"
+   ]
+  },
+  "sympy__sympy-22714": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-22840": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-23117": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 1.0,
+   "evidence": []
+  },
+  "sympy__sympy-23191": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-23262": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-24066": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-24102": {
+   "source": "deepagents.db",
+   "web": "UPSTREAM",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": true,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.0,
+   "evidence": [
+    "web UPSTREAM ok=False: fetch_url: https://raw.githubusercontent.com/sympy/sympy/master/sympy/parsing/mathematica.py"
+   ]
+  },
+  "sympy__sympy-24152": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": 0.5,
+   "evidence": []
+  },
+  "sympy__sympy-24213": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  },
+  "sympy__sympy-24909": {
+   "source": "deepagents.db",
+   "web": "none",
+   "git": "clean",
+   "loopback": "none",
+   "loopback_calls": 0,
+   "attempted": false,
+   "exposed": false,
+   "isolation": {
+    "network_none": true,
+    "refs_stripped": true,
+    "mounts_clean": true,
+    "git_reinit": true
+   },
+   "overlap": null,
+   "evidence": []
+  }
+ }
+}
