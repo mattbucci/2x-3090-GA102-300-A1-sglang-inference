@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 #
 # Per-instance rollout image: SWE-bench eval image + Node + the scaffold
-# roster (opencode, opencode+DCP, little-coder, prime-agent, dcode) + ripgrep.
+# roster (opencode, opencode+DCP, little-coder, prime-agent, dcode, omp) + ripgrep.
 # claw-code is DEPRECATED 2026-08-30 (unmaintained upstream; R9700 retired it
 # the same day) — its binary is still COPY'd so historical cells reproduce.
 #
@@ -32,6 +32,7 @@ ARG DCODE_VERSION=0.1.65
 ARG OPENCODE_DCP_VERSION=3.1.15
 ARG RTK_VERSION=0.46.0
 ARG LITTLE_CODER_RTK_VERSION=1.19.0
+ARG OMP_VERSION=18.12.2
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl xz-utils ca-certificates ripgrep && \
@@ -124,6 +125,21 @@ RUN /opt/miniconda3/bin/conda create -y -n dcode python=3.12 pip && \
     /opt/miniconda3/envs/dcode/bin/pip install --no-cache-dir deepagents-code==${DCODE_VERSION} && \
     ln -sf /opt/miniconda3/envs/dcode/bin/dcode /usr/local/bin/dcode && \
     /usr/local/bin/dcode --help > /dev/null
+
+# --- oh-my-pi (scaffold "omp") ---------------------------------------------
+# can1357/oh-my-pi: a bun-compiled pi-family coding agent (R9700 rolls it as
+# their 6th scaffold). The npm package needs bun (`engines.bun`), so the
+# standalone release binary is VENDORED into the build context by
+# evals/swebench/vendor_omp.sh (sha256-pinned there; 255 MB, gitignored) and
+# bind-mounted here — no network at image build, no per-instance download.
+# Provider config (~/.omp/agent/models.yml) + config.yml are written PER RUN
+# by docker_rollout.py with the served name, window and bearer; PI_NO_TITLE=1
+# is set per lane (omp's `title.generator: fork` forks a side turn on the
+# session model whenever the `todo` tool initialises a plan — a second
+# full-prefix request under --max-running 1, in headless mode too).
+RUN --mount=type=bind,source=omp-${OMP_VERSION}-linux-x64,target=/tmp/omp-linux-x64 \
+    install -m 0755 /tmp/omp-linux-x64 /usr/local/bin/omp && \
+    test "$(omp --version 2>&1)" = "omp/${OMP_VERSION}"
 
 # claw is the OpenAI-compat-capable Rust scaffold (claw-code/USAGE.md
 # Provider matrix: model id `openai/<served>` + OPENAI_BASE_URL +

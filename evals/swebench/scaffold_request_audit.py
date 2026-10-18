@@ -134,6 +134,12 @@ def first_run_only(inner: str) -> str:
 
 PROMPT_MARKER = "single word OK"
 DCP_ID_RE = re.compile(r"\s*<dcp-message-id>[^<]*</dcp-message-id>\s*$")
+# omp prepends one text block to the first user turn of every request
+# (DateCwdReminderInjector, request-time only, never stored in the session;
+# prompts/system/date-cwd-reminder.md) — the task text itself is untouched.
+OMP_REMINDER_RE = re.compile(
+    r"^<system-reminder>\nToday: \d{4}-\d{2}-\d{2}; current working directory: '[^']*'\. "
+    r"Do not repeat this information in your reply\.\n</system-reminder>")
 
 
 def check_prompt(sc: str, gens: list[dict]) -> tuple[str, list[str]]:
@@ -148,6 +154,8 @@ def check_prompt(sc: str, gens: list[dict]) -> tuple[str, list[str]]:
     t = cand[0]["body"]["user0"]["text"]
     if sc == "opencode-dcp":  # the DCP plugin tags every user turn; that is the lane under test
         t = DCP_ID_RE.sub("", t)
+    if sc == "omp":  # omp's date/cwd reminder block precedes the task text
+        t = OMP_REMINDER_RE.sub("", t, count=1)
     if t == PROBE_PROMPT:
         return "verbatim", []
     if t.strip() == PROBE_PROMPT.strip():
