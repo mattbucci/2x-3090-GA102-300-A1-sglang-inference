@@ -64,7 +64,8 @@ DOCKER_CTX = THIS_DIR / "docker"
 # claw-code DEPRECATED 2026-08-30 (unmaintained; kept for reproducing
 # historical cells — R9700 retired it the same day). opencode-dcp = opencode
 # with the Dynamic Context Pruning plugin (isolated HOME, see Dockerfile).
-SUPPORTED_SCAFFOLDS = ("opencode", "opencode-dcp", "little-coder", "little-coder-rtk", "claw-code", "prime", "dcode")
+# omp = oh-my-pi, the bun-compiled pi-family agent (R9700's sixth scaffold).
+SUPPORTED_SCAFFOLDS = ("opencode", "opencode-dcp", "little-coder", "little-coder-rtk", "claw-code", "prime", "dcode", "omp")
 
 # --- scaffold pins ------------------------------------------------------------
 # A cell is ONE scaffold version end to end. Every row and meta.json run record
@@ -107,6 +108,7 @@ def scaffold_pin(scaffold: str) -> str:
         "little-coder-rtk": f"{lc}+rtk@{a['RTK_VERSION']}",
         "prime": f"prime-agent@{a['PRIME_AGENT_VERSION']}",
         "dcode": f"deepagents-code@{a['DCODE_VERSION']}",
+        "omp": f"omp@{a['OMP_VERSION']}",
         "claw-code": "claw-code@retired-2026-08-30",
     }[scaffold]
 
@@ -621,6 +623,7 @@ SESSION_SNAPSHOT = (
     "snap .local/share/opencode/storage\n"
     "snap .pi/agent/sessions\n"
     "snap .prime/agent/sessions\n"
+    "snap .omp/agent/sessions\n"
     "snap .deepagents/.state\n"
     "snap .local/share/rtk/history.db\n"
     "chown -R --reference=/sessions /sessions 2>/dev/null || true\n"   # host uid via the bind mount's owner
@@ -677,7 +680,7 @@ def snapshot_sessions_live(container_name: str, home: str = "/root", budget_s: i
 # -A` (the union over scaffolds); the wall-hit capture excludes them by
 # pathspec instead, since the scaffold is still running when it reads the tree.
 WALL_DIFF_EXCLUDES = (".claw", ".opencode", ".sandbox-tmp", ".sandbox-home", ".cache",
-                      ".prime", ".deepagents")
+                      ".prime", ".deepagents", ".omp")
 
 
 def capture_diff_live(container_name: str, budget_s: int = 60) -> tuple[str | None, str]:
@@ -764,7 +767,8 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
     `_extract_diff_from_stdout` works uniformly, and every scaffold is told
     the same `context_window` (the served KV window) through its own config
     surface — opencode.json limit.context, little-coder models file,
-    prime models.json contextWindow, dcode --profile-override.
+    prime models.json contextWindow, dcode --profile-override, omp models.yml
+    contextWindow.
     """
     if context_window <= 0:
         raise ValueError("context_window must be the served window (>0); see --context-window")
@@ -993,6 +997,77 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             f"timeout 120 dcode -M openai:{served_name} --profile-override '{{\"max_input_tokens\": {int(context_window)}}}' --stdin -q --max-turns 8 -S all --allow-fs-tools all --timeout 100 <<<\"$CLEANUP_PROMPT\" || true\n"
             "echo === DIFF ===\n"
             "rm -rf /testbed/.deepagents /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            "git -C /testbed add -A\n"
+            "git -C /testbed diff --cached\n"
+        )
+        return envs, inner
+
+    if scaffold == "omp":
+        # oh-my-pi: pi-family agent shipped as one bun-compiled binary (see
+        # Dockerfile.rollout / vendor_omp.sh). Providers come from
+        # ~/.omp/agent/models.yml and settings from ~/.omp/agent/config.yml
+        # (YAML; a settings.json is only migrated when no yml exists) — both
+        # written HERE with the served name + window, so new presets need no
+        # static enumeration. Verified on 18.12.2 against the capture server:
+        # literal bearer, max_completion_tokens = maxTokens, no
+        # reasoning_effort / temperature, system role (not developer), prompt
+        # on stdin verbatim behind omp's own date/cwd <system-reminder> block
+        # (scaffold_request_audit strips it). Compaction reserve: omp uses
+        # max(15 % of the window, reserveTokens), so at 262144 the 39321 floor
+        # already covers OUTPUT_BUDGET; the explicit value keeps smaller
+        # windows on the same rule as the pi lanes. --no-title is
+        # load-bearing: title.generator defaults to `fork`, which replays the
+        # whole prefix as a side turn on the session model whenever the todo
+        # tool initialises a plan, headless too (#scheduleReplanTitleRefresh;
+        # only the initial autoTitle is interactive-only) — a second
+        # full-prefill request per plan under --max-running 1. startup
+        # update check is interactive-only; pinned off anyway.
+        models_yml = (
+            "providers:\n"
+            "  sglang:\n"
+            "    name: SGLang local\n"
+            "    api: openai-completions\n"
+            "    baseUrl: http://127.0.0.1:23334/v1\n"
+            f"    apiKey: {json.dumps(api_key())}\n"
+            "    models:\n"
+            f"      - id: {json.dumps(served_name)}\n"
+            f"        name: {json.dumps(served_name + ' (SGLang local)')}\n"
+            "        api: openai-completions\n"
+            "        reasoning: true\n"
+            "        input: [text]\n"
+            "        cost: {input: 0, output: 0, cacheRead: 0, cacheWrite: 0}\n"
+            f"        contextWindow: {int(context_window)}\n"
+            f"        maxTokens: {OUTPUT_BUDGET}\n"
+        )
+        config_yml = (
+            "compaction:\n"
+            f"  reserveTokens: {OUTPUT_BUDGET}\n"
+            "startup:\n"
+            "  checkUpdate: false\n"
+            "title:\n"
+            "  refreshOnReplan: false\n"
+        )
+        omp_cmd = f"omp --model sglang/{served_name} --yolo --no-title -p"
+        envs = ["--env", "DO_NOT_TRACK=1", "--env", "OTEL_SDK_DISABLED=true"]
+        inner = (
+            "set -e\n"
+            "git config --global user.email eval@local\n"
+            "git config --global user.name eval\n"
+            "git config --global --add safe.directory /testbed\n"
+            "mkdir -p /root/.omp/agent\n"
+            "cat > /root/.omp/agent/models.yml <<'OMPMODELS'\n"
+            f"{models_yml}"
+            "OMPMODELS\n"
+            "cat > /root/.omp/agent/config.yml <<'OMPCONFIG'\n"
+            f"{config_yml}"
+            "OMPCONFIG\n"
+            f"echo 'context budget: /root/.omp/agent/models.yml contextWindow={int(context_window)} maxTokens={OUTPUT_BUDGET} compaction.reserveTokens={OUTPUT_BUDGET}' >&2\n"
+            "cd /testbed\n"
+            f"{omp_cmd} < {PROMPT_FILE} || true\n"
+            "rm -rf /testbed/.omp /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
+            f"timeout 120 {omp_cmd} <<<\"$CLEANUP_PROMPT\" || true\n"
+            "echo === DIFF ===\n"
+            "rm -rf /testbed/.omp /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             "git -C /testbed add -A\n"
             "git -C /testbed diff --cached\n"
         )
