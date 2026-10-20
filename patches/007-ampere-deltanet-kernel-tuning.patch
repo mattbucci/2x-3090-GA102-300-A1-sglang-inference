@@ -1,8 +1,15 @@
 diff --git a/python/sglang/kernels/ops/attention/fla/fused_recurrent.py b/python/sglang/kernels/ops/attention/fla/fused_recurrent.py
-index 1a59ad0643..d5f08df9da 100644
+index 44d575fd44..e2dac4a9e4 100644
 --- a/python/sglang/kernels/ops/attention/fla/fused_recurrent.py
 +++ b/python/sglang/kernels/ops/attention/fla/fused_recurrent.py
-@@ -8,9 +8,28 @@ import torch
+@@ -1,23 +1,42 @@
+ # Adapt from https://github.com/fla-org/flash-linear-attention/blob/main/fla/ops/gated_delta_rule/fused_recurrent.py
+ # -*- coding: utf-8 -*-
+ # Copyright (c) 2023-2025, Songlin Yang, Yu Zhang
+ 
+ from typing import Optional, Tuple
+ 
+ import torch
  import triton
  import triton.language as tl
  
@@ -31,7 +38,21 @@ index 1a59ad0643..d5f08df9da 100644
  
  @triton.jit(do_not_specialize=["T"])
  def fused_recurrent_gated_delta_rule_fwd_kernel(
-@@ -137,11 +156,10 @@ def fused_recurrent_gated_delta_rule_fwd(
+     q,
+     k,
+     v,
+     g,
+     beta,
+     o,
+     h0,
+@@ -130,25 +149,24 @@ def fused_recurrent_gated_delta_rule_fwd(
+     beta: torch.Tensor,
+     scale: float,
+     initial_state: torch.Tensor,
+     output_final_state: bool,
+     use_qk_l2norm_in_kernel: bool = False,
+     cu_seqlens: Optional[torch.LongTensor] = None,
+ ) -> Tuple[torch.Tensor, torch.Tensor]:
      B, T, H, K, V = *k.shape, v.shape[-1]
      HV = v.shape[2]
      N = B if cu_seqlens is None else len(cu_seqlens) - 1
@@ -45,42 +66,88 @@ index 1a59ad0643..d5f08df9da 100644
  
      o = q.new_empty(NK, *v.shape)
      if output_final_state:
-@@ -359,9 +377,7 @@ def fused_recurrent_gated_delta_rule_packed_decode(
-         raise ValueError(
-             f"Packed decode kernel only supports NK=1 (got K={K}, BK={BK})."
-         )
--    BV = min(triton.next_power_of_2(V), 32)
+         final_state = q.new_empty(N, HV, V, K, dtype=torch.float32)
+     else:
+         final_state = None
+ 
+     grid = (NK, NV, N * HV)
+     fused_recurrent_gated_delta_rule_fwd_kernel[grid](
+         q=q,
+@@ -363,23 +381,24 @@ def fused_recurrent_gated_delta_rule_packed_decode(
+     # 200 registers per thread. Smaller value tiles expose 192 independent
+     # CTAs without changing the recurrence or its one-warp K reductions.
+     use_small_value_tile = (
+         B == 1
+         and qkv_dim == 2560
+         and mixed_qkv.dtype == torch.bfloat16
+         and initial_state.dtype == torch.float32
+         and (HV, V, K) == (12, 128, 128)
+         and torch.cuda.get_device_capability(mixed_qkv.device)[0] == 10
+     )
+-    BV = min(triton.next_power_of_2(V), 8 if use_small_value_tile else 32)
 -    num_stages = 3
 -    num_warps = 1
-+    BV, num_warps, num_stages = _get_deltanet_kernel_params(V)
++    if use_small_value_tile:
++        BV, num_stages, num_warps = 8, 3, 1
++    else:
++        BV, num_warps, num_stages = _get_deltanet_kernel_params(V)
  
      stride_mixed_qkv_tok = mixed_qkv.stride(0)
      stride_a_tok = a.stride(0)
+     stride_b_tok = b.stride(0)
+     stride_init_state_token = initial_state.stride(0)
+     stride_final_state_token = initial_state.stride(0)
+     stride_indices_seq = ssm_state_indices.stride(0)
+ 
+     NV = triton.cdiv(V, BV)
+     grid = (NV, B * HV)
 diff --git a/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py b/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py
-index 8f7c342002..448fad2c7a 100644
+index 03a628bcfb..62eb0ee6fe 100644
 --- a/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py
 +++ b/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py
-@@ -5,6 +5,9 @@ import triton
+@@ -1,17 +1,20 @@
+ from typing import Optional
+ 
+ import torch
+ import triton
  import triton.language as tl
  
  from sglang.kernels.jit.utils import is_arch_support_pdl
 +from sglang.kernels.ops.attention.fla.fused_recurrent import (
 +    _get_deltanet_kernel_params,
 +)
+ from sglang.srt.utils import (
+     get_device_sm,
+     is_cuda,
+     is_gfx95_supported,
+     is_hip,
+     is_sm90_supported,
+ )
+ 
+ _is_hip = is_hip()
+ _is_gfx95 = is_gfx95_supported()
+@@ -56,21 +59,23 @@ def _select_recurrent_launch_config(
+         # intermediate-state verify sets target_verify; cache_ring keeps BV=32.
+         return 4, 1
+     if (
+         _is_sm103
+         and is_kda
+         and target_verify
+         and (n, h, hv, k, v, cache_steps) == (1, 8, 8, 128, 128, 8)
+     ):
+         # GLM TP8 DFlash verification: 256 CTAs instead of 32.
+         return 4, 1
+-    return min(triton.next_power_of_2(v), 32), 1
++    # Default: upstream's (32, 1), or the sm_86 override (BV=64, patch 007).
++    bv, num_warps, _ = _get_deltanet_kernel_params(v)
++    return bv, num_warps
  
  
- @triton.jit(do_not_specialize=["T"])
-@@ -401,11 +404,10 @@ def fused_sigmoid_gating_delta_rule_update(
-     stride_a = a.stride()[1] if a.ndim == 4 else a.stride()[-2]
-     HV = v.shape[2]
-     N = B if cu_seqlens is None else len(cu_seqlens) - 1
--    BK, BV = triton.next_power_of_2(K), min(triton.next_power_of_2(V), 32)
-+    BK = triton.next_power_of_2(K)
-+    BV, num_warps, num_stages = _get_deltanet_kernel_params(V)
-     NK, NV = triton.cdiv(K, BK), triton.cdiv(V, BV)
-     assert NK == 1, "NK > 1 is not supported yet"
--    num_stages = 3
--    num_warps = 1
+ _EX2_APPROX_FTZ_F32 = tl.constexpr("ex2.approx.ftz.f32 $0, $1;")
+ _LG2_APPROX_FTZ_F32 = tl.constexpr("lg2.approx.ftz.f32 $0, $1;")
+ _UNARY_F32_REGISTERS = tl.constexpr("=f,f")
  
-     if scale is None:
-         scale = k.shape[-1] ** -0.5
+ 
+ @triton.jit
+ def _ex2_approx_ftz_f32(x):
+     return tl.inline_asm_elementwise(

@@ -1,16 +1,17 @@
 #!/bin/bash
 # SGLang setup for 2x RTX 3090
 #
-# Clones SGLang v0.5.20 and applies the local patches in patches/*.patch
-# (idempotent — git apply --check skips already-applied). 31 patches; verified
+# Clones SGLang v0.5.22 and applies the local patches in patches/*.patch
+# (idempotent — git apply --check skips already-applied). 29 patches; verified
 # byte-identical to the live tree by the 3-gate pristine replay — scripted,
-# scripts/test_patch_gates.sh (flipped from v0.5.18 2026-09-19, v0.5.19 skipped;
-# 21 applied clean, 7 re-ported — 059 moved with upstream's ServerArgs split
-# into arg_groups/, 011 rides upstream's IS_GFX1250 fp32 switch, 053 duck-types
-# the EVS tag after EVSDataItem was removed; 003 retired as upstreamed #38039;
-# 064 net-new — conv1d update-kernel conv-state col cast, R9700's 049 hunk).
-# Requires transformers 5.12.1 + torch 2.13.0 + flashinfer 0.6.18 [cu13] +
-# sglang-kernel 0.4.7 + xgrammar 0.2.1 (env sglang-v0520 also has librosa +
+# scripts/test_patch_gates.sh (flipped from v0.5.20 2026-10-20, v0.5.21 skipped;
+# 19 applied clean, 10 re-ported — MoE plumbing renamed tp_rank -> moe_tp_rank /
+# parallel_group (030/031/052), GDN decode routes through
+# _select_recurrent_launch_config (007), upstream casts the bf16 QK product
+# where 011 keeps the fp32 product; 061 + 099 retired as upstreamed #35809 /
+# #40045, 039 retired as dormant).
+# Requires transformers 5.19.0 + torch 2.14.1 + flashinfer 0.7.1 [cu13] +
+# sglang-kernel 0.4.9 + xgrammar 0.2.7 (env sglang-v0522 also has librosa +
 # accelerate for the Parakeet audio path).
 # NB: the serving runtime is in the base package (no [srt] extra) and upstream
 # adds a mandatory Rust gRPC ext that needs protoc; patch 037 drops that
@@ -31,11 +32,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-# Default stack = v0.5.20 (flipped 2026-09-19). The retained v0.5.18 tree
-# (/data/sglang-rebase-v0518, env sglang-v0518) still serves via ENV_NAME/SGLANG_DIR
+# Default stack = v0.5.22 (flipped 2026-10-20). The retained v0.5.20 tree
+# (/data/sglang-rebase-v0520, env sglang-v0520) still serves via ENV_NAME/SGLANG_DIR
 # overrides; to REBUILD an older stack from scratch, revert the flip commit (restores
-# the v0.5.18 patch set + this tag) or override SGLANG_TAG + PATCH_DIR + ENV_NAME.
-SGLANG_TAG="${SGLANG_TAG:-v0.5.20}"
+# the v0.5.20 patch set + this tag) or override SGLANG_TAG + PATCH_DIR + ENV_NAME.
+SGLANG_TAG="${SGLANG_TAG:-v0.5.22}"
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -88,7 +89,7 @@ else
     if [ "$_have_tag" != "$SGLANG_TAG" ]; then
         echo "ERROR: $SGLANG_DIR is at '$_have_tag', expected $SGLANG_TAG."
         echo "       Point SGLANG_DIR at a $SGLANG_TAG checkout (live tree:"
-        echo "       /data/sglang-rebase-v0520) or remove the stale dir to re-clone."
+        echo "       /data/sglang-rebase-v0522) or remove the stale dir to re-clone."
         exit 1
     fi
 fi
@@ -149,13 +150,13 @@ if [ "$SKIP_ENV" = false ]; then
     # HTTP; the grpc/multimodal exts would need cargo+protoc, absent here).
     SGLANG_BUILD_RUST_EXTS=none pip install -e .
 
-    # v0.5.20 hard-pins transformers==5.12.1 (fifth release on this pin — the
-    # version the fleet is validated on). 5.12.1 ships gemma4_unified natively
-    # but also routes Mistral checkpoints to the MistralCommonBackend tokenizer
-    # (fixed by patch 057). Pin exactly — do NOT let it drift: newer tx changes
-    # both of those paths under our feet.
-    echo "Pinning transformers 5.12.1 + gguf..."
-    pip install --no-deps "transformers==5.12.1" gguf
+    # v0.5.22 hard-pins transformers==5.19.0 (first tx move since 5.12.1; the
+    # version the fleet is validated on — tokenizer A/B bit-identical across all
+    # six families, tekken still routes away from MistralCommonBackend via patch
+    # 057). Pin exactly — do NOT let it drift: newer tx changes tokenizer routing
+    # and the gemma4_unified path under our feet.
+    echo "Pinning transformers 5.19.0 + gguf..."
+    pip install --no-deps "transformers==5.19.0" gguf
 
     # Eval/validator deps — pillow already comes in via SGLang's [srt] extras,
     # but imageio[ffmpeg] is needed for the validate_capabilities.py video

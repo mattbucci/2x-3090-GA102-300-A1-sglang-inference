@@ -1,11 +1,18 @@
 diff --git a/python/sglang/srt/layers/attention/linear/gdn_backend.py b/python/sglang/srt/layers/attention/linear/gdn_backend.py
-index d97c098..8f54e0d 100644
+index 75782942ff..45d33421af 100644
 --- a/python/sglang/srt/layers/attention/linear/gdn_backend.py
 +++ b/python/sglang/srt/layers/attention/linear/gdn_backend.py
-@@ -435,8 +435,13 @@ class GDNAttnBackend(MambaAttnBackendBase):
+@@ -1057,22 +1057,27 @@ class GDNAttnBackend(MambaAttnBackendBase):
+                 retrieve_next_token=retrieve_next_token,
+                 retrieve_next_sibling=retrieve_next_sibling,
+                 retrieve_parent_token=retrieve_parent_token,
+             )
+             mixed_qkv = mixed_qkv_processed.transpose(1, 2).view(seq_len, -1)
+         else:
+             if forward_metadata.has_mamba_track_mask:
                  mixed_qkv_to_track = mixed_qkv[
-                     :, forward_metadata.track_conv_indices
-                 ].transpose(0, 1)
+                     forward_metadata.track_conv_indices
+                 ].transpose(1, 2)
 +                # The mamba conv-state cache is bf16 (mamba_ssm/conv dtype) while
 +                # AWQ activations run fp16 (e.g. qwen36 --dtype float16); index_put
 +                # requires matching dtypes, so cast the source to the cache dtype.
@@ -16,4 +23,11 @@ index d97c098..8f54e0d 100644
 +                    mixed_qkv_to_track.to(conv_states.dtype)
                  )
  
-             mixed_qkv = causal_conv1d_fn(
+             mixed_qkv = self._convolve_prefill(
+                 layer,
+                 forward_batch,
+                 mixed_qkv,
+                 conv_states_contig,
+                 state_cache_indices,
+             )
+ 

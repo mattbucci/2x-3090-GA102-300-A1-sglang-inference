@@ -13,7 +13,7 @@ SGLang for 2x NVIDIA RTX 3090 (GA102-300-A1, 48GB total VRAM).
 
 ## Key Commands
 ```bash
-scripts/setup.sh                       # Full setup (clones SGLang v0.5.20, applies all patches/*.patch — 32 logical units)
+scripts/setup.sh                       # Full setup (clones SGLang v0.5.22, applies all patches/*.patch — 29 logical units)
 scripts/serve_production.sh gemma4-31b # Persistent PRODUCTION endpoint on :30000 (start/stop/status/restart; eval harness stays :23334)
 scripts/launch.sh devstral             # Devstral 24B AWQ (Dense, Mistral)  [ad-hoc/eval serve on :23334]
 scripts/launch.sh coder-30b-eval       # Qwen3-Coder-30B-A3B AWQ CT (256K, bake-off 43.0% opencode)
@@ -98,7 +98,7 @@ Capability guardrail on every iteration that touches a checkpoint: **preserve th
 - **`/tmp` is aged out after 10 days (`systemd-tmpfiles-clean.timer`, daily).** Long-lived queue state there (pid files, `swebench-bakeoff.lock`, poller logs) outlives that on a multi-day cycle — 2026-09-22 the timer deleted both engagement pollers' log dirs under the running processes. `systemd/tmpfiles-swebench-bakeoff.conf` (installed at `/etc/tmpfiles.d/`) excludes the bake-off dirs, the lock and the Claude scratchpads; any NEW long-lived `/tmp/<job>-logs` dir must be added there (or use `setsid` + a dir under `/var/tmp`, 30 d).
 
 ### Conda env split — `quant` vs the serving env
-- **`sglang-v0520`** (current serving env; version-suffixed per stack, resolved by `common.sh` ENV_NAME) — SGLang + CUDA + serving-side compressed_tensors (lacks `.distributed`). Use for `launch.sh`, `validate_capabilities.py`, `probe_*.py`.
+- **`sglang-v0522`** (current serving env; version-suffixed per stack, resolved by `common.sh` ENV_NAME) — SGLang + CUDA + serving-side compressed_tensors (lacks `.distributed`). Use for `launch.sh`, `validate_capabilities.py`, `probe_*.py`.
 - **`quant`** — calibration. Has `compressed_tensors==0.15.1.dev6+g077e752` with `.distributed`, llmcompressor importable. Use for `quantize_*.py`, GPTQ, CT→AWQ conversion.
 - Wrong env on quantize gives `ModuleNotFoundError: compressed_tensors.distributed`. Don't try to upgrade the serving env — use `quant`. Pattern: `conda activate quant` (NOT the serving env) before any llmcompressor work.
 

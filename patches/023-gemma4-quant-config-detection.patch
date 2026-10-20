@@ -1,8 +1,15 @@
 diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
-index 9c2f9c2..b9d19ec 100644
+index f0983560b9..12bb14298a 100644
 --- a/python/sglang/srt/models/gemma4_causal.py
 +++ b/python/sglang/srt/models/gemma4_causal.py
-@@ -556,11 +556,37 @@ class Gemma4DecoderLayer(nn.Module):
+@@ -582,25 +582,51 @@ class Gemma4DecoderLayer(nn.Module):
+             config, "num_kv_shared_layers", 0
+         )
+         is_kv_shared_layer = self.layer_id >= first_kv_shared_layer_idx > 0
+         use_double_wide_mlp = (
+             getattr(config, "use_double_wide_mlp", False) and is_kv_shared_layer
+         )
+         layer_intermediate_size = config.intermediate_size * (
              2 if use_double_wide_mlp else 1
          )
  
@@ -39,13 +46,27 @@ index 9c2f9c2..b9d19ec 100644
 -            quant_config=quant_config,
 +            quant_config=_mlp_quant_config,
              prefix=add_prefix("mlp", prefix),
+             reduce_results=False,
          )
  
+         self.input_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+         self.post_attention_layernorm = RMSNorm(
+             config.hidden_size, eps=config.rms_norm_eps
+         )
+         self.pre_feedforward_layernorm = RMSNorm(
+             config.hidden_size, eps=config.rms_norm_eps
 diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
-index 2c67479..2d2c792 100644
+index 41ae82ca1c..d27ff941d3 100644
 --- a/python/sglang/srt/models/gemma4_mm.py
 +++ b/python/sglang/srt/models/gemma4_mm.py
-@@ -191,27 +191,34 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+@@ -192,41 +192,48 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+         self.config = config
+         self.quant_config = quant_config
+ 
+         text_config = config.text_config
+ 
+         prefix = add_prefix("model", prefix)
+ 
          # Vision/audio encoders + their projection embedders are only consumed
          # at the input-embedding stage, so they live on the first PP rank only.
          if self.pp_group.is_first_rank:
@@ -84,3 +105,10 @@ index 2c67479..2d2c792 100644
                      prefix=add_prefix("embed_audio", prefix),
                  )
              else:
+                 self.audio_tower = None
+                 self.embed_audio = None
+         else:
+             self.vision_tower = PPMissingLayer()
+             self.embed_vision = PPMissingLayer()
+             self.audio_tower = None
+             self.embed_audio = None

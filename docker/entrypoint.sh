@@ -11,5 +11,5 @@ if (( $# == 0 )); then
     exit 64
 fi
 source /opt/conda/etc/profile.d/conda.sh
-conda activate sglang-v0520
+conda activate sglang-v0522
 exec "$@"
