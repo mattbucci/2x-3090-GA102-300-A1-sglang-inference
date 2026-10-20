@@ -166,13 +166,21 @@ def user_msgs(body: dict) -> list[dict]:
 
 def task_user(gens: list[dict]) -> dict | None:
     """The user message (with its `idx` among the request's user messages)
-    that carries the task prompt, from the first generation request that has
-    one."""
+    that carries the task prompt — from the generation request where it sits
+    EARLIEST among the user turns, ties to arrival order. opencode fires a
+    title-generation request ("Generate a title for this conversation:" +
+    the task as a second user turn) alongside the session's first request;
+    whichever lands first must not decide the verdict — the session request
+    carries the task as user turn #1 and is the one under audit."""
+    best = None
     for r in gens:
         for u in user_msgs(r["body"]):
             if PROMPT_MARKER in (u.get("text") or ""):
-                return u
-    return None
+                idx = int(u.get("idx") or 0)
+                if best is None or idx < int(best.get("idx") or 0):
+                    best = u
+                break
+    return best
 
 
 def check_prompt(sc: str, gens: list[dict]) -> tuple[str, list[str]]:
