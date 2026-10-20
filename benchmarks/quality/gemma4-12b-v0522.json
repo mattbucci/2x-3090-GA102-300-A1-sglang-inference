@@ -1,0 +1,200 @@
+{
+  "tag": "gemma4-12b-v0522",
+  "timestamp": "2026-10-20 03:12",
+  "max_context": 262144,
+  "thinking": {
+    "results": [
+      {
+        "name": "simple_mc",
+        "tokens": 128,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "reasoning",
+        "tokens": 615,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "knowledge",
+        "tokens": 132,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "code",
+        "tokens": 213,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "hard_mc",
+        "tokens": 2560,
+        "finish": "length",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": true
+      }
+    ],
+    "think_tags_rate": 0.0,
+    "clean_answer_rate": 1.0,
+    "truncation_rate": 0.2,
+    "avg_tokens": 729.6
+  },
+  "mmlu": {
+    "correct": 25,
+    "total": 30,
+    "accuracy": 0.8333333333333334
+  },
+  "humaneval": {
+    "passed": 24,
+    "total": 25,
+    "pass_rate": 0.96
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "DbQA": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "SuppQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "TableQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "ProtocolQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "SeqQA": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "CloningScenarios": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "_overall": {
+      "correct": 5,
+      "total": 56,
+      "accuracy": 0.08928571428571429
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 1066
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 1065
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 1066
+      },
+      {
+        "context": 16384,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 16426
+      },
+      {
+        "context": 16384,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 16425
+      },
+      {
+        "context": 16384,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 16425
+      },
+      {
+        "context": 65536,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 65578
+      },
+      {
+        "context": 65536,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 65578
+      },
+      {
+        "context": 65536,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 65578
+      },
+      {
+        "context": 131072,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 131114
+      },
+      {
+        "context": 131072,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 131114
+      },
+      {
+        "context": 131072,
+        "depth": 0.9,
+        "found": false,
+        "actual_prompt_tokens": 131114
+      },
+      {
+        "context": 250000,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 250043
+      },
+      {
+        "context": 250000,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 250043
+      },
+      {
+        "context": 250000,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 250043
+      }
+    ],
+    "score": 0.9333333333333333
+  }
+}

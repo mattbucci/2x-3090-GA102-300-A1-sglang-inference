@@ -1,0 +1,69 @@
+{
+ "tag": "qwen36-vl-reap-v0522-short-needle-4096",
+ "timestamp": "2026-10-20 13:13",
+ "needle": {
+  "results": [
+   {
+    "context": 1024,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 1059,
+    "finish_reason": "stop",
+    "completion_tokens": 237,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "\nSo I will output \"BANANA42\".\nCheck for any tricks? None apparent. Just a straightforward extraction.\nOutput matches request.\nDone. \nProceed. \nOutput: BANANA42\n"
+   },
+   {
+    "context": 1024,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 1059,
+    "finish_reason": "stop",
+    "completion_tokens": 175,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "e pangram repeated, with the password inserted in the middle.\nThe password is clearly \"BANANA42\".\nOutput matches requirement.\nDone. \nProceed. \nOutput: BANANA42\n"
+   },
+   {
+    "context": 1024,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 1060,
+    "finish_reason": "stop",
+    "completion_tokens": 208,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "Output: BANANA42. \nWait, let's verify exact casing. \"BANANA42\".\nYes.\nFinal answer: BANANA42. \nAll good. \nOutput matches exactly. \nProceeds. \n[End of reasoning]\n"
+   },
+   {
+    "context": 16384,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 16420,
+    "finish_reason": "stop",
+    "completion_tokens": 160,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "BANANA42\".\nCheck for any tricks: The text is mostly filler, but the password is explicitly given.\nOutput matches requirement.\nDone. \nProceed. \nOutput: BANANA42\n"
+   },
+   {
+    "context": 16384,
+    "depth": 0.5,
+    "found": false,
+    "actual_prompt_tokens": 16419,
+    "finish_reason": "length",
+    "completion_tokens": 512,
+    "content_tail": "",
+    "reasoning_tail": "lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown"
+   },
+   {
+    "context": 16384,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 16419,
+    "finish_reason": "stop",
+    "completion_tokens": 209,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "Wait, let's verify the exact string in the prompt:\n\"The secret password is: BANANA42.\"\nYes.\nOutput: BANANA42.\nDone. \nProceeds. \n[Output Generation] -> BANANA42\n"
+   }
+  ],
+  "score": 0.8333333333333334
+ }
+}

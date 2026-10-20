@@ -1,0 +1,34 @@
+{
+  "qwen36-dense-v0522": {
+    "tag": "qwen36-dense-v0522",
+    "model": "qwen36-dense",
+    "timestamp": "2026-10-20 06:25",
+    "elapsed_sec": 30.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1473 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)the user wants a one-sentence description of the provided image.\\n\\n1.  **analyze the image:** the image shows a simple, s'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'motion', 'circle', 'red']  response='(reasoning)the user wants a one-sentence description of the video.\\n\\n1.  **analyze the video:**\\n    *   the video consists of a sequ'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  }
+}

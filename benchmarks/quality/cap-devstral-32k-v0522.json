@@ -1,0 +1,26 @@
+{
+  "devstral-32k-v0522": {
+    "tag": "devstral-32k-v0522",
+    "model": "devstral-32k",
+    "timestamp": "2026-10-20 12:11",
+    "elapsed_sec": 0.8,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle']  response='this image is a simple representation of the japanese national flag, which is a white rectangle with a large red circle '"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  }
+}
