@@ -112,8 +112,15 @@ def main():
             print(f"    {iid}")
         return 0
 
-    # 2. Backup + strip
+    # 2. Backup + strip. Never overwrite an earlier backup: a resumed cycle
+    # re-audits a partially re-rolled cell and strips again, and the first
+    # backup is the only copy of the lane's first draws (the paired-sample and
+    # audit_predictions receipts read it).
     backup = pred_path.with_suffix(".jsonl.pre-reroll")
+    n = 1
+    while backup.exists():
+        backup = pred_path.with_suffix(f".jsonl.pre-reroll.{n}")
+        n += 1
     shutil.copy(pred_path, backup)
     with pred_path.open("w") as fh:
         for d in keep:
