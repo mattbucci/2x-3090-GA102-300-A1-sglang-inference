@@ -42,7 +42,7 @@ def main():
     depths = tuple(float(x) for x in a.depths.split(","))
     results = []
     for _ in range(a.repeat):
-        results += needle_eval(url, lengths, depths=depths, max_tokens=a.max_tokens)["results"]
+        results += needle_eval(url, lengths, depths=depths, budget=a.max_tokens)["results"]
     score = sum(r["found"] for r in results) / len(results) if results else 0
     out = {"tag": a.tag, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
            "needle": {"results": results, "score": score}}

@@ -259,7 +259,8 @@ def labbench_suite(url, n_samples=50, max_workers=1, max_tokens=4096):
     return results
 
 
-def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9), max_tokens=4096):
+def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9), max_tokens=4096,
+                budget=None):
     """Needle-in-a-haystack at various context lengths AND depths.
 
     Varying the needle DEPTH (fraction through the filler) catches lost-in-the-
@@ -269,8 +270,10 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
     """
     filler = "The quick brown fox jumps over the lazy dog. " * 100
     needle = "The secret password is: BANANA42."
-    # Needle answers are short — cap at 512 regardless of model context
-    needle_budget = min(max_tokens, 512)
+    # Needle answers are short — cap at 512 regardless of model context.
+    # `budget` overrides the cap (band probes replaying a missed cell with a
+    # larger budget to tell a thinking-length wobble from a retrieval miss).
+    needle_budget = budget if budget else min(max_tokens, 512)
     results = []
     for ctx in lengths:
         # 4.5 chars/token measured for this filler across Qwen/Gemma/Mistral
