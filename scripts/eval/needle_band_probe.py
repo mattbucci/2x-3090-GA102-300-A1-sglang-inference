@@ -50,7 +50,9 @@ def main():
     path = RESULTS_DIR / f"{a.tag}.json"
     path.write_text(json.dumps(out, indent=1))
     for r in results:
-        print(f"  {r['context']:>7} @ {r['depth']:<4} {'found' if r['found'] else 'MISS '} actual={r['actual_prompt_tokens']}")
+        print(f"  {r['context']:>7} @ {r['depth']:<4} {'found' if r['found'] else 'MISS '} actual={r['actual_prompt_tokens']} "
+              f"finish={r.get('finish_reason')} out={r.get('completion_tokens')}"
+              + ("" if r["found"] else f"  tail={r.get('content_tail') or r.get('reasoning_tail')!r}"))
     print(f"score {score:.2f} -> {path}")
 
 

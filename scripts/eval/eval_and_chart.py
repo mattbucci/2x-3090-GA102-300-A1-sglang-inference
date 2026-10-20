@@ -286,13 +286,24 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
                 r = requests.post(url, json={"model": "default", "messages": [
                     {"role": "user", "content": prompt}
                 ], "max_tokens": needle_budget, "temperature": 0}, timeout=max(600, ctx // 150)).json()
-                found = "BANANA42" in (_answer_text(r["choices"][0]["message"]) or "")
+                msg = r["choices"][0]["message"]
+                found = "BANANA42" in (_answer_text(msg) or "")
                 actual = r.get("usage", {}).get("prompt_tokens")
+                # Record WHY a cell missed: a thinking model that burns the
+                # budget before answering (finish=length, needle absent from
+                # the reasoning) is a thinking-length wobble, not a retrieval
+                # failure — the v0.5.22 flip could not tell the two apart.
+                finish = r["choices"][0].get("finish_reason")
+                excerpt = ((msg.get("content") or "")[-160:], (msg.get("reasoning_content") or "")[-160:])
+                comp_tok = r.get("usage", {}).get("completion_tokens")
             except Exception:
                 found = False
-                actual = None
+                actual = finish = comp_tok = None
+                excerpt = ("", "")
             results.append({"context": ctx, "depth": depth, "found": found,
-                            "actual_prompt_tokens": actual})
+                            "actual_prompt_tokens": actual, "finish_reason": finish,
+                            "completion_tokens": comp_tok,
+                            "content_tail": excerpt[0], "reasoning_tail": excerpt[1]})
     return {"results": results, "score": sum(r["found"] for r in results) / len(results) if results else 0}
 
 
