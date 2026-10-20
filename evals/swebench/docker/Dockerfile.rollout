@@ -24,10 +24,10 @@ FROM ${BASE}
 
 USER root
 
-ARG NODE_VERSION=22.23.2  # prime-agent requires Node >=22.8
+ARG NODE_VERSION=22.23.2  # opencode / little-coder / settings snippets (prime-agent 0.10.0 no longer needs Node)
 ARG OPENCODE_VERSION=1.14.25
 ARG LITTLE_CODER_VERSION=1.1.0
-ARG PRIME_AGENT_VERSION=0.8.1
+ARG PRIME_AGENT_VERSION=0.10.0
 ARG DCODE_VERSION=0.1.65
 ARG OPENCODE_DCP_VERSION=3.1.15
 ARG RTK_VERSION=0.46.0
@@ -98,25 +98,39 @@ RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/in
 
 # --- prime-agent (scaffold "prime") ----------------------------------------
 # VENDORED since 2026-10-09: upstream distributes prime-agent only through a
-# curl installer (NOT on public npm) and pruned every pre-0.10.0 release from
-# its download bucket mid-campaign — releases/v0.8.1 went 404, so every
-# per-instance build failed and the rolling lane wrote crash rows. The tarball
-# is the installer's own footprint (npm package under /opt/node/lib, the
-# postinstall kernel venv + uv under /root), captured from the last image the
-# installer built; evals/swebench/vendor_prime_agent.sh regenerates it from
-# such an image or fetches the mirror. 0.10.0 is a Rust rewrite (different
-# program): re-pinning to it is a cycle-boundary change gated on
-# scaffold_request_audit.py, never a mid-cycle one. Provider config
-# (~/.prime/agent/models.json) is written PER RUN by docker_rollout.py with
-# the actual served name (no static enumeration — avoids the opencode.json
-# new-preset landmine class entirely).
+# curl installer / release bucket (NOT on public npm) and pruned every
+# pre-0.10.0 release mid-campaign — releases/v0.8.1 went 404, every
+# per-instance build failed, the rolling lane wrote 29 crash rows.
+# 0.10.0 (re-pinned 2026-10-19, `stable` channel) is a Rust rewrite — a
+# single static-ish binary (glibc >= 2.34; the eval images carry 2.35) with a
+# Python "kernel" the binary bootstraps on first run through uv (managed
+# CPython 3.11 + prime-agent-runtime + 12 default packages + the Python
+# skills as editable installs; it needs PyPI and the astral bucket). The
+# vendor tgz (evals/swebench/vendor_prime_agent.sh --build; sha-pinned there,
+# HF-mirrored, gitignored) carries the upstream payload at /opt/prime-agent
+# PLUS that kernel venv already built at /root/.prime/agent/kernel-venv and
+# the uv-managed CPython under /root/.local — the venv records absolute
+# paths, so it only stays warm at exactly these locations with HOME=/root.
+# Warm = zero uv invocations at session start (the rollout has no network;
+# a cold venv would re-run `uv pip install`, lose every Python skill and
+# cost ~30 s per session). `--prime-agent-bootstrap` alone leaves the record
+# with `python_skills: []` and a SESSION then re-syncs the 9 bundled skills
+# through uv — the vendor build therefore runs one stub-model session and the
+# record must list the skills ("import_name"). The readiness checks below
+# fail the build on a footprint that would go cold. Provider config (~/.prime/agent/models.json)
+# + settings.json are written PER RUN by docker_rollout.py with the actual
+# served name (no static enumeration — avoids the opencode.json new-preset
+# landmine class entirely). Re-pinning prime-agent is a cycle-boundary
+# change gated on scaffold_request_audit.py, never a mid-cycle one.
 RUN --mount=type=bind,source=prime-agent-${PRIME_AGENT_VERSION}-vendor.tgz,target=/tmp/prime-agent-vendor.tgz \
-    tar -xzf /tmp/prime-agent-vendor.tgz -C / root && \
-    tar -xzf /tmp/prime-agent-vendor.tgz -C "$(readlink -f /opt/node)/lib" --strip-components=3 \
-        opt/node/lib/node_modules/prime-agent && \
-    ln -sfn ../lib/node_modules/prime-agent/dist/bundle/cli.js /opt/node/bin/prime-agent && \
-    for rc in /root/.bashrc /root/.profile /root/.zshrc; do printf '\n. "$HOME/.local/bin/env"\n' >> "$rc"; done && \
-    command -v prime-agent && test "$(prime-agent --version 2>&1)" = "${PRIME_AGENT_VERSION}"
+    tar -xzf /tmp/prime-agent-vendor.tgz -C / && \
+    ln -sfn /opt/prime-agent/prime-agent /usr/local/bin/prime-agent && \
+    test "$(prime-agent --version 2>&1)" = "${PRIME_AGENT_VERSION}" && \
+    grep -q '"schema"' /root/.prime/agent/kernel-venv/.bootstrap-version && \
+    grep -q '"import_name"' /root/.prime/agent/kernel-venv/.bootstrap-version && \
+    grep -q '^home = /root/.local/share/uv/python/' /root/.prime/agent/kernel-venv/pyvenv.cfg && \
+    /root/.prime/agent/kernel-venv/bin/python -c 'import rlm.repl, rlm.bash, rlm.mcp, rlm.harness, dill, requests, httpx' && \
+    test -z "$(ls -A /root/.prime/agent | grep -vx kernel-venv)"
 
 # --- deepagents-code (scaffold "dcode") ------------------------------------
 # Python CLI, requires python>=3.12; the eval images' conda base is 3.11, so

@@ -80,19 +80,25 @@ class H(BaseHTTPRequestHandler):
             elif k == "input": slim["input_n"] = len(v) if isinstance(v, list) else 1
             elif k == "tools": slim["tools_n"] = len(v)
             else: slim[k] = v
-        # first user message, verbatim: proves how the task prompt reached the
-        # model (argv re-quoting / trimming / scaffold wrapping are all visible)
+        # every user message, verbatim: proves how the task prompt reached the
+        # model (argv re-quoting / trimming / scaffold wrapping are all visible).
+        # user0 = the first one (historical receipts); users = all of them, for
+        # scaffolds that put a turn of their own BEFORE the task (prime-agent
+        # 0.10.0's `[harness-digest]` user message).
         msgs = body.get("messages") if isinstance(body.get("messages"), list) else body.get("input")
         if isinstance(msgs, str): msgs = [{"role": "user", "content": msgs}]
+        users = []
         for m in msgs or []:
             if not (isinstance(m, dict) and m.get("role") == "user"): continue
             c = m.get("content")
             if isinstance(c, list):
                 c = "".join(x.get("text") or x.get("input_text") or "" for x in c if isinstance(x, dict))
             if isinstance(c, str):
-                slim["user0"] = {"len": len(c), "sha256": hashlib.sha256(c.encode()).hexdigest()[:16],
-                                 "text": c if len(c) <= 4000 else c[:2000] + "\n...\n" + c[-2000:]}
-            break
+                users.append({"idx": len(users), "len": len(c), "sha256": hashlib.sha256(c.encode()).hexdigest()[:16],
+                              "text": c if len(c) <= 4000 else c[:2000] + "\n...\n" + c[-2000:]})
+            if len(users) >= 8: break
+        if users:
+            slim["user0"] = users[0]; slim["users"] = users
         LOG.write(json.dumps({"scaffold": open("/cap/current").read().strip(), "path": self.path,
                               "user_agent": self.headers.get("User-Agent"), "auth": self._auth(),
                               "body": slim}) + "\n"); LOG.flush()
@@ -142,29 +148,64 @@ OMP_REMINDER_RE = re.compile(
     r"Do not repeat this information in your reply\.\n</system-reminder>")
 
 
+# Scaffolds whose FIRST user message is a turn of their own, the task being
+# the second: prime-agent 0.10.0 (Rust) opens every request with a
+# `[harness-digest]` user message (Continual Harness state; pa-core
+# prompts/layers) — a separate turn, the task text itself is untouched.
+# Any other scaffold that moves the task off the first user turn FAILs.
+TASK_AFTER_OWN_TURN_OK = {"prime"}
+
+
+def user_msgs(body: dict) -> list[dict]:
+    """All user messages a capture recorded (`users`), or the first one for
+    pre-2026-10-19 receipts that only carried `user0`."""
+    if isinstance(body.get("users"), list):
+        return body["users"]
+    return [body["user0"]] if body.get("user0") else []
+
+
+def task_user(gens: list[dict]) -> dict | None:
+    """The user message (with its `idx` among the request's user messages)
+    that carries the task prompt, from the first generation request that has
+    one."""
+    for r in gens:
+        for u in user_msgs(r["body"]):
+            if PROMPT_MARKER in (u.get("text") or ""):
+                return u
+    return None
+
+
 def check_prompt(sc: str, gens: list[dict]) -> tuple[str, list[str]]:
-    """How the task prompt arrived at the model: the first user message of the
+    """How the task prompt arrived at the model: the user message of the
     request that carries it must be PROBE_PROMPT verbatim (whitespace-trimmed
     is fine: pi and dcode strip). Catches argv re-quoting (opencode `run`
     wrapped a positional message in `"…"` with inner quotes escaped — every
-    opencode cell before 2026-09-19), scaffold wrapping and loss."""
-    cand = [r for r in gens if PROMPT_MARKER in ((r["body"].get("user0") or {}).get("text") or "")]
-    if not cand:
+    opencode cell before 2026-09-19), scaffold wrapping and loss. A carrier
+    that is not the first user message is labelled `@u<N>` (1-based) and is
+    a FAIL unless the scaffold is known to open with a turn of its own."""
+    u = task_user(gens)
+    if u is None:
         return "MISSING", ["task prompt not found in any user message of a generation request"]
-    t = cand[0]["body"]["user0"]["text"]
+    t = u["text"]
+    idx = int(u.get("idx") or 0)
+    tag, probs = "", []
+    if idx:
+        tag = f"@u{idx + 1}"
+        if sc not in TASK_AFTER_OWN_TURN_OK:
+            probs.append(f"task prompt is user message #{idx + 1} (a scaffold turn precedes it)")
     if sc == "opencode-dcp":  # the DCP plugin tags every user turn; that is the lane under test
         t = DCP_ID_RE.sub("", t)
     if sc == "omp":  # omp's date/cwd reminder block precedes the task text
         t = OMP_REMINDER_RE.sub("", t, count=1)
     if t == PROBE_PROMPT:
-        return "verbatim", []
+        return "verbatim" + tag, probs
     if t.strip() == PROBE_PROMPT.strip():
-        return "verbatim*", []   # * = whitespace-trimmed by the scaffold
+        return "verbatim*" + tag, probs   # * = whitespace-trimmed by the scaffold
     if t.strip().startswith('"') and t.strip().rstrip().endswith('"'):
-        return "RE-QUOTED", [f"prompt re-quoted by the scaffold (argv delivery): {t[:70]!r}"]
+        return "RE-QUOTED" + tag, probs + [f"prompt re-quoted by the scaffold (argv delivery): {t[:70]!r}"]
     if PROBE_PROMPT in t:
-        return "WRAPPED", [f"prompt wrapped by the scaffold (+{len(t) - len(PROBE_PROMPT)} chars): {t[:70]!r}"]
-    return "ALTERED", [f"prompt altered: {t[:120]!r}"]
+        return "WRAPPED" + tag, probs + [f"prompt wrapped by the scaffold (+{len(t) - len(PROBE_PROMPT)} chars): {t[:70]!r}"]
+    return "ALTERED" + tag, probs + [f"prompt altered: {t[:120]!r}"]
 
 
 def build_driver(scaffolds: list[str], served: str, ctx: int, per_timeout: int) -> str:
@@ -308,7 +349,7 @@ def main() -> int:
         ok &= not probs
         verdicts[sc] = {"status": status, "problems": probs, "path": r["path"], "body": b,
                         "auth": r.get("auth"), "prompt": prompt_how, "argv": argv_how, "n_requests": len(gens[sc]),
-                        "user0": next((g["body"]["user0"] for g in gens[sc] if PROMPT_MARKER in ((g["body"].get("user0") or {}).get("text") or "")), None),
+                        "task_user": task_user(gens[sc]),
                         "budget_lines": budget_lines[sc]}
         print(f"{sc:18} {r['path']:22} {str(eff or '-'):8} {str(cap or '-'):>6} {r.get('auth', '-'):8} {prompt_how:10} {argv_how:8} {status} {'; '.join(probs)}")
     if args.receipt:

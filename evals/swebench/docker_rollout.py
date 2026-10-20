@@ -224,9 +224,11 @@ ACTIVATE_TESTBED = (
 # before the prompt reaches window - OUTPUT_BUDGET.
 OUTPUT_BUDGET = 32768
 # What the wire actually carries: pi-ai 0.68 (little-coder 1.1.0) and
-# prime-agent clamp `Math.min(model.maxTokens, 32000)` in simple-options.js;
-# the current @earendil-works pi (rtk lane) and opencode send OUTPUT_BUDGET
-# as-is. scaffold_request_audit.py checks caps against this floor.
+# prime-agent 0.8.1 clamp `Math.min(model.maxTokens, 32000)` in
+# simple-options.js; the current @earendil-works pi (rtk lane), opencode, omp
+# and prime-agent 0.10.0 (an explicit models.json maxTokens bypasses its
+# 32000 catalog cap — pa-ai simple_options.rs) send OUTPUT_BUDGET as-is.
+# scaffold_request_audit.py checks caps against this floor.
 OUTPUT_CAP_FLOOR = 32000
 
 # Thinking policy: every scaffold runs the model at its MAXIMUM thinking
@@ -269,18 +271,23 @@ def _auth_headers() -> dict:
     return h
 
 
-def _pi_settings_snippet(agent_dir: str) -> str:
-    """Shell lines that merge `compaction.reserveTokens = OUTPUT_BUDGET` into
-    a pi-family global settings.json (pi-coding-agent / prime-agent both
-    default 16384: compaction fires at contextWindow - reserveTokens, so the
-    reserve must cover the request's max_completion_tokens or the server
-    rejects the turn). `agent_dir` is a shell expression ($HOME/.pi/agent,
-    /root/.prime/agent)."""
+def _pi_settings_snippet(agent_dir: str, extra: dict | None = None,
+                         reserve: int = OUTPUT_BUDGET) -> str:
+    """Shell lines that merge `compaction.reserveTokens = reserve` (default
+    OUTPUT_BUDGET) into a pi-family global settings.json (pi-coding-agent /
+    prime-agent both default 16384: pi compacts at contextWindow -
+    reserveTokens, so the reserve must cover the request's
+    max_completion_tokens or the server rejects the turn; prime-agent 0.10.0
+    subtracts the request's output budget ITSELF, so its lane passes the
+    4096 floor — see the prime branch). `agent_dir` is a shell expression
+    ($HOME/.pi/agent, /root/.prime/agent). `extra` merges further top-level
+    keys (shallow) into the same file."""
     js = (
         'const fs=require("fs");const d=process.argv[1];const p=d+"/settings.json";'
         'fs.mkdirSync(d,{recursive:true});'
         'let s={};try{s=JSON.parse(fs.readFileSync(p,"utf8"))}catch(e){}'
-        f's.compaction=Object.assign({{}},s.compaction||{{}},{{reserveTokens:{OUTPUT_BUDGET}}});'
+        f's.compaction=Object.assign({{}},s.compaction||{{}},{{reserveTokens:{int(reserve)}}});'
+        + (f'Object.assign(s,{json.dumps(extra, separators=(",", ":"))});' if extra else '') +
         'fs.writeFileSync(p,JSON.stringify(s,null,2));'
         'console.error("context budget: "+p+" compaction="+JSON.stringify(s.compaction));'
     )
@@ -392,7 +399,7 @@ def _little_coder_profile_snippet(pkg_root: str, served_name: str, context_windo
 BRIDGE_SOCK_IN_CONTAINER = "/run/bridge.sock"   # neutral: the path shows in `ps` (bridge argv) and mountinfo
 BRIDGE_SCRIPT_IN_CONTAINER = "/sandbox/net_bridge.py"
 # Every scaffold config in the image points at 127.0.0.1:23334 (opencode.json,
-# the pi models files, OPENAI_BASE_URL for prime/dcode). The container half of
+# the pi / prime models files, omp models.yml, OPENAI_BASE_URL for dcode). The container half of
 # the bridge always binds that port; the host half forwards to --server-url,
 # so the host may serve from any port (docker-mode SGLang, a capture server).
 CONTAINER_SERVER_PORT = 23334
@@ -623,6 +630,10 @@ SESSION_SNAPSHOT = (
     "snap .local/share/opencode/storage\n"
     "snap .pi/agent/sessions\n"
     "snap .prime/agent/sessions\n"
+    # prime-agent 0.10.0 keeps the Python kernel's stderr per session next to
+    # the store (kernel-state.dill in the same dir can be arbitrarily large —
+    # only the log is taken)
+    "for f in \"$HOME\"/.prime/agent/session-artifacts/*/kernel-stderr.log; do [ -e \"$f\" ] && snap \".prime/agent/session-artifacts/$(basename \"$(dirname \"$f\")\")/kernel-stderr.log\"; done\n"
     "snap .omp/agent/sessions\n"
     "snap .deepagents/.state\n"
     "snap .local/share/rtk/history.db\n"
@@ -928,12 +939,47 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
         return envs, inner
 
     if scaffold == "prime":
-        # prime-agent reads custom providers from ~/.prime/agent/models.json
-        # (no config-dir override as of 0.8.1) — written HERE with the actual
-        # served name so new presets need no static enumeration. compat flags
-        # follow the SGLang guidance (ported from R9700's host-side runner,
-        # verified by them on prime-agent 0.8.1). DO_NOT_TRACK: prime sends
-        # pseudonymous usage metrics by default; eval rollouts don't phone home.
+        # prime-agent 0.10.0 (Rust rewrite, `stable` channel; the 0.8.1 cell
+        # ran the TypeScript program). Vendored footprint, see
+        # Dockerfile.rollout / vendor_prime_agent.sh. Custom providers still
+        # come from ~/.prime/agent/models.json in the 0.8.1 shape
+        # (pa-core/src/models/custom.rs ProviderConfig/ModelDefinition) —
+        # written HERE with the actual served name so new presets need no
+        # static enumeration. Facts verified against the capture server
+        # (host-side dry run, 2026-10-19): literal bearer (apiKey = env-var
+        # NAME when such a var is set, else the literal — resolve_config_value;
+        # the minted key is never an env name); `max_completion_tokens` =
+        # maxTokens unclamped (an explicit models.json maxTokens bypasses the
+        # 32000 catalog cap, so OUTPUT_BUDGET reaches the server); `reasoning:
+        # false` + supportsReasoningEffort false skips every reasoning field
+        # (params.rs `supports_thinking` gate) — thinking stays at the chat
+        # template's default; system role stays `system` (developer needs
+        # reasoning AND supportsDeveloperRole); no temperature ever (agent loop
+        # pins None); `stream: true` + stream_options.include_usage + `store:
+        # false` (SGLang ignores unknown fields). Model-level compat is parsed
+        # and DROPPED for custom models — the block must sit at provider
+        # level. One tool on the wire: `ipython` (code) — bash/edit are
+        # functions inside that REPL. Every request opens with prime's own
+        # `[harness-digest]` user turn; the task is the SECOND user message,
+        # verbatim (scaffold_request_audit labels it verbatim@u2). Headless
+        # `-p` is fully in-process (no daemon, no socket; print_runtime.rs);
+        # `--offline` = PI_OFFLINE=1: no catalog refresh / update check /
+        # package network at startup — the container has none. Compaction:
+        # threshold = min(0.95*window, window - maxTokens - max(reserve,
+        # 4096)) (compaction.rs) — 0.10.0 reserves the output budget ITSELF,
+        # so the pi-family reserveTokens = OUTPUT_BUDGET would double-reserve
+        # and fire at 196,608 of 262,144, 32K earlier than every other lane
+        # (the 2026-09-11 class: a per-scaffold context budget that is not
+        # the harness's). The lane passes the 4096 floor instead -> 225,280,
+        # the nearest the formula gets to the 229,376 the pi lanes and the
+        # 0.8.1 cell compact at.
+        # DO_NOT_TRACK=1 is the top-precedence telemetry off switch; the
+        # settings keys below also keep the first-run notice and the local
+        # telemetry.jsonl mirror out of the run. The kernel venv ships warm
+        # in the image (zero uv invocations at session start); a `-p` turn
+        # that ends on finish_reason=length is NOT retried (agent_loop/run.rs:
+        # only Error/Aborted short-circuit; auto_retry.rs treats Length as
+        # success) — same as 0.8.1.
         provider_json = json.dumps({
             "providers": {"sglang": {
                 "name": "SGLang local",
@@ -943,11 +989,13 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
                 "compat": {"supportsDeveloperRole": False,
                            "supportsReasoningEffort": False},
                 # explicit budget: prime-agent's custom-provider default is
-                # contextWindow 128000 / maxTokens 16384 (model-registry.js)
+                # contextWindow 128000 / maxTokens 16384 (custom.rs)
                 "models": [{"id": served_name,
+                            "reasoning": False,
                             "contextWindow": int(context_window),
                             "maxTokens": OUTPUT_BUDGET}],
             }}}, indent=2)
+        prime_cmd = f"prime-agent --offline --model sglang/{served_name} -p"
         envs = ["--env", "DO_NOT_TRACK=1"]
         inner = (
             "set -e\n"
@@ -958,11 +1006,14 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             "cat > /root/.prime/agent/models.json <<'PRIMEJSON'\n"
             f"{provider_json}\n"
             "PRIMEJSON\n"
-            + _pi_settings_snippet("/root/.prime/agent") +
+            + _pi_settings_snippet("/root/.prime/agent",
+                                   {"telemetry": {"enabled": False, "noticeShown": True, "localMirror": False}},
+                                   reserve=4096) +
+            f"echo 'context budget: /root/.prime/agent/models.json contextWindow={int(context_window)} maxTokens={OUTPUT_BUDGET}' >&2\n"
             "cd /testbed\n"
-            f"prime-agent --model sglang/{served_name} -p < {PROMPT_FILE} || true\n"
+            f"{prime_cmd} < {PROMPT_FILE} || true\n"
             "rm -rf /testbed/.prime /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
-            f"timeout 120 prime-agent --model sglang/{served_name} -p <<<\"$CLEANUP_PROMPT\" || true\n"
+            f"timeout 120 {prime_cmd} <<<\"$CLEANUP_PROMPT\" || true\n"
             "echo === DIFF ===\n"
             "rm -rf /testbed/.prime /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             "git -C /testbed add -A\n"

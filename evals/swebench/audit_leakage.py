@@ -111,6 +111,13 @@ PY_EXEC_RE = re.compile(r"\bpython\S*\s+(?:-c\b|-?\s*<<|-\s*$)", re.M)
 PY_FETCH_RE = re.compile(
     r"\b(?:urlopen|urlretrieve|requests\.(?:get|post|head|request)|httpx\.(?:get|post|Client|AsyncClient)"
     r"|aiohttp\.ClientSession|http\.client\.HTTPS?Connection|socket\.create_connection)\(")
+# prime-agent 0.10.0 moved web search INTO the kernel: `websearch.run(query)` (the
+# module is callable too) is a Python skill, not a model-facing tool, so it only
+# shows up inside `ipython` code. It calls Serper over httpx when a key is
+# configured; the rollout configures none, so the skill returns its "not set up"
+# notice without touching the network — that output is a failed search, not content.
+PY_SEARCH_RE = re.compile(r"\bwebsearch(?:\.run)?\(")
+PY_SEARCH_UNCONFIGURED = "no Serper API key is configured"
 NET_FAIL_RE = re.compile(
     r"Could not resolve host|Temporary failure in name resolution|Network is unreachable"
     r"|ENOTFOUND|ECONNREFUSED|EAI_AGAIN|Name or service not known|No address associated"
@@ -530,6 +537,12 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
         if compound:
             evidence += " [segment]"
         ev.append({"chan": "web", "kind": kind, "ok": outcome(), "evidence": evidence})
+    if lname in PY_CODE_TOOLS:
+        ps = PY_SEARCH_RE.search(text)
+        if ps:
+            ok = False if (output and PY_SEARCH_UNCONFIGURED in output) else outcome()
+            ev.append({"chan": "web", "kind": "SEARCH", "ok": ok,
+                       "evidence": f"{name}: python {text[ps.start():ps.start() + 120]}"})
     py = PY_FETCH_RE.search(text) if (PY_EXEC_RE.search(text) or lname in PY_CODE_TOOLS) else None
     kernel = "python"
     if py is None and lname in JS_CODE_TOOLS:
