@@ -36,15 +36,21 @@ def main():
     ap.add_argument("--depths", default="0.5", help="comma list of needle depths (fractions)")
     ap.add_argument("--max-tokens", type=int, default=512)
     ap.add_argument("--repeat", type=int, default=1, help="repeat the whole grid N times")
+    ap.add_argument("--temperature", default="0",
+                    help="sampling temperature (default 0 = greedy, as the quality suite); "
+                         "'default' omits the field so the checkpoint's generation_config applies")
     a = ap.parse_args()
+    temperature = None if a.temperature == "default" else float(a.temperature)
     url = f"http://localhost:{a.port}/v1/chat/completions"
     lengths = [int(x) for x in a.lengths.split(",")]
     depths = tuple(float(x) for x in a.depths.split(","))
     results = []
     for _ in range(a.repeat):
-        results += needle_eval(url, lengths, depths=depths, budget=a.max_tokens)["results"]
+        results += needle_eval(url, lengths, depths=depths, budget=a.max_tokens,
+                               temperature=temperature)["results"]
     score = sum(r["found"] for r in results) / len(results) if results else 0
     out = {"tag": a.tag, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+           "temperature": "default" if temperature is None else temperature,
            "needle": {"results": results, "score": score}}
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     path = RESULTS_DIR / f"{a.tag}.json"

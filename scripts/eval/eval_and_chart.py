@@ -260,7 +260,7 @@ def labbench_suite(url, n_samples=50, max_workers=1, max_tokens=4096):
 
 
 def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9), max_tokens=4096,
-                budget=None):
+                budget=None, temperature=0):
     """Needle-in-a-haystack at various context lengths AND depths.
 
     Varying the needle DEPTH (fraction through the filler) catches lost-in-the-
@@ -274,6 +274,10 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
     # `budget` overrides the cap (band probes replaying a missed cell with a
     # larger budget to tell a thinking-length wobble from a retrieval miss).
     needle_budget = budget if budget else min(max_tokens, 512)
+    # temperature=None omits the field, so the server applies the checkpoint's
+    # generation_config defaults — what the agentic scaffolds get (they send no
+    # sampling params). Tells a greedy knife-edge from a sampled-decoding miss.
+    sampling = {} if temperature is None else {"temperature": temperature}
     results = []
     for ctx in lengths:
         # 4.5 chars/token measured for this filler across Qwen/Gemma/Mistral
@@ -288,7 +292,7 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
             try:
                 r = requests.post(url, json={"model": "default", "messages": [
                     {"role": "user", "content": prompt}
-                ], "max_tokens": needle_budget, "temperature": 0}, timeout=max(600, ctx // 150)).json()
+                ], "max_tokens": needle_budget, **sampling}, timeout=max(600, ctx // 150)).json()
                 msg = r["choices"][0]["message"]
                 found = "BANANA42" in (_answer_text(msg) or "")
                 actual = r.get("usage", {}).get("prompt_tokens")
