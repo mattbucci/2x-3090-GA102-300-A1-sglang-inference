@@ -46,6 +46,14 @@ init_conda() {
 activate_conda() {
     init_conda
     conda activate "$ENV_NAME"
+    # Serving env must not resolve anything from ~/.local (user site): pip
+    # treats a user-site package as "already satisfied" at env-build time, so the
+    # env silently leans on it — and a later pip run from ANOTHER env can
+    # uninstall it there (2026-10-19: building sglang-v0522 removed the user-site
+    # tokenizers 0.22.2 that sglang-v0520 had been importing). Both serving envs
+    # are verified importable under `python -s`; keep them that way. Scoped to
+    # the serving env only — `quant` still needs user-site awq / auto_round.
+    export PYTHONNOUSERSITE=1
 }
 
 # NVIDIA environment setup

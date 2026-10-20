@@ -1,0 +1,68 @@
+From: 3090 team <noreply@anthropic.com>
+Date: 2026-05-04
+Subject: [PATCH] gemma4_mm: process video frames one-at-a-time in get_video_feature
+
+Closes Gemma 4 video OOM on Ampere AND R9700's bsz==1 vision-attention
+assertion in one shot. The batched vt(pv, pp) call materializes a
+[num_frames x num_patches x 2 x position_embedding_size] one_hot tensor
+inside Gemma4VisionPatchEmbedder._position_embeddings (~1.24 GB bf16 for
+a 12-frame video at pooling_kernel_size=3 / 10240 classes) — OOMs after
+LM weights + KV pool. Per-frame calls keep the peak at 1/num_frames and
+satisfy the RDNA4 bsz==1 assertion. Validated 2026-05-04 (4/4 PASS).
+
+Regenerated 2026-06-10 with wide context: the original hand-written hunk
+had no unique anchor, so on an already-patched tree git apply matched the
+get_image_feature block (same vt(pv, pp) shape) and would silently patch
+the IMAGE path on a setup.sh rerun. Context now pins the video-only
+4D->3D reshape so re-application fails cleanly. Narrative:
+patches/README.md.
+
+diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
+index 40e06f647..615b7198a 100644
+--- a/python/sglang/srt/models/gemma4_mm.py
++++ b/python/sglang/srt/models/gemma4_mm.py
+@@ -466,24 +466,40 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+                 # 3-D (num_frames, num_patches, ...) so each frame is a
+                 # batch element for the vision tower.
+                 if pv.dim() == 4:
+                     pv = pv.reshape(-1, pv.shape[-2], pv.shape[-1])
+                 if pp.dim() == 4:
+                     pp = pp.reshape(-1, pp.shape[-2], pp.shape[-1])
+ 
+                 pv = pv.to(device=vt.device, dtype=self.language_model.dtype())
+                 pp = pp.to(device=vt.device)
+ 
+-                pooled, pooler_mask = vt(pv, pp)
+-
+-                for hs, mask in zip(pooled, pooler_mask):
+-                    real_tokens = hs[mask]
++                # Process frames one-at-a-time instead of as a single batch.
++                # The batched call (pv shape [num_frames, num_patches, ...])
++                # materializes a one_hot tensor of size num_frames *
++                # num_patches * 2 * position_embedding_size in
++                # Gemma4VisionPatchEmbedder._position_embeddings (~1.24 GB
++                # for 12 frames at pooling_kernel_size=3 / 10240 classes /
++                # bf16), which OOMs on Ampere TP=1 after the LM weights +
++                # KV pool are loaded. Per-frame keeps that allocation at
++                # 1/num_frames the size with the same total throughput
++                # cost (vt is the bottleneck either way at video time).
++                # Also avoids the bsz==1 assertion at attention/vision.py:
++                # 254 that the RDNA4 stack hit on the same model — single-
++                # batch calls satisfy both constraints. Validated 2026-05-04
++                # via gemma4 preset port 23355 — patch 026.
++                num_frames = pv.shape[0]
++                for f in range(num_frames):
++                    pooled_f, mask_f = vt(pv[f : f + 1], pp[f : f + 1])
++                    # pooled_f: [1, output_len, hidden]
++                    # mask_f:   [1, output_len]
++                    real_tokens = pooled_f[0][mask_f[0]]
+                     all_embeds.append(
+                         self.embed_vision(
+                             inputs_embeds=real_tokens.unsqueeze(0)
+                         ).squeeze(0)
+                     )
+ 
+         if all_embeds:
+             return torch.cat(all_embeds, dim=0)
+         else:
+             return torch.empty(

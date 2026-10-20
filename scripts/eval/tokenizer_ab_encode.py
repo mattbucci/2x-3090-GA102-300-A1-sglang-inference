@@ -117,19 +117,23 @@ def compare(a_path, b_path):
         ra, rb = a.get(name), b.get(name)
         if not ra or not rb or "skipped" in ra or "skipped" in rb:
             print(f"{name:16s} SKIP (missing on one side)"); continue
-        notes = []
+        notes, warns = [], []
         if ra.get("backend") != rb.get("backend"):
-            notes.append(f"backend {ra.get('backend')} -> {rb.get('backend')}")
+            # A backend class change with identical ids is a rename / new
+            # dedicated class (tx 5.19: Qwen3.5/3.6 TokenizersBackend ->
+            # Qwen3_5Tokenizer, ids bit-identical) — report it, don't fail on
+            # it; the gate is the ids.
+            warns.append(f"backend {ra.get('backend')} -> {rb.get('backend')}")
         for key in ("probe_ids", "chat_ids"):
             if key in ra or key in rb:
                 if ra.get(key) != rb.get(key):
                     notes.append(f"{key} DIFFER ({len(ra.get(key) or [])} vs {len(rb.get(key) or [])} ids)")
         if ra.get("chat_error") != rb.get("chat_error"):
             notes.append(f"chat_error changed: {ra.get('chat_error')!r} -> {rb.get('chat_error')!r}")
-        status = "MISMATCH" if notes else "identical"
+        status = "MISMATCH" if notes else ("WARN" if warns else "identical")
         bad += bool(notes)
-        print(f"{name:16s} {status:9s} backend={rb.get('backend')} probe={len(rb.get('probe_ids', []))} chat={rb.get('chat_len')}  {'; '.join(notes)}")
-    print("RESULT:", "FAIL" if bad else "PASS", f"({bad} mismatching families)")
+        print(f"{name:16s} {status:9s} backend={rb.get('backend')} probe={len(rb.get('probe_ids', []))} chat={rb.get('chat_len')}  {'; '.join(notes + warns)}")
+    print("RESULT:", "FAIL" if bad else "PASS", f"({bad} mismatching families; backend-only changes are WARN)")
     return 1 if bad else 0
 
 

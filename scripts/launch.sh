@@ -419,7 +419,9 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --tool-call-parser qwen3_coder"
-            CUDA_GRAPH="--disable-cuda-graph --cuda-graph-backend-prefill disabled"
+            # Canonical spelling of the former --disable-cuda-graph (deprecated shim,
+            # maps to exactly these two phase backends; the only preset still on it).
+            CUDA_GRAPH="--cuda-graph-backend-decode disabled --cuda-graph-backend-prefill disabled"
             ;;
         qwen36-dense|qwen36-27b)
             # Qwen3.6-27B Dense AWQ. Canonical preset name is qwen36-dense
@@ -931,7 +933,7 @@ fi
 [[ -n "$OVERLAP" ]] && CMD+=($OVERLAP)
 # _ENV_CUDA_GRAPH lets a caller A/B the graph-capture config from the env
 # without editing the preset (e.g. test cuda-graph-ON on the DeltaNet+MoE
-# hybrids whose presets default to --disable-cuda-graph). Empty/unset = preset.
+# hybrids whose presets default to --cuda-graph-backend-decode disabled). Empty/unset = preset.
 [[ -n "${_ENV_CUDA_GRAPH:-}" ]] && CUDA_GRAPH="$_ENV_CUDA_GRAPH"
 # v0.5.18 auto-enables "breakable" piecewise PREFILL cuda graphs for some archs
 # (qwen36-dense resolved prefill.backend='breakable' with no flag, where v0.5.17
@@ -946,7 +948,7 @@ fi
 # v0.5.18 (verified for all 21 presets), so the rename is stack-neutral.
 [[ "${PIECEWISE_GRAPH:-0}" != "1" ]] && CMD+=(--cuda-graph-backend-prefill disabled)
 [[ -n "$CUDA_GRAPH" ]] && CMD+=($CUDA_GRAPH)
-# EXTRA_ARGS lets callers append/override flags (e.g. --disable-cuda-graph,
+# EXTRA_ARGS lets callers append/override flags (e.g. --cuda-graph-backend-decode disabled,
 # --enable-multimodal) without editing the script. Honor it from env.
 # NB: presets APPEND to a caller-provided EXTRA_ARGS, so a caller flag that a
 # preset also pins (e.g. --attention-backend) loses argparse last-wins. Use
