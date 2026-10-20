@@ -1,0 +1,114 @@
+{
+ "generated": "2026-10-20T15:08-07:00",
+ "image": "sglang-cuda-3090:local",
+ "image_id": "05120d2325809c19b1e1d10065b1531a922e9363008a9a47b5d95e02828f3ea4",
+ "note": "smoke_docker_serving.sh parity receipts at the v0.5.20 -> v0.5.22 boundary (flip 8ab147d; image carries patches 065 + 066). qwen36 ran with SMOKE_FRESH_CACHE=1 (JIT cache volume dropped) and an opencode 2-instance isolated rollout; qwen38 ran under SPEC_DECODE=1 (DSpark, the queue's served config) with a prime-agent 0.10.0 2-instance rollout. bench = bench_regression.sh compare vs the bare-metal tripwire baselines.",
+ "presets": {
+  "qwen36": {
+   "receipt": {
+    "preset": "qwen36",
+    "verdict": "PASS",
+    "serve_mode": "docker",
+    "image": "sglang-cuda-3090:local",
+    "image_id": "05120d2325809c19b1e1d10065b1531a922e9363008a9a47b5d95e02828f3ea4",
+    "date": "2026-10-20T14:46:39",
+    "steps": {
+     "stop": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "responses_api": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "bench": {
+      "status": "PASS",
+      "detail": "qwen36/1024: 210.5 -> 218.8 tok/s (+3.9%) [ok]|qwen36/32768: 189.4 -> 194.9 tok/s (+2.9%) [ok]|qwen36/deep(261916): 122.0 -> 125.2 tok/s (+2.6%) [ok]|qwen36/deep(261916): WARN ttft 432 -> 624 ms (+44.3%) \u2014 prefill drift (no gate)|RESULT: PASS|"
+     },
+     "rollout": {
+      "status": "PASS",
+      "detail": "rc=0 preds=2 nonempty=2 meta=ok budget_lines=2"
+     },
+     "boot": {
+      "status": "PASS",
+      "detail": "325s to /health; /v1/models=[qwen36]"
+     },
+     "scaffold_audit": {
+      "status": "PASS",
+      "detail": "api_auth=True opencode:auth=ok dcode:auth=ok"
+     },
+     "leak_audit": {
+      "status": "PASS",
+      "detail": "Using the latest cached version of the dataset since princeton-nlp/SWE-bench_Lite couldn't be found on the Hugging Face Hub (offline mode is enabled)."
+     },
+     "api_auth": {
+      "status": "PASS",
+      "detail": "anon /v1/models -> 401"
+     }
+    }
+   },
+   "bench_log": [
+    "NOTE: KV pool max_total_num_tokens=862404; capping input sweep at 261916 usable tokens. Dropping over-cap contexts [262144] (they can't fit the pool and would log artifact tok/s).",
+    "  ctx=  1024: TPOT=4.6ms  TTFT=85ms  218.8 tok/s",
+    "  ctx= 32768: TPOT=5.1ms  TTFT=865ms  194.9 tok/s",
+    "  ctx=261916: TPOT=8.0ms  TTFT=624ms  125.2 tok/s",
+    "  qwen36/1024: 210.5 -> 218.8 tok/s (+3.9%) [ok]",
+    "  qwen36/32768: 189.4 -> 194.9 tok/s (+2.9%) [ok]",
+    "  qwen36/deep(261916): 122.0 -> 125.2 tok/s (+2.6%) [ok]"
+   ]
+  },
+  "qwen38": {
+   "receipt": {
+    "preset": "qwen38",
+    "verdict": "PASS",
+    "serve_mode": "docker",
+    "image": "sglang-cuda-3090:local",
+    "image_id": "05120d2325809c19b1e1d10065b1531a922e9363008a9a47b5d95e02828f3ea4",
+    "date": "2026-10-20T15:08:16",
+    "steps": {
+     "stop": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "responses_api": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "bench": {
+      "status": "PASS",
+      "detail": "qwen38/1024: 70.6 -> 194.6 tok/s (+175.6%) [ok]|qwen38/32768: 67.2 -> 97.8 tok/s (+45.5%) [ok]|qwen38/deep(261916): 48.4 -> 200.0 tok/s (+313.2%) [ok]|RESULT: PASS|"
+     },
+     "rollout": {
+      "status": "PASS",
+      "detail": "rc=0 preds=2 nonempty=2 meta=ok budget_lines=4"
+     },
+     "boot": {
+      "status": "PASS",
+      "detail": "213s to /health; /v1/models=[qwen38]"
+     },
+     "scaffold_audit": {
+      "status": "PASS",
+      "detail": "api_auth=True prime:auth=ok dcode:auth=ok"
+     },
+     "leak_audit": {
+      "status": "PASS",
+      "detail": "Using the latest cached version of the dataset since princeton-nlp/SWE-bench_Lite couldn't be found on the Hugging Face Hub (offline mode is enabled)."
+     },
+     "api_auth": {
+      "status": "PASS",
+      "detail": "anon /v1/models -> 401"
+     }
+    }
+   },
+   "bench_log": [
+    "NOTE: KV pool max_total_num_tokens=307659; capping input sweep at 261916 usable tokens. Dropping over-cap contexts [262144] (they can't fit the pool and would log artifact tok/s).",
+    "  ctx=  1024: TPOT=5.1ms  TTFT=442ms  194.6 tok/s",
+    "  ctx= 32768: TPOT=10.2ms  TTFT=4418ms  97.8 tok/s",
+    "  ctx=261916: TPOT=5.0ms  TTFT=594ms  200.0 tok/s",
+    "  qwen38/1024: 70.6 -> 194.6 tok/s (+175.6%) [ok]",
+    "  qwen38/32768: 67.2 -> 97.8 tok/s (+45.5%) [ok]",
+    "  qwen38/deep(261916): 48.4 -> 200.0 tok/s (+313.2%) [ok]"
+   ]
+  }
+ }
+}
