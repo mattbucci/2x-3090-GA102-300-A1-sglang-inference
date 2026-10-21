@@ -323,7 +323,8 @@ def main() -> int:
     budget_lines: dict[str, list[str]] = {}
     for sc in scaffolds:
         err = (work / f"{sc}.err").read_text(errors="replace") if (work / f"{sc}.err").exists() else ""
-        budget_lines[sc] = [l for l in err.splitlines() if "context budget:" in l or "TRIPWIRE" in l]
+        budget_lines[sc] = [l for l in err.splitlines()
+                            if "context budget:" in l or "TRIPWIRE" in l or "permission: opencode.json" in l]
 
     verdicts = {}
     ok = True

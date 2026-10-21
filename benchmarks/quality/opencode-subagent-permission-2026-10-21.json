@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-21 13:13",
+  "served_name": "qwen38",
+  "image": "swebench-rollout/sympy__sympy-24909:latest",
+  "opencode_permission": {
+    "external_directory": "allow",
+    "doom_loop": "allow",
+    "read": {
+      "*.env": "allow",
+      "*.env.*": "allow"
+    }
+  },
+  "probe_cmd": "cd /tmp && ls",
+  "timeout": 90,
+  "verdict": "PASS",
+  "runs": [
+    {
+      "mode": "control",
+      "scaffold": "opencode",
+      "rc": 124,
+      "seconds": 92.2,
+      "phases": [
+        "no-tools",
+        "main-task",
+        "subagent-bash"
+      ],
+      "subagent_bash_result": null,
+      "task_tool_offered": true,
+      "external_directory_log": [
+        "INFO  2026-10-21T20:11:58 +1ms service=permission permission=external_directory pattern=/tmp/* action={\"permission\":\"external_directory\",\"pattern\":\"*\",\"action\":\"ask\"} evaluated",
+        "INFO  2026-10-21T20:11:58 +0ms service=permission id=per_160178b76001WoGvUlHt73FzLz permission=external_directory patterns=[\"/tmp/*\"] asking"
+      ],
+      "snippet_lines": [
+        "context budget: opencode.json qwen38 limit={\"context\":262144,\"output\":32768}",
+        "permission: opencode.json {\"external_directory\":\"allow\",\"doom_loop\":\"allow\",\"read\":{\"*.env\":\"allow\",\"*.env.*\":\"allow\"}}",
+        "permission: opencode.json CONTROL (block removed)"
+      ],
+      "completed": false,
+      "hung_after_subagent_bash": true
+    },
+    {
+      "mode": "fix",
+      "scaffold": "opencode",
+      "rc": 0,
+      "seconds": 3.0,
+      "phases": [
+        "no-tools",
+        "main-task",
+        "subagent-bash",
+        "subagent-done",
+        "main-done"
+      ],
+      "subagent_bash_result": [
+        "node-compile-cache\n"
+      ],
+      "task_tool_offered": true,
+      "external_directory_log": [
+        "INFO  2026-10-21T20:13:29 +0ms service=permission permission=external_directory pattern=/tmp/* action={\"permission\":\"external_directory\",\"action\":\"allow\",\"pattern\":\"*\"} evaluated"
+      ],
+      "snippet_lines": [
+        "context budget: opencode.json qwen38 limit={\"context\":262144,\"output\":32768}",
+        "permission: opencode.json {\"external_directory\":\"allow\",\"doom_loop\":\"allow\",\"read\":{\"*.env\":\"allow\",\"*.env.*\":\"allow\"}}"
+      ],
+      "completed": true,
+      "hung_after_subagent_bash": false
+    }
+  ]
+}

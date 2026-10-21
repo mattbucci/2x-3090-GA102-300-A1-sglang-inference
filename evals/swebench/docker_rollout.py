@@ -307,6 +307,28 @@ def _pi_settings_snippet(agent_dir: str, extra: dict | None = None,
     return f"node -e '{js}' \"{agent_dir}\"\n"
 
 
+# Global opencode permission policy, written into every lane's opencode.json
+# per run. opencode 1.14.25's `--dangerously-skip-permissions` only answers
+# the MAIN session's permission asks (cli/cmd/run.ts: `if
+# (permission.sessionID !== sessionID) continue`); a `task` subagent's ask has
+# no responder under `opencode run`, so its tool part stays `running` until
+# the rollout wall (2 of 11 rc-124 walls in the qwen38 opencode v4 cell:
+# django-16820, matplotlib-23562 — audit_wall_causes.py `permission_hang`).
+# The agent defaults (agent/agent.ts) leave three `ask` sources even with the
+# flag: `external_directory` (any bash/read/edit path outside /testbed —
+# `cd /tmp`, `cat /etc/resolv.conf`), `doom_loop` (same call repeated) and
+# `read` of `*.env` files. User config (`cfg.permission`) is merged AFTER
+# every agent's defaults and the evaluator takes the LAST matching rule, so a
+# global block reaches build, general, explore and custom agents alike.
+# Gate: probe_opencode_subagent_permission.py (GPU-free; a scripted server
+# drives task → subagent bash `cd /tmp && ls` through the real image).
+OPENCODE_PERMISSION = {
+    "external_directory": "allow",
+    "doom_loop": "allow",
+    "read": {"*.env": "allow", "*.env.*": "allow"},
+}
+
+
 def _opencode_budget_snippet(served_name: str, context_window: int) -> str:
     """Shell lines that pin `provider.sglang.models[<served>].limit.context`
     in the lane's ~/.config/opencode/opencode.json to the served window
@@ -315,16 +337,19 @@ def _opencode_budget_snippet(served_name: str, context_window: int) -> str:
     OUTPUT_BUDGET (opencode sends max_tokens = min(limit.output,
     OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX) and auto-compacts at
     limit.context - that) and the provider apiKey to the server credential
-    (see api_key). HOME-relative, so the DCP lane's /opt/dcp-home copy is
-    the one edited there."""
+    (see api_key), and the global `permission` block to OPENCODE_PERMISSION
+    (logged as `permission: opencode.json ...`). HOME-relative, so the DCP
+    lane's /opt/dcp-home copy is the one edited there."""
     js = (
         'const fs=require("fs");const p=process.env.HOME+"/.config/opencode/opencode.json";'
         'const d=JSON.parse(fs.readFileSync(p,"utf8"));const m=d.provider.sglang.models;'
         f'const id={json.dumps(served_name)};const e=m[id]||(m[id]={{name:id,tool_call:true}});'
         f'e.limit=Object.assign({{}},e.limit||{{}},{{context:{int(context_window)},output:{OUTPUT_BUDGET}}});'
         f'd.provider.sglang.options.apiKey={json.dumps(api_key())};'
+        f'd.permission=Object.assign({{}},d.permission||{{}},{json.dumps(OPENCODE_PERMISSION)});'
         'fs.writeFileSync(p,JSON.stringify(d,null,2));'
         'console.error("context budget: opencode.json "+id+" limit="+JSON.stringify(e.limit));'
+        'console.error("permission: opencode.json "+JSON.stringify(d.permission));'
     )
     return f"node -e '{js}'\n"
 
