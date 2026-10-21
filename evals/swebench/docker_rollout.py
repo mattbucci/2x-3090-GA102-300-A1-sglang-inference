@@ -1177,6 +1177,17 @@ def rollout_image_tag(instance_id: str) -> str:
     return f"swebench-rollout/{instance_id}:latest"
 
 
+# Every per-instance build re-runs the Dockerfile from its own base image
+# (no layer is shared across instances), so each one fetches the npm / PyPI
+# payloads live. A registry blip therefore lands as a crash-row STREAK, not
+# one failure: prime-agent 0.8.1 pruned (29 rows, 2026-10-09), npm ETARGET
+# (20 rows, 2026-10-12), npm 404 on an @aws-sdk tarball (7 rows, 2026-10-21).
+# Bounded retry: three attempts, 60 s then 240 s apart — covers the 5-min
+# blips, costs a deterministic build failure 5 extra minutes per instance.
+BUILD_RETRY_DELAYS = (60, 240)
+BUILD_RETRIES: dict[str, int] = {}   # instance_id -> retries it took (0 = none)
+
+
 def ensure_rollout_image(instance_id: str, *, no_pull: bool = False,
                          rebuild: bool = False) -> str:
     """Build the per-instance rollout image if not already present.
@@ -1195,18 +1206,32 @@ def ensure_rollout_image(instance_id: str, *, no_pull: bool = False,
         if rc == 0:
             return rollout_tag
 
-    if not no_pull:
-        rc_pull = sh("docker", "pull", base_tag, check=False)
-        if rc_pull != 0:
-            raise RuntimeError(f"docker pull {base_tag} failed (rc={rc_pull})")
+    def _pull_and_build():
+        if not no_pull:
+            rc_pull = sh("docker", "pull", base_tag, check=False)
+            if rc_pull != 0:
+                raise RuntimeError(f"docker pull {base_tag} failed (rc={rc_pull})")
+        sh("docker", "build",
+           "-t", rollout_tag,
+           "--build-arg", f"BASE={base_tag}",
+           "-f", str(DOCKERFILE),
+           str(DOCKER_CTX),
+           check=True)
 
-    sh("docker", "build",
-       "-t", rollout_tag,
-       "--build-arg", f"BASE={base_tag}",
-       "-f", str(DOCKERFILE),
-       str(DOCKER_CTX),
-       check=True)
-    return rollout_tag
+    attempts = len(BUILD_RETRY_DELAYS) + 1
+    for attempt in range(1, attempts + 1):
+        try:
+            _pull_and_build()
+            BUILD_RETRIES[instance_id] = attempt - 1
+            return rollout_tag
+        except (subprocess.CalledProcessError, RuntimeError) as e:
+            if attempt == attempts:
+                raise
+            delay = BUILD_RETRY_DELAYS[attempt - 1]
+            print(f"  rollout image build failed (attempt {attempt}/{attempts}: {type(e).__name__}) "
+                  f"— retrying in {delay}s", flush=True)
+            time.sleep(delay)
+    raise AssertionError("unreachable")
 
 
 PROMPT_TEMPLATE = """\
@@ -1669,6 +1694,8 @@ def main():
                     "model_timeout": rc == 124,
                     "patch_source": patch_source,
                 }
+                if BUILD_RETRIES.get(iid):
+                    entry["image_build_retries"] = BUILD_RETRIES[iid]   # rollout_seconds includes the waits
                 fp.write(json.dumps(entry) + "\n")
                 fp.flush()
 

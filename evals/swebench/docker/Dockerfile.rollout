@@ -122,6 +122,11 @@ RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/in
 # served name (no static enumeration — avoids the opencode.json new-preset
 # landmine class entirely). Re-pinning prime-agent is a cycle-boundary
 # change gated on scaffold_request_audit.py, never a mid-cycle one.
+# The import check runs from / : the eval base images set WORKDIR /testbed
+# and `python -c` puts the cwd first on sys.path, so on the psf/requests
+# instances it imported /testbed/requests (2012-16 vintage, Python-3.11
+# incompatible) and failed the build for EVERY lane of those six instances
+# (2026-10-21, qwen38 rtk re-roll of psf__requests-863).
 RUN --mount=type=bind,source=prime-agent-${PRIME_AGENT_VERSION}-vendor.tgz,target=/tmp/prime-agent-vendor.tgz \
     tar -xzf /tmp/prime-agent-vendor.tgz -C / && \
     ln -sfn /opt/prime-agent/prime-agent /usr/local/bin/prime-agent && \
@@ -129,7 +134,7 @@ RUN --mount=type=bind,source=prime-agent-${PRIME_AGENT_VERSION}-vendor.tgz,targe
     grep -q '"schema"' /root/.prime/agent/kernel-venv/.bootstrap-version && \
     grep -q '"import_name"' /root/.prime/agent/kernel-venv/.bootstrap-version && \
     grep -q '^home = /root/.local/share/uv/python/' /root/.prime/agent/kernel-venv/pyvenv.cfg && \
-    /root/.prime/agent/kernel-venv/bin/python -c 'import rlm.repl, rlm.bash, rlm.mcp, rlm.harness, dill, requests, httpx' && \
+    (cd / && /root/.prime/agent/kernel-venv/bin/python -c 'import rlm.repl, rlm.bash, rlm.mcp, rlm.harness, dill, requests, httpx') && \
     test -z "$(ls -A /root/.prime/agent | grep -vx kernel-venv)"
 
 # --- deepagents-code (scaffold "dcode") ------------------------------------
