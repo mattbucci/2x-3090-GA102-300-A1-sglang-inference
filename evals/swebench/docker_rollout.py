@@ -121,10 +121,22 @@ def check_cell_pin(predictions_path: Path, scaffold: str) -> tuple[bool, str]:
     want = scaffold_pin(scaffold)
     legacy = LEGACY_SCAFFOLD_PINS.get(scaffold, want)
     seen: dict[str, int] = {}
+    crashed = 0
     for line in predictions_path.read_text().splitlines():
         try:
             d = json.loads(line)
         except Exception:
+            continue
+        if d.get("rollout_error"):
+            # The instance crashed before any scaffold ran (per-instance image
+            # build / staging raised — the exception path below): no model
+            # output, so no pin evidence either way. Rows written before
+            # 2026-10-21 carry no `scaffold_pin`; read as the legacy pin they
+            # blocked the little-coder Phase-4 re-roll of the 2026-10-20 cycle
+            # (29 build-crash rows from the prime-agent-pruning outage counted
+            # as pi 0.68). The audit classes them infra and the re-roll strips
+            # them whatever pin they carry.
+            crashed += 1
             continue
         pin = d.get("scaffold_pin") or legacy
         seen[pin] = seen.get(pin, 0) + 1
@@ -133,7 +145,8 @@ def check_cell_pin(predictions_path: Path, scaffold: str) -> tuple[bool, str]:
         return False, (f"SCAFFOLD PIN MISMATCH: {predictions_path} holds {bad} rows but this code rolls "
                        f"{want!r} — a changed pin is a new cell: rename the old dir with a quarantine "
                        f"suffix and roll fresh (never mix pins inside one predictions.jsonl)")
-    return True, f"scaffold pin {want!r} ({sum(seen.values())} existing rows match)"
+    tail = f", {crashed} crash rows (no scaffold ran) not counted" if crashed else ""
+    return True, f"scaffold pin {want!r} ({sum(seen.values())} existing rows match{tail})"
 
 
 def parse_args():
@@ -1677,7 +1690,9 @@ def main():
                 fp.write(json.dumps({"instance_id": iid, "model_name_or_path": args.model,
                                      "model_patch": "", "rollout_returncode": -1,
                                      "rollout_error": f"{type(e).__name__}: {e}",
-                                     "rollout_seconds": round(time.time() - t0, 1)}) + "\n")
+                                     "rollout_seconds": round(time.time() - t0, 1),
+                                     "rollout_scaffold": args.scaffold,
+                                     "scaffold_pin": pin}) + "\n")
                 fp.flush()
                 continue
 
