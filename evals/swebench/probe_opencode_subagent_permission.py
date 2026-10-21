@@ -144,15 +144,16 @@ CONTROL_STRIP = (
 )
 
 
-def build_driver(scaffold: str, served: str, ctx: int, timeout: int, control: bool) -> str:
+def build_driver(scaffold: str, served: str, ctx: int, timeout: int, control: bool, pre_run: str = "") -> str:
     envs, inner = dr.build_scaffold_invocation(scaffold, f"sglang/{served}", served,
                                               timeout=timeout, context_window=ctx)
     kv = [envs[i + 1] for i in range(0, len(envs), 2) if envs[i] == "--env"]
     run = first_run_only(inner)
-    if control:
+    inject = (CONTROL_STRIP if control else "") + (pre_run.rstrip("\n") + "\n" if pre_run else "")
+    if inject:
         lines = run.splitlines(keepends=True)
         i = next(k for k, ln in enumerate(lines) if "opencode run" in ln)
-        run = "".join(lines[:i]) + CONTROL_STRIP + "".join(lines[i:])
+        run = "".join(lines[:i]) + inject + "".join(lines[i:])
     parts = ["set +e", "mkdir -p /cap",
              f"python3 /cap/permsrv.py {shlex.quote(served)} {ctx} {shlex.quote(SUBAGENT_MARKER)} {shlex.quote(PROBE_CMD)} &",
              "sleep 1", "export HOME=/root"]
@@ -165,6 +166,13 @@ def build_driver(scaffold: str, served: str, ctx: int, timeout: int, control: bo
     # opencode's own log is the direct evidence (service=permission evaluate /
     # evaluated / asking lines); session snapshots never carry log/.
     parts.append('for f in "$HOME"/.local/share/opencode/log/*.log; do [ -f "$f" ] && grep -h "service=permission" "$f"; done > /cap/permlog.txt 2>/dev/null')
+    # Plugin lines: on the opencode-dcp scaffold the run must show the external
+    # plugin loading (service=plugin "loading plugin" path=@tarquinen/...), or a
+    # fast boot just means opencode skipped it. "background dependency install
+    # failed" is opencode's Config forking `npm install @opencode-ai/plugin`
+    # into the config dir at every start (plugin loading awaits it; offline
+    # that is 70 s per stale packument - the DCP lane's boot tax).
+    parts.append('for f in "$HOME"/.local/share/opencode/log/*.log; do [ -f "$f" ] && grep -h "service=plugin\\|dependency install\\|service=npm" "$f"; done > /cap/pluginlog.txt 2>/dev/null')
     parts.append('grep -h "permission: opencode.json\\|context budget:" /cap/opencode.err > /cap/snippet.txt 2>/dev/null')
     return "\n".join(parts) + "\n"
 
@@ -174,11 +182,12 @@ def redact(s: str) -> str:
     return s.replace(k, "<api-key>") if k and k != dr.API_KEY_PLACEHOLDER else s
 
 
-def run_once(image: str, scaffold: str, served: str, ctx: int, timeout: int, control: bool, work: Path) -> dict:
+def run_once(image: str, scaffold: str, served: str, ctx: int, timeout: int, control: bool, work: Path,
+             pre_run: str = "") -> dict:
     work.mkdir(parents=True, exist_ok=True)
     (work / "permsrv.py").write_text(MODEL_SERVER)
-    (work / "run.sh").write_text(build_driver(scaffold, served, ctx, timeout, control))
-    for f in ("requests.jsonl", "permlog.txt", "snippet.txt", "rc"):
+    (work / "run.sh").write_text(build_driver(scaffold, served, ctx, timeout, control, pre_run))
+    for f in ("requests.jsonl", "permlog.txt", "pluginlog.txt", "snippet.txt", "rc"):
         (work / f).write_text("")
     mode = "control" if control else "fix"
     print(f"[permprobe:{mode}] image={image} scaffold={scaffold} work={work}", flush=True)
@@ -192,18 +201,27 @@ def run_once(image: str, scaffold: str, served: str, ctx: int, timeout: int, con
     rc = int(rc_txt) if rc_txt.isdigit() else proc.returncode
     reqs = [json.loads(l) for l in (work / "requests.jsonl").read_text().splitlines() if l.strip()]
     phases = [r["phase"] for r in reqs]
+    first_req = min((r["t"] for r in reqs), default=None)
     sub_result = next((r["tool_results"] for r in reqs if r["phase"] == "subagent-done"), None)
     permlog = redact((work / "permlog.txt").read_text(errors="replace"))
     ext = [l for l in permlog.splitlines() if "external_directory" in l and ("evaluated" in l or "asking" in l)]
     snippet = redact((work / "snippet.txt").read_text(errors="replace")).strip().splitlines()
+    plog = redact((work / "pluginlog.txt").read_text(errors="replace")).splitlines()
+    ext_plugins = [l for l in plog if "internal plugin" not in l]
     res = {"mode": mode, "scaffold": scaffold, "rc": rc, "seconds": round(time.time() - t0, 1), "phases": phases,
+           "boot_seconds": round(first_req - t0, 1) if first_req else None,   # docker start → first model request
+           "pre_run": pre_run or None,
            "subagent_bash_result": sub_result, "task_tool_offered": any(r.get("has_task_tool") for r in reqs),
            "external_directory_log": ext[-4:], "snippet_lines": snippet,
+           "plugin_log": ext_plugins[-6:],
+           "external_plugin_loaded": any("loading plugin" in l for l in ext_plugins),
+           "dependency_install_failed": any("dependency install failed" in l for l in ext_plugins),
            "completed": rc == 0 and "subagent-done" in phases and "main-done" in phases,
            "hung_after_subagent_bash": rc == 124 and "subagent-bash" in phases and "subagent-done" not in phases}
-    print(f"[permprobe:{mode}] rc={rc} in {res['seconds']}s phases={phases}", flush=True)
+    print(f"[permprobe:{mode}] rc={rc} in {res['seconds']}s boot={res['boot_seconds']}s phases={phases}", flush=True)
     for l in snippet: print(f"  {l}")
     for l in ext[-4:]: print(f"  log: {l[:220]}")
+    for l in ext_plugins[-6:]: print(f"  plugin: {l[:220]}")
     if sub_result: print(f"  subagent bash result: {sub_result[0][:160]!r}")
     return res
 
@@ -217,6 +235,8 @@ def main() -> int:
     ap.add_argument("--context-window", type=int, default=262144)
     ap.add_argument("--mode", default="fix", choices=["fix", "control", "both"])
     ap.add_argument("--timeout", type=int, default=120, help="wall for the opencode run; control must hit it")
+    ap.add_argument("--pre-run", default="", help="shell line(s) injected right before `opencode run` (experiments: "
+                    "e.g. rewrite the plugin spec in $HOME/.config/opencode/opencode.json)")
     ap.add_argument("--receipt")
     ap.add_argument("--workdir")
     args = ap.parse_args()
@@ -234,16 +254,20 @@ def main() -> int:
     modes = ["control", "fix"] if args.mode == "both" else [args.mode]
     for m in modes:
         runs.append(run_once(pinned, args.scaffold, args.served_name, args.context_window, args.timeout,
-                             m == "control", work / m))
+                             m == "control", work / m, args.pre_run))
     by = {r["mode"]: r for r in runs}
     ok = True
     if "fix" in by:
         ok &= by["fix"]["completed"]
+        if args.scaffold == "opencode-dcp":
+            ok &= by["fix"]["external_plugin_loaded"]   # a fast boot without the plugin is not the DCP lane
     if "control" in by:
         ok &= by["control"]["hung_after_subagent_bash"]
     verdict = "PASS" if ok else "FAIL"
     print(f"[permprobe] {verdict}: " + "; ".join(
         f"{r['mode']} {'completed' if r['completed'] else ('HUNG after subagent bash' if r['hung_after_subagent_bash'] else 'rc=%d phases=%s' % (r['rc'], r['phases']))}"
+        + (f" boot={r['boot_seconds']}s plugin={'loaded' if r['external_plugin_loaded'] else 'NOT loaded'}"
+           if args.scaffold == "opencode-dcp" else "")
         for r in runs))
     if args.receipt:
         Path(args.receipt).write_text(json.dumps({

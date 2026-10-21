@@ -1,0 +1,263 @@
+{
+  "date": "2026-10-21",
+  "scaffold": "opencode-dcp (opencode-ai@1.14.25 + @tarquinen/opencode-dcp@3.1.15)",
+  "defect": "opencode Config forks Npm.install(@opencode-ai/plugin@1.14.25) into every config directory at startup; plugin loading awaits it (plugin/index.ts waitForDependencies). Under --network none npm retries each packument 3x (0/+10 s/+60 s) before the stale-cache fallback: 70 s per package, sequential down the dependency tree.",
+  "npm_trace_network_none": {
+    "command": "npm install @opencode-ai/plugin@1.14.25 --ignore-scripts (HOME=/opt/dcp-home, image cache 2 h old)",
+    "rounds_seen": [
+      [
+        "@opencode-ai/plugin",
+        "70100ms (cache stale)"
+      ],
+      [
+        "@opentui/core",
+        "70089ms"
+      ],
+      [
+        "web-tree-sitter",
+        "70083ms"
+      ],
+      [
+        "@types/emscripten",
+        "70082ms"
+      ],
+      [
+        "@opentui/solid",
+        "70072ms"
+      ],
+      [
+        "solid-js",
+        "70087ms"
+      ],
+      [
+        "zod + effect + @opencode-ai/sdk",
+        "70095-70251ms"
+      ]
+    ],
+    "wall": "rc 124 at the 520 s timeout, node_modules still empty"
+  },
+  "production_evidence_qwen38_v4": {
+    "source": "evals/swebench/lane_overhead.py --run",
+    "opencode-dcp": {
+      "pre_median_s": 264,
+      "post_median_s": 120,
+      "post_ge_100s": "265/276",
+      "cleanup_session_present": "11/276"
+    },
+    "opencode": {
+      "pre_median_s": 193,
+      "post_median_s": 0,
+      "cleanup_session_present": "276/276"
+    },
+    "reading": "per-instance image built minutes before the run -> build packuments within their 5-min max-age -> first session pays one 70 s round (a tarball miss); the 120 s cleanup pass ~10 min later hits a stale cache and dies at its timeout before the first request"
+  },
+  "probe_runs": {
+    "baseline_stale_cache_2h_old_image": {
+      "image": "swebench-rollout-permprobe:latest (built 04:24)",
+      "rc": 124,
+      "timeout_s": 200,
+      "boot_seconds": null,
+      "phases": [],
+      "note": "second attempt with timeout 600 also rc 124, no model request"
+    },
+    "npm_config_offline_env_only": {
+      "mode": "fix",
+      "scaffold": "opencode-dcp",
+      "rc": 0,
+      "seconds": 4.1,
+      "phases": [
+        "no-tools",
+        "main-task",
+        "subagent-bash",
+        "subagent-done",
+        "main-done"
+      ],
+      "boot_seconds": 3.0,
+      "pre_run": "export npm_config_offline=true",
+      "subagent_bash_result": [
+        "node-compile-cache\n"
+      ],
+      "task_tool_offered": true,
+      "external_directory_log": [
+        "INFO  2026-10-21T20:56:23 +0ms service=permission permission=external_directory pattern=/tmp/* action={\"permission\":\"external_directory\",\"action\":\"allow\",\"pattern\":\"*\"} evaluated"
+      ],
+      "snippet_lines": [
+        "context budget: opencode.json qwen38 limit={\"context\":262144,\"output\":32768}",
+        "permission: opencode.json {\"external_directory\":\"allow\",\"doom_loop\":\"allow\",\"read\":{\"*.env\":\"allow\",\"*.env.*\":\"allow\"}}"
+      ],
+      "plugin_log": [
+        "WARN  2026-10-21T20:56:22 +595ms service=config dir=/opt/dcp-home/.config/opencode error=Cause([Fail(NpmInstallFailedError (cause: Error: request to https://registry.npmjs.org/uuid/-/uuid-13.0.2.tgz failed: cache mode is 'only-if-cached' but no cached response is available.))]) background dependency install failed",
+        "INFO  2026-10-21T20:56:22 +0ms service=plugin path=@tarquinen/opencode-dcp@3.1.15 loading plugin"
+      ],
+      "external_plugin_loaded": true,
+      "dependency_install_failed": true,
+      "completed": true,
+      "hung_after_subagent_bash": false
+    },
+    "preinstalled_config_dir_simulated": {
+      "mode": "fix",
+      "scaffold": "opencode-dcp",
+      "rc": 0,
+      "seconds": 4.4,
+      "phases": [
+        "no-tools",
+        "main-task",
+        "subagent-bash",
+        "subagent-done",
+        "main-done"
+      ],
+      "boot_seconds": 3.1,
+      "pre_run": "d=$HOME/.config/opencode; mkdir -p $d/node_modules; printf \"%s\" \"{\\\"dependencies\\\":{\\\"@opencode-ai/plugin\\\":\\\"1.14.25\\\"}}\" > $d/package.json; printf \"%s\" \"{\\\"name\\\":\\\"x\\\",\\\"lockfileVersion\\\":3,\\\"packages\\\":{\\\"\\\":{\\\"dependencies\\\":{\\\"@opencode-ai/plugin\\\":\\\"1.14.25\\\"}}}}\" > $d/package-lock.json",
+      "subagent_bash_result": [
+        "node-compile-cache\n"
+      ],
+      "task_tool_offered": true,
+      "external_directory_log": [
+        "INFO  2026-10-21T20:57:28 +0ms service=permission permission=external_directory pattern=/tmp/* action={\"permission\":\"external_directory\",\"action\":\"allow\",\"pattern\":\"*\"} evaluated"
+      ],
+      "snippet_lines": [
+        "context budget: opencode.json qwen38 limit={\"context\":262144,\"output\":32768}",
+        "permission: opencode.json {\"external_directory\":\"allow\",\"doom_loop\":\"allow\",\"read\":{\"*.env\":\"allow\",\"*.env.*\":\"allow\"}}"
+      ],
+      "plugin_log": [
+        "INFO  2026-10-21T20:57:27 +0ms service=plugin path=@tarquinen/opencode-dcp@3.1.15 loading plugin"
+      ],
+      "external_plugin_loaded": true,
+      "dependency_install_failed": false,
+      "completed": true,
+      "hung_after_subagent_bash": false
+    },
+    "v2_image_preinstall_plus_env": {
+      "mode": "fix",
+      "scaffold": "opencode-dcp",
+      "rc": 0,
+      "seconds": 3.5,
+      "phases": [
+        "no-tools",
+        "main-task",
+        "subagent-bash",
+        "subagent-done",
+        "main-done"
+      ],
+      "boot_seconds": 2.3,
+      "pre_run": null,
+      "subagent_bash_result": [
+        "node-compile-cache\n"
+      ],
+      "task_tool_offered": true,
+      "external_directory_log": [
+        "INFO  2026-10-21T21:02:16 +0ms service=permission permission=external_directory pattern=/tmp/* action={\"permission\":\"external_directory\",\"action\":\"allow\",\"pattern\":\"*\"} evaluated"
+      ],
+      "snippet_lines": [
+        "context budget: opencode.json qwen38 limit={\"context\":262144,\"output\":32768}",
+        "permission: opencode.json {\"external_directory\":\"allow\",\"doom_loop\":\"allow\",\"read\":{\"*.env\":\"allow\",\"*.env.*\":\"allow\"}}"
+      ],
+      "plugin_log": [
+        "INFO  2026-10-21T21:02:15 +1ms service=plugin path=@tarquinen/opencode-dcp@3.1.15 loading plugin"
+      ],
+      "external_plugin_loaded": true,
+      "dependency_install_failed": false,
+      "completed": true,
+      "hung_after_subagent_bash": false
+    },
+    "v2_image_preinstall_only_env_unset": {
+      "mode": "fix",
+      "scaffold": "opencode-dcp",
+      "rc": 0,
+      "seconds": 3.1,
+      "phases": [
+        "no-tools",
+        "main-task",
+        "subagent-bash",
+        "subagent-done",
+        "main-done"
+      ],
+      "boot_seconds": 2.1,
+      "pre_run": "unset npm_config_offline",
+      "subagent_bash_result": [
+        "node-compile-cache\n"
+      ],
+      "task_tool_offered": true,
+      "external_directory_log": [
+        "INFO  2026-10-21T21:02:19 +0ms service=permission permission=external_directory pattern=/tmp/* action={\"permission\":\"external_directory\",\"action\":\"allow\",\"pattern\":\"*\"} evaluated"
+      ],
+      "snippet_lines": [
+        "context budget: opencode.json qwen38 limit={\"context\":262144,\"output\":32768}",
+        "permission: opencode.json {\"external_directory\":\"allow\",\"doom_loop\":\"allow\",\"read\":{\"*.env\":\"allow\",\"*.env.*\":\"allow\"}}"
+      ],
+      "plugin_log": [
+        "INFO  2026-10-21T21:02:18 +1ms service=plugin path=@tarquinen/opencode-dcp@3.1.15 loading plugin"
+      ],
+      "external_plugin_loaded": true,
+      "dependency_install_failed": false,
+      "completed": true,
+      "hung_after_subagent_bash": false
+    },
+    "v2_image_opencode_control": {
+      "mode": "control",
+      "scaffold": "opencode",
+      "rc": 124,
+      "seconds": 91.3,
+      "phases": [
+        "no-tools",
+        "main-task",
+        "subagent-bash"
+      ],
+      "boot_seconds": 2.0,
+      "pre_run": null,
+      "subagent_bash_result": null,
+      "task_tool_offered": true,
+      "external_directory_log": [
+        "INFO  2026-10-21T21:02:32 +0ms service=permission permission=external_directory pattern=/tmp/* action={\"permission\":\"external_directory\",\"pattern\":\"*\",\"action\":\"ask\"} evaluated",
+        "INFO  2026-10-21T21:02:32 +0ms service=permission id=per_16045d883001aCjhlBh61JEHxj permission=external_directory patterns=[\"/tmp/*\"] asking"
+      ],
+      "snippet_lines": [
+        "context budget: opencode.json qwen38 limit={\"context\":262144,\"output\":32768}",
+        "permission: opencode.json {\"external_directory\":\"allow\",\"doom_loop\":\"allow\",\"read\":{\"*.env\":\"allow\",\"*.env.*\":\"allow\"}}",
+        "permission: opencode.json CONTROL (block removed)"
+      ],
+      "plugin_log": [],
+      "external_plugin_loaded": false,
+      "dependency_install_failed": false,
+      "completed": false,
+      "hung_after_subagent_bash": true
+    },
+    "v2_image_opencode_fix": {
+      "mode": "fix",
+      "scaffold": "opencode",
+      "rc": 0,
+      "seconds": 3.0,
+      "phases": [
+        "no-tools",
+        "main-task",
+        "subagent-bash",
+        "subagent-done",
+        "main-done"
+      ],
+      "boot_seconds": 2.0,
+      "pre_run": null,
+      "subagent_bash_result": [
+        "node-compile-cache\n"
+      ],
+      "task_tool_offered": true,
+      "external_directory_log": [
+        "INFO  2026-10-21T21:04:03 +0ms service=permission permission=external_directory pattern=/tmp/* action={\"permission\":\"external_directory\",\"action\":\"allow\",\"pattern\":\"*\"} evaluated"
+      ],
+      "snippet_lines": [
+        "context budget: opencode.json qwen38 limit={\"context\":262144,\"output\":32768}",
+        "permission: opencode.json {\"external_directory\":\"allow\",\"doom_loop\":\"allow\",\"read\":{\"*.env\":\"allow\",\"*.env.*\":\"allow\"}}"
+      ],
+      "plugin_log": [],
+      "external_plugin_loaded": false,
+      "dependency_install_failed": false,
+      "completed": true,
+      "hung_after_subagent_bash": false
+    }
+  },
+  "fix": {
+    "Dockerfile.rollout": "npm install --save-exact --ignore-scripts @opencode-ai/plugin@${OPENCODE_VERSION} into /root/.config/opencode, copied (package.json, package-lock.json, node_modules) into /opt/dcp-home/.config/opencode before the plugin step -> Npm.install short-circuits (node_modules present, lock declares the package)",
+    "docker_rollout.py": "NPM_OFFLINE_ENV npm_config_offline=true on both opencode scaffolds -> any remaining cache miss fails immediately (cache mode only-if-cached) instead of 70 s per packument; plugin still loads",
+    "gate": "probe_opencode_subagent_permission.py --scaffold opencode-dcp: boot_seconds + external_plugin_loaded (PASS requires the plugin to load) + dependency_install_failed"
+  },
+  "verdict": "PASS: DCP lane boot 264-193=71 s -> 2.1-2.3 s; cleanup pass no longer dies in npm; plain opencode unchanged (2.0 s both modes, control still hangs at action=ask as designed)"
+}

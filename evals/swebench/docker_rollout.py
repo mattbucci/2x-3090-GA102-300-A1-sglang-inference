@@ -307,6 +307,26 @@ def _pi_settings_snippet(agent_dir: str, extra: dict | None = None,
     return f"node -e '{js}' \"{agent_dir}\"\n"
 
 
+# opencode (1.14.25) forks `npm install @opencode-ai/plugin` into every config
+# directory at startup (Config -> Npm.install, a detached fiber) and PLUGIN
+# LOADING AWAITS IT (plugin/index.ts waitForDependencies) — so the DCP lane,
+# the only one with a plugin, paid npm's offline retry schedule under
+# --network none: 3 attempts (0 / +10 s / +60 s) per packument before the
+# stale-cache fallback, i.e. 70 s per package, sequential down the dependency
+# tree. The per-instance image is built minutes before the run, so the build's
+# packuments are still inside their 5-minute max-age and the first session paid
+# one round (DCP pre = 264 s vs opencode 193 s, lane_overhead.py); the 120 s
+# cleanup pass ran ~10 min later against a stale cache and was killed at its
+# timeout before issuing a request (cleanup session present on 11/276 DCP vs
+# 276/276 control, qwen38 v4). npm's offline mode makes a cache miss fail
+# immediately (`cache mode is 'only-if-cached'`), the plugin still loads, and
+# the lane boots in 3 s (probe_opencode_subagent_permission.py --scaffold
+# opencode-dcp, boot_seconds). Dockerfile.rollout also pre-installs the
+# package into both config homes so the install is a no-op; this env is the
+# belt for any future opencode dependency the pre-install does not cover.
+NPM_OFFLINE_ENV = "npm_config_offline=true"
+
+
 # Global opencode permission policy, written into every lane's opencode.json
 # per run. opencode 1.14.25's `--dangerously-skip-permissions` only answers
 # the MAIN session's permission asks (cli/cmd/run.ts: `if
@@ -824,7 +844,8 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
     if scaffold == "opencode":
         # opencode reads ~/.config/opencode/opencode.json which the Dockerfile
         # provisions. The `sglang/<served-name>` model id wires there.
-        envs = ["--env", f"OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX={OUTPUT_BUDGET}"]
+        envs = ["--env", f"OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX={OUTPUT_BUDGET}",
+                "--env", NPM_OFFLINE_ENV]
         inner = (
             f"set -e\n"
             f"git config --global user.email eval@local\n"
@@ -957,7 +978,8 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
         # scaffold envs are appended AFTER --env HOME=/root in the docker cmd,
         # and docker takes the last occurrence, so this override wins.
         envs = ["--env", "HOME=/opt/dcp-home",
-                "--env", f"OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX={OUTPUT_BUDGET}"]
+                "--env", f"OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX={OUTPUT_BUDGET}",
+                "--env", NPM_OFFLINE_ENV]
         inner = (
             f"set -e\n"
             f"git config --global user.email eval@local\n"
