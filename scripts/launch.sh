@@ -233,6 +233,20 @@ apply_preset() {
             #     — patch 059 sparse-KV decode: 2.03x @262K on gemma4-31b, opt-in
             #       because graphs-on wins below the ~80-90K crossover. See README
             #       Decode ideas + benchmarks/gemma-topk-port/verdict.md.
+            #   GEMMA_KV_SPLITS=64 (CUDA default 8) — --triton-attention-num-kv-splits,
+            #     the deep-decode lever for every triton-backend preset (2026-10-22):
+            #     the triton decode kernel's grid is batch x kv-heads-per-rank x
+            #     splits; at M=1 / TP=2 Gemma 4 has 4 (26B/12B/21B) or 8 (31B) KV
+            #     heads per rank, so 8 splits = 32-64 CTAs on 82 SMs and every
+            #     full-attention layer walks 262K tokens in 8 serial chunks. 64 vs
+            #     128 bracketed on all four presets; 64 wins or ties everywhere:
+            #     @261,916 actual gemma4 24.2 -> 58.3, gemma4-31b 12.9 -> 29.6,
+            #     gemma4-12b 17.5 -> 57.7, gemma4-21b-reap 24.0 -> 58.3 tok/s; 1K
+            #     within 1 %, 32K +18-47 %. SWA layers size their own splits from
+            #     the window (unaffected); prefill untouched. Beats the opt-in
+            #     decode-topk lever at depth with exact attention (gemma4-31b 29.6
+            #     vs 26.2). Receipts benchmarks/regression/<preset>-2026-10-22-kv{64,128}.json,
+            #     benchmarks/gemma4-kv-splits-2026-10-22.md.
             # Gemma 4 26B MoE AWQ — repointed 2026-05-09 to canonical HF mirror
             # post patch 023 (gemma4-moe-mlp-no-quant-config) detection upgrade,
             # which routes the dense MLP to AWQ when the checkpoint has
@@ -266,7 +280,7 @@ apply_preset() {
             # bytes) so 256K fits comfortably on 2x24GB.
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096  # graphs capture fine at 0.85 with the full 652K pool (B1 G receipt)
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
             ;;
         gemma4-21b-reap)
             # Gemma 4 21B REAP AWQ — Cerebras-style expert prune of the 26B
@@ -296,7 +310,7 @@ apply_preset() {
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
             ;;
         gemma4-31b)
             # Gemma 4 31B Dense AWQ — in-house BF16->GPTQ->AWQ rebuild
@@ -332,7 +346,7 @@ apply_preset() {
             # leaves the prior turn unclosed → runaway to max_tokens=8192 → empty diff.
             # Override with GEMMA4_31B_CHAT_TEMPLATE="--chat-template <file>".
             CHAT_TEMPLATE="${GEMMA4_31B_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/gemma4_chat_template.jinja}"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.05"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.05 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
             ;;
         gemma4-12b)
             # Gemma 4 12B unified omni (Gemma4UnifiedForConditionalGeneration) —
@@ -374,7 +388,7 @@ apply_preset() {
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
             ;;
         qwen3-vl-32b)
             # Qwen3-VL-32B-Instruct AWQ — 20 GB weights (11 shards). The prior
