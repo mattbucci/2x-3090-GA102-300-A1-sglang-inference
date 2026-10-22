@@ -1,0 +1,148 @@
+{
+ "tag": "tp1",
+ "served": "flint",
+ "port": "23334",
+ "timestamp": "2026-10-22T10:11:42",
+ "prompts": [
+  {
+   "id": "capital",
+   "messages": [
+    {
+     "role": "user",
+     "content": "What is the capital of France? Answer in one sentence."
+    }
+   ],
+   "reasoning": "User asks: \"What is the capital of France? Answer in one sentence.\" Simple. Provide one sentence. Should be concise.",
+   "content": "The capital of France is Paris.",
+   "tool_calls": null,
+   "finish": "stop",
+   "usage": {
+    "prompt_tokens": 14,
+    "total_tokens": 50,
+    "completion_tokens": 36,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 0
+   },
+   "secs": 0.3
+  },
+  {
+   "id": "arith",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Compute 17 * 23 + 9. Show the steps briefly, then give the final number."
+    }
+   ],
+   "reasoning": "We need answer simple. Need show steps briefly, final. 17*23=391, +9=400. Could mention order operations. final number.",
+   "content": "17 \u00d7 23 = 391  \n391 + 9 = 400\n\n**Final number: 400**",
+   "tool_calls": null,
+   "finish": "stop",
+   "usage": {
+    "prompt_tokens": 23,
+    "total_tokens": 81,
+    "completion_tokens": 58,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 0
+   },
+   "secs": 0.4
+  },
+  {
+   "id": "code",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Write a Python function `is_balanced(s: str) -> bool` that checks whether brackets ()[]{} in s are balanced. Return only the code."
+    }
+   ],
+   "reasoning": "We need to write a Python function is_balanced(s: str) -> bool that checks whether brackets ()[]{} in s are balanced.\n\nWe should only return the code, no extra text.\n\nThe function should take a string and return a boolean. It should check balanced brackets.\n\nWe can use a stack. For each character, if it's an opening bracket, push to stack. If it's closing, check if stack top matches, else return False. At end, stack should be empty.\n\nWe only care about brackets, ignore other characters.\n\nWe need to return only the code, so just the function definition.\n\nLet's write it.",
+   "content": "```python\ndef is_balanced(s: str) -> bool:\n    stack = []\n    matching = {')': '(', ']': '[', '}': '{'}\n    for ch in s:\n        if ch in '([{':\n            stack.append(ch)\n        elif ch in ')]}':\n            if not stack or stack[-1] != matching[ch]:\n                return False\n            stack.pop()\n    return not stack\n```",
+   "tool_calls": null,
+   "finish": "stop",
+   "usage": {
+    "prompt_tokens": 34,
+    "total_tokens": 250,
+    "completion_tokens": 216,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 0
+   },
+   "secs": 1.3
+  },
+  {
+   "id": "bugfix",
+   "messages": [
+    {
+     "role": "system",
+     "content": "You are a careful code reviewer."
+    },
+    {
+     "role": "user",
+     "content": "This function should return the second largest distinct value, but fails on [3, 3, 2]:\n\ndef second_largest(xs):\n    xs = sorted(xs)\n    return xs[-2]\n\nExplain the bug in two sentences and give the corrected function."
+    }
+   ],
+   "reasoning": "We need answer. Need explain bug in two sentences and corrected function. We need likely code. User asks: \"This function should return the second largest distinct value, but fails on [3, 3, 2]:\n\ndef second_largest(xs):\n    xs = sorted(xs)\n    return xs[-2]\n\nExplain the bug in two sentences and give the corrected function.\"\n\nWe need craft. Bug: sorted includes duplicates, so for [3,3,2], sorted [2,3,3], -2 returns 3, which is largest not second largest distinct. Need distinct values. Corrected function should deduplicate before selecting second last. E.g.\n\ndef second_largest(xs):\n    unique = sorted(set(xs))\n    return unique[-2] if len(unique) >= 2 else None\n\nBut maybe if less than 2 distinct? The prompt says should return second largest distinct value. For [3,3,2], distinct sorted [2,3], second largest = 2. set sorted. Return unique[-2]. If no second distinct maybe None. We can include.\n\nNeed two sentences explanation. \"The bug is that sorted(xs) keeps duplicate values, so for [3,3,2] it returns the second-to-last element of [2,3,3], which is 3, the largest value. You need to remove duplicates before selecting the second largest distinct value.\"\n\nThen corrected function.\n\nShould we mention if only one distinct? Maybe corrected function:\n\ndef second_largest(xs):\n    unique = sorted(set(xs))\n    return unique[-2] if len(unique) >= 2 else None\n\nThis returns second largest distinct. For [3,3,2], set -> {2,3}, sorted -> [2,3], unique[-2] -> 2.\n\nCheck if expected maybe second largest distinct, for [3,3,2] should be",
+   "content": "",
+   "tool_calls": null,
+   "finish": "length",
+   "usage": {
+    "prompt_tokens": 62,
+    "total_tokens": 446,
+    "completion_tokens": 384,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 0
+   },
+   "secs": 2.3
+  },
+  {
+   "id": "summ",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Summarize in exactly three bullet points: Sliding-window attention restricts each token to attend to a fixed-size window of recent tokens, which bounds the KV cache for those layers; interleaving a few full-attention layers restores long-range retrieval; learned attention sinks give the softmax a place to put mass when no token is relevant."
+    }
+   ],
+   "reasoning": "We need answer. Need summarize in exactly three bullet points. We need likely just three bullets. Must be careful exactly three bullet points. Content: user provided sentence. We need summarize in exactly three bullet points. We can make each bullet concise. No extra bullets. Maybe no intro. Exactly three bullet points. Ensure each starts with - or \u2022. Three bullets total.\n\nWe need maybe capture: 1 sliding window restricts context, bounds KV cache. 2 full attention layers can restore long-range. 3 attention sinks handle irrelevant tokens via softmax.\n\nLet's craft exactly three bullet points, no additional bullet. Maybe:\n- Sliding-window attention limits each token to a fixed recent-token window, bounding the KV cache for those layers.\n- Interspersing full-attention layers can restore access to long-range context.\n- Learned attention sinks give the softmax a fallback when no token in the window is relevant.\n\nCheck exactly three. No extra text? The instruction: \"Summarize in exactly three bullet points: [text]\". So final should just three bullets. No intro. Ensure no bullet in final beyond three. Use simple bullets.\n\nPotential final:\n- Sliding-window attention restricts each token to a fixed window of recent tokens, bounding the KV cache for those layers.\n- Interleaving full-attention layers can restore long-range retrieval.\n- Learned attention sinks provide a place for the softmax to put mass when no token is relevant.\n\nThis is exactly three. Good. \n",
+   "content": "- Sliding-window attention restricts each token to a fixed window of recent tokens, bounding the KV cache for those layers.\n- Interleaving full-attention layers can restore long-range retrieval.\n- Learned attention sinks give the softmax a place to put mass when no token is relevant.",
+   "tool_calls": null,
+   "finish": "stop",
+   "usage": {
+    "prompt_tokens": 66,
+    "total_tokens": 414,
+    "completion_tokens": 348,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 0
+   },
+   "secs": 2.1
+  },
+  {
+   "id": "tool",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Read the file src/main.py and tell me what it does."
+    }
+   ],
+   "reasoning": "The user asked me to read the file at path 'src/main.py'. I should use the read_file tool to load it, then answer what it does. I don't have the content yet, so the first step is to call the tool.",
+   "content": "I'll read the file to see what it does.",
+   "tool_calls": [
+    {
+     "id": "call_26861d6516e847b4a9e3d0f6",
+     "index": 0,
+     "type": "function",
+     "function": {
+      "name": "read_file",
+      "arguments": "{\"path\": \"src/main.py\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "usage": {
+    "prompt_tokens": 142,
+    "total_tokens": 216,
+    "completion_tokens": 74,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 0
+   },
+   "secs": 0.6
+  }
+ ]
+}

@@ -314,15 +314,21 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
                 finish = r["choices"][0].get("finish_reason")
                 excerpt = ((msg.get("content") or "")[-160:], (msg.get("reasoning_content") or "")[-160:])
                 comp_tok = r.get("usage", {}).get("completion_tokens")
+                # A miss keeps the whole answer + reasoning: a 1-token content
+                # with finish=stop (seen on Flint at 243K under sampling) is
+                # unreadable from a 160-char tail.
+                miss = None if found else {"content": msg.get("content"), "reasoning": msg.get("reasoning_content")}
             except Exception:
                 found = False
                 actual = finish = comp_tok = None
                 excerpt = ("", "")
+                miss = None
             results.append({"context": ctx, "depth": depth, "found": found,
                             "actual_prompt_tokens": actual, "finish_reason": finish,
                             "haystack": "natural" if haystack else "filler", "flushed": bool(flush),
                             "completion_tokens": comp_tok,
-                            "content_tail": excerpt[0], "reasoning_tail": excerpt[1]})
+                            "content_tail": excerpt[0], "reasoning_tail": excerpt[1],
+                            **({"miss": miss} if miss else {})})
     return {"results": results, "score": sum(r["found"] for r in results) / len(results) if results else 0}
 
 
