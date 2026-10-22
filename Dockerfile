@@ -25,6 +25,7 @@ RUN MINIFORGE_VERSION="${MINIFORGE_VERSION}" MINIFORGE_SHA256="${MINIFORGE_SHA25
 WORKDIR ${REPO_DIR}
 COPY scripts/ ${REPO_DIR}/scripts/
 COPY patches/ ${REPO_DIR}/patches/
+COPY plugins/ ${REPO_DIR}/plugins/
 RUN SGLANG_TAG="${SGLANG_TAG}" SGLANG_COMMIT="${SGLANG_COMMIT}" \
     /usr/local/bin/build-sglang build-sglang
 

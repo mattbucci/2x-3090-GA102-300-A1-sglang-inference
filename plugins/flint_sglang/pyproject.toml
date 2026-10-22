@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flint-sglang"
+# Vendor flint_sglang 0.1.4 (SGLang 0.5.16) ported to SGLang v0.5.22 — see README.md for the delta.
+version = "0.1.4+sglang0522"
+description = "SGLang model support for Flint (RecursiveSI/flint), ported to SGLang v0.5.22 for the 2x3090 stack"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+# Serving-env provided (sglang-v0522): sglang, transformers 5.19.0, xgrammar 0.2.7, pydantic 2, huggingface_hub.
+# Install with `PYTHONNOUSERSITE=1 pip install --no-deps -e plugins/flint_sglang`.
+dependencies = []
+
+[project.entry-points."sglang.srt.plugins"]
+flint = "flint_sglang.plugin:register"
+
+[tool.setuptools.packages.find]
+include = ["flint_sglang*"]

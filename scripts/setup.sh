@@ -184,6 +184,23 @@ else
 fi
 
 # -------------------------------------------------------------------
+# Model plugins (out-of-tree architectures registered through SGLang's
+# `sglang.srt.plugins` entry point; loaded by `load_plugins()` at engine
+# start, no patch needed). flint_sglang = RecursiveSI/flint (model class,
+# config, tool/reasoning parsers, constrained tool grammar), vendor 0.1.4
+# ported to v0.5.22 (port deltas in plugins/flint_sglang/README.md).
+# --no-deps so the pinned env never moves; PYTHONNOUSERSITE=1 keeps pip
+# from resolving against ~/.local (v0.5.22 env-build lesson). A regular
+# (non-editable) install: the OCI build copies /opt/conda out of the
+# builder stage, where an editable finder would point at a path that is
+# not carried over. Re-run this step after editing the plugin.
+# -------------------------------------------------------------------
+echo ""
+echo "[2a/3] Installing model plugins (flint_sglang)..."
+PYTHONNOUSERSITE=1 pip install --no-deps "$REPO_DIR/plugins/flint_sglang" || \
+    echo "  (warning: flint_sglang plugin install failed; the flint preset will not boot)"
+
+# -------------------------------------------------------------------
 # Chat-template fix: accept the OpenAI `developer` role as `system`.
 # Newer OpenAI-compat scaffolds (little-coder/pi-ai) send the system prompt
 # with role `developer`; the Qwen3.5/3.6 templates raise on it -> 400 ->
