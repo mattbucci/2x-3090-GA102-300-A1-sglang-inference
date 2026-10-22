@@ -312,6 +312,10 @@ def main() -> None:
         shard_idx += 1
         fn = f"model-{shard_idx:05d}.safetensors"
         save_file(out, os.path.join(args.dst, fn), metadata={"format": "pt"})
+        # safetensors writes shards 0600 (tempfile + rename); the docker-served
+        # stack reads /models as UID 10001 and would fail the boot with a
+        # misleading FileNotFoundError on the first shard (2026-10-22 smoke).
+        os.chmod(os.path.join(args.dst, fn), 0o644)
         for k in out:
             weight_map[k] = fn
         print(f"  wrote {fn} ({out_size/2**30:.2f} GiB, {len(out)} tensors)", flush=True)

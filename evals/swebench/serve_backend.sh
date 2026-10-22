@@ -179,6 +179,13 @@ _serve_model_preflight() {
               /models/*|'"$models"'/*)
                 if [ -e "$a" ]; then
                   [ -r "$a" ] || { echo "UNREADABLE $a (uid $(id -u))"; rc=1; }
+                  # A checkpoint dir is readable while its shards are not: safetensors
+                  # writes 0600 and the loader reports that as FileNotFoundError on
+                  # the first shard, 45 s into the boot (flint smoke 2026-10-22).
+                  if [ -d "$a" ]; then
+                    while IFS= read -r f; do echo "UNREADABLE $f (uid $(id -u))"; rc=1; done \
+                      < <(find -L "$a" -maxdepth 1 -type f ! -readable 2>/dev/null)
+                  fi
                 else
                   echo "UNREACHABLE $a -> $(readlink -f "$a" 2>/dev/null || readlink "$a" 2>/dev/null)"; rc=1
                 fi ;;
