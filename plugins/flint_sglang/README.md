@@ -36,11 +36,17 @@ Unchanged: `grammar_backend.py` (`XGrammarGrammarBackend` API identical), `reaso
 ## Serving on this stack
 
 * `--attention-backend triton` (sinks + SWA via `SWAKVPool`; FlashInfer has no sinks path, FA3/FA4 need
-  Hopper/Blackwell), `--moe-runner-backend triton`, `--grammar-backend flint --reasoning-parser flint
-  --tool-call-parser flint`, `--enable-fp32-lm-head`, `FLASHINFER_USE_CUDA_NORM=1` exported before launch.
+  Hopper/Blackwell), `--grammar-backend flint --reasoning-parser flint --tool-call-parser flint`,
+  `--enable-fp32-lm-head`, `FLASHINFER_USE_CUDA_NORM=1` exported before launch. The MoE runner stays
+  `auto`: on the AWQ checkpoint `AWQMoEScheme.create_moe_runner` asserts `is_auto()` and dispatches
+  `fused_marlin_moe` itself — the vendor's `--moe-runner-backend triton` is the BF16/FP8-weight setting
+  and would fail the assert here. KV stays `auto` (bf16): triton rejects FP8 E4M3 KV on sm_86 and Flint's
+  full-attention KV is small (14 layers × 4 KV heads); `fp8_e5m2` is a later lever.
 * TP=2 is **not vendor-validated** (the plugin only warns). The 3090 bring-up validates it against TP=1
   short-context outputs before any quality number is published.
 * Checkpoint: the BF16 base is 79.6 GB (does not fit 48 GB). The INT4 route is
-  `scripts/quantize/convert_mlx_int4_to_awq.py` over RecursiveSI's MLX int4 export (group 64, symmetric
-  affine `w = s·q + b` → AWQ zero-point form) — no llmcompressor path exists because transformers has no
-  Flint modeling file.
+  `scripts/quantize/quantize_flint_rtn_awq.py` — a data-free per-group MSE-clipped round-to-nearest from
+  the BF16 base into native AWQ GEMM packing (group 64, integer zero-points; router / embeddings /
+  lm_head / norms / sinks stay BF16). RecursiveSI's own MLX int4 export uses a free per-group bias
+  (`w = s·q + b`, `−b/s` fractional) that the AWQ format cannot carry exactly, and transformers has no
+  Flint modeling file, so neither a lossless MLX→AWQ repack nor an llmcompressor/GPTQ path exists.

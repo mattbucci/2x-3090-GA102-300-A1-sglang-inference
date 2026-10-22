@@ -29,6 +29,7 @@
 #   qwen36-ream                               Qwen3.6-REAM-A3B (192 exp)
 #   qwen36-vl-reap                            Qwen3.6-VL-REAP-26B-A3B (192 exp, VL)
 #   gemma4                                    Gemma 4 26B MoE (103 exp)
+#   flint                                     Flint 40B-A2B (256 exp top-6 + shared, SWA+sinks, thinking+tools)
 #
 # Note: 80B+ models (coder-next, glm45-air) do NOT fit in 48GB VRAM.
 
@@ -549,6 +550,44 @@ apply_preset() {
                     --disable-overlap-schedule \
                     --mamba-radix-cache-strategy extra_buffer"
             fi
+            ;;
+        flint)
+            # RecursiveSI/flint (FlintForCausalLM, 2026-10): 49-layer MoE, 256
+            # experts top-6 sigmoid + ungated shared expert, 35 SWA(513) + 14
+            # full-attention NoPE layers with learned softmax sinks, 262K native.
+            # Served through plugins/flint_sglang (vendor plugin ported to this
+            # tree; `scripts/setup.sh` installs it). Checkpoint = our data-free
+            # MSE-RTN AWQ INT4 g64 of the BF16 base (scripts/quantize/
+            # quantize_flint_rtn_awq.py; the 79.6 GB base does not fit 48 GB).
+            #  * --attention-backend triton: the only backend here with the
+            #    sinks + SWAKVPool path (FlashInfer has no sinks; FA3/FA4 are
+            #    Hopper/Blackwell). Triton rejects FP8 E4M3 KV on sm_86 and the
+            #    KV footprint is tiny (14 full layers x 4 kv heads: ~3.7 GB/rank
+            #    at 262K fp16), so KV stays fp16 (`auto`); fp8_e5m2 is a lever.
+            #  * MoE runner stays `auto`: the AWQ-Marlin MoE scheme asserts
+            #    is_auto() and runs fused_marlin_moe — the vendor's
+            #    `--moe-runner-backend triton` is for BF16/FP8 weights only.
+            #  * --swa-full-tokens-ratio 0.05 (vendor B300 value; the 513-token
+            #    window needs a few K SWA slots at MAX_RUNNING=1, same as gemma4).
+            #  * grammar/reasoning/tool-call parsers are the plugin's `flint`
+            #    trio (check_flags enforces the combination); the template
+            #    defaults thinking on and accepts the `developer` role natively.
+            #  * FLASHINFER_USE_CUDA_NORM=1 must be in the environment before
+            #    flashinfer.norm is imported (the model refuses to load otherwise).
+            #  * bf16 for vendor parity (AWQ-Marlin bf16 is the gemma4 path here);
+            #    TP=2 is not vendor-validated — bring-up checks TP=1 vs TP=2
+            #    outputs before any quality number is published.
+            export FLASHINFER_USE_CUDA_NORM=1
+            export SGLANG_EXTERNAL_MODEL_PACKAGE="${SGLANG_EXTERNAL_MODEL_PACKAGE:-flint_sglang}"
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Flint-AWQ-INT4-g64}"
+            QUANT="${QUANT:-awq_marlin}"
+            DTYPE="${_ENV_DTYPE:-bfloat16}"
+            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
+            WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            REASONING="--reasoning-parser flint"
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --attention-backend triton --tool-call-parser flint --grammar-backend flint --enable-fp32-lm-head --swa-full-tokens-ratio ${FLINT_SWA_RATIO:-0.05}"
             ;;
         qwen35-dense)
             # Qwen3.5-27B Dense AWQ (R9700 self-cal at hf-mattbucci/Qwen3.5-
