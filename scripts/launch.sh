@@ -574,10 +574,30 @@ apply_preset() {
             #    defaults thinking on and accepts the `developer` role natively.
             #  * FLASHINFER_USE_CUDA_NORM=1 must be in the environment before
             #    flashinfer.norm is imported (the model refuses to load otherwise).
+            #  * FLINT_STRICT_TOOLS=1: the plugin's tool grammar enforces every
+            #    tool's argument schema (as if each tool were sent strict: true).
+            #    Flint ignores a schema's `required` keys on its own — opencode's
+            #    bash needs `description`, read needs `filePath`; the checkpoint
+            #    wrote neither in 23/24 calls grammar-off AND grammar-on
+            #    schema-free, 20/20 with the schema enforced (receipt
+            #    benchmarks/quality/flint/tool-schema-probe-2026-10-22.json;
+            #    the first docker smoke rollout lost 86 turns to it). The
+            #    vendor's SWE-bench path is mini-swe-agent (bash in text, no
+            #    JSON-schema tools), so this contract was never exercised there.
+            #  * --triton-attention-num-kv-splits 64 (CUDA default 8): the triton
+            #    decode kernel's grid is batch x kv-heads-per-rank x splits; at
+            #    M=1 / TP=2 Flint has 2 KV heads per rank, so 8 splits = 16 CTAs
+            #    on 82 SMs and the 14 full-attention layers walk 262K tokens
+            #    almost serially. The adaptive split formula wants ~490 at 262K
+            #    and is capped by this flag; bracketed 8/32/64/128 at 1K/32K/
+            #    64K/131K/261,916: 64 is the knee (35.9 -> 89.5 tok/s deep,
+            #    114.8 -> 147.5 @32K, 1K within 1 %; 32 = 80.3 deep, 128 = 88.1;
+            #    receipts benchmarks/regression/flint-2026-10-22-kv{32,64,128}.json).
             #  * bf16 for vendor parity (AWQ-Marlin bf16 is the gemma4 path here);
             #    TP=2 is not vendor-validated — bring-up checks TP=1 vs TP=2
             #    outputs before any quality number is published.
             export FLASHINFER_USE_CUDA_NORM=1
+            export FLINT_STRICT_TOOLS="${FLINT_STRICT_TOOLS:-1}"
             export SGLANG_EXTERNAL_MODEL_PACKAGE="${SGLANG_EXTERNAL_MODEL_PACKAGE:-flint_sglang}"
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Flint-AWQ-INT4-g64}"
             QUANT="${QUANT:-awq_marlin}"
@@ -589,7 +609,7 @@ apply_preset() {
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             REASONING="--reasoning-parser flint"
             CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --attention-backend triton --tool-call-parser flint --grammar-backend flint --enable-fp32-lm-head --swa-full-tokens-ratio ${FLINT_SWA_RATIO:-0.05}"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --attention-backend triton --tool-call-parser flint --grammar-backend flint --enable-fp32-lm-head --swa-full-tokens-ratio ${FLINT_SWA_RATIO:-0.05} --triton-attention-num-kv-splits ${FLINT_KV_SPLITS:-64}"
             ;;
         qwen35-dense)
             # Qwen3.5-27B Dense AWQ (R9700 self-cal at hf-mattbucci/Qwen3.5-

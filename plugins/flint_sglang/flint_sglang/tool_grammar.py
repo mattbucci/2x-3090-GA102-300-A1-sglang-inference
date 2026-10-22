@@ -6,7 +6,11 @@ protocol markers, then tool calls in Flint's format (``<tool_call>name<arg_key>k
 exactly one call of the named tool with a named choice, and at most one (exactly one with ``"required"``) when the
 request sets ``parallel_tool_calls`` to false. The tool calls reuse XGrammar's built-in structural tag for this
 format: argument values follow a tool's JSON schema when the tool sets ``strict: true`` and are
-syntactically constrained but schema-free otherwise, as XGrammar defines it. ``reasoning_then`` puts Flint's
+syntactically constrained but schema-free otherwise, as XGrammar defines it — unless ``FLINT_STRICT_TOOLS=1`` is
+in the server's environment, which treats every tool as strict (3090 port, 2026-10-22: Flint ignores a schema's
+``required`` keys on its own — opencode's ``bash`` needs ``description``, ``read`` needs ``filePath``, and the
+checkpoint wrote neither in 23/24 calls with the grammar off and 23/24 with it on, schema-free; with the schema
+enforced it was 20/20 — receipt ``benchmarks/quality/flint/tool-schema-probe-2026-10-22.json``). ``reasoning_then`` puts Flint's
 optional ``<think>...</think>`` block before a constraint; the ``flint`` grammar backend does that for every
 constraint, the tool grammar included.
 
@@ -16,6 +20,7 @@ end-of-turn tokens (``<|observation|>`` after tool calls, ``<|user|>`` or end-of
 the turn as stop tokens.
 """
 
+import os
 from typing import Any, Literal
 
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
@@ -49,6 +54,19 @@ PROTOCOL_MARKERS = (
     "<|observation|>",
 )
 STOP_MARKERS = ("<|end_of_text|>", "<|user|>", "<|observation|>")
+# Enforce every tool's argument schema (as if each tool were sent with strict: true). Set by the launch.sh preset.
+STRICT_TOOLS_ENV = "FLINT_STRICT_TOOLS"
+
+
+def strict_tools_enabled() -> bool:
+    return os.environ.get(STRICT_TOOLS_ENV, "0").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _as_strict(tool: dict[str, Any]) -> dict[str, Any]:
+    fn = tool.get("function")
+    if isinstance(fn, dict):
+        return {**tool, "function": {**fn, "strict": True}}
+    return {**tool, "strict": True}
 
 
 def build_flint_tool_grammar(
@@ -72,6 +90,8 @@ def build_flint_tool_grammar(
     if tools:
         # XGrammar's "required" is one or more calls; "auto" makes them optional after the text
         calls_choice = "required" if tool_choice == "auto" else tool_choice
+        if strict_tools_enabled():
+            tools = [_as_strict(tool) for tool in tools]
         calls = get_model_structural_tag("glm_4_7", tools=tools, tool_choice=calls_choice, reasoning=False).format
         if not parallel_tool_calls and isinstance(calls, TagsWithSeparatorFormat):
             calls = calls.model_copy(update={"stop_after_first": True})

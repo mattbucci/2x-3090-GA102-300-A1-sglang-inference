@@ -1,0 +1,36 @@
+{
+ "tag": "flint-ship-kv64-natural-131k",
+ "timestamp": "2026-10-22 12:42",
+ "temperature": 0.0,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 74,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ely from last? The secret password is: BANANA42. at top. They explicitly ask answer with just the password. So final should be just \"BANANA42\". Ensure no extra."
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 42,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "We need answer user. They provided huge text and final \"The secret password is: BANANA42. Answer with just the password.\" We need likely just output BANANA42."
+   }
+  ],
+  "score": 1.0
+ }
+}

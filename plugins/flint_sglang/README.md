@@ -30,8 +30,21 @@ flint; tool parser flint ⇒ grammar flint; no `--enable-strict-thinking`, no
 | `Glm47MoeDetector` dispatch in `get_structure_constraint` | new fast path: `parses_required_natively()` ⇒ GLM-4.7 EBNF with GLM special tokens | `FlintDetector.parses_required_natively()` pinned to `False` |
 | sinks detection: arch allowlist | generic `hf_text_config.learnable_sink` | `FlintConfig.__post_init__` sets `learnable_sink = (softmax_type == "learnable")` so auto backend selection never picks FlashInfer (no sinks path) |
 
-Unchanged: `grammar_backend.py` (`XGrammarGrammarBackend` API identical), `reasoning_parser.py`,
-`tool_grammar.py` (xgrammar 0.2.7 `get_model_structural_tag("glm_4_7", …)`), `plugin.py`.
+Unchanged: `grammar_backend.py` (`XGrammarGrammarBackend` API identical), `reasoning_parser.py`, `plugin.py`.
+`tool_grammar.py` (xgrammar 0.2.7 `get_model_structural_tag("glm_4_7", …)`) gains one 3090 knob:
+
+* **`FLINT_STRICT_TOOLS=1`** (env, read when a request's tool grammar is built; `launch.sh flint` exports it)
+  treats every tool as `strict: true`, so argument values follow each tool's JSON schema — required keys,
+  property names, types. The vendor semantics (schema-free unless the client sends `strict: true`, as
+  OpenAI's API does) stay the default without the env. Why: Flint ignores a schema's `required` keys on
+  its own. Against opencode's tools (`bash` requires `description`, `read` takes `filePath`) the INT4
+  checkpoint wrote neither in 23/24 calls with the grammar off and 23/24 with it on schema-free — so the
+  grammar is not the cause — and 20/20 with the schema enforced
+  (`benchmarks/quality/flint/tool-schema-probe-2026-10-22.json`, three arms × three tasks × 5 draws). The
+  first docker-serving smoke rollout spent 86 turns re-issuing `bash` without `description` (opencode
+  returns the `SchemaError` each time) before producing nothing. The vendor's SWE-bench path is
+  mini-swe-agent (bash in text, no JSON-schema tools), so this contract was never exercised there. All
+  ten opencode 1.14.25 tool schemas compile under strict (`todowrite`'s nested arrays included).
 
 ## Serving on this stack
 
