@@ -513,8 +513,13 @@ def make_decode_bar_chart(all_data):
     print(f"  {out}")
 
 
-# Scaffold display order for the bake-off chart: the live 2026-08-31 roster.
+# Scaffold display order for the bake-off chart. The harness was pruned to
+# plain opencode on 2026-10-22 (qwen38 five-scaffold bake-off = statistical
+# tie; benchmarks/quality/qwen38-v4-cycle-close-2026-10-22.md): landed cells
+# of every scaffold still plot (the qwen38 bake-off row), but only the ACTIVE
+# lane gets "pending" placeholders on the presets still in the queue.
 # claw-code (retired 2026-08-31) is not plotted — its cell JSONs stay as receipts.
+BAKEOFF_ACTIVE_SCAFFOLDS = {"opencode"}
 BAKEOFF_SCAFFOLDS = [
     ("opencode",         "#58a6ff", "opencode"),
     ("opencode-dcp",     "#1f6feb", "opencode + DCP"),
@@ -581,6 +586,8 @@ def make_bakeoff_chart():
         for i, p in enumerate(presets):
             c = cells.get((p, sc))
             if not c:
+                if sc not in BAKEOFF_ACTIVE_SCAFFOLDS:
+                    continue            # pruned lane: no placeholder, nothing owed
                 pending = True
                 ax.bar(x[i] + off, ph, w, fill=False, edgecolor=color, linewidth=0.9,
                        linestyle=(0, (2, 1.5)), alpha=0.75, zorder=4)
@@ -613,7 +620,8 @@ def make_bakeoff_chart():
     ax.text(0.0, -0.22, "isolated Docker harness (network=none, served 262K window, 32K output budget, "
             "template-default thinking), swebench scorer 4.1.0, one attempt per instance (resolved / 300); "
             + (f"landed cells {dates[0]} .. {dates[-1]}; " if dates else "no cell scored under it yet; ")
-            + "superseded pre-2026-09-13 receipts and the retired claw-code column are not plotted",
+            + "harness pruned to opencode 2026-10-22 (other scaffolds: qwen38 bake-off cells only); "
+            "superseded pre-2026-09-13 receipts and the retired claw-code column are not plotted",
             transform=ax.transAxes, fontsize=7.5, color="#8b949e")
     fig.tight_layout()
     out = os.path.join(BENCH_DIR, "bakeoff_swebench_lite.png")
