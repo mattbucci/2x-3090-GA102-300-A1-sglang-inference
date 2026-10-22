@@ -27,8 +27,8 @@ empties unchanged on the rollout side) and as the DCP A/B one lane over
 
 - 15 instances walled on the control and finished under rtk: **7 resolved** (2 of them the control had already
   resolved at its wall). 5 finished on the control and walled under rtk: control resolved 2, rtk 2 at its wall.
-  Net +5 of the +9 lives in the wall flips; among the 270 instances that finished on both lanes the discordant
-  split is 10 vs 14 (p ≈ 0.5).
+  Split by wall status: the 30 instances that walled on either lane are 0 vs 5 discordant (all rtk-only, p = 0.06);
+  the 270 that finished on both lanes are 13 vs 17 (p = 0.59). The whole +9 is +5 from the wall flips plus noise.
 - Wall rate 25 vs 15 looks like a signal but is the mixed-code confound the lane receipt documents: 161 of the rtk
   rows were drawn 2026-10-07→10-09 by the old in-memory code (no `scaffold_pin`), their 14 pre-capture walls were
   re-drawn at Phase 4 — a second attempt for exactly the instances most likely to wall — while the control's 300 rows
