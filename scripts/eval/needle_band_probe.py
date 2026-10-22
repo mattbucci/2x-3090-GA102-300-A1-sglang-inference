@@ -39,7 +39,17 @@ def main():
     ap.add_argument("--temperature", default="0",
                     help="sampling temperature (default 0 = greedy, as the quality suite); "
                          "'default' omits the field so the checkpoint's generation_config applies")
+    ap.add_argument("--haystack", default=None,
+                    help="path to a natural-text corpus to tile as the haystack instead of the "
+                         "repeated-sentence filler (separates a repetition attractor from a retrieval miss)")
+    ap.add_argument("--chars-per-token", type=float, default=None,
+                    help="chars/token of the haystack under the served tokenizer (filler 4.5; "
+                         "default 3.4 with --haystack, 4.5 without) — sizes the prompt")
+    ap.add_argument("--flush", action="store_true",
+                    help="POST /flush_cache before every cell (no radix-cache prefix reuse)")
     a = ap.parse_args()
+    haystack = open(a.haystack).read() if a.haystack else None
+    chars_per_token = a.chars_per_token or (3.4 if haystack else 4.5)
     temperature = None if a.temperature == "default" else float(a.temperature)
     url = f"http://localhost:{a.port}/v1/chat/completions"
     lengths = [int(x) for x in a.lengths.split(",")]
@@ -47,10 +57,12 @@ def main():
     results = []
     for _ in range(a.repeat):
         results += needle_eval(url, lengths, depths=depths, budget=a.max_tokens,
-                               temperature=temperature)["results"]
+                               temperature=temperature, haystack=haystack,
+                               chars_per_token=chars_per_token, flush=a.flush)["results"]
     score = sum(r["found"] for r in results) / len(results) if results else 0
     out = {"tag": a.tag, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
            "temperature": "default" if temperature is None else temperature,
+           "haystack": a.haystack or "filler", "flush": a.flush,
            "needle": {"results": results, "score": score}}
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     path = RESULTS_DIR / f"{a.tag}.json"

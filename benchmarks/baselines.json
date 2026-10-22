@@ -3,7 +3,7 @@
     "hardware": "2x RTX 3090 TP=2",
     "instrument": "scripts/bench/bench_long_context.py",
     "output_tokens": 100,
-    "saved": "2026-08-30",
+    "saved": "2026-10-22",
     "schema": 2,
     "stack": "sglang-v0.5.15"
   },
@@ -47,6 +47,27 @@
       "tok_per_sec": 36.4,
       "tpot_ms": 27.51,
       "ttft_ms": 341.91
+    }
+  },
+  "flint": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 165.6,
+      "tpot_ms": 6.04,
+      "ttft_ms": 67.54
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 114.8,
+      "tpot_ms": 8.71,
+      "ttft_ms": 136.84
+    },
+    "deep": {
+      "actual_input_tokens": 261916,
+      "label": 261916,
+      "tok_per_sec": 35.9,
+      "tpot_ms": 27.89,
+      "ttft_ms": 781.34
     }
   },
   "gemma4": {

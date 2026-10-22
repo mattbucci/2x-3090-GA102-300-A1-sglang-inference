@@ -260,15 +260,23 @@ def labbench_suite(url, n_samples=50, max_workers=1, max_tokens=4096):
 
 
 def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9), max_tokens=4096,
-                budget=None, temperature=0):
+                budget=None, temperature=0, haystack=None, chars_per_token=4.5, flush=False):
     """Needle-in-a-haystack at various context lengths AND depths.
 
     Varying the needle DEPTH (fraction through the filler) catches lost-in-the-
     middle — a model can ace start/end placement yet miss the middle at long
     context, which a single mid-placement test hides. score = found-rate across
     all (ctx, depth) cells. Set depths=(0.5,) for the cheaper single-placement test.
+
+    `haystack` replaces the repeated-sentence filler with natural text (a corpus
+    string, tiled to length) — the repetitive filler is a repetition attractor
+    for some checkpoints (Qwen3.6 quotes it at T=0; Flint's NoPE full-attention
+    layers see every filler key as near-identical), so a miss on it is not yet a
+    retrieval verdict. `chars_per_token` must match the haystack under the served
+    tokenizer (filler 4.5; English prose ~3.4 on Flint). `flush` POSTs
+    /flush_cache before each cell so no prefix comes from the radix cache.
     """
-    filler = "The quick brown fox jumps over the lazy dog. " * 100
+    filler = haystack or "The quick brown fox jumps over the lazy dog. " * 100
     needle = "The secret password is: BANANA42."
     # Needle answers are short — cap at 512 regardless of model context.
     # `budget` overrides the cap (band probes replaying a missed cell with a
@@ -284,12 +292,15 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
         # tokenizers (2026-07-14 audit: the old 4.0 assumption under-filled all
         # labels to 89% — "250K" cells were ~222K actual). usage.prompt_tokens
         # is recorded per cell below as the server-verified depth.
-        body = (filler * (int(ctx * 4.5) // len(filler) + 1))[:int(ctx * 4.5)]
+        n_chars = int(ctx * chars_per_token)
+        body = (filler * (n_chars // len(filler) + 1))[:n_chars]
         for depth in depths:
             pos = int(len(body) * depth)
             prompt = (body[:pos] + "\n" + needle + "\n" + body[pos:]
                       + "\n\nWhat is the secret password? Answer with just the password.")
             try:
+                if flush:
+                    requests.post(url.rsplit("/v1/", 1)[0] + "/flush_cache", timeout=60)
                 r = requests.post(url, json={"model": "default", "messages": [
                     {"role": "user", "content": prompt}
                 ], "max_tokens": needle_budget, **sampling}, timeout=max(600, ctx // 150)).json()
@@ -309,6 +320,7 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
                 excerpt = ("", "")
             results.append({"context": ctx, "depth": depth, "found": found,
                             "actual_prompt_tokens": actual, "finish_reason": finish,
+                            "haystack": "natural" if haystack else "filler", "flushed": bool(flush),
                             "completion_tokens": comp_tok,
                             "content_tail": excerpt[0], "reasoning_tail": excerpt[1]})
     return {"results": results, "score": sum(r["found"] for r in results) / len(results) if results else 0}

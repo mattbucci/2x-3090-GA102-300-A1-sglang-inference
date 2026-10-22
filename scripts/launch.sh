@@ -583,7 +583,9 @@ apply_preset() {
             QUANT="${QUANT:-awq_marlin}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
-            CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192
+            # CTX/MEM/CHUNKED honour the env so the TP=1 output check can boot the
+            # 20.9 GiB ship on one card (e.g. CTX=8192 MEM=0.93 CHUNKED=2048 ... --tp 1).
+            CTX="${_ENV_CTX:-262144}"; MEM="${_ENV_MEM:-0.85}"; MAX_RUNNING=1; CHUNKED="${_ENV_CHUNKED:-8192}"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             REASONING="--reasoning-parser flint"
             CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"

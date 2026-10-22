@@ -230,12 +230,32 @@ def main() -> None:
     plan_q = [n for n in names if QUANT_RE.match(n) and not (keep_re and keep_re.search(n))]
     plan_q_set = set(plan_q)
     plan_k = [n for n in names if n not in plan_q_set]
+    # Quantizable tensors held back by --keep-bf16 must also be named in
+    # modules_to_not_convert, or the AWQ loader builds Marlin layers for them and
+    # finds no qweight. SGLang's AWQ skip test is a plain substring match on the
+    # module prefix, and the fused qkv_proj / gate_up_proj prefixes never contain
+    # the per-shard names -- so name the parent module when every quantizable
+    # child under it is kept (e.g. "self_attn"), else the exact children.
+    kept_q = [n for n in names if QUANT_RE.match(n) and n not in plan_q_set]
+    by_parent: dict[str, set[str]] = {}
+    for n in [x for x in names if QUANT_RE.match(x)]:
+        mod = LAYER_RE.sub("", n[: -len(".weight")])
+        by_parent.setdefault(mod.rsplit(".", 1)[0], set()).add(mod)
+    kept_mods = {LAYER_RE.sub("", n[: -len(".weight")]) for n in kept_q}
+    not_convert: set[str] = set()
+    for parent, children in by_parent.items():
+        if children <= kept_mods:
+            not_convert.add(parent)
+        else:
+            not_convert |= children & kept_mods
     q_params = sum(math.prod(names[n][1]) for n in plan_q)
     k_params = sum(math.prod(names[n][1]) for n in plan_k)
     print(f"src {args.src}\ndst {args.dst}\ndevice {args.device}  g{args.group_size}  grid {args.grid}  shrink>={args.shrink_min}  norm {args.norm}")
     print(f"quantize {len(plan_q)} tensors / {q_params/1e9:.2f} G params; keep BF16 {len(plan_k)} tensors / {k_params/1e9:.2f} G params")
     est = q_params * (0.5 + 2.5 / args.group_size) + k_params * 2
     print(f"estimated output {est/2**30:.1f} GiB")
+    if not_convert:
+        print(f"modules_to_not_convert += {sorted(not_convert)}")
     if args.dry_run:
         for n in plan_k:
             print("  keep", n, names[n][0], names[n][1])
@@ -260,7 +280,7 @@ def main() -> None:
         "group_size": args.group_size,
         "zero_point": True,
         "version": "gemm",
-        "modules_to_not_convert": ["lm_head", "embed_tokens"],
+        "modules_to_not_convert": ["lm_head", "embed_tokens", *sorted(not_convert)],
         "producer": {
             "script": "scripts/quantize/quantize_flint_rtn_awq.py",
             "method": "data-free per-group MSE search (clipping grid) on the integer-zero-point grid, from the BF16 base",
