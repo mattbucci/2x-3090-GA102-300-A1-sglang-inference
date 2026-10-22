@@ -36,6 +36,7 @@ A/B.
 `/testbed` re-init to exclude the image's untracked `build/`; its 874 KB diff sweeps
 `build/lib/requests/*` and the scorer's `patch` refuses it ("already exists! Assuming -R"). The
 control's same instance resolved. A harness-defect row, counted as unresolved in the cell number;
-`audit_predictions.py` has no class for a *present* patch made of image residue, so it was not
-re-rolled at Phase 4 — add `infra_patch_image_residue` (diff paths under `build/` on a pre-exclude row)
-before the next re-roll pass.
+`audit_predictions.py` had no class for a *present* patch made of image residue, so it was not
+re-rolled at Phase 4. Now classed `infra_patch_image_residue` (a `diff --git a/build/` header; the
+sweep flips exactly 28 rows, every one `psf__requests-863` on a pre-exclude row across the v2/v3/v4
+cells, nothing else) — the next Phase-4 pass re-draws it on the fixed harness.

@@ -12,6 +12,7 @@ from audit_predictions import classify_log  # noqa: E402
 LOG = "# stdout\n{}\n# stderr\nisolation: network=none\n"
 PS_TAIL = '{"type":"step_finish","part":{"reason":"tool-calls"}}'   # rfind landed on a `ps`-echoed marker
 DIFF = "diff --git a/x.py b/x.py\n--- a/x.py\n+++ b/x.py\n@@ -1 +1 @@\n-a\n+b\n"
+RESIDUE = "diff --git a/build/lib/requests/api.py b/build/lib/requests/api.py\nnew file mode 100644\n--- /dev/null\n+++ b/build/lib/requests/api.py\n@@ -0,0 +1 @@\n+x\n"
 
 cases = [
     # (rc, patch, elapsed, patch_source, expected)
@@ -26,6 +27,10 @@ cases = [
     (0, DIFF, 300.0, "stdout", "real_diff"),
     (0, DIFF, 300.0, None, "real_diff"),
     (1, "", 12.0, "stdout", "infra_rollout_nonzero_rc"),
+    (0, RESIDUE + DIFF, 900.0, "stdout", "infra_patch_image_residue"),   # pre-b66d27f requests-863 shape
+    (124, RESIDUE, 1850.0, "wall-exec", "infra_patch_image_residue"),
+    (0, DIFF.replace("x.py", "build_tools/x.py"), 300.0, "stdout", "real_diff"),  # not under build/
+    (0, DIFF + "+# see build/lib notes\n", 300.0, "stdout", "real_diff"),       # body mention only
 ]
 fails = []
 for rc, patch, elapsed, src, want in cases:

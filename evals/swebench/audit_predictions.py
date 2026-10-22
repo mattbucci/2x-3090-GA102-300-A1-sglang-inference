@@ -115,6 +115,10 @@ def split_log_sections(log_text: str) -> tuple[str, str]:
 
 
 DIFF_HEADS = ("diff ", "--- ", "Index: ")
+# Image residue swept into a patch (see classify_log docstring): a diff header
+# for a path under the untracked `build/` tree. Anchored to the header so a
+# model edit that merely mentions "build/" in a hunk body cannot match.
+IMAGE_RESIDUE_RE = re.compile(r"^diff --git a/build/", re.MULTILINE)
 
 
 def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float,
@@ -157,8 +161,20 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float,
         cleanup pass), or a `ps`-echoed `=== DIFF ===` tail that is not a
         diff. Re-rolled like any harness failure; a finished-inside-the-wall
         row that already printed a real diff is kept as real_diff.
+      - infra_patch_image_residue: the patch carries `diff --git a/build/`
+        hunks — the instance image's untracked setuptools output
+        (psf__requests-863 is the only Lite image that ships one) swept
+        into the diff by the capture's `git add -A` on a row rolled before
+        `b66d27f` (2026-10-08) taught the /testbed re-init to exclude it.
+        The model's real edit is in the same diff, but `swebench` 4.1.0's
+        `patch` refuses the residue ("already exists! Assuming -R") and the
+        row scores as an error. Harness defect: re-roll on the fixed
+        harness, never hand-strip the live predictions file.
       - infra_<sub>: matched an infrastructure failure pattern
     """
+    if (patch or "") and IMAGE_RESIDUE_RE.search(patch):
+        return ("infra_patch_image_residue",
+                f"build/ residue in a {len(patch)}-byte patch")
     if rollout_rc == 124 and patch_source not in ("wall-exec", "stdout-fallback"):
         if (patch or "").lstrip().startswith(DIFF_HEADS):
             return ("real_diff", None)
