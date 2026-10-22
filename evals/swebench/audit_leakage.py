@@ -116,8 +116,22 @@ PY_FETCH_RE = re.compile(
 # shows up inside `ipython` code. It calls Serper over httpx when a key is
 # configured; the rollout configures none, so the skill returns its "not set up"
 # notice without touching the network — that output is a failed search, not content.
-PY_SEARCH_RE = re.compile(r"\bwebsearch(?:\.run)?\(")
-PY_SEARCH_UNCONFIGURED = "no Serper API key is configured"
+PY_SEARCH_RE = re.compile(r"\bwebsearch(?:\.(?:run|websearch))?\(")
+# A websearch call that never reached the network: 0.10.0 without a Serper key
+# answers "not set up"; the 0.8.1 kernel bound the name to
+# `_PrimeAgentUnavailableSkill` (RuntimeError "Python skill websearch is
+# unavailable in this IPython kernel" / AttributeError on `.websearch`), and
+# `import websearch` / a shell `websearch` never existed. The qwen38 prime v4 cell
+# (0.8.1, 297 rows) carried 16 of these as SEARCH ok=True — a traceback reads as
+# content — once PY_SEARCH_RE arrived for 0.10.0 (2026-10-21, first full audit of
+# that cell after the regex landed); every one is a failed search.
+PY_SEARCH_FAIL_RE = re.compile(
+    r"no Serper API key is configured|Python skill websearch is unavailable|_PrimeAgentUnavailableSkill"
+    r"|_prime_agent_import_error|No module named ['\"]websearch['\"]|name ['\"]websearch['\"] is not defined"
+    r"|websearch: command not found|command not found: websearch|cannot import name ['\"]websearch['\"]", re.I)
+# an IPython cell that printed nothing before raising (output opens with the
+# traceback rule / header and ends on the exception line) returned no results
+PY_CELL_RAISED_RE = re.compile(r"\A\s*(?:-{20,}\s*\n)?\s*\w+\s+Traceback \(most recent call last\)[\s\S]*\n\s*[\w.]+(?:Error|Exception)\b[^\n]*\s*\Z")
 NET_FAIL_RE = re.compile(
     r"Could not resolve host|Temporary failure in name resolution|Network is unreachable"
     r"|ENOTFOUND|ECONNREFUSED|EAI_AGAIN|Name or service not known|No address associated"
@@ -267,6 +281,46 @@ SERVER_LINE_RE = re.compile(
     r"|SGLang is running|\"openapi\"\s*:|swagger-ui|\"object\"\s*:\s*\"(?:chat\.completion|text_completion|list|model)"
     r"|\"reasoning_content\"|\"finish_reason\"|\"usage\"\s*:\s*\{|prompt_tokens|completion_tokens|reasoning_tokens"
     r"|\bhealth\b.{0,20}\b200\b|bridge open ok", re.I | re.M)
+
+
+# A python script whose every connection goes to the loopback bridge cannot reach a
+# remote host whatever URL it writes into the request line: an absolute-form
+# `c.request('GET', 'http://api.github.com/…')` on HTTPConnection('127.0.0.1', 23334),
+# a ProxyHandler / proxies= pointing at the bridge, or a `/proxy/http://…` path probe
+# are all answered by uvicorn (401, 404, the /docs page, /v1/models). qwen38
+# opencode-dcp v4 xarray-4248 (2026-10-21) printed those answers as `== <path> 401`
+# and `<path> 200 b'<!DOCTYPE html>…'` lines SERVER_LINE_RE did not know -> web
+# UPSTREAM ok=True -> a false EXPOSED at the gate. The web event is kept only when the
+# script opens a connection of its own to a remote host: a fetch primitive given a
+# remote URL literal, a remote host in HTTP(S)Connection / create_connection, or a
+# fetch of a non-literal URL with no loopback proxy installed.
+PY_DIRECT_FETCH_RE = re.compile(
+    r"\b(?:urlopen|urlretrieve|requests\.(?:get|post|head|put|delete)|httpx\.(?:get|post|head)|\w*opener\.open|op\.open)"
+    r"\(\s*(?:['\"](?P<url>https?://[^'\"]+)['\"]|(?P<var>[A-Za-z_]))"
+    r"|\brequests\.request\(\s*['\"]\w+['\"]\s*,\s*(?:['\"](?P<url2>https?://[^'\"]+)['\"]|(?P<var2>[A-Za-z_]))"
+    r"|\b(?:HTTPS?Connection|create_connection)\(\s*\(?\s*['\"](?P<host>[^'\"]+)['\"]")
+PY_CONN_HOST_RE = re.compile(r"\b(?:HTTPS?Connection|create_connection)\(\s*\(?\s*['\"]([^'\"]+)['\"]")
+PY_LOOPBACK_PROXY_RE = re.compile(
+    r"(?:ProxyHandler\(|proxies\s*=|https?_proxy\b)[^\n]*(?:127\.0\.0\.1|localhost|\[?::1\]?|0\.0\.0\.0)", re.I)
+
+
+def py_direct_remote(text: str) -> bool:
+    """True when an inline python script opens a connection of its own to a remote host
+    (see PY_DIRECT_FETCH_RE); False for a script that only talks to loopback, however
+    many remote URLs it passes through the bridge."""
+    proxied = bool(PY_LOOPBACK_PROXY_RE.search(text))
+    for m in PY_DIRECT_FETCH_RE.finditer(text):
+        url = m.group("url") or m.group("url2")
+        host = m.group("host")
+        if url is not None:
+            if not url_is_loopback(url) and not proxied:
+                return True
+        elif host is not None:
+            if not LOOPBACK_HOST_RE.match(host):
+                return True
+        elif not proxied:  # a variable URL with no loopback proxy in the script
+            return True
+    return False
 
 
 def url_is_loopback(url: str) -> bool:
@@ -540,7 +594,7 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
     if lname in PY_CODE_TOOLS:
         ps = PY_SEARCH_RE.search(text)
         if ps:
-            ok = False if (output and PY_SEARCH_UNCONFIGURED in output) else outcome()
+            ok = False if (output and (PY_SEARCH_FAIL_RE.search(output) or PY_CELL_RAISED_RE.match(output))) else outcome()
             ev.append({"chan": "web", "kind": "SEARCH", "ok": ok,
                        "evidence": f"{name}: python {text[ps.start():ps.start() + 120]}"})
     py = PY_FETCH_RE.search(text) if (PY_EXEC_RE.search(text) or lname in PY_CODE_TOOLS) else None
@@ -551,16 +605,23 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
     if py:
         urls = URL_RE.findall(text)
         remote = [u for u in urls if not url_is_loopback(u)]
+        if loopback and remote and not py_direct_remote(text):
+            remote = []  # absolute-form / proxy probes through the bridge: loopback only
+        # HTTPSConnection('api.github.com') + c.request('GET', '/repos/…') names no URL at
+        # all: the connection host is the remote target (kind from the project tokens in
+        # the script, where the request path sits)
+        conn_remote = [h for h in PY_CONN_HOST_RE.findall(text) if not LOOPBACK_HOST_RE.match(h)]
         if loopback:
             # the bridge is one of the script's targets; the project tokens in a
             # self-dispatch prompt ("which sympy PR fixed …") name the question, not a site
             ev.append(bridge_event(f"{name}: {kernel} {py.group(0)} {(urls[0][:140] if urls else '127.0.0.1')}".rstrip()))
-        if remote or not loopback:
+        if remote or conn_remote or not loopback:
             words = re.sub(r"\S*/testbed/\S*", "", text).lower()
             kind = "UPSTREAM" if (any(url_is_upstream(inst, u) for u in remote) if remote else any(
                 re.search(rf"(?<![\w-]){re.escape(t)}(?![\w-])", words) for t in project_tokens(inst))) else "OTHER"
+            target = remote[0][:140] if remote else (f"https://{conn_remote[0]}"[:140] if conn_remote else "")
             ev.append({"chan": "web", "kind": kind, "ok": outcome(),
-                       "evidence": f"{name}: {kernel} {py.group(0)} {(remote[0][:140] if remote else '')}".rstrip()})
+                       "evidence": f"{name}: {kernel} {py.group(0)} {target}".rstrip()})
     g = GIT_DEFINITIONAL_RE.search(text)
     if g:
         ev.append({"chan": "git", "kind": "READ" if GIT_READ_RE.search(text) else "LIST",

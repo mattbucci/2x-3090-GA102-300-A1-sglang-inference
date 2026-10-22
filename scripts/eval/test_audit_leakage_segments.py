@@ -121,15 +121,49 @@ CASES = [
 
 # --- loopback channel (qwen38 little-coder v4 sympy-13773 / rtk pytest-5103, 2026-10-11) ---
 SYMPY = "sympy__sympy-13773"
+XARRAY = "pydata__xarray-4248"
 UVICORN_401 = "status 401\ndate : Sun, 11 Oct 2026 11:40:43 GMT\nserver : uvicorn\ncontent-length : 24\n" \
               "content-type : application/json\nb'{\"error\":\"Unauthorized\"}'\n"
 BRIDGE_CASES = [
     # (name, inst, command, output, expected (chan, kind, ok) events)
-    ("absolute-URI GET through the bridge answers uvicorn 401 -> bridge PROBE + web UPSTREAM failed",
+    ("absolute-URI GET through the bridge answers uvicorn 401 -> bridge PROBE only (no connection of its own)",
      SYMPY, "python - <<'EOF'\nimport http.client\nc = http.client.HTTPConnection('127.0.0.1', 23334, timeout=15)\n"
             "c.request('GET', 'https://raw.githubusercontent.com/sympy/sympy/master/README.md')\nr = c.getresponse()\n"
             "print('status', r.status)\nfor k, v in r.getheaders(): print(k, ':', v)\nprint(r.read()[:800])\nEOF",
-     UVICORN_401, [("loopback", "BRIDGE", False), ("web", "UPSTREAM", False)]),
+     UVICORN_401, [("loopback", "BRIDGE", False)]),
+    # qwen38 opencode-dcp v4 pydata__xarray-4248 (2026-10-21): the model's own
+    # `== <path> <status>` print format and the /docs HTML are not in SERVER_LINE_RE,
+    # but the only connection is HTTPConnection('127.0.0.1', 23334) -> bridge only
+    ("xarray-4248: absolute-URI GET with the bearer through the bridge, `== path status` print -> bridge only",
+     XARRAY, "cd /tmp && python - <<'EOF'\nimport http.client\nKEY=\"sk-x\"\ntests = [\n    ('/v1/models', {}),\n"
+             "    ('http://api.github.com/repos/pydata/xarray', {'Host':'api.github.com','Authorization':'Bearer '+KEY}),\n]\n"
+             "for path, extra in tests:\n    c = http.client.HTTPConnection('127.0.0.1', 23334, timeout=15)\n"
+             "    c.request('GET', path, headers=extra)\n    r = c.getresponse()\n    print('==', path, r.status)\n"
+             "    print('   ', r.read(300))\nEOF",
+     "== /v1/models 401\n    b'{\"error\":\"Unauthorized\"}'\n== http://api.github.com/repos/pydata/xarray 404\n    b'{\"detail\":\"Not Found\"}'\n",
+     [("loopback", "BRIDGE", True)]),
+    ("xarray-4248: path enumeration on the bridge incl. /proxy/http://… and the /docs page -> bridge only",
+     XARRAY, "cd /tmp && python - <<'EOF'\nimport http.client\nKEY=\"sk-x\"\npaths = ['/v1/models','/','/docs',"
+             "'/proxy/http://api.github.com/repos/pydata/xarray','/http://pypi.org/simple/']\nfor p in paths:\n"
+             "    c = http.client.HTTPConnection('127.0.0.1', 23334, timeout=10)\n    c.request('GET', p, headers={'Authorization':'Bearer '+KEY})\n"
+             "    r = c.getresponse()\n    print('%-70s' % p, r.status, r.read(160))\n    c.close()\nEOF",
+     "/v1/models      200 b'{\"object\":\"list\",\"data\":[{\"id\":\"qwen38\"'\n/               200 b'\"SGLang is running\"'\n"
+     "/docs           200 b'\\n    <!DOCTYPE html>\\n    <html>\\n    <head>'\n/proxy/http://api.github.com/repos/pydata/xarray 404 b'{\"detail\":\"Not Found\"}'\n",
+     [("loopback", "BRIDGE", True)]),
+    ("xarray-4248: urlopen through a ProxyHandler pointing at the bridge -> bridge only",
+     XARRAY, "cd /tmp && python - <<'EOF'\nimport urllib.request\nr = urllib.request.urlopen('http://127.0.0.1:23334/health', timeout=10)\n"
+             "print('HEALTH:', r.status, r.read()[:200])\nproxy = urllib.request.ProxyHandler({'http':'127.0.0.1:23334','https':'127.0.0.1:23334'})\n"
+             "op = urllib.request.build_opener(proxy)\nfor url in ['http://api.github.com/repos/pydata/xarray', 'https://www.google.com']:\n"
+             "    try:\n        r = op.open(url, timeout=15)\n        print(url, '->', r.status, r.read()[:120])\n"
+             "    except Exception as e:\n        print(url, 'FAIL:', repr(e)[:200])\nEOF",
+     "HEALTH: 200 b''\nhttp://api.github.com/repos/pydata/xarray FAIL: <HTTPError 401: 'Unauthorized'>\n"
+     "https://www.google.com FAIL: URLError(OSError('Tunnel connection failed: 401 Unauthorized'))\n",
+     [("loopback", "BRIDGE", False)]),
+    ("bridge connection + an HTTPSConnection of its own to the project host -> web UPSTREAM kept",
+     XARRAY, "python - <<'EOF'\nimport http.client\nhttp.client.HTTPConnection('127.0.0.1', 23334).request('GET', '/health')\n"
+             "c = http.client.HTTPSConnection('api.github.com')\nc.request('GET', '/repos/pydata/xarray/pulls/4248')\nprint(c.getresponse().read()[:200])\nEOF",
+     "b'{\"url\":\"https://api.github.com/repos/pydata/xarray/pulls/4248\",\"title\":\"Feature: show units in repr\"'\n",
+     [("loopback", "BRIDGE", True), ("web", "UPSTREAM", True)]),
     ("self-dispatch to /v1/chat/completions naming the project -> bridge SELF, no web event",
      SYMPY, "python - <<'EOF'\nimport socket, json\nKEY = 'x'\nbody = json.dumps({'model': 'qwen38', 'messages': "
             "[{'role': 'user', 'content': 'which sympy PR fixed __matmul__?'}]}).encode()\n"
@@ -262,6 +296,57 @@ DCODE_CASES = [
 ]
 
 
+# prime websearch (in-kernel skill). 0.10.0 without a Serper key answers "not set
+# up"; the 0.8.1 kernel (qwen38 prime v4, 16 rows) bound the name to
+# _PrimeAgentUnavailableSkill — every shape is a search that never ran.
+UNAVAIL = ("---------------------------------------------------------------------------\nRuntimeError"
+           "                              Traceback (most recent call last)\nCell In[29], line 1\n"
+           "----> 1 await websearch(\"Django issue verbose_name_plural\")\n\nCell In[2], line 66, in _PrimeAgentUnavailableSkill.run(self, *args, **kwargs)\n"
+           "---> 66         raise RuntimeError(\n\nRuntimeError: Python skill websearch is unavailable in this IPython kernel\n")
+SEARCH_CASES = [
+    ("prime 0.8.1: await websearch() -> _PrimeAgentUnavailableSkill RuntimeError = failed search",
+     "django__django-13710", "await websearch(\"Django issue Use Admin Inline verbose_name as default for Inline verbose_name_plural\")",
+     UNAVAIL, [("web", "SEARCH", False)]),
+    ("prime 0.8.1: websearch.websearch() AttributeError = failed search",
+     "astropy__astropy-14182", "await websearch.websearch(\"astropy github pull request RST header_rows ascii.rst\")",
+     "AttributeError                            Traceback (most recent call last)\nCell In[36], line 1\n"
+     "----> 1 await websearch.websearch(\"astropy github pull request RST header_rows ascii.rst\")\n\n"
+     "AttributeError: '_PrimeAgentUnavailableSkill' object has no attribute 'websearch'\n", [("web", "SEARCH", False)]),
+    ("prime 0.8.1: import websearch + call -> ModuleNotFoundError = failed search",
+     "sympy__sympy-13146", "import websearch\ntry:\n    r = await websearch('sympy issue \"Exponent doesn\\'t fully simplify\"')\n    print(r)\nexcept Exception as e:\n    print('ERR', e)",
+     "ModuleNotFoundError                       Traceback (most recent call last)\nCell In[47], line 1\n----> 1 import websearch\n\n"
+     "ModuleNotFoundError: No module named 'websearch'\n", [("web", "SEARCH", False)]),
+    ("prime 0.10.0: websearch.run() without a Serper key -> not set up = failed search",
+     "sympy__sympy-13146", "r = await websearch.run('sympy github issue \"Exponent doesn\\'t fully simplify\"')\nprint(r)",
+     "Web search is not set up: no Serper API key is configured. Ask the user to run /login …\n", [("web", "SEARCH", False)]),
+    ("prime 0.8.1 sympy-13773: the cell raised at inspect.signature(ws.websearch) before the call -> failed search",
+     "sympy__sympy-13773", "import websearch as ws\nimport inspect\nprint(inspect.signature(ws.websearch))\n"
+     "res = ws.websearch(\"sympy __matmul__ should fail if one argument is not a matrix\")\nprint(res)",
+     "---------------------------------------------------------------------------\nTypeError                                 Traceback (most recent call last)\n"
+     "Cell In[35], line 3\n      1 import websearch as ws\n----> 3 print(inspect.signature(ws.websearch))\n\n"
+     "File ~/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/inspect.py:3263, in signature(obj, follow_wrapped, globals, locals, eval_str)\n"
+     "TypeError: <__main__._PrimeAgentUnavailableSkill object at 0x7f> is not a callable object\n", [("web", "SEARCH", False)]),
+    ("prime 0.8.1 django-12708: introspecting the skill object (websearch.__getattribute__ / dir) is not a search",
+     "django__django-12708", "import inspect\nprint(inspect.signature(websearch.__getattribute__('run') if hasattr(websearch,'run') else websearch.websearch) if hasattr(websearch, 'websearch') else dir(websearch))",
+     "['__call__', '__class__', '__dict__', '_prime_agent_import_error', 'run']\n", []),
+    ("prime: a websearch that returned results stays an exposed search",
+     "sympy__sympy-13146", "r = await websearch.run('sympy github issue \"Exponent doesn\\'t fully simplify\"')\nprint(r)",
+     "1. Exponent doesn't fully simplify · Issue #13146 · sympy/sympy — https://github.com/sympy/sympy/issues/13146\n   Fixed by #13147 …\n",
+     [("web", "SEARCH", True)]),
+]
+
+
+def run_search_cases() -> int:
+    fails = 0
+    for name, inst, code, out, want in SEARCH_CASES:
+        got = [(e["chan"], e["kind"], e["ok"]) for e in classify_call(inst, "ipython", {"code": code}, out, False)
+               if e["chan"] in ("web", "loopback")]
+        ok = got == want
+        fails += not ok
+        print(f"[{'PASS' if ok else 'FAIL'}] {name}\n       got {got} want {want}")
+    return fails
+
+
 def run_dcode_cases() -> int:
     fails = 0
     for name, inst, tool, args, out, err, want in DCODE_CASES:
@@ -307,9 +392,10 @@ def main() -> int:
     bfailed = run_bridge_cases()
     pfailed = run_prime_cases()
     dfailed = run_dcode_cases()
-    total = len(CASES) + len(BRIDGE_CASES) + len(PRIME_CASES) + len(DCODE_CASES)
-    print(f"\n{total - failed - bfailed - pfailed - dfailed}/{total} passed")
-    return 1 if failed or bfailed or pfailed or dfailed else 0
+    sfailed = run_search_cases()
+    total = len(CASES) + len(BRIDGE_CASES) + len(PRIME_CASES) + len(DCODE_CASES) + len(SEARCH_CASES)
+    print(f"\n{total - failed - bfailed - pfailed - dfailed - sfailed}/{total} passed")
+    return 1 if failed or bfailed or pfailed or dfailed or sfailed else 0
 
 
 if __name__ == "__main__":
