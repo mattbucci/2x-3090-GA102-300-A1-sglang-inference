@@ -157,6 +157,29 @@ wait_ready() {
   return 1
 }
 
+# rc 77 (docker_rollout EX_SERVER_DEAD): /health refused for a minute — the
+# server process died mid-lane. Rotate the receipts, relaunch, and let the
+# caller rerun the lane (--skip-existing resumes at the undrawn instance; the
+# re-roll pass re-derives its owed list from the .pre-reroll backup). At most
+# 3 relaunches per lane, then the cycle aborts 77 for a manual resume. R9700
+# port (their 9a97ced).
+RELAUNCHES=0
+relaunch_dead_server() {   # <lane label> <rollout log path>
+  RELAUNCHES=$((RELAUNCHES + 1))
+  if [ "$RELAUNCHES" -gt 3 ]; then
+    log "ABORT cycle: server died 4 times during the $1 lane (rc=77); predictions kept for a --skip-existing resume"
+    stop_server
+    exit 77
+  fi
+  log "server dead during $1 (rc=77): relaunch #$RELAUNCHES, then resume the lane"
+  local stamp; stamp=$(date +%Y%m%d-%H%M%S)
+  mv "$LOG_DIR/server.log" "$LOG_DIR/server.log.died-$stamp" 2>/dev/null || true
+  mv "$2" "$2.died-$stamp" 2>/dev/null || true
+  stop_server
+  launch_server || { log "ERROR: server relaunch failed"; exit 1; }
+  wait_ready || { stop_server; exit 1; }
+}
+
 # --- Phase 0: per-preset kernel smoke (only for presets that need it) ---
 if needs_kernel_smoke "$PRESET"; then
   run_kernel_smoke
@@ -213,21 +236,26 @@ for SCAFFOLD in $SCAFFOLDS; do
   N_FLAG=()
   [ "$INSTANCES" -gt 0 ] && N_FLAG=(--instances "$INSTANCES")
 
-  log "rollout $SCAFFOLD (out=$OUT instances=${INSTANCES:-300} timeout=$TIMEOUT)"
-  cp -f "$LOG_DIR/serve-backend.json" "$OUT/serve-backend.json" 2>/dev/null || true
-  python "$REPO_DIR/evals/swebench/docker_rollout.py" \
-    --model "sglang/$PRESET" \
-    --served-name "$SERVED" \
-    --scaffold "$SCAFFOLD" \
-    --out "$OUT" \
-    --skip-existing \
-    --timeout "$TIMEOUT" \
-    --max-empty-streak 30 \
-    "${N_FLAG[@]}" \
-    > "$LOG_DIR/rollout-$SCAFFOLD.log" 2>&1
-  rc=$?
-  preds=$(wc -l < "$OUT/predictions.jsonl" 2>/dev/null || echo 0)
-  log "rollout $SCAFFOLD rc=$rc preds=$preds"
+  RELAUNCHES=0
+  while :; do
+    log "rollout $SCAFFOLD (out=$OUT instances=${INSTANCES:-300} timeout=$TIMEOUT)"
+    cp -f "$LOG_DIR/serve-backend.json" "$OUT/serve-backend.json" 2>/dev/null || true
+    python "$REPO_DIR/evals/swebench/docker_rollout.py" \
+      --model "sglang/$PRESET" \
+      --served-name "$SERVED" \
+      --scaffold "$SCAFFOLD" \
+      --out "$OUT" \
+      --skip-existing \
+      --timeout "$TIMEOUT" \
+      --max-empty-streak 30 \
+      "${N_FLAG[@]}" \
+      > "$LOG_DIR/rollout-$SCAFFOLD.log" 2>&1
+    rc=$?
+    preds=$(wc -l < "$OUT/predictions.jsonl" 2>/dev/null || echo 0)
+    log "rollout $SCAFFOLD rc=$rc preds=$preds"
+    [ "$rc" -eq 77 ] || break
+    relaunch_dead_server "$SCAFFOLD" "$LOG_DIR/rollout-$SCAFFOLD.log"
+  done
   NEED_RESCORE+=("$SCAFFOLD")
 done
 
@@ -255,15 +283,21 @@ if [ "${#NEED_RESCORE_AFTER_REROLL[@]}" -gt 0 ]; then
 
   for SCAFFOLD in "${NEED_RESCORE_AFTER_REROLL[@]}"; do
     OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-${RUN_TAG}"
-    log "reroll $SCAFFOLD"
-    python "$REPO_DIR/evals/swebench/reroll_infra_failures.py" \
-      --cell "$OUT" \
-      --model "sglang/$PRESET" \
-      --served-name "$SERVED" \
-      --scaffold "$SCAFFOLD" \
-      --timeout "$TIMEOUT" \
-      > "$LOG_DIR/reroll-$SCAFFOLD.log" 2>&1
-    log "reroll $SCAFFOLD rc=$?"
+    RELAUNCHES=0
+    while :; do
+      log "reroll $SCAFFOLD"
+      python "$REPO_DIR/evals/swebench/reroll_infra_failures.py" \
+        --cell "$OUT" \
+        --model "sglang/$PRESET" \
+        --served-name "$SERVED" \
+        --scaffold "$SCAFFOLD" \
+        --timeout "$TIMEOUT" \
+        > "$LOG_DIR/reroll-$SCAFFOLD.log" 2>&1
+      rc=$?
+      log "reroll $SCAFFOLD rc=$rc"
+      [ "$rc" -eq 77 ] || break
+      relaunch_dead_server "$SCAFFOLD reroll" "$LOG_DIR/reroll-$SCAFFOLD.log"
+    done
   done
   stop_server
 fi

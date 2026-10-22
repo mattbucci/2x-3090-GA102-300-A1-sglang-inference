@@ -1414,6 +1414,40 @@ def _extract_diff_from_stdout(stdout: str) -> str:
 
 # --- preflight + dataset ---------------------------------------------------
 
+# Lane exit code when the server process is gone (port refused): the cycle
+# wrapper relaunches the server and reruns the lane with --skip-existing. The
+# instance that was about to roll gets no row, so the resume draws it. R9700
+# port (their 9a97ced): a dead server used to cost 30 bridge-check rows per
+# lane (image build + 10 s each) before the empty-streak abort.
+EX_SERVER_DEAD = 77
+
+
+def server_alive(server_url: str, dead_after_refused: int = 6, poll: int = 10) -> bool:
+    """True once /health answers (any HTTP status — a busy server that times out
+    or 5xxs is alive; the bridge check per instance handles the rest). False
+    after `dead_after_refused` consecutive refused connections: nothing listens
+    on the port, the process is gone, waiting longer never brings it back."""
+    refused = 0
+    while True:
+        try:
+            urllib.request.urlopen(f"{server_url}/health", timeout=5)
+            return True
+        except urllib.error.HTTPError:
+            return True
+        except urllib.error.URLError as e:
+            reason = getattr(e, "reason", None)
+            if isinstance(reason, ConnectionRefusedError) or (
+                    isinstance(reason, OSError) and getattr(reason, "errno", None) == 111):
+                refused += 1
+                if refused >= dead_after_refused:
+                    return False
+            else:
+                refused = 0
+        except Exception:
+            refused = 0
+        time.sleep(poll)
+
+
 def preflight_canary(server_url: str, served_name: str) -> tuple[bool, str]:
     """Mimic opencode's wire format (assistant turn with prior tool_calls,
     arguments as JSON string per OpenAI spec) to catch chat-template bugs
@@ -1632,6 +1666,11 @@ def main():
             if iid in existing:
                 print(f"[{i+1}/{len(ds)}] {iid}  SKIP (exists)", flush=True)
                 continue
+            if not server_alive(args.server_url):
+                print(f"\nSERVER DEAD: {args.server_url}/health refused for a minute before {iid} — "
+                      f"exiting {EX_SERVER_DEAD} for the wrapper to relaunch and resume (no row written).",
+                      flush=True)
+                return EX_SERVER_DEAD
 
             print(f"[{i+1}/{len(ds)}] {iid}  repo={row['repo']}  base={row['base_commit'][:8]}", flush=True)
             t0 = time.time()

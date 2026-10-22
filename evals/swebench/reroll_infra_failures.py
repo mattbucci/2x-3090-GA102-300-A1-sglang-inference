@@ -99,8 +99,27 @@ def main():
         else:
             keep.append(d)
 
+    # A re-roll pass that died mid-way (server dead -> docker_rollout rc 77, the
+    # wrapper relaunches the server and reruns us) stripped its infra rows and
+    # never re-drew them: absent from predictions.jsonl, present in the newest
+    # .pre-reroll backup. Owed, so a rerun of this script is a resume.
+    present = {d["instance_id"] for d in preds}
+    backups = sorted(cell_dir.glob("predictions.jsonl.pre-reroll*"), key=lambda q: q.stat().st_mtime)
+    owed = []
+    if backups:
+        for line in backups[-1].read_text().splitlines():
+            try:
+                iid = json.loads(line)["instance_id"]
+            except Exception:
+                continue
+            if iid not in present and iid not in infra_ids and iid not in owed:
+                owed.append(iid)
+    infra_ids.extend(owed)
+
     print(f"  total predictions:   {len(preds)}")
-    print(f"  infra failures:      {len(infra_ids)}")
+    print(f"  infra failures:      {len(infra_ids) - len(owed)}")
+    if owed:
+        print(f"  owed from {backups[-1].name}: {len(owed)} (stripped by an earlier pass, never re-drawn)")
     print(f"  keeping:             {len(keep)}")
     if not infra_ids:
         print(f"  no infra failures to re-roll — exiting cleanly")
