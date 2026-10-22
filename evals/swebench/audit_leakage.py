@@ -856,6 +856,7 @@ def gold_overlap(model_patch: str, gold: str) -> float | None:
 # --- driver ---------------------------------------------------------------------
 def audit_run(run: Path, require_isolation: bool, gold: dict[str, str]) -> dict:
     preds: dict[str, str] = {}
+    predrows: dict[str, dict] = {}
     pf = run / "predictions.jsonl"
     if pf.exists():
         for line in pf.read_text().splitlines():
@@ -863,11 +864,32 @@ def audit_run(run: Path, require_isolation: bool, gold: dict[str, str]) -> dict:
                 try:
                     r = json.loads(line)
                     preds[r["instance_id"]] = r.get("model_patch") or ""
+                    predrows[r["instance_id"]] = r
                 except Exception:
                     pass
     iids = sorted(preds) or sorted(p.stem for p in (run / "logs").glob("*.log"))
     rows = {}
     for iid in iids:
+        # A row written by the crash-row path (`rollout_error`: the per-instance
+        # image build failed, rc -1, no container ever ran — the 2026-10-09
+        # prime-agent release pruning left 3 such rows in qwen38-prime-v4 that
+        # the retired 0.8.1 pin can never re-roll) has no log, no transcript
+        # and an empty patch by construction. It scores as unresolved; it is
+        # not a missing isolation proof — nothing ran that could have leaked.
+        # Same definition as check_cell_pin / paired_lane_compare.
+        pr = predrows.get(iid, {})
+        never_rolled = bool(pr.get("rollout_error")) and not preds.get(iid) \
+            and not (run / "logs" / f"{iid}.log").exists()
+        if never_rolled:
+            rows[iid] = {
+                "source": "never-rolled", "web": "none", "git": "clean", "loopback": "none",
+                "loopback_calls": 0, "attempted": False, "exposed": False, "never_rolled": True,
+                "isolation": {"network_none": False, "refs_stripped": False,
+                              "mounts_clean": False, "git_reinit": False},
+                "overlap": None,
+                "evidence": [f"never rolled: {str(pr.get('rollout_error'))[:100]}"],
+            }
+            continue
         source, calls = instance_calls(run, iid)
         events = []
         for name, args, out, err in calls:
@@ -893,7 +915,9 @@ def audit_run(run: Path, require_isolation: bool, gold: dict[str, str]) -> dict:
             "evidence": [f"{e['chan']} {e['kind']} ok={e['ok']}: {e['evidence']}" for e in events][:12],
         }
     n = len(rows)
-    have = [r for r in rows.values() if not r["source"].startswith("log.no-transcript") and r["source"] != "none"]
+    rolled = {k: r for k, r in rows.items() if not r.get("never_rolled")}
+    n_rolled = len(rolled)
+    have = [r for r in rolled.values() if not r["source"].startswith("log.no-transcript") and r["source"] != "none"]
     c = Counter()
     for r in have:
         c[f"web_{r['web']}"] += 1
@@ -903,23 +927,25 @@ def audit_run(run: Path, require_isolation: bool, gold: dict[str, str]) -> dict:
         c["attempted"] += r["attempted"]
         c["exposed"] += r["exposed"]
     c["isolated"] = len(have) - c["exposed"]
-    c["no_transcript"] = n - len(have)
-    c["iso_network_none"] = sum(1 for r in rows.values() if r["isolation"]["network_none"])
-    c["iso_refs_stripped"] = sum(1 for r in rows.values() if r["isolation"]["refs_stripped"])
-    c["iso_mounts_clean"] = sum(1 for r in rows.values() if r["isolation"]["mounts_clean"])
-    c["iso_git_reinit"] = sum(1 for r in rows.values() if r["isolation"]["git_reinit"])
+    c["never_rolled"] = n - n_rolled
+    c["no_transcript"] = n_rolled - len(have)
+    c["iso_network_none"] = sum(1 for r in rolled.values() if r["isolation"]["network_none"])
+    c["iso_refs_stripped"] = sum(1 for r in rolled.values() if r["isolation"]["refs_stripped"])
+    c["iso_mounts_clean"] = sum(1 for r in rolled.values() if r["isolation"]["mounts_clean"])
+    c["iso_git_reinit"] = sum(1 for r in rolled.values() if r["isolation"]["git_reinit"])
 
     def ov_stats(flag: bool):
         xs = [r["overlap"] for r in have if r["exposed"] == flag and r["overlap"] is not None]
         return {"n": len(xs), "ge80": sum(1 for x in xs if x >= 0.8),
                 "median": round(statistics.median(xs), 3) if xs else None}
 
-    # a cell with unreadable transcripts is only clean if it is PROVEN isolated
-    verdict_ok = c["exposed"] == 0 and (c["no_transcript"] == 0 or c["iso_network_none"] == n)
+    # a cell with unreadable transcripts is only clean if it is PROVEN isolated;
+    # the proofs are owed by every row that ran a container (n_rolled)
+    verdict_ok = c["exposed"] == 0 and (c["no_transcript"] == 0 or c["iso_network_none"] == n_rolled)
     if require_isolation:
-        verdict_ok = verdict_ok and c["iso_network_none"] == n and c["iso_refs_stripped"] == n \
-            and c["iso_mounts_clean"] == n and c["iso_git_reinit"] == n and n > 0
-    return {"run": run.name, "n": n, "counts": dict(c),
+        verdict_ok = verdict_ok and c["iso_network_none"] == n_rolled and c["iso_refs_stripped"] == n_rolled \
+            and c["iso_mounts_clean"] == n_rolled and c["iso_git_reinit"] == n_rolled and n_rolled > 0
+    return {"run": run.name, "n": n, "n_rolled": n_rolled, "counts": dict(c),
             "gold_overlap": {"exposed": ov_stats(True), "isolated": ov_stats(False)},
             "require_isolation": require_isolation, "ok": verdict_ok, "instances": rows}
 
@@ -945,15 +971,17 @@ def main() -> int:
         rep = audit_run(run, args.require_isolation, gold)
         reports.append(rep)
         c, n = rep["counts"], rep["n"]
-        den = max(n - c.get("no_transcript", 0), 1)
-        print(f"{rep['run']}: n={n} transcripts={n - c.get('no_transcript', 0)} "
+        nr = rep["n_rolled"]
+        den = max(nr - c.get("no_transcript", 0), 1)
+        never = f" never_rolled={c['never_rolled']} (build crash, no container)" if c.get("never_rolled") else ""
+        print(f"{rep['run']}: n={n}{never} transcripts={nr - c.get('no_transcript', 0)} "
               f"web_UPSTREAM={c.get('web_UPSTREAM', 0)} web_SEARCH={c.get('web_SEARCH', 0)} web_OTHER={c.get('web_OTHER', 0)} "
               f"git_READ={c.get('git_READ', 0)} git_LIST={c.get('git_LIST', 0)} "
               f"loopback_SELF={c.get('loopback_SELF', 0)} _BRIDGE={c.get('loopback_BRIDGE', 0)} _LOCAL={c.get('loopback_LOCAL', 0)} | "
               f"attempted={c.get('attempted', 0)} ({100 * c.get('attempted', 0) / den:.0f}%) "
               f"EXPOSED={c.get('exposed', 0)} ({100 * c.get('exposed', 0) / den:.0f}%) | "
-              f"isolation proof: network=none {c['iso_network_none']}/{n}, refs stripped {c['iso_refs_stripped']}/{n}, "
-              f"mounts clean {c['iso_mounts_clean']}/{n}, git reinit {c['iso_git_reinit']}/{n}")
+              f"isolation proof: network=none {c['iso_network_none']}/{nr}, refs stripped {c['iso_refs_stripped']}/{nr}, "
+              f"mounts clean {c['iso_mounts_clean']}/{nr}, git reinit {c['iso_git_reinit']}/{nr}")
         go = rep["gold_overlap"]
         print(f"  gold-overlap>=80%: exposed {go['exposed']['ge80']}/{go['exposed']['n']} (med {go['exposed']['median']}), "
               f"isolated {go['isolated']['ge80']}/{go['isolated']['n']} (med {go['isolated']['median']})")

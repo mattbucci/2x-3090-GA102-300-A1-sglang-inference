@@ -29,6 +29,7 @@ Run anywhere with python3:
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -380,6 +381,52 @@ def run_bridge_cases() -> int:
     return fails
 
 
+ISO_LINES = ("isolation: network=none bridge=127.0.0.1:23334\n"
+             "isolation: refs=1 tags=0\n"
+             "isolation: mounts=/var/tmp/rs-x/sessions /var/tmp/rs-x/prompt.md /bridge-1.sock\n"
+             "isolation: git=reinit commits=1 dirty=0 author=eval@local dirty_before=0 excluded=0\n")
+
+
+def run_never_rolled_case() -> int:
+    """A crash row (`rollout_error`, rc -1, empty patch, no log — the image build
+    failed, no container ran) is not a missing isolation proof: the gate owes
+    the four proofs on every row that rolled, reports never_rolled, and a
+    rolled row without proofs still fails."""
+    import tempfile
+    from audit_leakage import audit_run
+    fails = 0
+    with tempfile.TemporaryDirectory() as td:
+        run = Path(td) / "cell-v9"
+        (run / "logs").mkdir(parents=True)
+        rows = [{"instance_id": "a__a-1", "model_patch": "diff --git a/x b/x\n", "rollout_returncode": 0},
+                {"instance_id": "a__a-2", "model_patch": "", "rollout_returncode": -1,
+                 "rollout_error": "CalledProcessError: Command '('docker', 'build', ...)' returned non-zero exit status 1."}]
+        (run / "predictions.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+        (run / "logs" / "a__a-1.log").write_text(ISO_LINES + "=== scaffold done rc=0\n")
+        rep = audit_run(run, True, {})
+        c = rep["counts"]
+        want = (rep["ok"], rep["n"], rep["n_rolled"], c["never_rolled"], c["iso_network_none"], c.get("exposed", 0))
+        ok = want == (True, 2, 1, 1, 1, 0) and rep["instances"]["a__a-2"]["source"] == "never-rolled"
+        fails += not ok
+        print(f"[{'PASS' if ok else 'FAIL'}] never-rolled crash row excluded from the isolation denominator\n       got {want}")
+        # a crash row that somehow carries a patch or a log is NOT excluded
+        rows[1]["model_patch"] = "diff --git a/y b/y\n"
+        (run / "predictions.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+        rep = audit_run(run, True, {})
+        ok = rep["ok"] is False and rep["n_rolled"] == 2 and rep["counts"]["never_rolled"] == 0
+        fails += not ok
+        print(f"[{'PASS' if ok else 'FAIL'}] crash row with a patch still owes its proofs\n       got ok={rep['ok']} n_rolled={rep['n_rolled']}")
+        # a rolled row missing a proof fails regardless of the crash row
+        rows[1]["model_patch"] = ""
+        (run / "predictions.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+        (run / "logs" / "a__a-1.log").write_text(ISO_LINES.replace("isolation: refs=1 tags=0\n", "") + "=== scaffold done rc=0\n")
+        rep = audit_run(run, True, {})
+        ok = rep["ok"] is False and rep["counts"]["iso_refs_stripped"] == 0
+        fails += not ok
+        print(f"[{'PASS' if ok else 'FAIL'}] rolled row without refs proof still fails\n       got ok={rep['ok']}")
+    return fails
+
+
 def main() -> int:
     assert command_segments("a; b && c || d\ne") == ["a", "b", "c", "d", "e"]
     assert command_segments("echo 'a;b' && x") == ["echo 'a;b'", "x"]
@@ -393,9 +440,10 @@ def main() -> int:
     pfailed = run_prime_cases()
     dfailed = run_dcode_cases()
     sfailed = run_search_cases()
-    total = len(CASES) + len(BRIDGE_CASES) + len(PRIME_CASES) + len(DCODE_CASES) + len(SEARCH_CASES)
-    print(f"\n{total - failed - bfailed - pfailed - dfailed - sfailed}/{total} passed")
-    return 1 if failed or bfailed or pfailed or dfailed or sfailed else 0
+    nfailed = run_never_rolled_case()
+    total = len(CASES) + len(BRIDGE_CASES) + len(PRIME_CASES) + len(DCODE_CASES) + len(SEARCH_CASES) + 3
+    print(f"\n{total - failed - bfailed - pfailed - dfailed - sfailed - nfailed}/{total} passed")
+    return 1 if failed or bfailed or pfailed or dfailed or sfailed or nfailed else 0
 
 
 if __name__ == "__main__":
