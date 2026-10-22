@@ -45,7 +45,12 @@ REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # tool-call), NOT coding-tuned — included to TEST whether the Mamba2-hybrid can
 # also code (don't assume it can't; prove it). Runs last; --skip-existing no-ops
 # the others so a restart after the 9-preset run only does nemotron.
-QUEUE="${QUEUE:-qwen38 coder-30b-eval qwen36 coder-reap-25b qwen36-ream qwen35-moe coder-30b-ream qwen36-dense devstral gemma4 nemotron3-omni}"
+# 2026-10-22: harness pruned to plain opencode (qwen38 five-scaffold bake-off =
+# statistical tie; benchmarks/quality/qwen38-v4-cycle-close-2026-10-22.md).
+# qwen38 is out of the default (its cells are scored; a re-entered cycle would
+# re-score them), flint (2026-10-22 bring-up) leads. Mirrors
+# systemd/swebench-bakeoff.override.conf — keep the two in sync.
+QUEUE="${QUEUE:-flint qwen36-dense qwen36 qwen36-ream qwen35-moe coder-30b-eval coder-reap-25b coder-30b-ream devstral gemma4 nemotron3-omni}"
 POLL_SECS="${POLL_SECS:-60}"
 WAIT_FOR_PID="${WAIT_FOR_PID:-}"
 SCAFFOLDS_FOR="${SCAFFOLDS_FOR:-}"

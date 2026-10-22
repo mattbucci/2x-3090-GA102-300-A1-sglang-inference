@@ -29,7 +29,7 @@
 #   the preset to a different id under the sglang provider.
 #
 # Environment overrides:
-#   SCAFFOLDS       space-separated list (default: "opencode opencode-dcp little-coder little-coder-rtk prime dcode omp")
+#   SCAFFOLDS       space-separated list (default: "opencode" — pruned 2026-10-22; full roster: opencode opencode-dcp little-coder little-coder-rtk prime dcode omp)
 #   INSTANCES       per-scaffold instance count (default: 0 = full 300)
 #   TIMEOUT         per-instance rollout timeout in seconds (default: 1800)
 #   LOG_DIR         where to write per-phase logs (default: /tmp/run-model-cycle-logs/<preset>)
@@ -65,7 +65,7 @@ if [ -z "$PRESET" ]; then
   exit 1
 fi
 
-SCAFFOLDS="${SCAFFOLDS:-opencode opencode-dcp little-coder little-coder-rtk prime dcode omp}"  # +omp (oh-my-pi, R9700 port) 2026-10-18; claw-code retired 2026-08-30 (unmaintained, R9700 same day; historical cells remain); +prime/dcode (R9700 port) and the two A/B lanes opencode-dcp / little-coder-rtk 2026-08-31
+SCAFFOLDS="${SCAFFOLDS:-opencode}"  # pruned to plain opencode 2026-10-22 (qwen38 five-scaffold bake-off = tie; benchmarks/quality/qwen38-v4-cycle-close-2026-10-22.md). Full roster still runs on request: opencode opencode-dcp little-coder little-coder-rtk prime dcode omp (+omp 2026-10-18; claw-code retired 2026-08-30).
 INSTANCES="${INSTANCES:-0}"
 TIMEOUT="${TIMEOUT:-1800}"
 SERVER_TIMEOUT="${SERVER_TIMEOUT:-720}"

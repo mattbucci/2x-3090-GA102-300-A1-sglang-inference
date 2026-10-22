@@ -44,6 +44,7 @@ MODELS = {
     "qwen3.6-ream":        {"preset": "qwen36-ream",     "label": "Qwen3.6-REAM-A3B AWQ (MoE, think)", "color": "#79c0ff"},
     "qwen3.6-27b":         {"preset": "qwen36-dense",    "label": "Qwen3.6-27B AWQ (dense, think)",    "color": "#1f6feb"},
     "qwen38":              {"preset": "qwen38",          "label": "Qwen3.8-27B AWQ (dense, think)",    "color": "#388bfd"},
+    "flint":               {"preset": "flint",           "label": "Flint 40B-A2.5B AWQ (MoE, SWA+NoPE, think)", "color": "#f778ba"},
     "qwen3.5-28b-moe":     {"preset": "qwen35-moe",      "label": "Qwen3.5-28B REAP AWQ (MoE, think)", "color": "#a5d6ff"},
     "qwen3-30b-ream":      {"preset": "qwen3-ream",      "label": "Qwen3-30B-REAM AWQ (MoE)",          "color": "#3fb950"},
     "nemotron3-omni":      {"preset": "nemotron3-omni",  "label": "Nemotron-3-Nano-Omni AWQ (Mamba2-hybrid AVLM, int4)", "color": "#39c5cf"},
