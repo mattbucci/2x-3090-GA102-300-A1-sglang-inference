@@ -1,0 +1,24 @@
+[Unit]
+Description=SWE-bench per-instance rollout image janitor (delete-after-use)
+Documentation=https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference
+# Companion of swebench-bakeoff.service: a cycle builds one ~5.6 GB unique image
+# per instance (300 instances ≈ 1.7 TB) and relies on this loop to delete each
+# image once the rolling lane has used it. It used to be a hand-detached process
+# (setsid, pid in /tmp) that did not survive a reboot — the 2026-10-22 cold boot
+# would have left the resumed queue filling / unattended.
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=letsrtfm
+Group=letsrtfm
+WorkingDirectory=/home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference
+ExecStart=/bin/bash -lc '/home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference/evals/swebench/rollout_image_janitor.sh'
+Restart=always
+RestartSec=60
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
