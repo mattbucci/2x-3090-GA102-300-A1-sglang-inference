@@ -1,0 +1,137 @@
+{
+ "control": "qwen38-little-coder-v4",
+ "treatment": "qwen38-little-coder-rtk-v4",
+ "paired": 300,
+ "control_shape": {
+  "n_pred": 300,
+  "resolved": 193,
+  "walls": 25,
+  "empties": 5,
+  "errors": 0
+ },
+ "treatment_shape": {
+  "n_pred": 300,
+  "resolved": 202,
+  "walls": 15,
+  "empties": 4,
+  "errors": 0
+ },
+ "resolved_control_paired": 193,
+ "resolved_treatment_paired": 202,
+ "both": 180,
+ "only_control": [
+  "django__django-12497",
+  "django__django-12700",
+  "django__django-13230",
+  "django__django-13315",
+  "django__django-13925",
+  "django__django-15252",
+  "matplotlib__matplotlib-23476",
+  "mwaskom__seaborn-3190",
+  "mwaskom__seaborn-3407",
+  "scikit-learn__scikit-learn-25747",
+  "sphinx-doc__sphinx-8713",
+  "sympy__sympy-20442",
+  "sympy__sympy-21614"
+ ],
+ "only_treatment": [
+  "astropy__astropy-6938",
+  "django__django-11583",
+  "django__django-11964",
+  "django__django-12113",
+  "django__django-12747",
+  "django__django-13710",
+  "django__django-14534",
+  "django__django-14667",
+  "django__django-14997",
+  "django__django-16046",
+  "matplotlib__matplotlib-25498",
+  "psf__requests-2148",
+  "psf__requests-3362",
+  "pydata__xarray-4248",
+  "pytest-dev__pytest-9359",
+  "sympy__sympy-12454",
+  "sympy__sympy-13915",
+  "sympy__sympy-15011",
+  "sympy__sympy-20639",
+  "sympy__sympy-22840",
+  "sympy__sympy-23191",
+  "sympy__sympy-24909"
+ ],
+ "neither": 85,
+ "mcnemar_exact_p": 0.1755,
+ "per_repo": {
+  "astropy__astropy": {
+   "n": 6,
+   "control": 4,
+   "treatment": 5,
+   "delta": 1
+  },
+  "django__django": {
+   "n": 114,
+   "control": 79,
+   "treatment": 82,
+   "delta": 3
+  },
+  "matplotlib__matplotlib": {
+   "n": 23,
+   "control": 14,
+   "treatment": 14,
+   "delta": 0
+  },
+  "mwaskom__seaborn": {
+   "n": 4,
+   "control": 3,
+   "treatment": 1,
+   "delta": -2
+  },
+  "pallets__flask": {
+   "n": 3,
+   "control": 1,
+   "treatment": 1,
+   "delta": 0
+  },
+  "psf__requests": {
+   "n": 6,
+   "control": 4,
+   "treatment": 6,
+   "delta": 2
+  },
+  "pydata__xarray": {
+   "n": 5,
+   "control": 2,
+   "treatment": 3,
+   "delta": 1
+  },
+  "pylint-dev__pylint": {
+   "n": 6,
+   "control": 3,
+   "treatment": 3,
+   "delta": 0
+  },
+  "pytest-dev__pytest": {
+   "n": 17,
+   "control": 11,
+   "treatment": 12,
+   "delta": 1
+  },
+  "scikit-learn__scikit-learn": {
+   "n": 23,
+   "control": 19,
+   "treatment": 18,
+   "delta": -1
+  },
+  "sphinx-doc__sphinx": {
+   "n": 16,
+   "control": 9,
+   "treatment": 8,
+   "delta": -1
+  },
+  "sympy__sympy": {
+   "n": 77,
+   "control": 44,
+   "treatment": 49,
+   "delta": 5
+  }
+ }
+}
