@@ -7,7 +7,8 @@ Usage: replay_turns.py <label> <out.jsonl> <n> <max_tokens> <extra-json> <replay
   extra-json  per-request sampling overrides merged into the body, e.g. '{}' or
               '{"repetition_penalty":1.05}' (omit → the server's --sampling-defaults)
   replay.json {messages, tools, input_tokens} as written by build_opencode_replay.py
-Env: REPLAY_URL (default http://127.0.0.1:23334), REPLAY_MODEL (default: first /v1/models id).
+Env: REPLAY_URL (default http://127.0.0.1:23334), REPLAY_MODEL (default: first /v1/models id),
+     REPLAY_FLUSH=1 to POST /flush_cache before every sample (fresh prefill, no radix prefix).
 
 A sample counts as a loop when finish_reason is 'length' or any of reasoning /
 content / tool-call arguments contains a 12–80-char n-gram repeated 5× back to
@@ -35,6 +36,8 @@ for f in files:
         body.update(extra)
         req = urllib.request.Request(base + "/v1/chat/completions", data=json.dumps(body).encode(),
                                      headers={"Content-Type": "application/json"})
+        if os.environ.get("REPLAY_FLUSH") == "1":
+            urllib.request.urlopen(urllib.request.Request(base + "/flush_cache", data=b"", method="POST")).read()
         t0 = time.time()
         try:
             resp = json.load(urllib.request.urlopen(req, timeout=3600))
