@@ -26,3 +26,20 @@ prime 297 → Phase 1 instant, Phase 4 nothing owed, gate → one scoring pass o
 lanes); PAUSE re-armed once the qwen38 wrapper is past its own check so the queue holds
 before qwen36-dense for the boundary work (branch merge, `-respsplit` scoring, the
 dcode/omp/prime `-v5` one-off).
+
+**Second trip at re-entry (21:08 → 21:37 PDT) — isolation denominator, not a leak.** With
+EXPOSED=0 on every lane the gate still failed prime: `isolation 297/300`. The three
+2026-10-09 build-crash rows (`rollout_error`, empty patch, no `logs/<iid>.log`) never
+had a container, so there is no isolation line to prove and nothing to re-roll (the 0.8.1
+pin is retired). `audit_leakage.py` (`8ac6c07`) classes such rows `never-rolled`
+(`never_rolled: true`, `source=never-rolled`) and gates the four proofs on the rolled
+set (`n_rolled`); a crash row that nonetheless carries a patch keeps owing all four
+(unit case). Summary line gains `never_rolled=K (build crash, no container)`; proofs
+print `/n_rolled`. Netopen regression unchanged 186 / 182; segments tests 59/59.
+Rule for the next gate trip: **EXPOSED=0 + FAIL = look at the denominator first.**
+The same `rollout_error` skip already defined "rolled" in `paired_lane_compare.py`
+and `check_cell_pin` (`35cf910`) — the three readers now agree.
+
+**Outcome.** Third re-entry 2026-10-21 21:37: Phase 0 PASS 5/5 on the merged rollout
+image, gate PASS opencode / DCP / little-coder / rtk 300/300, prime 297/297 + 3
+never-rolled, scoring pass started 21:39 (opencode first, 294 non-empty, ≈4 h/lane).
