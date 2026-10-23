@@ -75,7 +75,7 @@ The ship checkpoint's next-token perplexity on this prefix is 47 vs the base's 3
 
 ## 4. g32 serves as garbage (open serving bug)
 
-The g32 checkpoint is sane (dequantized KL 0.49 < g64's 0.73, `check_awq_scales` clean) but the TP=2 server emits `market's market's …` with constant top-3 ids from the first position (top-1 agreement 0.000, top-20 mass 0.9999). Routed-expert `down_proj` at g32 / TP=2 has per-rank K = 256 → 8 groups per row; suspect the Marlin MoE path. Not needed for the ship (g32 is not a lever here); a TP=1 boot of the same checkpoint splits kernel-vs-shard when someone needs g32.
+The g32 checkpoint is sane (dequantized KL 0.49 < g64's 0.73, `check_awq_scales` clean) but the TP=2 server emits `market's market's …` with constant top-3 ids from the first position (top-1 agreement 0.000, top-20 mass 0.9999). Routed-expert `down_proj` at g32 / TP=2 has per-rank K = 256 → 8 groups per row; suspect the Marlin MoE path. Not needed for the ship (g32 is not a lever here). **TP=1 split (2026-10-22 21:21):** the same checkpoint on one card (CTX 2048, MEM 0.985 — 22.41 GB of weights leaves 0.28 GB; full pool 4,184 / SWA 2,510) emits the same class of garbage (`Converter Po-Po-Po stocking Po Pach Po …`, finish `length`, reasoning empty) on "What is the capital of France?" at T=0 — so it is **not** the TP=2 sharding; the g32 AWQ-Marlin serving path itself (dense `awq_marlin` and/or `fused_marlin_moe`, both declare g32 supported) mis-reads this checkpoint. Log `/var/tmp/flint-smoke-logs/serve-tp1-g32b.log`. Next split when someone needs g32: a g32-experts / g64-dense mixed build (or the reverse) picks the kernel.
 
 ## 5. Why GPTQ, not just AWQ scaling
 
