@@ -1,0 +1,122 @@
+{
+ "generated": "2026-10-22T21:20-07:00",
+ "image": "sglang-cuda-3090:local",
+ "image_id": "9df4328848c10fcd05c7dcaebca79761f84cb403afb2309958f173e355db5c40",
+ "note": "smoke_docker_serving.sh parity receipts for the Flint bring-up (SMOKE_INSTANCES=2, opencode, network none, same two instances both runs). 'rtn' = image a97be8febd89 with launch.sh flint on the data-free MSE-RTN checkpoint (Flint-AWQ-INT4-g64): serving steps green, rollout 0/2 non-empty \u2014 both sessions lost to 32,768-token runaway-repetition turns (root cause + calibrated fix: benchmarks/quality/flint/runaway-repetition-replay-2026-10-22.md). 'calibrated' = image 9df4328848c1 with launch.sh flint on Flint-AWQ-INT4-g64-gptq: every step PASS, rollout 2/2 non-empty (astropy-12907 403 s / 500 B, astropy-14182 352 s / 914 B; 51 and 53 assistant turns, 52 tool parts each, finish tool-calls/stop only, max completion 6,069 / 10,066 tokens under the 32,768 budget), leak audit clean. bench = bench_regression.sh compare vs the bare-metal tripwire baseline saved on the RTN build.",
+ "runs": {
+  "rtn": {
+   "checkpoint": "Flint-AWQ-INT4-g64",
+   "receipt": {
+    "preset": "flint",
+    "verdict": "FAIL",
+    "serve_mode": "docker",
+    "image": "sglang-cuda-3090:local",
+    "image_id": "a97be8febd896aa0a6a8a46420af04bda76f70e4ff6fa3cdcac534217e290acb",
+    "date": "2026-10-22T15:13:37",
+    "steps": {
+     "stop": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "responses_api": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "bench": {
+      "status": "PASS",
+      "detail": "flint/1024: 164.5 -> 163.9 tok/s (-0.4%) [ok]|flint/32768: 148.6 -> 147.3 tok/s (-0.9%) [ok]|flint/deep(261916): 89.4 -> 89.4 tok/s (+0.0%) [ok]|RESULT: PASS|"
+     },
+     "rollout": {
+      "status": "FAIL",
+      "detail": "rc=0 preds=2 nonempty=0 meta=ok tripwires=0 (/var/tmp/docker-serve-smoke-flint/flint/rollout-opencode.log)"
+     },
+     "boot": {
+      "status": "PASS",
+      "detail": "94s to /health; /v1/models=[flint]"
+     },
+     "scaffold_audit": {
+      "status": "PASS",
+      "detail": "api_auth=True opencode:auth=ok dcode:auth=ok"
+     },
+     "leak_audit": {
+      "status": "PASS",
+      "detail": "Using the latest cached version of the dataset since princeton-nlp/SWE-bench_Lite couldn't be found on the Hugging Face Hub (offline mode is enabled)."
+     },
+     "api_auth": {
+      "status": "PASS",
+      "detail": "anon /v1/models -> 401"
+     }
+    }
+   }
+  },
+  "calibrated": {
+   "checkpoint": "Flint-AWQ-INT4-g64-gptq",
+   "receipt": {
+    "preset": "flint",
+    "verdict": "PASS",
+    "serve_mode": "docker",
+    "image": "sglang-cuda-3090:local",
+    "image_id": "9df4328848c10fcd05c7dcaebca79761f84cb403afb2309958f173e355db5c40",
+    "date": "2026-10-22T21:13:51",
+    "steps": {
+     "stop": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "responses_api": {
+      "status": "PASS",
+      "detail": ""
+     },
+     "bench": {
+      "status": "PASS",
+      "detail": "flint/1024: 164.5 -> 163.9 tok/s (-0.4%) [ok]|flint/32768: 148.6 -> 147.9 tok/s (-0.5%) [ok]|flint/deep(261916): 89.4 -> 89.6 tok/s (+0.2%) [ok]|RESULT: PASS|"
+     },
+     "rollout": {
+      "status": "PASS",
+      "detail": "rc=0 preds=2 nonempty=2 meta=ok budget_lines=2"
+     },
+     "boot": {
+      "status": "PASS",
+      "detail": "93s to /health; /v1/models=[flint]"
+     },
+     "scaffold_audit": {
+      "status": "PASS",
+      "detail": "api_auth=True opencode:auth=ok dcode:auth=ok"
+     },
+     "leak_audit": {
+      "status": "PASS",
+      "detail": "Using the latest cached version of the dataset since princeton-nlp/SWE-bench_Lite couldn't be found on the Hugging Face Hub (offline mode is enabled)."
+     },
+     "api_auth": {
+      "status": "PASS",
+      "detail": "anon /v1/models -> 401"
+     }
+    }
+   },
+   "predictions": [
+    {
+     "instance_id": "astropy__astropy-12907",
+     "model_name_or_path": "sglang/flint",
+     "rollout_returncode": 0,
+     "rollout_seconds": 403.0,
+     "rollout_scaffold": "opencode",
+     "scaffold_pin": "opencode-ai@1.14.25",
+     "model_timeout": false,
+     "patch_source": "stdout",
+     "patch_bytes": 500
+    },
+    {
+     "instance_id": "astropy__astropy-14182",
+     "model_name_or_path": "sglang/flint",
+     "rollout_returncode": 0,
+     "rollout_seconds": 351.6,
+     "rollout_scaffold": "opencode",
+     "scaffold_pin": "opencode-ai@1.14.25",
+     "model_timeout": false,
+     "patch_source": "stdout",
+     "patch_bytes": 914
+    }
+   ]
+  }
+ }
+}
