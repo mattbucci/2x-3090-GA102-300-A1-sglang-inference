@@ -570,9 +570,17 @@ apply_preset() {
             # experts top-6 sigmoid + ungated shared expert, 35 SWA(513) + 14
             # full-attention NoPE layers with learned softmax sinks, 262K native.
             # Served through plugins/flint_sglang (vendor plugin ported to this
-            # tree; `scripts/setup.sh` installs it). Checkpoint = our data-free
-            # MSE-RTN AWQ INT4 g64 of the BF16 base (scripts/quantize/
-            # quantize_flint_rtn_awq.py; the 79.6 GB base does not fit 48 GB).
+            # tree; `scripts/setup.sh` installs it). Checkpoint = our CALIBRATED
+            # AWQ INT4 g64 of the BF16 base (scripts/quantize/
+            # quantize_flint_awq_calib.py: AWQ scale search + GPTQ on activation
+            # Grams from a reference forward; the 79.6 GB base does not fit
+            # 48 GB). The earlier data-free MSE-RTN build (quantize_flint_rtn_awq
+            # .py, Flint-AWQ-INT4-g64) is superseded: its always-active path
+            # (attention + shared expert) was 36 % top-1 off the BF16 base and
+            # looped in agentic turns (poisoned 68K prefix 11/24); the calibrated
+            # build is KL 0.73 -> 0.33 and replays 0/72 (receipt benchmarks/
+            # quality/flint/runaway-repetition-replay-2026-10-22.md). Same
+            # 20.9 GiB, same decode.
             #  * --attention-backend triton: the only backend here with the
             #    sinks + SWAKVPool path (FlashInfer has no sinks; FA3/FA4 are
             #    Hopper/Blackwell). Triton rejects FP8 E4M3 KV on sm_86 and the
@@ -613,7 +621,7 @@ apply_preset() {
             export FLASHINFER_USE_CUDA_NORM=1
             export FLINT_STRICT_TOOLS="${FLINT_STRICT_TOOLS:-1}"
             export SGLANG_EXTERNAL_MODEL_PACKAGE="${SGLANG_EXTERNAL_MODEL_PACKAGE:-flint_sglang}"
-            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Flint-AWQ-INT4-g64}"
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Flint-AWQ-INT4-g64-gptq}"
             QUANT="${QUANT:-awq_marlin}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"

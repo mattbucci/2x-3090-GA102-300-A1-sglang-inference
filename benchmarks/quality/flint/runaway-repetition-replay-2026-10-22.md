@@ -123,9 +123,10 @@ Fix, measured on the whole layer-10 routed block (all 256 experts, held-out erro
 | gate/up GPTQ on the expert Gram + 1× trace-matched layer-wide Gram, 10 % damp; down Gram clip | 0.1016 |
 | **… + down GPTQ at 100 % damping** | **0.0980** |
 | … + down GPTQ at 30 % | 0.0990 |
+| gate/up shrink 3× instead of 1× (+ down GPTQ at 100 %) | 0.0986 |
 | gate/up on the layer-wide Gram only (no expert data) | 0.1064 |
 
-Shrinking each expert's Gram toward the layer-wide input Gram (the 138K-token one, which the expert's tokens are drawn from) and damping the thin `down_proj` Hessians hard gives the routed path the same ~20 % error reduction the dense path gets. These are now the calibrator defaults (`--expert-gram-shrink 1 --expert-percdamp 0.1 --expert-down-percdamp 1`, always-active path `--percdamp 0.01`); the 1 %-damping expert build is kept as `…-gptq-densebf16-d001` for the record.
+Shrinking each expert's Gram toward the layer-wide input Gram (the 138K-token one, which the expert's tokens are drawn from) and damping the thin `down_proj` Hessians hard gives the routed path the same ~20 % error reduction the dense path gets. Both tables are reproduced by the committed [`probe_flint_expert_gptq.py --layer 10`](../../../scripts/quantize/probe_flint_expert_gptq.py) ([log](probe-expert-gptq-layer10-2026-10-22.log), 74 s of Gram building on one GPU). These are now the calibrator defaults (`--expert-gram-shrink 1 --expert-percdamp 0.1 --expert-down-percdamp 1`, always-active path `--percdamp 0.01`); the 1 %-damping expert build is kept as `…-gptq-densebf16-d001` for the record.
 
 ## 7. Calibrated builds (second chain)
 
@@ -134,10 +135,27 @@ Builds (`calib-chain2.sh`: `quantize_flint_awq_calib.py --src <bf16> --calib-cac
 | build | kept BF16 | size | `check_awq_scales` | top-1 agree | mean KL | k25 runaway | k4 runaway |
 |---|---|---:|---|---:|---:|---:|---:|
 | `Flint-AWQ-INT4-g64-gptq-densebf16-d001` (first chain, 1 % expert damping) | attention + shared expert + dense MLPs | 23 GiB | clean | 0.789 | 0.270 | — | — |
-| `Flint-AWQ-INT4-g64-gptq` | router / embed / lm_head / norms / sinks | | | | | | |
-| `Flint-AWQ-INT4-g64-gptq-sharedbf16` | + shared expert | | | | | | |
-| `Flint-AWQ-INT4-g64-gptq-densebf16` | + attention + shared expert + dense MLPs | | | | | | |
+| **`Flint-AWQ-INT4-g64-gptq` — SHIPPED** | router / embed / lm_head / norms / sinks | 20.9 GiB | clean (0 flags; 1 Gram — layer-49 `o_proj` — needed 10 % damping in fp64) | 0.764 | **0.331** | **0/24** | **0/48** |
+| `Flint-AWQ-INT4-g64-gptq-sharedbf16` | + shared expert | 21.3 GiB | clean (same layer-49 `o_proj` fp64 fallback) | 0.777 | **0.286** | 0/24 | 0/48 |
+| `Flint-AWQ-INT4-g64-gptq-densebf16` | + attention + shared expert + dense MLPs | 22.6 GiB | clean | 0.803 | **0.218** | 0/24 | 0/48 |
 
-Decision rule, written before the results: ship the all-INT4 GPTQ build if its KL approaches the 0.28 of the BF16-path variant and it replays clean on both prefixes; otherwise the experts-only build (+1.6 GiB, always-active path 2.4× the bytes — decode measured before shipping). Results are filled in below as the chain reports.
+Decision rule, written before the results: ship the all-INT4 GPTQ build if its KL approaches the 0.28 of the BF16-path variant and it replays clean on both prefixes; otherwise the experts-only build (+1.6 GiB, always-active path 2.4× the bytes — decode measured before shipping).
 
-_PENDING_
+**Result: the all-INT4 calibrated build ships** (`Flint-AWQ-INT4-g64-gptq` → `launch.sh flint` default and [`mattbucci/Flint-AWQ`](https://huggingface.co/mattbucci/Flint-AWQ)). KL to the BF16 base 0.727 → **0.331** (top-1 64 % → 76 %; the ship's over-confidence is gone — top-20 mass 0.981 vs the base's 0.965 on the RTN ship, 0.967 calibrated), every replay clean: **0/24 on the poisoned 68K prefix, 0/48 on the 15K one, every turn `finish=tool_calls`** (the RTN ship: 11/24 and 1–3/48). Same bytes as the RTN ship, so the decode table is unchanged. The whole calibrated ladder replays clean — all-INT4 0.331, shared-expert BF16 0.286, always-active path BF16 0.218 — so the KL threshold for the loop sits somewhere between 0.33 and the attention-only-BF16 RTN build's 0.52 (9/24). The always-active-path-BF16 build is the quality-upside variant (+1.6 GiB; its decode cost is in the bench table below), not needed to clear the cell.
+
+Position dependence worth keeping: KL grows along the 2,048-token prefix on every build (RTN ship 0.59 → 0.77 over the thirds, calibrated 0.24 → 0.38, experts-only 0.12 → 0.25) — the error compounds with context, which is the shape of a long-prefix attractor.
+
+Response shape on the clean 15K prefix (median over the non-looping draws): the RTN ship thinks 957 chars and emits 490 completion tokens per turn; the calibrated builds think ~100–130 chars and emit ~90–100 tokens, with the same `bash` tool call (46–48 of 48 single-call turns). The damaged model's long deliberation at that step was itself a symptom; whether the terser calibrated model is *better* is the full-300 cell's question, not this receipt's. Rows for every arm are under [`replay/rows/`](replay/rows/) (counts only — no text).
+
+Calibrator landmine found at the replay boot of the experts-only build: a layer-specific `--keep-bf16` (the dense MLPs of layers 0/1) was written into `modules_to_not_convert` layer-stripped as `mlp`, which SGLang's dotted-path skip test matches against every `mlp.experts` → BF16 experts allocated at load → OOM. `modules_to_not_convert()` (shared by both quantizers) now emits layer-qualified names (`model.layers.0.mlp`) unless the keep covers every layer; the two affected checkpoints had their `config.json` patched in place (tensors were right). The all-INT4 and shared-BF16 builds never carried the entry.
+
+Decode (`bench_regression.sh flint` 3-point, M=1 / TP=2 / 262144, fresh prefill, 100 out; tok/s at 1K / 32K / 261,916 actual):
+
+| checkpoint | 1K | 32K | 262K | run JSON |
+|---|---:|---:|---:|---|
+| `Flint-AWQ-INT4-g64` RTN ship (tripwire baseline) | 163.9 | 147.5 | 89.5 | `benchmarks/regression/flint-2026-10-22-kv64.json` |
+| `Flint-AWQ-INT4-g64-gptq` (ships) | 164.2 | 148.1 | 89.4 | `benchmarks/regression/flint-2026-10-22-gptq.json` |
+| `Flint-AWQ-INT4-g64-gptq-densebf16` | 147.3 | 133.7 | 83.8 | `benchmarks/regression/flint-2026-10-22-gptq-densebf16.json` |
+
+The all-INT4 calibrated build decodes exactly like the RTN ship (tripwire `PASS`, −0.2 / −0.3 / 0.0 %). Keeping the always-active path in BF16 costs 10 % of decode at 1K–32K and 6 % at 262K (the tripwire flags it as a regression) for KL 0.33 → 0.22 — a variant to A/B on a full-300 cell if the all-INT4 cell shows a quality gap, not the default.
+

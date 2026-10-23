@@ -1,0 +1,23 @@
+forward to layer 10: 58s
+in-sample/held-out output error
+  L10 attn q_proj n=138680: clipG 0.0433/0.0470 | gptq-d0.01 0.0319/0.0379 | gptq-d0.1 0.0320/0.0377 | gptq-d0.3 0.0325/0.0379 | gptq-d1 0.0341/0.0389
+  L10 attn k_proj n=138680: clipG 0.0341/0.0344 | gptq-d0.01 0.0250/0.0274 | gptq-d0.1 0.0252/0.0272 | gptq-d0.3 0.0256/0.0273 | gptq-d1 0.0268/0.0281
+  L10 attn v_proj n=138680: clipG 0.0694/0.0711 | gptq-d0.01 0.0516/0.0584 | gptq-d0.1 0.0518/0.0582 | gptq-d0.3 0.0526/0.0583 | gptq-d1 0.0551/0.0598
+  L10 attn o_proj: clipG 0.0827/0.0846 | gptq-d0.01 0.0471/0.0542 | gptq-d0.1 0.0485/0.0541 | gptq-d0.3 0.0511/0.0557 | gptq-d1 0.0561/0.0594
+  L10 shared gate_proj: clipG 0.0340/0.0405 | gptq-d0.01 0.0253/0.0325 | gptq-d0.1 0.0254/0.0323 | gptq-d0.3 0.0257/0.0325 | gptq-d1 0.0268/0.0332
+  L10 expert 192 gate_proj n_cal=2062 n_held=247: clipG 0.0724/0.0704 | gptq-d0.01 0.0355/0.0654 | gptq-d0.1 0.0388/0.0562 | gptq-d0.3 0.0427/0.0547 | gptq-d1 0.0484/0.0553 | gptq-shrink0.3-d0.1 0.0412/0.0540 | gptq-shrink1-d0.1 0.0442/0.0536
+  L10 expert 192 down_proj [2048x512]: clipG 0.0744/0.0826 | gptq-d0.01 0.0408/0.0895 | gptq-d0.1 0.0429/0.0805 | gptq-d0.3 0.0467/0.0770 | gptq-d1 0.0532/0.0759
+  L10 expert 111 gate_proj n_cal=5201 n_held=176: clipG 0.0765/0.0815 | gptq-d0.01 0.0464/0.0744 | gptq-d0.1 0.0477/0.0677 | gptq-d0.3 0.0502/0.0660 | gptq-d1 0.0549/0.0666 | gptq-shrink0.3-d0.1 0.0484/0.0639 | gptq-shrink1-d0.1 0.0500/0.0631
+  L10 expert 111 down_proj [2048x512]: clipG 0.0702/0.0912 | gptq-d0.01 0.0403/0.1027 | gptq-d0.1 0.0419/0.0944 | gptq-d0.3 0.0449/0.0902 | gptq-d1 0.0504/0.0887
+  L10 expert 129 gate_proj n_cal=977 n_held=39: clipG 0.0793/0.0810 | gptq-d0.01 0.0305/0.0847 | gptq-d0.1 0.0351/0.0712 | gptq-d0.3 0.0403/0.0675 | gptq-d1 0.0483/0.0669 | gptq-shrink0.3-d0.1 0.0391/0.0654 | gptq-shrink1-d0.1 0.0438/0.0640
+  L10 expert 129 down_proj [2048x512]: clipG 0.0718/0.0912 | gptq-d0.01 0.0339/0.1135 | gptq-d0.1 0.0364/0.0975 | gptq-d0.3 0.0399/0.0931 | gptq-d1 0.0459/0.0903
+grams built 74s; calibration rows/expert min/median/max 485/2662/12589
+layer 10 routed-block held-out error vs BF16 (|routed| 6.0)
+  data-free clip (RTN ship)                                  0.1206
+  Gram clip                                                  0.1164
+  GPTQ d0.01 all                                             0.1155
+  gu GPTQ shrink1 d0.1 + down clip                           0.1016
+  gu GPTQ shrink1 d0.1 + down GPTQ d0.3                      0.0990
+  gu GPTQ shrink1 d0.1 + down GPTQ d1 (calibrator default)   0.0980
+  gu GPTQ shrink3 d0.1 + down GPTQ d1                        0.0986
+  gu GPTQ on the layer Gram only + down clip                 0.1064
