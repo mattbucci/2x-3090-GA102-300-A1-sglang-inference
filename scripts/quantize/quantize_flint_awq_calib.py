@@ -16,6 +16,18 @@ data-free RTN 0.237 -> AWQ scale search + Gram clip 0.228 -> + GPTQ error feedba
 layer's loss on this model; --gptq is the lever, the scale search / clip are kept because they
 are free and set the group ranges GPTQ rounds into.
 
+GPTQ generalises only where the Gram is well estimated (layer-10 held-out Linear output error,
+96 x 2048 calibration tokens): attention q/k/v/o and the shared expert see every token
+(68 rows per input dim) and gain 20-36 % over the clip (o_proj 0.085 -> 0.054, insensitive to
+damping 1-30 %). A routed expert sees 0.5-12K rows for 2048 dims (median 2.7K) and GPTQ at 1 %
+damping OVERFITS that Gram: in-sample 0.036 vs held-out 0.065 against clip 0.070 for gate_proj,
+and expert down_proj comes out WORSE than the clip (0.090-0.114 vs 0.083-0.091). That is why the
+first GPTQ-densebf16 build only moved the end-to-end KL 0.278 -> 0.270. Fix (whole-layer routed
+block, held-out, layer 10): RTN 0.121 / as-built GPTQ 0.116 / expert gate+up GPTQ on the expert
+Gram shrunk toward the layer-wide input Gram (--expert-gram-shrink 1, trace-matched) at 10 %
+damping + expert down GPTQ at 100 % damping (--expert-down-percdamp 1) 0.098. Those are the
+defaults; the always-active path keeps --percdamp 0.01.
+
 Algorithm (AutoAWQ / llm-awq, layer by layer, fp activations propagated):
   1. run the calibration tokens through the BF16 layer, capturing the input of every
      quantized Linear and its Gram matrix  G = sum_t x_t x_t^T  (routing-weighted for experts);
@@ -265,6 +277,57 @@ def search_groups_gram(W: torch.Tensor, G: torch.Tensor | None, group: int, grid
     return best_s.squeeze(-1).half(), best_z.squeeze(-1).to(torch.int32), q.view(B, out, inn).to(torch.uint8)
 
 
+FACTOR_FALLBACKS = {"fp64": 0, "damp": 0}
+
+
+def _factor(Hd: torch.Tensor):
+    """(U, ok) with U the upper Cholesky factor of Hd^-1 per batch element; ok marks the elements whose
+    factorizations succeeded (cholesky_ex: no raise, so the good members of a batch are kept)."""
+    Lc, info = torch.linalg.cholesky_ex(Hd)
+    ok = info == 0
+    if not ok.any():
+        return None, ok
+    Lc = Lc.masked_fill(~ok[:, None, None], 0.0)
+    Lc.diagonal(dim1=1, dim2=2).masked_fill_(~ok[:, None], 1.0)
+    U, info2 = torch.linalg.cholesky_ex(torch.cholesky_inverse(Lc), upper=True)
+    ok = ok & (info2 == 0)
+    return U, ok
+
+
+def _hinv_upper(H: torch.Tensor, percdamp: float) -> torch.Tensor:
+    """Upper Cholesky factor of (H + damp I)^-1, batched. fp32 batched first; a Gram accumulated in fp32
+    over 1e5 tokens with massive-activation channels (Flint's last layers: o_proj input, leading minor
+    of order 49 indefinite at 1 % damping; expert gate/up Grams past layer ~30) can fail, so the failing
+    elements alone are redone one at a time in fp64 (32 MB each, not a 1 GB batch copy next to a
+    24 GB build), then with escalating damping, rather than dying 13 minutes into a build."""
+    B = H.shape[0]
+    dmean = H.diagonal(dim1=1, dim2=2).mean(1)
+    Hd = H.clone()
+    Hd.diagonal(dim1=1, dim2=2).add_((percdamp * dmean)[:, None])
+    U, ok = _factor(Hd)
+    del Hd
+    if ok.all():
+        return U
+    out = U if U is not None else torch.empty_like(H)
+    ladder = [percdamp, percdamp * 10, percdamp * 100, 1.0]
+    for b in (~ok).nonzero().flatten().tolist():
+        FACTOR_FALLBACKS["fp64"] += 1
+        for frac in ladder:
+            Hb = H[b].to(torch.float64)
+            Hb.diagonal().add_(float(frac * dmean[b]))
+            Ub, okb = _factor(Hb[None])
+            del Hb
+            if okb.all():
+                out[b] = Ub[0].float()
+                if frac != percdamp:
+                    FACTOR_FALLBACKS["damp"] += 1
+                    print(f"    [gptq] Gram {tuple(H.shape[1:])} #{b} needed damping {frac:g} in fp64", flush=True)
+                break
+        else:
+            raise RuntimeError(f"Hessian #{b} not factorizable even at damp 1.0 in fp64")
+    return out
+
+
 def gptq_quantize(W: torch.Tensor, G: torch.Tensor | None, group: int, grid: int, shrink_min: float,
                   act_order: bool = True, block: int = 128, percdamp: float = 0.01):
     """GPTQ (Frantar et al.) with error feedback on the Gram, batched over B independent matrices.
@@ -294,12 +357,8 @@ def gptq_quantize(W: torch.Tensor, G: torch.Tensor | None, group: int, grid: int
         perm = torch.arange(inn, device=dev)[None].expand(B, inn)
         invperm = None
     gidx = perm // group  # [B,in] static group of each processed column
-    damp = percdamp * H.diagonal(dim1=1, dim2=2).mean(1)
-    H.diagonal(dim1=1, dim2=2).add_(damp[:, None])
-    Lc = torch.linalg.cholesky(H)
-    Hinv = torch.cholesky_inverse(Lc)
-    Hinv = torch.linalg.cholesky(Hinv, upper=True)
-    del Lc, H
+    Hinv = _hinv_upper(H, percdamp)
+    del H
     Qint = torch.zeros(B, out, inn, dtype=torch.uint8, device=dev)
     for i1 in range(0, inn, block):
         i2 = min(i1 + block, inn)
@@ -326,8 +385,9 @@ def gptq_quantize(W: torch.Tensor, G: torch.Tensor | None, group: int, grid: int
     return scales, zeros, Qint
 
 
-def quantize_batch(W: torch.Tensor, G: torch.Tensor | None, args, chunk: int = 32):
+def quantize_batch(W: torch.Tensor, G: torch.Tensor | None, args, chunk: int = 32, percdamp: float | None = None):
     """W [B,out,in] (+ G [B,in,in] or None) -> list of B packed AWQ dicts (CPU tensors)."""
+    pd = args.percdamp if percdamp is None else percdamp
     B, out, inn = W.shape
     assert inn % args.group_size == 0 and out % PACK == 0, f"bad shape {tuple(W.shape)} @g{args.group_size}"
     outs = []
@@ -335,7 +395,8 @@ def quantize_batch(W: torch.Tensor, G: torch.Tensor | None, args, chunk: int = 3
         Wc = W[c0:c0 + chunk]
         Gc = None if G is None else G[c0:c0 + chunk]
         if args.gptq:
-            s, z, q = gptq_quantize(Wc, Gc, args.group_size, args.grid, args.shrink_min, act_order=not args.no_act_order)
+            s, z, q = gptq_quantize(Wc, Gc, args.group_size, args.grid, args.shrink_min, act_order=not args.no_act_order,
+                                    percdamp=pd)
         else:
             s, z, q = search_groups_gram(Wc, Gc, args.group_size, args.grid, args.shrink_min)
         for b in range(Wc.shape[0]):
@@ -369,6 +430,11 @@ def main() -> None:
     ap.add_argument("--log", default="", help="per-layer calibration log json (default <dst>/calibration-log.json)")
     ap.add_argument("--gptq", action="store_true", help="GPTQ error feedback on the Grams instead of per-group clip only")
     ap.add_argument("--no-act-order", action="store_true", help="GPTQ: process columns in natural order")
+    ap.add_argument("--percdamp", type=float, default=0.01, help="GPTQ damping (fraction of mean diag H) for the always-active path")
+    ap.add_argument("--expert-percdamp", type=float, default=0.1, help="GPTQ damping for routed-expert gate/up (thin Grams overfit at 0.01)")
+    ap.add_argument("--expert-down-percdamp", type=float, default=1.0, help="GPTQ damping for routed-expert down_proj (worse than clip below ~0.3)")
+    ap.add_argument("--expert-gram-shrink", type=float, default=1.0,
+                    help="add this multiple of the (trace-matched) layer-wide input Gram to each expert's gate/up Gram")
     ap.add_argument("--calib-only", action="store_true", help="build + cache the calibration set, then exit")
     ap.add_argument("--layers", type=int, default=0, help="DEBUG: stop after this many layers (partial checkpoint)")
     args = ap.parse_args()
@@ -447,6 +513,8 @@ def main() -> None:
                       + (" (natural order)" if args.no_act_order else " (act-order, static groups)") if args.gptq
                       else "Gram-weighted per-group clipping search") + ", fp activations propagated",
             "grid": args.grid, "shrink_min": args.shrink_min, "scale_grid": args.scale_grid, "gptq": args.gptq,
+            "percdamp": args.percdamp, "expert_percdamp": args.expert_percdamp,
+            "expert_down_percdamp": args.expert_down_percdamp, "expert_gram_shrink": args.expert_gram_shrink,
             "calibration": {"n_samples": len(calib), "n_tokens": n_tok, "seq_len": args.seq_len, "seed": args.seed,
                             "sources": by_src},
             "kept_bf16": sorted({re.sub(r"\.\d+\.", ".N.", n) for n in names if n not in is_quant or not is_quant[n]}),
@@ -683,6 +751,9 @@ def main() -> None:
                         Gd_all[e] = gram(midw)
                         has_d[e] = True
                         Ge_all[e] *= inv_s2
+                        if args.expert_gram_shrink > 0:  # thin per-expert Gram -> shrink toward the layer-wide one
+                            tr = Ge_all[e].diagonal().sum() / Gs2.diagonal().sum()
+                            Ge_all[e] += (args.expert_gram_shrink * tr) * Gs2
                         if is_quant[pe + "down_proj.weight"]:
                             s_d, a_d, _ = search_scale(midw.abs().mean(0), [(Wd_all[e], Gd_all[e])], group, args.scale_grid)
                             alphas_d.append(a_d if a_d is not None else -1)
@@ -703,14 +774,14 @@ def main() -> None:
                 if not qidx:
                     continue
                 if mask is None:
-                    packed = quantize_batch(Wall[qidx], Gall[qidx], args)
+                    packed = quantize_batch(Wall[qidx], Gall[qidx], args, percdamp=args.expert_percdamp)
                     for e, pk in zip(qidx, packed):
                         emit_packed(p + f"mlp.experts.{e}.{fam}_proj.weight", pk)
                 else:  # down: experts with a mid Gram batched together, the rest data-free
                     with_g = [e for e in qidx if mask[e]]
                     without = [e for e in qidx if not mask[e]]
                     if with_g:
-                        for e, pk in zip(with_g, quantize_batch(Wall[with_g], Gall[with_g], args)):
+                        for e, pk in zip(with_g, quantize_batch(Wall[with_g], Gall[with_g], args, percdamp=args.expert_down_percdamp)):
                             emit_packed(p + f"mlp.experts.{e}.{fam}_proj.weight", pk)
                     if without:
                         for e, pk in zip(without, quantize_batch(Wall[without], None, args)):
@@ -740,6 +811,7 @@ def main() -> None:
     json.dump({"metadata": {"total_size": total}, "weight_map": weight_map},
               open(os.path.join(args.dst, "model.safetensors.index.json"), "w"), indent=2)
     log["secs"] = round(time.time() - t0, 1)
+    log["factor_fallbacks"] = dict(FACTOR_FALLBACKS)
     json.dump(log, open(args.log or os.path.join(args.dst, "calibration-log.json"), "w"), indent=1)
     # completeness check: every source tensor is represented (as itself or as its 3 AWQ tensors)
     missing = [n for n in names if n not in weight_map and f"{n[:-len('.weight')]}.qweight" not in weight_map]
