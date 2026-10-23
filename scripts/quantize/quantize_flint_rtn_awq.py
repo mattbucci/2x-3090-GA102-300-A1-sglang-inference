@@ -68,6 +68,54 @@ QUANT_RE = re.compile(
 LAYER_RE = re.compile(r"^model\.layers\.(\d+)\.")
 
 
+def modules_to_not_convert(quant_names, kept_names):
+    r"""Entries for quantization_config.modules_to_not_convert covering exactly
+    the quantizable tensors in `kept_names` (a subset of `quant_names`).
+
+    SGLang's skip test (`_module_path_match`) matches an entry on dotted-path
+    boundaries anywhere in the module prefix, and the fused qkv_proj /
+    gate_up_proj prefixes never contain the per-shard names -- so name the
+    parent module when every quantizable child under it is kept. A name is
+    collapsed to its layer-stripped form (e.g. ``self_attn``) only when it is
+    kept in EVERY layer that has it; a keep that is layer-specific (e.g. the
+    dense MLPs of layers 0/1 under ``layers\.[01]\.mlp``) is emitted fully
+    qualified (``model.layers.0.mlp``), because the stripped ``mlp`` would
+    also match every ``mlp.experts`` and the loader would build BF16 experts
+    (23 GiB per rank -> OOM at boot). Found 2026-10-22 on the calibrated
+    experts-only build; the first such checkpoints had never been served.
+    """
+    kept = {n[: -len(".weight")] for n in kept_names}
+    by_parent: dict[str, set[str]] = {}
+    for n in quant_names:
+        mod = n[: -len(".weight")]
+        by_parent.setdefault(mod.rsplit(".", 1)[0], set()).add(mod)
+    entries: set[str] = set()
+    for parent, children in by_parent.items():
+        if children <= kept:
+            entries.add(parent)
+        else:
+            entries |= children & kept
+    # every module path in the model (all dotted ancestors of every quantizable
+    # tensor), so that ``mlp`` of a MoE layer counts as an instance of ``mlp``
+    # even though its quantizable Linears sit two levels down
+    instances: dict[str, set[str]] = {}
+    for n in quant_names:
+        parts = n[: -len(".weight")].split(".")
+        for i in range(1, len(parts) + 1):
+            m = ".".join(parts[:i])
+            instances.setdefault(LAYER_RE.sub("", m), set()).add(m)
+    groups: dict[str, set[str]] = {}
+    for e in entries:
+        groups.setdefault(LAYER_RE.sub("", e), set()).add(e)
+    out: set[str] = set()
+    for stripped, fulls in groups.items():
+        if fulls == instances[stripped]:
+            out.add(stripped)
+        else:
+            out |= fulls
+    return sorted(out)
+
+
 # ----------------------------------------------------------------------------- quantizer
 def search_groups(W: torch.Tensor, group: int, grid: int, shrink_min: float, norm: float):
     """Per (row, group) MSE search over the clipping range on the integer-zero-point grid.
@@ -232,22 +280,9 @@ def main() -> None:
     plan_k = [n for n in names if n not in plan_q_set]
     # Quantizable tensors held back by --keep-bf16 must also be named in
     # modules_to_not_convert, or the AWQ loader builds Marlin layers for them and
-    # finds no qweight. SGLang's AWQ skip test is a plain substring match on the
-    # module prefix, and the fused qkv_proj / gate_up_proj prefixes never contain
-    # the per-shard names -- so name the parent module when every quantizable
-    # child under it is kept (e.g. "self_attn"), else the exact children.
+    # finds no qweight (rule + the layer-specific trap: modules_to_not_convert()).
     kept_q = [n for n in names if QUANT_RE.match(n) and n not in plan_q_set]
-    by_parent: dict[str, set[str]] = {}
-    for n in [x for x in names if QUANT_RE.match(x)]:
-        mod = LAYER_RE.sub("", n[: -len(".weight")])
-        by_parent.setdefault(mod.rsplit(".", 1)[0], set()).add(mod)
-    kept_mods = {LAYER_RE.sub("", n[: -len(".weight")]) for n in kept_q}
-    not_convert: set[str] = set()
-    for parent, children in by_parent.items():
-        if children <= kept_mods:
-            not_convert.add(parent)
-        else:
-            not_convert |= children & kept_mods
+    not_convert = modules_to_not_convert([x for x in names if QUANT_RE.match(x)], kept_q)
     q_params = sum(math.prod(names[n][1]) for n in plan_q)
     k_params = sum(math.prod(names[n][1]) for n in plan_k)
     print(f"src {args.src}\ndst {args.dst}\ndevice {args.device}  g{args.group_size}  grid {args.grid}  shrink>={args.shrink_min}  norm {args.norm}")
@@ -255,7 +290,7 @@ def main() -> None:
     est = q_params * (0.5 + 2.5 / args.group_size) + k_params * 2
     print(f"estimated output {est/2**30:.1f} GiB")
     if not_convert:
-        print(f"modules_to_not_convert += {sorted(not_convert)}")
+        print(f"modules_to_not_convert += {not_convert}")
     if args.dry_run:
         for n in plan_k:
             print("  keep", n, names[n][0], names[n][1])
@@ -280,7 +315,7 @@ def main() -> None:
         "group_size": args.group_size,
         "zero_point": True,
         "version": "gemm",
-        "modules_to_not_convert": ["lm_head", "embed_tokens", *sorted(not_convert)],
+        "modules_to_not_convert": ["lm_head", "embed_tokens", *not_convert],
         "producer": {
             "script": "scripts/quantize/quantize_flint_rtn_awq.py",
             "method": "data-free per-group MSE search (clipping grid) on the integer-zero-point grid, from the BF16 base",

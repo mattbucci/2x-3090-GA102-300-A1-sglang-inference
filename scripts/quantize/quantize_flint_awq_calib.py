@@ -82,7 +82,7 @@ from safetensors.torch import save_file
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from quantize_flint_rtn_awq import (  # noqa: E402
-    LAYER_RE, MAX_Q, PACK, QUANT_RE, W_BIT, pack_awq, read_headers, search_groups,
+    LAYER_RE, MAX_Q, PACK, QUANT_RE, W_BIT, modules_to_not_convert, pack_awq, read_headers, search_groups,
 )
 
 SOURCES = ("am-code", "stack", "agentic", "swebench", "platypus")
@@ -474,20 +474,10 @@ def main() -> None:
         E = 1 + max(int(m.group(1)) for n in names for m in [re.search(r"mlp\.experts\.(\d+)\.", n)] if m)
     quant_names = [n for n in names if QUANT_RE.match(n)]
     is_quant = {n: not (keep_re and keep_re.search(n)) for n in quant_names}
-    # modules_to_not_convert (same rule as the RTN script: name the parent when every child is kept)
-    by_parent: dict[str, set[str]] = {}
-    for n in quant_names:
-        mod = LAYER_RE.sub("", n[: -len(".weight")])
-        by_parent.setdefault(mod.rsplit(".", 1)[0], set()).add(mod)
-    kept_mods = {LAYER_RE.sub("", n[: -len(".weight")]) for n in quant_names if not is_quant[n]}
-    not_convert: set[str] = set()
-    for parent, children in by_parent.items():
-        if children <= kept_mods:
-            not_convert.add(parent)
-        else:
-            not_convert |= children & kept_mods
+    # modules_to_not_convert (shared rule; layer-specific keeps stay fully qualified)
+    not_convert = modules_to_not_convert(quant_names, [n for n in quant_names if not is_quant[n]])
     print(f"quantize {sum(is_quant.values())} / keep BF16 {len(quant_names) - sum(is_quant.values())} quantizable tensors; "
-          f"modules_to_not_convert += {sorted(not_convert)}", flush=True)
+          f"modules_to_not_convert += {not_convert}", flush=True)
 
     # ---- output dir
     os.makedirs(args.dst, exist_ok=True)
@@ -505,7 +495,7 @@ def main() -> None:
     ocfg.pop("mlx_export", None)
     ocfg["quantization_config"] = {
         "quant_method": "awq", "bits": W_BIT, "group_size": group, "zero_point": True, "version": "gemm",
-        "modules_to_not_convert": ["lm_head", "embed_tokens", *sorted(not_convert)],
+        "modules_to_not_convert": ["lm_head", "embed_tokens", *not_convert],
         "producer": {
             "script": "scripts/quantize/quantize_flint_awq_calib.py",
             "method": "activation-aware AWQ: per-input-channel scale search (x_mean^a / w_mean^(1-a), folded into "
