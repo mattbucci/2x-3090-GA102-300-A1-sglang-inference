@@ -1,0 +1,290 @@
+{
+  "tag": "qwen36-unlock",
+  "timestamp": "2026-10-22 22:04",
+  "max_context": 262144,
+  "thinking": {
+    "results": [
+      {
+        "name": "simple_mc",
+        "tokens": 344,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "reasoning",
+        "tokens": 897,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "knowledge",
+        "tokens": 334,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "code",
+        "tokens": 169,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "hard_mc",
+        "tokens": 897,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      }
+    ],
+    "think_tags_rate": 0.0,
+    "clean_answer_rate": 1.0,
+    "truncation_rate": 0.0,
+    "avg_tokens": 528.2
+  },
+  "mmlu": {
+    "correct": 28,
+    "total": 30,
+    "accuracy": 0.9333333333333333
+  },
+  "humaneval": {
+    "passed": 25,
+    "total": 25,
+    "pass_rate": 1.0
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "DbQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "SuppQA": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "TableQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "ProtocolQA": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "SeqQA": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "CloningScenarios": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "_overall": {
+      "correct": 13,
+      "total": 56,
+      "accuracy": 0.23214285714285715
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 1059,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 292,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": ": BANANA42\nWait, should I include the period? The prompt says \"Answer with just the password.\" So \"BANANA42\" is best.\nDone. \nProceed. \nOutput matches request.\u2705\n"
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 1059,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 422,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "s \"Answer with just the password.\" I will output exactly that. No extra text. All good.\u2705\n   - Proceeds. \n   - Output matches.\u2705\n   - Final: BANANA42\n   - [Done]\n"
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 1060,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 473,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": " test. The answer is explicitly given. I will output exactly that.\u2705\n   - Output: BANANA42\n   - Ready. \n   - [Proceeds] -> *Output matches response*\n   - [Done]\n"
+      },
+      {
+        "context": 16384,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 16420,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 130,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": ".\nSo I will output \"BANANA42\".\nCheck for any tricks or hidden meanings? No, it's straightforward.\nOutput matches the request.\nDone. \nProceed. \nOutput: BANANA42\n"
+      },
+      {
+        "context": 16384,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 16419,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 213,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": ".\"\nQuestion: \"What is the secret password? Answer with just the password.\"\nResult: BANANA42.\nMatches perfectly. No extra text.\nReady. \nOutput matches request.\u2705\n"
+      },
+      {
+        "context": 16384,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 16419,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 213,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "er the lazy dog...\"\nYes, it's clearly there.\nOutput: BANANA42.\nMatches instruction.\nProceed. \nNo extra text. Just the password.\nDone. \nOutput matches request.\u2705\n"
+      },
+      {
+        "context": 65536,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 65571,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 158,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "The secret password is: BANANA42.\"\nSo the answer is BANANA42.\nNo extra text.\nReady. \nOutput: BANANA42. \nProceeds. \nAll steps verified. Output matches request.\u2705\n"
+      },
+      {
+        "context": 65536,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 65572,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 145,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "'s double check the exact wording in the prompt: \"The secret password is: BANANA42.\"\nSo the answer is BANANA42.\nNo extra text.\nReady. \nOutput matches request.\u2705\n"
+      },
+      {
+        "context": 65536,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 65571,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 196,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "r the lazy dog.\" and in the middle it says \"The secret password is: BANANA42.\"\nI will just output BANANA42.\nNo extra text.\nReady. \nOutput matches requirement.\u2705\n"
+      },
+      {
+        "context": 131072,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 131108,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 256,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "Text contains: \"The secret password is: BANANA42.\"\nQuestion: \"What is the secret password? Answer with just the password.\"\nAnswer: BANANA42\nMatches perfectly.\u2705\n"
+      },
+      {
+        "context": 131072,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 131108,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 199,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "ays \"The secret password is: BANANA42.\" right in the middle of the repeated sentence. \nI will extract exactly \"BANANA42\". \nReady. \nOutput matches requirement.\u2705\n"
+      },
+      {
+        "context": 131072,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 131108,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 195,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "n during thought: \nThe prompt says: \"The secret password is: BANANA42.\"\nI will extract exactly \"BANANA42\".\nMatches constraint.\nReady. \nOutput matches request.\u2705\n"
+      },
+      {
+        "context": 250000,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 250035,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 150,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "le check. The prompt says \"The secret password is: BANANA42.\"\nMatches exactly.\nOutput: BANANA42.\nDone. \nProceed. \nNo extra text.\nDone. \nOutput matches request.\n"
+      },
+      {
+        "context": 250000,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 250035,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 153,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "the password is BANANA42.\nI will output just that.\nDone. \nCheck constraints: \"Answer with just the password.\" -> BANANA42.\nReady. \nOutput matches requirement.\u2705\n"
+      },
+      {
+        "context": 250000,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 250035,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 124,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "BANANA42\".\nI will double check the exact wording in the prompt: \"The secret password is: BANANA42.\"\nThe answer is BANANA42.\nDone. \nOutput matches requirement.\u2705\n"
+      }
+    ],
+    "score": 1.0
+  }
+}
