@@ -18,14 +18,14 @@
 #      gpu-fan-curve.service.
 #
 # Tunables (via environment or unit-level Environment= lines):
-#   POWER_LIMIT_W       default 260
+#   POWER_LIMIT_W       default 300 (2026-10-24 sweep: benchmarks/power-sweep-2026-10-24; 260 before)
 #   GPU_FAN_FLOOR_PCT   default 75
 
 set -u
 LOG_TAG="gpu-cooling"
 log() { logger -t "$LOG_TAG" -- "$*"; echo "[$LOG_TAG] $*"; }
 
-POWER_LIMIT_W="${POWER_LIMIT_W:-260}"
+POWER_LIMIT_W="${POWER_LIMIT_W:-300}"
 GPU_FAN_FLOOR_PCT="${GPU_FAN_FLOOR_PCT:-75}"
 
 if ! command -v nvidia-smi >/dev/null 2>&1; then
