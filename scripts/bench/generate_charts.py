@@ -696,6 +696,76 @@ def make_kv_capacity_chart(all_data):
     print(f"  {out}")
 
 
+def make_power_cap_chart(all_data):
+    """300 W vs 400 W per-card cap, same boot, same 10-point sweep (2026-10-25 refresh,
+    gpu-unlock on, CPU boost off). Three small multiples sharing the model axis, one
+    y-scale each: decode at 1K, decode at the deepest honest point, and TTFT at that
+    deepest point (prefill is the compute-bound half that the extra tensor rate feeds).
+    Reads benchmarks/<slug>/results-400w.json next to results.json; models without a
+    400 W sweep are skipped."""
+    from matplotlib.patches import Patch
+    rows = []
+    for key, (meta, r300) in all_data.items():
+        p400 = os.path.join(BENCH_DIR, key, "results-400w.json")
+        if not os.path.exists(p400):
+            continue
+        r400 = json.load(open(p400))
+        s300, s400 = honest_sweep(key, r300), honest_sweep(key, r400)
+        if len(s300) < 2 or len(s400) < 2:
+            continue
+        by400 = {p["context"]: p for p in s400}
+        deep = s300[-1]
+        mid = max((p for p in s300 if p["context"] <= 32768), key=lambda p: p["context"], default=None)
+        if mid is None or deep["context"] not in by400 or s300[0]["context"] not in by400 or mid["context"] not in by400:
+            continue
+        rows.append({
+            "meta": meta,
+            "d1k": (s300[0]["tok_per_sec"], by400[s300[0]["context"]]["tok_per_sec"]),
+            "dmid": (mid["tok_per_sec"], by400[mid["context"]]["tok_per_sec"]),
+            "ddeep": (deep["tok_per_sec"], by400[deep["context"]]["tok_per_sec"]),
+            "deep_ctx": deep["context"], "reaches": reaches_256k(key, r300),
+        })
+    if not rows:
+        print("  SKIP power-cap chart (no results-400w.json)")
+        return
+    rows.sort(key=lambda r: r["d1k"][0], reverse=True)
+    x = np.arange(len(rows)); w = 0.38
+    fig, axes = plt.subplots(3, 1, figsize=(max(11, 1.05 * len(rows)), 10.5), sharex=True)
+    panels = [
+        (axes[0], "d1k", "tok/s", "Decode at 1K context", lambda v: f"{v:.0f}"),
+        (axes[1], "dmid", "tok/s", "Decode at 32K context", lambda v: f"{v:.0f}"),
+        (axes[2], "ddeep", "tok/s", "Decode at the deepest honest point (256K, or the KV cap)", lambda v: f"{v:.0f}"),
+    ]
+    for ax, k, ylabel, title, fmt in panels:
+        for i, r in enumerate(rows):
+            c = r["meta"]["color"]; a, b = r[k]
+            ax.bar(x[i] - w / 2, a, w, color=c, alpha=0.45, zorder=5)
+            ax.bar(x[i] + w / 2, b, w, color=c, alpha=0.95, zorder=5)
+            top = max(a, b)
+            delta = (b / a - 1) * 100 if a else 0
+            ax.text(x[i], top * 1.02, f"{fmt(a)}→{fmt(b)}\n{delta:+.0f} %", ha="center", va="bottom",
+                    fontsize=7.5, color=c, fontweight="bold")
+        ax.set_ylabel(ylabel)
+        ax.set_title(title, fontsize=11, fontweight="bold", loc="left", pad=6)
+        ax.grid(True, axis="y", linestyle="--")
+        ax.set_ylim(bottom=0, top=max(max(r[k]) for r in rows) * 1.28)
+    axes[2].text(0.0, -0.62, "same boot per model; 300 W = the ship cap (cooling profile), 400 W = card maximum; "
+                 "gpu-unlock on, CPU boost off. Decode is weight-streaming-bound, so the cap barely moves it; the "
+                 "compute-bound prefill gain (fresh 128K TTFT -10 %) is in the power-sweep receipt",
+                 transform=axes[2].transAxes, fontsize=7.5, color="#8b949e")
+    labels = [r["meta"]["label"].replace(" AWQ ", "\n").replace(" AWQ", "") for r in rows]
+    axes[2].set_xticks(x); axes[2].set_xticklabels(labels, fontsize=7.5, rotation=28, ha="right")
+    axes[0].legend(handles=[Patch(facecolor="#8b949e", alpha=0.45, label="300 W per card (ship)"),
+                            Patch(facecolor="#8b949e", alpha=0.95, label="400 W per card")],
+                   loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22", fontsize=9)
+    fig.suptitle("Power cap 300 W vs 400 W — single-user, M=1, per model", fontsize=13, fontweight="bold", x=0.02, ha="left")
+    fig.tight_layout()
+    out = os.path.join(BENCH_DIR, "all_models_power_300v400.png")
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  {out}")
+
+
 if __name__ == "__main__":
     import sys
     if sys.argv[1:] == ["bakeoff"]:          # regenerate only the bake-off chart
@@ -723,6 +793,8 @@ if __name__ == "__main__":
         make_kv_capacity_chart(all_data)
     print("Decode bars (results.json vs newer tripwire runs):")
     make_decode_bar_chart(all_data)
+    print("Power cap 300 vs 400 W:")
+    make_power_cap_chart(all_data)
 
     print("Spec-decode:")
     make_specdec_comparison_chart()

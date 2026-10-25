@@ -1,59 +1,59 @@
 {
-  "model": "Qwen3.5-27B-AWQ-DeltaNet",
-  "engine": "SGLang v0.5.10 + patches",
+  "model": "qwen35-dense",
+  "engine": "SGLang",
   "hardware": "2x RTX 3090 TP=2",
-  "timestamp": "2026-04-13 03:16:30",
-  "output_tokens": 256,
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-10-25 04:35:25",
+  "output_tokens": 100,
+  "max_total_num_tokens": 575846,
   "context_sweep": [
     {
-      "context": 128,
-      "tok_per_sec": 13.3,
-      "ttft_ms": 175.4,
-      "tpot_ms": 75.4,
-      "tokens": 256
-    },
-    {
-      "context": 512,
-      "tok_per_sec": 13.5,
-      "ttft_ms": 511.4,
-      "tpot_ms": 73.9,
-      "tokens": 256
-    },
-    {
       "context": 1024,
-      "tok_per_sec": 13.5,
-      "ttft_ms": 986.2,
-      "tpot_ms": 74.2,
-      "tokens": 256
+      "actual_input_tokens": 1024,
+      "throughput": 59.89,
+      "ttft_ms": 305.43,
+      "tpot_ms": 13.68,
+      "tok_per_sec": 73.1
     },
     {
       "context": 2048,
-      "tok_per_sec": 12.9,
-      "ttft_ms": 1919.6,
-      "tpot_ms": 77.8,
-      "tokens": 225
+      "actual_input_tokens": 2048,
+      "throughput": 58.23,
+      "ttft_ms": 351.11,
+      "tpot_ms": 13.69,
+      "tok_per_sec": 73.0
     },
     {
       "context": 4096,
-      "tok_per_sec": 13.6,
-      "ttft_ms": 3849.7,
-      "tpot_ms": 74.2,
-      "tokens": 164
+      "actual_input_tokens": 4096,
+      "throughput": 48.28,
+      "ttft_ms": 700.08,
+      "tpot_ms": 13.74,
+      "tok_per_sec": 72.8
     },
     {
       "context": 8192,
-      "tok_per_sec": 13.4,
-      "ttft_ms": 3474.6,
-      "tpot_ms": 74.7,
-      "tokens": 256
+      "actual_input_tokens": 8192,
+      "throughput": 35.18,
+      "ttft_ms": 1454.55,
+      "tpot_ms": 13.9,
+      "tok_per_sec": 71.9
     },
     {
       "context": 16384,
-      "tok_per_sec": 12.9,
-      "ttft_ms": 4947.0,
-      "tpot_ms": 77.9,
-      "tokens": 179
+      "actual_input_tokens": 16384,
+      "throughput": 22.07,
+      "ttft_ms": 3114.45,
+      "tpot_ms": 14.19,
+      "tok_per_sec": 70.5
+    },
+    {
+      "context": 32540,
+      "actual_input_tokens": 32540,
+      "throughput": 63.67,
+      "ttft_ms": 128.1,
+      "tpot_ms": 14.46,
+      "tok_per_sec": 69.2
     }
-  ],
-  "throughput_sweep": []
+  ]
 }

@@ -1,0 +1,91 @@
+{
+  "model": "devstral",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-10-25 02:55:36",
+  "output_tokens": 100,
+  "max_total_num_tokens": 339111,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1023,
+      "throughput": 91.39,
+      "ttft_ms": 45.57,
+      "tpot_ms": 10.47,
+      "tok_per_sec": 95.5
+    },
+    {
+      "context": 2048,
+      "actual_input_tokens": 2047,
+      "throughput": 91.02,
+      "ttft_ms": 45.94,
+      "tpot_ms": 10.52,
+      "tok_per_sec": 95.1
+    },
+    {
+      "context": 4096,
+      "actual_input_tokens": 4095,
+      "throughput": 89.81,
+      "ttft_ms": 49.62,
+      "tpot_ms": 10.63,
+      "tok_per_sec": 94.1
+    },
+    {
+      "context": 8192,
+      "actual_input_tokens": 8191,
+      "throughput": 87.37,
+      "ttft_ms": 54.82,
+      "tpot_ms": 10.89,
+      "tok_per_sec": 91.8
+    },
+    {
+      "context": 16384,
+      "actual_input_tokens": 16383,
+      "throughput": 82.55,
+      "ttft_ms": 71.45,
+      "tpot_ms": 11.4,
+      "tok_per_sec": 87.7
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32767,
+      "throughput": 75.7,
+      "ttft_ms": 99.11,
+      "tpot_ms": 12.23,
+      "tok_per_sec": 81.8
+    },
+    {
+      "context": 65536,
+      "actual_input_tokens": 65535,
+      "throughput": 65.36,
+      "ttft_ms": 147.2,
+      "tpot_ms": 13.85,
+      "tok_per_sec": 72.2
+    },
+    {
+      "context": 131072,
+      "actual_input_tokens": 131071,
+      "throughput": 51.65,
+      "ttft_ms": 233.17,
+      "tpot_ms": 17.09,
+      "tok_per_sec": 58.5
+    },
+    {
+      "context": 196608,
+      "actual_input_tokens": 196607,
+      "throughput": 42.69,
+      "ttft_ms": 309.6,
+      "tpot_ms": 20.42,
+      "tok_per_sec": 49.0
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261915,
+      "throughput": 36.22,
+      "ttft_ms": 414.69,
+      "tpot_ms": 23.58,
+      "tok_per_sec": 42.4
+    }
+  ]
+}
