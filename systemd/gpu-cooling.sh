@@ -35,6 +35,15 @@ fi
 log "enabling NVIDIA persistence mode"
 nvidia-smi -pm 1 >/dev/null || log "persistence mode failed (continuing)"
 
+# CPU boost OFF (2026-10-24 trial, benchmarks/power-sweep-2026-10-24/boost-trial.md): the
+# two SGLang scheduler processes pin a core each whether idle (zmq poll) or busy (CUDA
+# sync), and on this mini-ITX board (MSI B650I) the DIMMs sit against the socket -- the
+# CPU, not GPU watts, set the DDR5 SPD temperature. Boost off: Tctl 84.5 -> 60.5 C mean,
+# DIMMs -2 C and falling, decode within +/-1 % at matched depth. CPU_BOOST=1 restores it.
+CPU_BOOST="${CPU_BOOST:-0}"
+if [ -w /sys/devices/system/cpu/cpufreq/boost ]; then
+    echo "$CPU_BOOST" > /sys/devices/system/cpu/cpufreq/boost && log "CPU boost -> $CPU_BOOST"
+fi
 log "setting power limit to ${POWER_LIMIT_W} W on every GPU"
 for idx in $(nvidia-smi --query-gpu=index --format=csv,noheader); do
     if nvidia-smi -i "$idx" -pl "$POWER_LIMIT_W" >/dev/null 2>&1; then
