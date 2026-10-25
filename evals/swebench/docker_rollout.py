@@ -1144,12 +1144,16 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             f"      - id: {json.dumps(served_name)}\n"
             f"        name: {json.dumps(served_name + ' (SGLang local)')}\n"
             "        api: openai-completions\n"
-            # reasoning: false — with `reasoning: true` omp 18.12.2 puts its default
-            # thinking level on the wire as `reasoning_effort: "high"` (flint cycle
-            # Phase-0 audit FAIL, 2026-10-24). The harness policy is NO
-            # reasoning_effort (template default = max thinking); the served model
-            # still thinks and returns reasoning_content, omp just does not steer it.
-            "        reasoning: false\n"
+            # reasoning: true keeps omp's reasoning-model handling (reasoning_content
+            # parsing, thinking-aware turn shaping); compat.supportsReasoningEffort:
+            # false stops it putting its default thinking level on the wire as
+            # `reasoning_effort: "high"` (flint cycle Phase-0 audit FAIL, 2026-10-24;
+            # harness policy = NO reasoning_effort, the template default thinks at max
+            # — Flint's template has no effort knob and SGLang only honours
+            # reasoning_effort for Harmony / DeepSeek-V4.1 encodings anyway).
+            "        reasoning: true\n"
+            "        compat:\n"
+            "          supportsReasoningEffort: false\n"
             "        input: [text]\n"
             "        cost: {input: 0, output: 0, cacheRead: 0, cacheWrite: 0}\n"
             f"        contextWindow: {int(context_window)}\n"
