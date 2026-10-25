@@ -100,6 +100,11 @@ def _check_scale_tensor(name: str, arr: np.ndarray) -> list[str]:
     return issues
 
 
+def _is_qweight(name: str) -> bool:
+    """Native AWQ packs to `*.qweight`; compressed-tensors pack-quantized to `*.weight_packed`."""
+    return name.endswith(".qweight") or name.endswith(".weight_packed")
+
+
 def _check_qweight_tensor(name: str, arr: np.ndarray) -> list[str]:
     """Return list of human-readable failure messages for a qweight tensor.
 
@@ -275,7 +280,15 @@ def _quant_group_size(cfg_dir: Path) -> int:
     if cfgp.exists():
         try:
             qc = json.load(open(cfgp)).get("quantization_config", {})
-            gs = int(qc.get("group_size", 128))
+            gs = qc.get("group_size")
+            if gs is None:
+                # compressed-tensors layout: config_groups.<name>.weights.group_size
+                for grp in (qc.get("config_groups") or {}).values():
+                    w = (grp or {}).get("weights") or {}
+                    if w.get("group_size") is not None:
+                        gs = w["group_size"]
+                        break
+            gs = int(gs if gs is not None else 128)
             return gs if gs > 0 else 128
         except Exception:
             pass
@@ -319,9 +332,9 @@ def check_local(path: Path, skip_qweight: bool = False, base_path: Path | None =
                         issues = _reclassify_scale_with_base(k, t, issues, group_size, base_ctx)
                     if issues:
                         failures.append((f.name, k, issues))
-                elif (not skip_qweight) and k.endswith(".qweight"):
+                elif (not skip_qweight) and _is_qweight(k):
                     t_pt = h.get_tensor(k)
-                    # qweight is int32; numpy handles natively
+                    # qweight / CT weight_packed is int32; numpy handles natively
                     t = t_pt.cpu().numpy()
                     qweight_count += 1
                     issues = _check_qweight_tensor(k, t)
@@ -400,7 +413,7 @@ def check_hf(repo: str, skip_qweight: bool = False) -> tuple[int, int, int, list
             if name == "__metadata__":
                 continue
             is_scale = name.endswith(".scales") or name.endswith(".weight_scale")
-            is_qweight = name.endswith(".qweight")
+            is_qweight = _is_qweight(name)
             if not (is_scale or (is_qweight and not skip_qweight)):
                 continue
             dtype = info.get("dtype", "")
@@ -469,12 +482,12 @@ def main():
 
     if scale_count == 0 and qweight_count == 0:
         # Not an AWQ build (BF16 base, FP8, full-precision checkpoint, etc.)
-        print("[info] no *.scales / *.qweight tensors found — not an AWQ build (skipping audit)")
+        print("[info] no *.scales / *.weight_scale / *.qweight / *.weight_packed tensors found — not an AWQ build (skipping audit)")
         sys.exit(0)
 
     summary_parts = [f"{scale_count} *.scales"]
     if qweight_count:
-        summary_parts.append(f"{qweight_count} *.qweight")
+        summary_parts.append(f"{qweight_count} *.qweight/*.weight_packed")
     print(f"Scanned {' + '.join(summary_parts)} tensors, {fail_count} flagged.")
     if failures:
         for fname, name, issues in failures:
