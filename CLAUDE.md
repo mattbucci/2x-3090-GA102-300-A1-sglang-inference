@@ -71,7 +71,7 @@ Capability guardrail on every iteration that touches a checkpoint: **preserve th
   Any job expected to run > 30 minutes (calibrations, long benches, downloads of 50 GB+) must use this pattern.
 
 ## Current Hardware State (2026-07-12)
-- **Both 3090s online.** TP=2 / 256K is the matrix-standard configuration. No TP=1 fallback presets exist — every preset in launch.sh is tuned for TP=2 / 256K. Default `--tp 2 --context-length 262144 --max-running 1`. Cooling profile (260W power cap + gpu-fan-curve.service) is load-bearing for sustained bake-off runs.
+- **Both 3090s online.** TP=2 / 256K is the matrix-standard configuration. No TP=1 fallback presets exist — every preset in launch.sh is tuned for TP=2 / 256K. Default `--tp 2 --context-length 262144 --max-running 1`. Cooling profile (GPU cap 300 W + CPU boost off + GPU fan floor 100 %, `systemd/gpu-cooling.sh` + `gpu-fan-curve.service`) is load-bearing for sustained bake-off runs.
 
 ## Workflow (RECONFIRMED 2026-05-31)
 - **Work autonomously. Never stop to ask for confirmation.** User checks in periodically by reading the README + everything we report, and will interrupt our flow with better ways to frame a problem or new ideas to try — fold those in immediately and keep iterating. Max effort is the default.

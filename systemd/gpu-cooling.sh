@@ -4,10 +4,11 @@
 # Run once per boot via gpu-cooling.service (Type=oneshot). Sets:
 #   1. NVIDIA persistence mode on  (keeps the driver state warm so per-app
 #      cold starts don't re-init the GPU and wipe the fan/power config)
-#   2. Power limit 260 W per card (down from default 350 W). Picked to keep
-#      DDR5 SPD sensors below ALARM HIGH (55 C) under sustained TP=2 bake-off
-#      load; correlated with kernel-BUG hard resets on the prior chassis at
-#      stock 350 W.
+#   2. Power limit 300 W per card (default 350 W; 260 W before the 2026-10-24
+#      sweep). The knee of the decode / TTFT curves under gpu-unlock; the DDR5
+#      SPD sensors (ALARM HIGH 55 C) are set by the CPU, not GPU watts -- see 2b.
+#   2b. CPU boost off (amd-pstate), and the k10temp module loaded so the CPU
+#      die temperature is visible to telemetry from boot.
 #   3. Corsair Commander Core XT case fans to 100% via `liquidctl`. The
 #      device reports "(broken)" on the latest liquidctl but `set fanN speed`
 #      still drives the duty; we ignore that label.
@@ -41,6 +42,7 @@ nvidia-smi -pm 1 >/dev/null || log "persistence mode failed (continuing)"
 # CPU, not GPU watts, set the DDR5 SPD temperature. Boost off: Tctl 84.5 -> 60.5 C mean,
 # DIMMs -2 C and falling, decode within +/-1 % at matched depth. CPU_BOOST=1 restores it.
 CPU_BOOST="${CPU_BOOST:-0}"
+modprobe k10temp 2>/dev/null && log "k10temp loaded" || log "k10temp not loadable (continuing)"
 if [ -w /sys/devices/system/cpu/cpufreq/boost ]; then
     echo "$CPU_BOOST" > /sys/devices/system/cpu/cpufreq/boost && log "CPU boost -> $CPU_BOOST"
 fi
