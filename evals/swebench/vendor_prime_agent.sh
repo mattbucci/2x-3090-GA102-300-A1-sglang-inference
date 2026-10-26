@@ -12,7 +12,7 @@
 # installer / release bucket (NOT on public npm) and pruned every pre-0.10.0
 # release mid-campaign (2026-10-09: releases/v0.8.1 went 404, every
 # per-instance build failed, the rolling lane wrote 29 crash rows). The
-# tarball is gitignored (0.8.1: 198 MB; 0.10.0: ~170 MB).
+# tarball is gitignored (0.8.1: 198 MB; 0.10.0 / 0.10.1: ~170 MB).
 #
 # 0.10.0 (Rust rewrite, `stable` channel) layout inside the tarball:
 #   opt/prime-agent/                 the upstream linux-x64 payload, verbatim
@@ -49,11 +49,13 @@ UPSTREAM="$UPSTREAM_BASE/releases/v${VER}/prime-agent-${VER}-linux-x64.tar.gz"
 declare -A SHA=(
   [0.8.1]=e0612c45fda6af13524ac6d6b32ddb09f97b107350b38b141d1746d8edde2242
   [0.10.0]=80094ff154063cb1c11d1abbaee6194022f91d16d3ee9ec5bc3b37363d41cb36
+  [0.10.1]=8a67140f00cbed88f0783864d3f5f0369f887e2330595a580e651a040e06a78b
 )
 # The upstream linux-x64 release tarball (from the release's SHA256SUMS),
 # the input of --build; also mirrored next to the vendor tgz.
 declare -A SHA_UPSTREAM=(
   [0.10.0]=c16bd2af5e77b53f49b914a44742c4cf6a67c5ed5000041430b78dbd4c3bcbec
+  [0.10.1]=21ec219183f4134dd23dce9572102e69456066fe374846525561c776d4d1945c
 )
 
 verify() {  # verify <file> <want>  — sha256 or die (and remove the file)
@@ -95,13 +97,15 @@ PY=/root/.prime/agent/kernel-venv/bin/python
 # (edit, websearch, goal, …) and `uv pip install --editable`s whatever the
 # record lacks — the first session of every rollout would do that, offline,
 # and lose every skill. Warm it here: one headless session against a stub
-# model server that answers with a single `ipython` tool call (the session
+# model server that answers with a single code-tool call (`ipython` through
+# 0.10.0, `python_repl` since 0.10.1 — upstream #3400; PY_TOOL below) (the session
 # then awaits kernel readiness, which installs the 9 skills and writes the
 # record) and a final stop. The stub runs on the kernel venv's python.
 cat > /tmp/stub_model.py <<'PYSTUB'
-import json, sys, time
+import json, os, sys, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 N = {"n": 0}
+PY_TOOL = os.environ["PY_TOOL"]
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
     def do_GET(self):
@@ -117,7 +121,7 @@ class H(BaseHTTPRequestHandler):
             if fin: d["usage"] = {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
             self.wfile.write(("data: " + json.dumps(d) + "\n\n").encode())
         if N["n"] == 1:
-            chunk({"role": "assistant", "tool_calls": [{"index": 0, "id": "call_1", "type": "function", "function": {"name": "ipython", "arguments": ""}}]})
+            chunk({"role": "assistant", "tool_calls": [{"index": 0, "id": "call_1", "type": "function", "function": {"name": PY_TOOL, "arguments": ""}}]})
             chunk({"tool_calls": [{"index": 0, "function": {"arguments": json.dumps({"code": "import edit, websearch, goal; print('vendor-warm-ok')"})}}]})
             chunk({}, "tool_calls")
         else:
@@ -134,15 +138,27 @@ sleep 1
 echo "warm the kernel" | DO_NOT_TRACK=1 /opt/prime-agent/prime-agent --offline --model stub/stub -p 2>&1 | tee /tmp/warm.log
 grep -q "^OK" /tmp/warm.log
 kill "$STUB"; wait "$STUB" 2>/dev/null || true
+# The recorded set is whatever a headless `-p` session resolves — exactly the
+# shape every rollout runs, so parity with this warm session is the property.
+# 0.10.0 recorded all 9 payload skills; 0.10.1 records 7 (agent_observe and
+# rlm_heartbeat are daemon-only there: "daemonless sessions: subagents and
+# wake-ups unavailable", upstream #3434). Gate: non-empty, a subset of the
+# payload's Python skills, and the seven a coding session uses present.
 "$PY" - <<'PYCHK'
-import json
+import json, os, re
 d = json.load(open("/root/.prime/agent/kernel-venv/.bootstrap-version"))
 names = sorted(s["import_name"] for s in d["python_skills"])
+payload = sorted(n.replace("-", "_") for n in os.listdir("/opt/prime-agent/skills")
+                 if os.path.exists(f"/opt/prime-agent/skills/{n}/pyproject.toml"))
 print("recorded python skills:", names)
-assert names == ["agent_message", "agent_observe", "attach_image", "compact", "edit", "goal", "refine", "rlm_heartbeat", "websearch"], names
+print("payload python skills: ", payload, "not recorded:", sorted(set(payload) - set(names)))
+core = {"agent_message", "attach_image", "compact", "edit", "goal", "refine", "websearch"}
+assert names and set(names) <= set(payload), (names, payload)
+assert core <= set(names), sorted(core - set(names))
 assert all(s["package_path"].startswith("/opt/prime-agent/skills/") for s in d["python_skills"])
+open("/tmp/recorded-skills.txt", "w").write(" ".join(names))
 PYCHK
-"$PY" -c 'import edit, websearch, goal, refine, compact, agent_message, agent_observe, attach_image, rlm_heartbeat'
+"$PY" -c "import $(tr ' ' ',' < /tmp/recorded-skills.txt)"
 {
   echo "prime-agent ${VER} vendor footprint, built $(date -u +%FT%TZ) in ubuntu:22.04 by evals/swebench/vendor_prime_agent.sh --build"
   echo "upstream: prime-agent-${VER}-linux-x64.tar.gz sha256=${UPSTREAM_SHA}"
@@ -161,7 +177,10 @@ tar --numeric-owner --owner=0 --group=0 -czf "/vendor/out/prime-agent-${VER}-ven
     opt/prime-agent root/.prime/agent/kernel-venv root/.local/share/uv root/.local/bin
 chown "$BUILD_UID" "/vendor/out/prime-agent-${VER}-vendor.tgz"
 EOF
-  docker run --rm -v "$WORK:/vendor" -e VER="$VER" -e UPSTREAM_SHA="${SHA_UPSTREAM[$VER]}" -e BUILD_UID="$(id -u)" \
+  # The model-facing code tool: `ipython` through 0.10.0, `python_repl` from 0.10.1 (#3400).
+  PY_TOOL=ipython
+  [[ "$(printf '%s\n' 0.10.1 "$VER" | sort -V | head -1)" == 0.10.1 ]] && PY_TOOL=python_repl
+  docker run --rm -v "$WORK:/vendor" -e VER="$VER" -e UPSTREAM_SHA="${SHA_UPSTREAM[$VER]}" -e BUILD_UID="$(id -u)" -e PY_TOOL="$PY_TOOL" \
       ubuntu:22.04 bash /vendor/build.sh
   mv "$WORK/out/prime-agent-${VER}-vendor.tgz" "$OUT"
   rm -rf "$WORK"
