@@ -24,10 +24,10 @@ FROM ${BASE}
 
 USER root
 
-ARG NODE_VERSION=22.23.2  # opencode / little-coder / settings snippets (prime-agent 0.10.0 no longer needs Node)
+ARG NODE_VERSION=22.23.2  # opencode / little-coder / settings snippets (prime-agent 0.10.x no longer needs Node)
 ARG OPENCODE_VERSION=1.14.25
 ARG LITTLE_CODER_VERSION=1.1.0
-ARG PRIME_AGENT_VERSION=0.10.0
+ARG PRIME_AGENT_VERSION=0.10.1
 ARG DCODE_VERSION=0.1.65
 ARG OPENCODE_DCP_VERSION=3.1.15
 ARG RTK_VERSION=0.46.0
@@ -118,7 +118,9 @@ RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/in
 # curl installer / release bucket (NOT on public npm) and pruned every
 # pre-0.10.0 release mid-campaign — releases/v0.8.1 went 404, every
 # per-instance build failed, the rolling lane wrote 29 crash rows.
-# 0.10.0 (re-pinned 2026-10-19, `stable` channel) is a Rust rewrite — a
+# 0.10.x (0.10.0 re-pinned 2026-10-19, 0.10.1 at the flint boundary — the
+# model-facing code tool is `python_repl` from 0.10.1, upstream #3400, and a
+# headless session records 7 Python skills, not 9) — `stable` channel, a Rust rewrite — a
 # single static-ish binary (glibc >= 2.34; the eval images carry 2.35) with a
 # Python "kernel" the binary bootstraps on first run through uv (managed
 # CPython 3.11 + prime-agent-runtime + 12 default packages + the Python
@@ -133,7 +135,8 @@ RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/in
 # cost ~30 s per session). `--prime-agent-bootstrap` alone leaves the record
 # with `python_skills: []` and a SESSION then re-syncs the 9 bundled skills
 # through uv — the vendor build therefore runs one stub-model session and the
-# record must list the skills ("import_name"). The readiness checks below
+# record must list the skills ("import_name"; the set a `-p` session resolves,
+# which is what every rollout runs). The readiness checks below
 # fail the build on a footprint that would go cold. Provider config (~/.prime/agent/models.json)
 # + settings.json are written PER RUN by docker_rollout.py with the actual
 # served name (no static enumeration — avoids the opencode.json new-preset
