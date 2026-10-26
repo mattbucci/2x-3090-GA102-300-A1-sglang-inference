@@ -1103,9 +1103,18 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
             # openai:<id>, so deepagents falls back to a fixed 170K-token
             # summarization trigger; with max_input_tokens set it uses
             # fraction 0.85 of the served window.
-            f"dcode -M openai:{served_name} --profile-override '{{\"max_input_tokens\": {int(context_window)}}}' --stdin -q --max-turns 60 -S all --allow-fs-tools all --timeout {max(60, timeout - 100)} < {PROMPT_FILE} || true\n"
+            # --model-params max_tokens: langchain-openai renames it to
+            # max_output_tokens on the Responses path, so every dcode turn
+            # carries OUTPUT_BUDGET like the chat-completions scaffolds.
+            # Without it deepagents sends no cap at all and SGLang budgets
+            # each turn to the remaining context (~230K): R9700's qwen38 v5
+            # dcode cell walled 34/68 on single 36-87K-token thinks (their
+            # b79a392, 2026-10-26); our qwen38 dcode v4 cell ran the same way
+            # (quarantined already for patch 066). The Phase-0 audit fails
+            # any scaffold whose requests carry no cap.
+            f"dcode -M openai:{served_name} --profile-override '{{\"max_input_tokens\": {int(context_window)}}}' --model-params '{{\"max_tokens\": {OUTPUT_BUDGET}}}' --stdin -q --max-turns 60 -S all --allow-fs-tools all --timeout {max(60, timeout - 100)} < {PROMPT_FILE} || true\n"
             "rm -rf /testbed/.deepagents /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
-            f"timeout 120 dcode -M openai:{served_name} --profile-override '{{\"max_input_tokens\": {int(context_window)}}}' --stdin -q --max-turns 8 -S all --allow-fs-tools all --timeout 100 <<<\"$CLEANUP_PROMPT\" || true\n"
+            f"timeout 120 dcode -M openai:{served_name} --profile-override '{{\"max_input_tokens\": {int(context_window)}}}' --model-params '{{\"max_tokens\": {OUTPUT_BUDGET}}}' --stdin -q --max-turns 8 -S all --allow-fs-tools all --timeout 100 <<<\"$CLEANUP_PROMPT\" || true\n"
             "echo === DIFF ===\n"
             "rm -rf /testbed/.deepagents /testbed/.claw /testbed/.opencode /testbed/.sandbox-tmp /testbed/.sandbox-home /testbed/.cache\n"
             "git -C /testbed add -A\n"

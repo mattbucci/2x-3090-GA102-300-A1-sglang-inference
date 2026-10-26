@@ -260,6 +260,12 @@ def check_body(sc: str, path: str, body: dict, served: str, allow_effort: set[st
         v = body.get(k)
         if v is not None and int(v) < dr.OUTPUT_CAP_FLOOR:
             bad.append(f"{k}={v} < OUTPUT_CAP_FLOOR {dr.OUTPUT_CAP_FLOOR}")
+    if all(body.get(k) is None for k in ("max_tokens", "max_completion_tokens", "max_output_tokens")):
+        # An absent cap is not "unlimited thinking", it is a different budget:
+        # SGLang then caps each turn at the remaining context (~230K at 256K),
+        # which no capped lane can reproduce. dcode shipped this way until
+        # 2026-10-26 (R9700 b79a392: 34/68 walls on single 36-87K thinks).
+        bad.append(f"no output cap on the wire (policy: every scaffold sends OUTPUT_BUDGET {dr.OUTPUT_BUDGET})")
     # Sampling comes from the preset (--sampling-defaults model): no scaffold
     # may pin a temperature (little-coder's default model profile injected 0.3
     # until the profile pin, 2026-09-13). opencode's `top_p: 1` is tolerated

@@ -183,7 +183,7 @@ Full 300-instance SWE-bench Lite, v3 Docker harness, one attempt per instance, s
 | little-coder 1.19.0 (pi 0.83) | **193** | 64.3 | 25 | 5 | 749 s | 16 / 19, p = 0.74 |
 | little-coder + RTK 0.46 | **202** | 67.3 | 15 | 4 | 734 s | 22 / 16, p = 0.42 |
 | prime-agent 0.8.1 | **187** | 62.3 | 30 | 37 | 912 s | 13 / 22, p = 0.18 |
-| dcode 0.1.65 | *quarantined* | | | 213 | | server-side Responses-API defect (patch 066) — lower bound only |
+| dcode 0.1.65 | *quarantined* | | | 213 | | server-side Responses-API defect (patch 066) + no output cap on the wire (R9700 `b79a392`, ported 2026-10-26) — lower bound only |
 
 Only prime separates from the two plugin lanes (p = 0.023 / 0.032); the other four cells are inside one standard error of each other. The 37 prime empties are its single-strike `length` policy on 32K-budget recall thinks, not the model.
 
