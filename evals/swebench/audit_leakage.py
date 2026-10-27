@@ -100,7 +100,7 @@ GH_WRAPPER_TOOLS = {"github"}
 JS_FETCH_RE = re.compile(r"\b(?:fetch|https?\.(?:get|request)|axios(?:\.(?:get|post))?|got|undici\.request)\(")
 URL_RE = re.compile(r"https?://[^\s'\"<>)\]]+", re.I)
 NET_BASH_RE = re.compile(
-    r"\b(curl|wget|gh\s+(api|pr|issue)|pip3?\s+(download|install)(?!\s+-e)"
+    r"\b((?-i:curl|wget)|gh\s+(api|pr|issue)|pip3?\s+(download|install)(?!\s+-e)"
     r"|python\S*\s+-m\s+pip\s+(download|install)(?!\s+-e)|git\s+(clone|fetch|pull|ls-remote)\b"
     r"|npm\s+(install|view)|apt(-get)?\s+install)\b", re.I)
 # Inline python (`python -c`, `python - <<EOF`, `python <<EOF`) that opens a URL. The
@@ -111,6 +111,13 @@ PY_EXEC_RE = re.compile(r"\bpython\S*\s+(?:-c\b|-?\s*<<|-\s*$)", re.M)
 PY_FETCH_RE = re.compile(
     r"\b(?:urlopen|urlretrieve|requests\.(?:get|post|head|request)|httpx\.(?:get|post|Client|AsyncClient)"
     r"|aiohttp\.ClientSession|http\.client\.HTTPS?Connection|socket\.create_connection)\(")
+# A shell-out from an inline python program run by a BASH tool (subprocess / os.system
+# running curl, wget, pip, git, gh): the heredoc / -c body is no longer a shell segment
+# (strip_heredocs), so the fetch is read here, text-wide. Kernel code tools (prime
+# ipython / python_repl) keep the segment pass over their code — not applied there.
+PY_SHELLOUT_RE = re.compile(
+    r"\b(?:subprocess\.(?:run|call|check_output|check_call|Popen|getoutput|getstatusoutput)|os\.(?:system|popen))"
+    r"\([^)\n]*\b(?:curl|wget|pip3?\s+(?:download|install)|git\s+(?:clone|fetch|pull|ls-remote)|gh\s+(?:api|pr|issue))\b")
 # prime-agent 0.10.0 moved web search INTO the kernel: `websearch.run(query)` (the
 # module is callable too) is a Python skill, not a model-facing tool, so it only
 # shows up inside `ipython` code. It calls Serper over httpx when a key is
@@ -237,7 +244,12 @@ HTTP_000_RE = re.compile(r"(?:^|\s)000(?=\s|$|[A-Z_]{2,})", re.M)
 # the traceback is the sole non-scaffold output, so a fetch that printed anything
 # else still reads as content.
 PIPED_PY_RE = re.compile(r"\|\s*python\S*\b")
-JSON_EMPTY_RE = re.compile(r"JSONDecodeError: Expecting value: line 1 column 1 \(char 0\)")
+JSON_EMPTY_RE = re.compile(r"JSONDecodeError: Expecting value: line 1 column 1 \(char 0\)"
+                           # `… | python -c "json.load(sys.stdin)" 2>&1 | head` cuts the traceback
+                           # before its last line (flint opencode django-10914, py3.6: ten frame
+                           # lines); the raw_decode frame / its raise line is the same verdict.
+                           r"|json/decoder\.py\", line \d+, in raw_decode"
+                           r"|raise JSONDecodeError\(\"Expecting value\"")
 # `git log --oneline` lines of the sandbox's own (re-initialised) history are local
 # output even when they share a compound command with a silent fetch
 # (pytest-5103: `git remote -v; git log --oneline --all | head; curl -s … | head` ->
@@ -421,6 +433,75 @@ def pip_has_requirement(segment: str) -> bool:
 
 
 
+HEREDOC_RE = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n(?:[^\n]*\n)*?[ \t]*\2[ \t]*(?:\n|\Z)")
+
+
+PY_C_BODY_RE = re.compile(r"(\bpython\S*\s+-c\s+)(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')")
+
+
+def strip_heredocs(text: str) -> str:
+    """Drop here-document bodies (keep the opener line): `python - <<'EOF' … EOF` is one
+    command whose body is python, not a list of shell segments — flint opencode
+    sympy-23191 split `print('--- curl')` / `from sympy.vector import Curl, …` out of a
+    heredoc and read them as curl segments (2026-10-27). The python-fetch rules still see
+    the whole text; a shell net tool's URL inside a heredoc is still found by the
+    whole-command URL fallback."""
+    def keep_opener(m):
+        return m.group(0).split("\n", 1)[0] + "\n"
+    text = HEREDOC_RE.sub(keep_opener, text)
+    # same for an inline program: `python -c "…multi-line…"` (sympy-23191 again: a
+    # heredoc FOLLOWED by a 15-line `python -c "` whose body printed '--- curl')
+    return PY_C_BODY_RE.sub(lambda m: m.group(1) + '"<python>"', text)
+
+
+# `grep`/`sed -n /x/p` filters BEHIND a net tool in the same pipeline only emit lines
+# that match their pattern: when the shared output holds no such line, that pipeline
+# produced nothing, whatever the neighbouring segments printed (flint opencode
+# django-13710: `pip show django; python -c …; curl -s … | sed -n '/class
+# InlineModelAdmin/,/def media/p' | head` — the pip/python lines are not the fetch).
+GREP_RE = re.compile(r"\bz?e?f?grep\b((?:\s+-{1,2}[\w=-]*)*)\s+(?:-e\s+)?('([^']*)'|\"([^\"]*)\"|(\S+))")
+SED_RANGE_RE = re.compile(r"\bsed\s+-n\s+(['\"])/((?:[^/\\]|\\.)+)/(?:,/(?:[^/\\]|\\.)+/)?p\1")
+GREP_NO_LITERAL_FLAGS = re.compile(r"-[a-zA-Z]*[cvlLq]")
+
+
+def filter_literals(segment: str) -> list[tuple[str, bool]]:
+    """(pattern, ignore_case) for every grep / sed -n /x/p stage after the first pipe of
+    `segment`; [] when none (or when a grep prints counts / inverts / names files)."""
+    if "|" not in segment:
+        return []
+    out = []
+    for stage in segment.split("|")[1:]:
+        m = GREP_RE.search(stage)
+        if m:
+            flags = m.group(1) or ""
+            if GREP_NO_LITERAL_FLAGS.search(flags):
+                return []
+            pat = next(g for g in (m.group(3), m.group(4), m.group(5)) if g is not None)
+            if pat:
+                out.append((pat, "i" in flags.replace("--", "")))
+            continue
+        m = SED_RANGE_RE.search(stage)
+        if m:
+            out.append((m.group(2), False))
+    return out
+
+
+def filtered_output_empty(output: str, segment: str) -> bool:
+    """True when the segment's downstream grep/sed filters have patterns none of which
+    occur in the output — the pipeline behind the net tool emitted nothing."""
+    lits = filter_literals(segment)
+    if not lits or output is None:
+        return False
+    for pat, ic in lits:
+        try:
+            if re.search(pat, output, re.I if ic else 0):
+                return False
+        except re.error:
+            if (pat.lower() in output.lower()) if ic else (pat in output):
+                return False
+    return True
+
+
 def command_segments(text: str) -> list[str]:
     """Split a shell command at list separators (`;`, `&&`, `||`, newline — not
     pipes, which share one stream) outside quotes. A net tool is classified on
@@ -564,12 +645,13 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
     # fetched quietly still shows in a following `ls` (v2-netopen: 5 such
     # cells at gold overlap 1.0), so a compound command is never cleared on
     # its tool alone.
-    segments = command_segments(text)
+    segments = command_segments(strip_heredocs(text))
     compound = len(segments) > 1
     for seg in segments:
         m = NET_BASH_RE.search(seg)
         if not m or not pip_has_requirement(seg):
             continue
+        seg_ok = (lambda: False) if (output and filtered_output_empty(output, seg[m.start():])) else outcome
         # a segment without a URL of its own borrows the command's (a heredoc
         # / variable two lines up); a project URL anywhere beside a fetch is
         # strong evidence, unlike a neighbouring `*pytest*` glob
@@ -590,7 +672,7 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
             evidence = f"{name}: {snippet}"
         if compound:
             evidence += " [segment]"
-        ev.append({"chan": "web", "kind": kind, "ok": outcome(), "evidence": evidence})
+        ev.append({"chan": "web", "kind": kind, "ok": seg_ok(), "evidence": evidence})
     if lname in PY_CODE_TOOLS:
         ps = PY_SEARCH_RE.search(text)
         if ps:
@@ -598,6 +680,8 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
             ev.append({"chan": "web", "kind": "SEARCH", "ok": ok,
                        "evidence": f"{name}: python {text[ps.start():ps.start() + 120]}"})
     py = PY_FETCH_RE.search(text) if (PY_EXEC_RE.search(text) or lname in PY_CODE_TOOLS) else None
+    if py is None and lname not in PY_CODE_TOOLS and PY_EXEC_RE.search(text):
+        py = PY_SHELLOUT_RE.search(text)
     kernel = "python"
     if py is None and lname in JS_CODE_TOOLS:
         py = JS_FETCH_RE.search(text)

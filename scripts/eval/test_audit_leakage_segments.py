@@ -46,6 +46,43 @@ def web(events):
 
 CASES = [
     # (name, command, output, expected web events)
+    # --- flint opencode v4 lane close, 2026-10-27: three false EXPOSED on a 300/300 network=none cell
+    ("10914: curl | python json.load, traceback cut by `| head` before the JSONDecodeError line -> not fetched",
+     'curl -s -H "Accept: application/vnd.github.cloak-preview" "https://api.github.com/search/commits?q=repo:pytest-dev/pytest+tmpdir"'
+     ' | python -c "import json,sys; d=json.load(sys.stdin); [print(i[\'sha\']) for i in d.get(\'items\',[])]" 2>&1 | head',
+     'Traceback (most recent call last):\n  File "<string>", line 1, in <module>\n'
+     '  File "/opt/miniconda3/envs/testbed/lib/python3.6/json/__init__.py", line 299, in load\n'
+     '    parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)\n'
+     '  File "/opt/miniconda3/envs/testbed/lib/python3.6/json/decoder.py", line 357, in raw_decode\n'
+     '    raise JSONDecodeError("Expecting value", s, err.value) from None\n',
+     [("UPSTREAM", False)]),
+    ("13710: local pip show / python lines beside a curl | sed -n /range/p that printed nothing -> not fetched",
+     'pip show pytest 2>/dev/null | head -3; python -c "import pytest; print(pytest.__version__, pytest.__file__)"; '
+     "curl -s -m 10 https://raw.githubusercontent.com/pytest-dev/pytest/main/src/_pytest/tmpdir.py | sed -n '/class TempPathFactory/,/def mktemp/p' | head -80",
+     "Name: pytest\nVersion: 5.0.0\nSummary: pytest: simple powerful testing\n5.0.0 /testbed/src/pytest.py\n",
+     [("UPSTREAM", False)]),
+    ("13710 control: the sed range DID print the fetched class -> exposed",
+     "curl -s https://raw.githubusercontent.com/pytest-dev/pytest/main/src/_pytest/tmpdir.py | sed -n '/class TempPathFactory/,/def mktemp/p' | head -80",
+     "class TempPathFactory:\n    _given_basetemp = attr.ib()\n", [("UPSTREAM", True)]),
+    ("10914 shape b: curl | grep literal with empty output -> not fetched",
+     'curl -s -m 15 "https://raw.githubusercontent.com/pytest-dev/pytest/main/setup.cfg" | grep -n -A4 "tmpdir"',
+     "", [("UPSTREAM", False)]),
+    ("23191: a python heredoc body mentioning curl / sympy.vector Curl is not a shell curl segment",
+     "cd /testbed && python - <<'PYEOF'\nfrom sympy.vector import CoordSys3D, Cross, Curl, Divergence\nprint('--- curl')\n"
+     "print(repr(Curl(A.x*A.i)))\nPYEOF",
+     "--- curl\n'∇×((x_A) i_A)'\n", []),
+    ("23191 shape b: a heredoc followed by a multi-line python -c whose body prints '--- curl' -> no curl segment",
+     "cd /testbed && python - <<'PYEOF'\nprint(1)\nPYEOF\npython -c \"\nfrom sympy.vector import Curl\nprint('--- curl')\nprint(repr(Curl(A.x*A.i)))\n\"",
+     "1\n--- curl\n'∇×((x_A) i_A)'\n", []),
+    ("python -c control: a subprocess curl inside -c is still a python fetch",
+     "python -c \"import subprocess; print(subprocess.run(['curl','-s','https://raw.githubusercontent.com/pytest-dev/pytest/main/setup.cfg'],capture_output=True).stdout[:50])\"",
+     "b'[metadata]\\nname = pytest'\n", [("UPSTREAM", True)]),
+    ("heredoc control: a shell curl AFTER the heredoc is still classified",
+     "python - <<'EOF'\nprint('x')\nEOF\ncurl -s https://raw.githubusercontent.com/pytest-dev/pytest/main/setup.cfg | head -3",
+     "x\n[metadata]\nname = pytest\n", [("UPSTREAM", True)]),
+    ("case control: `Curl` as a command word is not curl, `curl` is (one event, not two)",
+     "Curl --version 2>/dev/null; curl -sI https://github.com/pytest-dev/pytest/pull/8365 | head -1",
+     "HTTP/2 200\n", [("UPSTREAM", True)]),
     ("pytest-8365 shape: argument-less pip beside local ls/find is not a net call",
      'git -C /testbed show --stat HEAD | head -20; pip download --no-deps 2>/dev/null | head -2; '
      'ls /testbed/.git 2>/dev/null; find / -name "*.whl" -path "*pytest*" 2>/dev/null | head',
@@ -80,7 +117,10 @@ CASES = [
      '    with urllib.request.urlopen(req, timeout=30) as r:\n        return r.read().decode()\n'
      'd = get("https://api.github.com/repos/pytest-dev/pytest/compare/a...b")\nprint(d[:100])\nEOF',
      "files changed base->merge:\n  src/_pytest/tmpdir.py modified +2/-2\n",
-     [("UPSTREAM", True), ("UPSTREAM", True)]),
+     # one event: the python-fetch rule. (Until 2026-10-27 a second came from the heredoc
+     # body's `"User-Agent": "curl"` being split out as a shell curl segment — the
+     # sympy-23191 false-positive shape; heredoc bodies are no longer shell segments.)
+     [("UPSTREAM", True)]),
     ("python -c urlopen under network none fails with gaierror -> not fetched",
      'python -c "import urllib.request; print(urllib.request.urlopen(\'https://pypi.org\').status)"',
      "urllib.error.URLError: <urlopen error [Errno -3] Temporary failure in name resolution>\n",
