@@ -163,7 +163,7 @@ Full 300-instance SWE-bench Lite, v3 Docker harness, one attempt per instance, s
 |--------|:--------:|
 | `qwen38` (Qwen3.8-27B AWQ, thinking) | **196/300 (65.3 %)** |
 | `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **191/300 (63.7 %)** |
-| `flint` ([Flint](https://huggingface.co/RecursiveSI/flint) 40B-A2.5B, calibrated AWQ, thinking) | opencode **closed 300/300 2026-10-27** (4 empty / 9 walls, all sympy / 0 errors; scored at the cycle close) · `omp` lane *rolling* (omp's first full-300 cell — user pick 2026-10-24; runs under the strict-**ordered** tool grammar, see the Flint item: a serving defect that cost turns, not a model trait) |
+| `flint` ([Flint](https://huggingface.co/RecursiveSI/flint) 40B-A2.5B, calibrated AWQ, thinking) | opencode **closed 300/300 2026-10-27** (4 empty / 9 walls, all sympy / 0 errors) · `omp` **closed 300/300 2026-10-29** (5 empty / 3 walls / 0 errors; omp's first full-300 cell — user pick 2026-10-24; ran under the strict-**ordered** tool grammar, see the Flint item: a serving defect that cost turns, not a model trait). Both lanes score in the PAUSE window at the qwen36 boundary (the leak gate had thrown the cycle unscored on two classifier misreads, fixed `0c3aa0d`) |
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | *pending* (66/300 rolled, resumes) |
 | `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | *pending* |
 | `qwen35-moe` (Qwen3.5-28B-A3B-REAP-AWQ, thinking) | *pending* |
