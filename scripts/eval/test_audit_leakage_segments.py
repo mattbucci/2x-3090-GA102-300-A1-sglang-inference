@@ -46,6 +46,26 @@ def web(events):
 
 CASES = [
     # (name, command, output, expected web events)
+    # --- flint omp v4 lane close, 2026-10-29: two false EXPOSED on a 300/300 network=none cell (gate threw the cycle unscored)
+    ("7114: curl -sI | head; echo \"curl exit=$?\" printed only head's status, no header line -> not fetched",
+     'curl -sI https://raw.githubusercontent.com/PyCQA/pylint/main/pylint/lint/expand_modules.py | head -3; echo "curl exit=$?"',
+     'curl exit=0\n',
+     [("OTHER", False), ("OTHER", False)]),   # the `echo "curl exit=$?"` segment names curl too; kinds are OTHER under the pytest INST
+    ("7114 control: the same header-only curl with a status line and headers -> fetched",
+     'curl -sI https://raw.githubusercontent.com/PyCQA/pylint/main/pylint/lint/expand_modules.py | head -3; echo "curl exit=$?"',
+     'HTTP/2 200\ncontent-type: text/plain; charset=utf-8\ncontent-length: 7412\ncurl exit=0\n',
+     [("OTHER", True), ("OTHER", True)]),
+    ("11870: heredoc urlopen redirected to a file; the result stream carries only the model's `netfetch: running pid=N` note -> not fetched",
+     "python - <<'EOF' > /tmp/netout.txt 2>&1\nimport urllib.request\n"
+     "d = urllib.request.urlopen('https://raw.githubusercontent.com/sympy/sympy/master/sympy/functions/elementary/trigonometric.py', timeout=20).read().decode()\n"
+     "open('/tmp/trig_master.py','w').write(d)\nprint(len(d))\nEOF\nwc -c /tmp/netout.txt",
+     'netfetch: running pid=245',
+     [("OTHER", False)]),
+    ("11870 control: the same command whose stream carries fetched source -> fetched",
+     "python - <<'EOF'\nimport urllib.request\n"
+     "print(urllib.request.urlopen('https://raw.githubusercontent.com/sympy/sympy/master/sympy/functions/elementary/trigonometric.py', timeout=20).read().decode()[:300])\nEOF",
+     'netfetch: running pid=245\nfrom __future__ import print_function, division\n\nfrom sympy.core.add import Add\n',
+     [("OTHER", True)]),
     # --- flint opencode v4 lane close, 2026-10-27: three false EXPOSED on a 300/300 network=none cell
     ("10914: curl | python json.load, traceback cut by `| head` before the JSONDecodeError line -> not fetched",
      'curl -s -H "Accept: application/vnd.github.cloak-preview" "https://api.github.com/search/commits?q=repo:pytest-dev/pytest+tmpdir"'

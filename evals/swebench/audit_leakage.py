@@ -194,7 +194,10 @@ PY_NET_TRACEBACK_RE = re.compile(
 SCAFFOLD_LINE_RE = re.compile(
     r"^\s*(?:=+[^=\n]*=+|-{2,}|\*+|\(no output\)|<no output>|\[Command (?:succeeded|failed) with exit code \d+\]"
     r"|0{3}|(?:EXIT|RC|STATUS|CODE|HTTP(?:_CODE)?)"
-    r"(?: CODE)?\s*[:=]?\s*\d+|(?:\w+[_-])?exit(?:[ _-]?code)?\s*[:=]?\s*\d+|curl: \(\d+\).*"
+    r"(?: CODE)?\s*[:=]?\s*\d+|(?:\w+[ _-])?exit(?:[ _-]?code)?\s*[:=]?\s*\d+|curl: \(\d+\).*"
+    # `netfetch: running pid=245` -- the model's own launch note for a backgrounded fetch
+    # (flint omp v4 sympy-11870, 2026-10-29, network=none; the fetch itself was redirected to a file)
+    r"|(?:[\w.-]+\s*:\s*)?(?:running|started|spawned|launched|background(?:ed)?)?\s*pid\s*[:=]?\s*\d+"
     r"|\[exit=\d+ cwd=[^\]\n]*\]"
     r"|(?:(?:rc|ret(?:code|urncode)?|exit(?:code)?|code|status|len(?:gth)?|size|bytes|n|count|lines)"
     r"\s*[:=]\s*-?\d+\s*[,;]?\s*){1,4}"
@@ -237,6 +240,8 @@ LOCAL_ERR_LINE_RE = re.compile(
 # compound command's other (local) segments printed real output around it
 # (django-11999: `pip show django | head -3; python -c …; curl -s -o /dev/null -w "%{http_code}" … | tail -1` -> `000`).
 HTTP_CODE_W_RE = re.compile(r"%\{http_code\}")
+# `curl -I` / `-sI` / `-sSIL` / `--head`: a header-only request whose only possible content is a status line
+CURL_HEAD_RE = re.compile(r"\bcurl\b(?:\s+(?:-[a-zA-Z]*I[a-zA-Z]*|--head)\b|\s+-\S+)*\s+(?:-[a-zA-Z]*I[a-zA-Z]*|--head)\b")
 # `-w "%{http_code}"` prints no newline, so `… || echo CURL_FAIL` glues on: `000CURL_FAIL`
 HTTP_000_RE = re.compile(r"(?:^|\s)000(?=\s|$|[A-Z_]{2,})", re.M)
 # A fetch piped into `python … json.load(sys.stdin)` that dies at char 0 received an
@@ -375,6 +380,11 @@ def fetched_content(output: str, command: str, loopback: bool = False) -> bool:
     if download_target_empty(output, command):
         return False
     if HTTP_CODE_W_RE.search(command) and HTTP_000_RE.search(output):
+        return False
+    # a header-only request (`curl -I` / `-sI` / `--head`) that returned no status line got no
+    # response: the output is the model's own trailer (flint omp v4 pylint-7114, 2026-10-29:
+    # `curl -sI URL | head -3; echo "curl exit=$?"` printed `curl exit=0` -- head's status)
+    if CURL_HEAD_RE.search(command) and not re.search(r"HTTP/[123](?:\.[01])?\s+\d{3}\b", output):
         return False
     output = PY_SYNTAX_BLOCK_RE.sub("", output)
     if PIPED_PY_RE.search(command) and JSON_EMPTY_RE.search(output):
