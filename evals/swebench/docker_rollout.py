@@ -454,13 +454,21 @@ def _little_coder_profile_snippet(pkg_root: str, served_name: str, context_windo
 # netopen-2026-09-19.md; R9700 found 45–61 % on their lanes first). The
 # container now runs with no network; only 127.0.0.1:<server port> works,
 # through net_bridge.py over a unix socket the host half forwards to SGLang.
-BRIDGE_SOCK_IN_CONTAINER = "/run/bridge.sock"   # neutral: the path shows in `ps` (bridge argv) and mountinfo
+if str(THIS_DIR) not in sys.path:
+    sys.path.insert(0, str(THIS_DIR))
+from net_bridge import DEFAULT_CONTAINER_PORT, DEFAULT_CONTAINER_SOCK  # noqa: E402
+
+BRIDGE_SOCK_IN_CONTAINER = DEFAULT_CONTAINER_SOCK   # neutral: the path shows in mountinfo
 BRIDGE_SCRIPT_IN_CONTAINER = "/sandbox/net_bridge.py"
 # Every scaffold config in the image points at 127.0.0.1:23334 (opencode.json,
 # the pi / prime models files, omp models.yml, OPENAI_BASE_URL for dcode). The container half of
 # the bridge always binds that port; the host half forwards to --server-url,
 # so the host may serve from any port (docker-mode SGLang, a capture server).
-CONTAINER_SERVER_PORT = 23334
+# The container half is launched with NO argv (it reads these defaults from
+# the staged script), so neither the port nor the socket path is in `ps`
+# inside the sandbox (2026-10-25; the R9700 recall audit found a lane where
+# the model read the port off `ps` and self-dispatched to the served model).
+CONTAINER_SERVER_PORT = DEFAULT_CONTAINER_PORT
 # the images' base python (modern, has asyncio unix sockets); the testbed env
 # may be python 3.5 on old django instances
 CONTAINER_PY = "/opt/miniconda3/bin/python3"
@@ -664,7 +672,7 @@ def isolation_prelude(network_mode: str, port: int = CONTAINER_SERVER_PORT) -> s
     py = f"$( [ -x {CONTAINER_PY} ] && echo {CONTAINER_PY} || command -v python3 )"
     return (
         f"BRIDGE_PY={py}\n"
-        f"\"$BRIDGE_PY\" {BRIDGE_SCRIPT_IN_CONTAINER} container {port} {BRIDGE_SOCK_IN_CONTAINER} &\n"
+        f"\"$BRIDGE_PY\" {BRIDGE_SCRIPT_IN_CONTAINER} &\n"  # no argv: container defaults (port/socket off `ps`)
         f"for i in $(seq 1 50); do \"$BRIDGE_PY\" -c \"import urllib.request,sys; "
         f"urllib.request.urlopen('http://127.0.0.1:{port}/health', timeout=5)\" 2>/dev/null && break; sleep 0.2; done\n"
         f"\"$BRIDGE_PY\" -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:{port}/health', timeout=10)\" "
