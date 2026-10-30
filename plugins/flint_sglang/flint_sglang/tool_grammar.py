@@ -10,7 +10,9 @@ syntactically constrained but schema-free otherwise, as XGrammar defines it — 
 in the server's environment, which treats every tool as strict (3090 port, 2026-10-22: Flint ignores a schema's
 ``required`` keys on its own — opencode's ``bash`` needs ``description``, ``read`` needs ``filePath``, and the
 checkpoint wrote neither in 23/24 calls with the grammar off and 23/24 with it on, schema-free; with the schema
-enforced it was 20/20 — receipt ``benchmarks/quality/flint/tool-schema-probe-2026-10-22.json``). ``reasoning_then`` puts Flint's
+enforced it was 20/20 — receipt ``benchmarks/quality/flint/tool-schema-probe-2026-10-22.json``; strict mode also
+forces the schema's key order, so metadata keys declared first move last — ``TRAILING_KEYS``, receipt
+``benchmarks/quality/flint/tool-grammar-key-order-2026-10-28.md``). ``reasoning_then`` puts Flint's
 optional ``<think>...</think>`` block before a constraint; the ``flint`` grammar backend does that for every
 constraint, the tool grammar included.
 
@@ -62,11 +64,33 @@ def strict_tools_enabled() -> bool:
     return os.environ.get(STRICT_TOOLS_ENV, "0").strip().lower() in ("1", "true", "yes", "on")
 
 
+# Argument keys that scaffolds declare FIRST in a tool's schema but that Flint writes last or not at all
+# (omp's ``i`` intent string; opencode's ``description`` is already last). XGrammar's strict object grammar
+# forces the schema's declared order, so a required metadata key declared first is forced onto the wire before
+# the command Flint is about to write: in the flint:omp cell (2026-10-28, 177 instances) 7.4 % of bash calls
+# carried the command in ``i`` and a filler in ``command``, 47 % of sessions carried a re-emitted
+# ``<arg_key>command</arg_key><arg_value>…`` inside the forced ``i`` value, and the opencode lane (``command``
+# first) had neither in 14,758 calls. Moving these keys to the end keeps them required and keeps
+# ``any_order=False`` (``any_order=True`` would stop enforcing required keys — the reason strict mode exists).
+TRAILING_KEYS = ("i", "description", "intent", "explanation", "reason", "summary")
+
+
+def _trailing_keys_last(parameters: Any) -> Any:
+    if not isinstance(parameters, dict) or not isinstance(parameters.get("properties"), dict):
+        return parameters
+    props = parameters["properties"]
+    head = {k: v for k, v in props.items() if k not in TRAILING_KEYS}
+    tail = {k: v for k, v in props.items() if k in TRAILING_KEYS}
+    if not tail or list(props) == list(head) + list(tail):
+        return parameters
+    return {**parameters, "properties": {**head, **tail}}
+
+
 def _as_strict(tool: dict[str, Any]) -> dict[str, Any]:
     fn = tool.get("function")
     if isinstance(fn, dict):
-        return {**tool, "function": {**fn, "strict": True}}
-    return {**tool, "strict": True}
+        return {**tool, "function": {**fn, "strict": True, "parameters": _trailing_keys_last(fn.get("parameters"))}}
+    return {**tool, "strict": True, "parameters": _trailing_keys_last(tool.get("parameters"))}
 
 
 def build_flint_tool_grammar(

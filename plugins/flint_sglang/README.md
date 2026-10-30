@@ -45,6 +45,16 @@ Unchanged: `grammar_backend.py` (`XGrammarGrammarBackend` API identical), `reaso
   returns the `SchemaError` each time) before producing nothing. The vendor's SWE-bench path is
   mini-swe-agent (bash in text, no JSON-schema tools), so this contract was never exercised there. All
   ten opencode 1.14.25 tool schemas compile under strict (`todowrite`'s nested arrays included).
+  **Strict mode also forces the schema's declared key order** (XGrammar object grammars are ordered;
+  `any_order=True` exists in 0.2.7 but stops enforcing required keys, the reason strict mode is on). A required
+  metadata key declared first — omp's `i` intent string — was forced onto the wire before the command Flint
+  writes first: flint:omp 2026-10-28, 7.4 % of bash calls carried the command in `i` and a filler in
+  `command`, 47 % of sessions re-emitted `<arg_key>command</arg_key>…` inside the forced `i` value, two
+  of three empties; the opencode lane (`command` first, `description` last) had 0 in 14,758 calls.
+  `_as_strict` now moves `TRAILING_KEYS` (`i`, `description`, `intent`, `explanation`, `reason`, `summary`)
+  to the end of `properties`, required-ness unchanged; `scripts/eval/test_flint_tool_grammar_key_order.py`
+  compiles the grammar on the CPU and checks both scaffolds' orders. Receipt
+  `benchmarks/quality/flint/tool-grammar-key-order-2026-10-28.md`.
 
 ## Serving on this stack
 
