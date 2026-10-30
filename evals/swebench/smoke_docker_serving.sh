@@ -62,8 +62,16 @@ if [ -n "$busy" ]; then
   exit 2
 fi
 if pgrep -f "run_all_cycles.sh" >/dev/null 2>&1; then
-  echo "ERROR: run_all_cycles.sh is alive — stop the queue before the smoke" >&2
-  exit 2
+  # A queue parked on the PAUSE hook (between cycles, no rollout process and no
+  # serving container) is the image-build window this smoke exists for; a queue
+  # that is rolling or scoring is not.
+  if [ -f /tmp/run-model-cycle-logs/PAUSE ] && ! pgrep -f "docker_rollout.py" >/dev/null 2>&1 \
+     && ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx bakeoff-sglang; then
+    echo "[smoke] run_all_cycles.sh is alive but parked on /tmp/run-model-cycle-logs/PAUSE (no rollout, no server) — proceeding" >&2
+  else
+    echo "ERROR: run_all_cycles.sh is alive and not parked on PAUSE — stop the queue (or hold it on PAUSE between cycles) before the smoke" >&2
+    exit 2
+  fi
 fi
 
 serve_backend_init || { log "ERROR: serve backend init failed"; exit 1; }
