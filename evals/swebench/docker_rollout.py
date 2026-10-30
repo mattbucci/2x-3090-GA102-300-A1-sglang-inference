@@ -1007,8 +1007,10 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
         return envs, inner
 
     if scaffold == "prime":
-        # prime-agent 0.10.0 (Rust rewrite, `stable` channel; the 0.8.1 cell
-        # ran the TypeScript program). Vendored footprint, see
+        # prime-agent 0.10.1 (Rust rewrite, `stable` channel; 0.10.0 from the
+        # 2026-10-19 boundary, 0.10.1 from the flint boundary — 128 upstream
+        # commits, provider wire shape unchanged per the Phase-0 audit; the
+        # 0.8.1 cell ran the TypeScript program). Vendored footprint, see
         # Dockerfile.rollout / vendor_prime_agent.sh. Custom providers still
         # come from ~/.prime/agent/models.json in the 0.8.1 shape
         # (pa-core/src/models/custom.rs ProviderConfig/ModelDefinition) —
@@ -1026,8 +1028,9 @@ def build_scaffold_invocation(scaffold: str, model: str, served_name: str,
         # pins None); `stream: true` + stream_options.include_usage + `store:
         # false` (SGLang ignores unknown fields). Model-level compat is parsed
         # and DROPPED for custom models — the block must sit at provider
-        # level. One tool on the wire: `ipython` (code) — bash/edit are
-        # functions inside that REPL. Every request opens with prime's own
+        # level. One tool on the wire: `python_repl` (code; named `ipython`
+        # through 0.10.0 — audit_leakage.PY_CODE_TOOLS carries both) —
+        # bash/edit are functions inside that REPL. Every request opens with prime's own
         # `[harness-digest]` user turn; the task is the SECOND user message,
         # verbatim (scaffold_request_audit labels it verbatim@u2). Headless
         # `-p` is fully in-process (no daemon, no socket; print_runtime.rs);
