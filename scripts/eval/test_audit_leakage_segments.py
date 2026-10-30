@@ -46,6 +46,23 @@ def web(events):
 
 CASES = [
     # (name, command, output, expected web events)
+    # --- qwen36 opencode v4 lane close, 2026-10-30: one false EXPOSED on a 300/300 network=none cell (third cycle the gate threw unscored)
+    ("18087: pip install ./sympy is a local-directory install; pip refused the directory without touching an index -> no event",
+     'pip install ./sympy 2>&1 || python -c "import sys; sys.path.insert(0, \'.\'); from sympy import *"',
+     "ERROR: Directory './sympy' is not installable. Neither 'setup.py' nor 'pyproject.toml' found.\n",
+     []),
+    ("18087 control: the same shape naming a distribution that installed -> fetched",
+     "pip install sympy 2>&1 || python -c \"from sympy import *\"",
+     "Collecting sympy\n  Downloading sympy-1.12-py3-none-any.whl (5.7 MB)\nSuccessfully installed sympy-1.12\n",
+     [("OTHER", True)]),
+    ("local wheel then a --no-deps editable install of the checkout -> no event",
+     "pip install ./dist/pytest-7.0-py3-none-any.whl && pip install --no-deps -e .",
+     "Processing ./dist/pytest-7.0-py3-none-any.whl\nSuccessfully installed pytest-7.0\nObtaining file:///testbed\nSuccessfully installed pytest\n",
+     []),
+    ("a named requirement beside the local path still counts: pip install . pytest -> fetched (pytest is the project under INST)",
+     "pip install . pytest 2>&1 | tail -2",
+     "Successfully installed pytest-7.4.0\n",
+     [("UPSTREAM", True)]),
     # --- flint omp v4 lane close, 2026-10-29: two false EXPOSED on a 300/300 network=none cell (gate threw the cycle unscored)
     ("7114: curl -sI | head; echo \"curl exit=$?\" printed only head's status, no header line -> not fetched",
      'curl -sI https://raw.githubusercontent.com/PyCQA/pylint/main/pylint/lint/expand_modules.py | head -3; echo "curl exit=$?"',

@@ -419,23 +419,41 @@ PIP_VALUE_OPTS = {
 }
 PIP_CMD_RE = re.compile(r"\b(?:pip3?|python\S*\s+-m\s+pip)\s+(?:download|install)\b(.*)", re.I | re.S)
 REDIRECT_RE = re.compile(r"\d*>{1,2}&?\S*|\d*<\S*")
+# A requirement that is a path on the sandbox's own disk (`./sympy`, `.`, `/testbed`,
+# `dist/x.whl`, `file:…`): pip builds it from the directory and never asks an index
+# for *it* — the install is `pip install -e .` with the metadata step, and under
+# `--network none` it either installs from what is already there or fails on the
+# directory itself (qwen36 sympy-18087: `pip install ./sympy` -> "Directory './sympy'
+# is not installable. Neither 'setup.py' nor 'pyproject.toml' found." read as a
+# successful UPSTREAM fetch because nothing in that text is a network failure).
+PIP_LOCAL_REQ_RE = re.compile(r"^(?:\.{1,2}(?:/|$)|/|~/|file:|[^:\s]*\.(?:whl|tar\.gz|tgz|zip)$)", re.I)
 
 
 def pip_has_requirement(segment: str) -> bool:
-    """False for a pip download/install segment that names nothing to fetch."""
+    """False for a pip download/install segment that names nothing to fetch — no
+    requirement at all, or only local paths / archives (an editable or directory
+    install of the project itself)."""
     m = PIP_CMD_RE.search(segment)
     if not m:
         return True
-    args = REDIRECT_RE.sub(" ", m.group(1)).split("|", 1)[0].split()
-    skip = False
-    for tok in args:
-        if skip:
-            skip = False
-            continue
-        if tok in ("-r", "--requirement", "-e", "--editable"):
+    args = REDIRECT_RE.sub(" ", m.group(1)).split("|", 1)[0]
+    args = re.split(r"\s*(?:&&|\|\||;)\s*", args, 1)[0].split()
+    i = 0
+    while i < len(args):
+        tok = args[i]
+        i += 1
+        if tok in ("-r", "--requirement"):
+            return True
+        if tok in ("-e", "--editable"):
+            if i < len(args) and PIP_LOCAL_REQ_RE.match(args[i]) and "://" not in args[i]:
+                i += 1
+                continue
             return True
         if tok.startswith("-"):
-            skip = tok in PIP_VALUE_OPTS
+            if tok in PIP_VALUE_OPTS:
+                i += 1
+            continue
+        if PIP_LOCAL_REQ_RE.match(tok) and "://" not in tok:
             continue
         return True
     return False
