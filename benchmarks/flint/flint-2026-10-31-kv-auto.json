@@ -1,0 +1,43 @@
+{
+  "model": "Flint kv-auto",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-10-31 00:04:53",
+  "output_tokens": 100,
+  "max_total_num_tokens": 588610,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1024,
+      "throughput": 147.98,
+      "ttft_ms": 67.99,
+      "tpot_ms": 6.02,
+      "tok_per_sec": 166.1
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32768,
+      "throughput": 123.29,
+      "ttft_ms": 139.06,
+      "tpot_ms": 6.67,
+      "tok_per_sec": 149.9
+    },
+    {
+      "context": 131072,
+      "actual_input_tokens": 131072,
+      "throughput": 81.16,
+      "ttft_ms": 392.26,
+      "tpot_ms": 8.37,
+      "tok_per_sec": 119.5
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261916,
+      "throughput": 54.34,
+      "ttft_ms": 766.39,
+      "tpot_ms": 10.73,
+      "tok_per_sec": 93.2
+    }
+  ]
+}

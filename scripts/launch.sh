@@ -583,9 +583,18 @@ apply_preset() {
             # 20.9 GiB, same decode.
             #  * --attention-backend triton: the only backend here with the
             #    sinks + SWAKVPool path (FlashInfer has no sinks; FA3/FA4 are
-            #    Hopper/Blackwell). Triton rejects FP8 E4M3 KV on sm_86 and the
-            #    KV footprint is tiny (14 full layers x 4 kv heads: ~3.7 GB/rank
-            #    at 262K fp16), so KV stays fp16 (`auto`); fp8_e5m2 is a lever.
+            #    Hopper/Blackwell). Triton rejects FP8 E4M3 KV on sm_86;
+            #    fp8_e5m2 compiles (the gemma4-31b path) and is the default
+            #    since 2026-10-31: the 14 full-attention layers read the whole
+            #    KV every step, so halving their bytes is the depth lever —
+            #    104.4 vs 93.2 tok/s @261,916 actual (+12 %), +5 % @131K, −1 %
+            #    @32K, −4 % @1K (fixed fp8 read-side cost); pool 589K -> 1.18M.
+            #    Quality parity with bf16 KV on the natural-haystack needle
+            #    (131K 8/8 both arms; 252K @0.9 hits, @0.1/@0.5 miss on BOTH —
+            #    Flint's own cliff past ~250K), HumanEval 29/40 vs 28/40, the
+            #    256K tool probe (0.4 both, filler attractor). Receipt
+            #    benchmarks/flint/kv-dtype-ab-2026-10-31.md. KV_DTYPE=auto
+            #    restores bf16 KV.
             #  * MoE runner stays `auto`: the AWQ-Marlin MoE scheme asserts
             #    is_auto() and runs fused_marlin_moe — the vendor's
             #    `--moe-runner-backend triton` is for BF16/FP8 weights only.
@@ -624,7 +633,7 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Flint-AWQ-INT4-g64-gptq}"
             QUANT="${QUANT:-awq_marlin}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"
-            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            KV_DTYPE="${_ENV_KV_DTYPE:-fp8_e5m2}"
             # CTX/MEM/CHUNKED honour the env so the TP=1 output check can boot the
             # 20.9 GiB ship on one card (e.g. CTX=8192 MEM=0.93 CHUNKED=2048 ... --tp 1).
             CTX="${_ENV_CTX:-262144}"; MEM="${_ENV_MEM:-0.85}"; MAX_RUNNING=1; CHUNKED="${_ENV_CHUNKED:-8192}"

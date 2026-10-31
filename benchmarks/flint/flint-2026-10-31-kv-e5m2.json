@@ -1,0 +1,43 @@
+{
+  "model": "Flint kv-e5m2",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-10-31 00:09:40",
+  "output_tokens": 100,
+  "max_total_num_tokens": 1177221,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1024,
+      "throughput": 141.93,
+      "ttft_ms": 73.03,
+      "tpot_ms": 6.27,
+      "tok_per_sec": 159.5
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32768,
+      "throughput": 123.77,
+      "ttft_ms": 128.96,
+      "tpot_ms": 6.74,
+      "tok_per_sec": 148.4
+    },
+    {
+      "context": 131072,
+      "actual_input_tokens": 131072,
+      "throughput": 85.75,
+      "ttft_ms": 367.9,
+      "tpot_ms": 7.95,
+      "tok_per_sec": 125.8
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261916,
+      "throughput": 60.37,
+      "ttft_ms": 697.03,
+      "tpot_ms": 9.58,
+      "tok_per_sec": 104.4
+    }
+  ]
+}

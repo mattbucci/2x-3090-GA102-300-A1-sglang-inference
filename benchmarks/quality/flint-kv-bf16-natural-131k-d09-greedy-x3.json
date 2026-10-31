@@ -1,0 +1,48 @@
+{
+ "tag": "flint-kv-bf16-natural-131k-d09-greedy-x3",
+ "timestamp": "2026-10-31 00:58",
+ "temperature": 0.0,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 550,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ANANA42. the numbers have only one B-face they could go to. ... The answer is $85$.\n\nThe secret password is: BANANA42.\"\n\nProbably final should be just BANANA42."
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 55,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "d: \"What is the secret password? Answer with just the password.\" We need answer just password. From context, secret password is BANANA42. Must output just that."
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 98,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " \"What is the secret password? Answer with just the password.\"\n\nSo likely answer should be BANANA42. Must comply with \"Answer with just the password.\" No extra."
+   }
+  ],
+  "score": 1.0
+ }
+}

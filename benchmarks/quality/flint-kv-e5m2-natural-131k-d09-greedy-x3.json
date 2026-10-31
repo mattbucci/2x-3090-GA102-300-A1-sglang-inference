@@ -1,0 +1,48 @@
+{
+ "tag": "flint-kv-e5m2-natural-131k-d09-greedy-x3",
+ "timestamp": "2026-10-31 00:41",
+ "temperature": 0.0,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 287,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "he answer is $85$.\"\n\nThen final: \"The secret password is: BANANA42. Answer with just the password.\"\n\nWe need answer just password. Likely BANANA42. Must comply."
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 43,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "user's final query. They provided huge context and final line: \"The secret password is: BANANA42. Answer with just the password.\"\n\nWe need answer just password."
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 64,
+    "content_tail": "BANANA42",
+    "reasoning_tail": ": \"The secret password is: BANANA42. \n a\n of\n the\n in\n and\n Answer with just the password.\"\n\nWe need respond with just password. Likely \"BANANA42\". Must comply."
+   }
+  ],
+  "score": 1.0
+ }
+}

@@ -59,19 +59,28 @@ def main():
         results += needle_eval(url, lengths, depths=depths, budget=a.max_tokens,
                                temperature=temperature, haystack=haystack,
                                chars_per_token=chars_per_token, flush=a.flush)["results"]
+    # `found` is the fleet rule (needle text anywhere in reasoning + content).
+    # `answered` is the strict read: the turn finished (`stop`) AND the needle is
+    # in the final content. A model that quotes the haystack until the budget
+    # (Flint's NoPE attractor, 2026-10-31 e5m2 gate: 131K@0.9 greedy, 2048 tok,
+    # empty content) scores `found` without ever answering — keep both.
+    for r in results:
+        r["answered"] = bool(r["found"] and r.get("finish_reason") == "stop"
+                             and "BANANA42" in (r.get("content_tail") or ""))
     score = sum(r["found"] for r in results) / len(results) if results else 0
+    answered = sum(r["answered"] for r in results) / len(results) if results else 0
     out = {"tag": a.tag, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
            "temperature": "default" if temperature is None else temperature,
            "haystack": a.haystack or "filler", "flush": a.flush,
-           "needle": {"results": results, "score": score}}
+           "needle": {"results": results, "score": score, "answered_score": answered}}
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     path = RESULTS_DIR / f"{a.tag}.json"
     path.write_text(json.dumps(out, indent=1))
     for r in results:
-        print(f"  {r['context']:>7} @ {r['depth']:<4} {'found' if r['found'] else 'MISS '} actual={r['actual_prompt_tokens']} "
+        print(f"  {r['context']:>7} @ {r['depth']:<4} {'found' if r['found'] else 'MISS '}{'' if r['answered'] or not r['found'] else ' (unanswered)'} actual={r['actual_prompt_tokens']} "
               f"finish={r.get('finish_reason')} out={r.get('completion_tokens')}"
               + ("" if r["found"] else f"  tail={r.get('content_tail') or r.get('reasoning_tail')!r}"))
-    print(f"score {score:.2f} -> {path}")
+    print(f"score {score:.2f} answered {answered:.2f} -> {path}")
 
 
 if __name__ == "__main__":

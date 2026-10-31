@@ -19,3 +19,23 @@ Architecture: 256 sigmoid-routed experts top-6 + an ungated shared expert, 35 sl
 **Needle: probe Flint with a natural-text haystack.** The stock repeated-sentence filler is a repetition attractor on the 14 NoPE layers (6/6 at 1K/32K, @0.1 only at 131K, 0/3 at 250K — reproduces greedy and after `/flush_cache`, kernels reviewed clean); an Open-Platypus haystack retrieves at **131K and 243.5K actual, both depths, greedy**, and 2/3 at 243.5K under the model's own sampling. `needle_band_probe.py --haystack` / `--chars-per-token` / `--flush` + [`build_natural_haystack.py`](../scripts/eval/build_natural_haystack.py) ship for it; Flint quality receipts use the natural haystack, the filler cells are a known-bad input ([receipt](../benchmarks/quality/flint/needle-haystack-discriminator-2026-10-22.md)).
 
 **Open levers after the cell** (tracked in the README's next steps): `fp8_e5m2` KV, `--mem-fraction-static` (the full pool is 2.2× the window), prefill speed on triton; the group-32 checkpoint now serves correctly — its token salad was a Marlin MoE kernel bug (zero points of every group but the first in a k-tile were stale when a tile spans several groups; patch 067, unit test `scripts/eval/test_marlin_moe_zp_groups.py`), fixed 2026-10-25 with no decode cost (g32 through the fixed kernel: 164.2 / 148.1 / 92.6 tok/s, tripwire PASS); a calibrated g32 build is now a real quality lever (data-free g32 already halves the g64 RTN KL).
+
+## KV dtype: `fp8_e5m2` ships (2026-10-31)
+
+The first experiment after the bake-off pause. Triton rejects E4M3 on sm_86 but compiles `fp8_e5m2`; with the 14
+full-attention NoPE layers reading the whole KV every step, halving their bytes is the depth lever: **+12 % @261,916
+actual (93.2 → 104.4 tok/s), +5 % @131K, −1 % @32K, −4 % @1K** (a fixed read-side dequant cost; crossover ≈ 64K), KV
+pool 589K → 1.18M. Quality at parity with bf16 KV on the natural-haystack needle (131K 8/8 on both arms; 252K @0.9
+hits and @0.1 / @0.5 miss on *both* — Flint's own cliff past ~250K, see below), HumanEval 29/40 vs 28/40, the 256K
+tool probe identical row by row. Receipt: [`benchmarks/flint/kv-dtype-ab-2026-10-31.md`](../benchmarks/flint/kv-dtype-ab-2026-10-31.md).
+
+**Retrieval cliff between 243.5K and 252K actual tokens** (KV-dtype independent): 243.5K @0.5 / @0.9 greedy found on
+2026-10-22; 252,401 actual — @0.1 and @0.5 miss on every draw with a confident wrong answer, @0.9 hits on every draw.
+Treat the last ~8 % of the 262,144 window as unreliable for mid-context retrieval. The stock filler of
+`probe_256k_tooluse.py` is the same repetition attractor as the filler needle (0.4, length-stops from 131K, both arms) —
+Flint needs a natural-haystack tool probe before its 256K tool-use row means anything.
+
+Instrument note: `needle_band_probe.py` now records `answered` (turn finished with the password in the final content)
+next to the fleet's `found` (needle anywhere in reasoning + content) — a haystack-quoting run to the budget scores
+`found` without answering.
+

@@ -1,0 +1,48 @@
+{
+ "tag": "flint-kv-e5m2-natural-131k",
+ "timestamp": "2026-10-31 00:14",
+ "temperature": 0.0,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 127,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ord is: BANANA42.\" Then later final: \"What is the secret password? Answer with just the password.\" So answer should be BANANA42. Must comply with just password."
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 68,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "just the password.\" We need answer just password. Need infer from context? There is line: \"The secret password is: BANANA42.\" So answer should be just BANANA42."
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 2048,
+    "content_tail": "",
+    "reasoning_tail": "arrange the people with Wilma and Paul together.)  Thus the number of acceptable arrangements is $7!-6!\\times 2!=3600$.\n\nKeisha's basketball team must decide on"
+   }
+  ],
+  "score": 1.0
+ }
+}

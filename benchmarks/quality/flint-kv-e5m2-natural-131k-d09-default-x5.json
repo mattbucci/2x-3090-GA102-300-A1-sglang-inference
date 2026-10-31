@@ -1,0 +1,72 @@
+{
+ "tag": "flint-kv-e5m2-natural-131k-d09-default-x5",
+ "timestamp": "2026-10-31 00:44",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 78,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ed answer with just password. Probably should output BANANA42. Ensure no extra? User explicitly says Answer with just the password. So final should be BANANA42."
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 45,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "user's final request. They provided huge context and at end: \"The secret password is: BANANA42. Answer with just the password.\"\n\nWe should output just BANANA42."
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 60,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "assword is: BANANA42. ... Answer with just the password.\"\n\nWe need comply? The instruction says Answer with just the password. So final should be just BANANA42."
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 161,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "et password is: BANANA42.\" Then later final asks \"What is the secret password? Answer with just the password.\" So answer should be BANANA42. Need just password."
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131041,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 89,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "truction: \"The secret password is: BANANA42.\n the math problem ...\n Answer with just the password.\"\n\nSo final should likely be \"BANANA42\" only. Ensure no extra."
+   }
+  ],
+  "score": 1.0
+ }
+}
