@@ -898,6 +898,14 @@ apply_preset "$PRESET"
 [[ -n "$PORT_OVERRIDE" ]] && PORT="$PORT_OVERRIDE"
 [[ -n "$MEM_OVERRIDE" ]] && MEM="$MEM_OVERRIDE"
 [[ -n "$MAX_RUNNING_OVERRIDE" ]] && MAX_RUNNING="$MAX_RUNNING_OVERRIDE"
+
+# GDN / Mamba conv-state dtype follows the model dtype (2026-10-31). SGLang's default
+# conv state is bf16; our GDN presets run fp16 weights, so the fused "GDN decode
+# QKVZ/BA unpack + indexed Conv1D" path logged a dtype-mismatch fallback on every
+# one of them. Matched: +1.1..1.4 % decode at 1K / 32K / 262K on qwen38 and
+# qwen36-dense at quality parity (benchmarks/pcie-hostread-2026-10-31.md).
+# Env override still wins; no effect on presets without linear-attention layers.
+export SGLANG_MAMBA_CONV_DTYPE="${SGLANG_MAMBA_CONV_DTYPE:-$DTYPE}"
 [[ -n "$DECODE_STEPS_OVERRIDE" ]] && DECODE_STEPS="$DECODE_STEPS_OVERRIDE"
 [[ -n "$CHUNKED_OVERRIDE" ]] && CHUNKED="$CHUNKED_OVERRIDE"
 [[ -n "$WATCHDOG_OVERRIDE" ]] && WATCHDOG="$WATCHDOG_OVERRIDE"

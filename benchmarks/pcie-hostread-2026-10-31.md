@@ -79,3 +79,9 @@ both runs: the KV pool is 682,923 tokens, up from 652K, because the INT8 head fr
 (fleet harness MMLU + HumanEval, sampled needle at 131K / 250K) on qwen38 and qwen36 decides whether launch.sh makes
 the conv state follow the model dtype for every preset.
 
+**Gate (fleet harness, MMLU 60 + HumanEval 30, `--mc-budget 2560`; sampled needle at 131K / 250K × 0.1 / 0.5 / 0.9):**
+qwen38 fp16 conv state **55/57, 29/30, needle 6/6** (bf16 conv state, same day: 52–53/57, 29/30, 12/12);
+qwen36 **53/57, 29/30** (bf16: 53–54/57, 29/30). Parity → `launch.sh` now sets `SGLANG_MAMBA_CONV_DTYPE` to the
+model dtype for every preset (env override still wins); tripwire baselines re-saved for the four GDN presets as shipped
+and the serving image rebuilt (receipts below).
+
