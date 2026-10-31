@@ -42,7 +42,7 @@ alongside `found`.)
 | 252K @0.1 greedy ×2 (e5m2 ×3) | miss / miss | miss / miss / miss | `…-250k-greedy-x2.json`, `flint-kv-e5m2-natural-250k.json` |
 | 252K @0.5 greedy ×2 (e5m2 ×3) | miss / miss | miss / miss / miss | same |
 | 252K @0.9 greedy ×2 (e5m2 ×3) | **hit / hit** | **hit / hit / hit** | same |
-| 252K @0.5 model sampling ×3 | see `flint-kv-bf16-natural-250k-default-x3.json` | 0/3 | |
+| 252K @0.5 model sampling ×3 | 0/3 (`No password.`, `s3cr3t`, `C`) | 0/3 (`B`, `C`, `C`) | `…-250k-default-x3.json` |
 | 256K tool-use probe (stock filler, depth 0.5) | 0.4 / 0.4, max 64,910 | 0.4 / 0.4, max 64,910 — identical row by row | `tooluse256k-flint.json`, `tooluse256k-flint-kv-e5m2.json` |
 | HumanEval 40 (raw completions, greedy) | 28/40 (70.0 %) | 29/40 (72.5 %) | `benchmarks/quality/flint.json`, `flint-kv-e5m2.json` |
 | MMLU (chat, 200-token cap — weak on a thinking model, same instrument both arms) | 39/57 | 38/57 | same |

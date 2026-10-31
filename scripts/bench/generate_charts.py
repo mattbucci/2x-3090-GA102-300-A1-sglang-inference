@@ -702,7 +702,10 @@ def make_power_cap_chart(all_data):
     y-scale each: decode at 1K, decode at the deepest honest point, and TTFT at that
     deepest point (prefill is the compute-bound half that the extra tensor rate feeds).
     Reads benchmarks/<slug>/results-400w.json next to results.json; models without a
-    400 W sweep are skipped."""
+    400 W sweep are skipped. The 300 W side is results-300w.json when present — the
+    same-boot companion of the 400 W sweep — so a later preset change that re-sweeps
+    results.json (flint on fp8_e5m2 KV, 2026-10-31) does not masquerade as a power
+    effect; otherwise results.json."""
     from matplotlib.patches import Patch
     rows = []
     for key, (meta, r300) in all_data.items():
@@ -710,6 +713,9 @@ def make_power_cap_chart(all_data):
         if not os.path.exists(p400):
             continue
         r400 = json.load(open(p400))
+        p300 = os.path.join(BENCH_DIR, key, "results-300w.json")
+        if os.path.exists(p300):
+            r300 = json.load(open(p300))
         s300, s400 = honest_sweep(key, r300), honest_sweep(key, r400)
         if len(s300) < 2 or len(s400) < 2:
             continue
