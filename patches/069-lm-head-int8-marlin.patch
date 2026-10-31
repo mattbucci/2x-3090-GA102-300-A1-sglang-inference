@@ -1,23 +1,26 @@
 diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
-index 77b16ef36f..87cc53e6e5 100644
+index 77b16ef36f..d441b4a5f8 100644
 --- a/python/sglang/srt/environ.py
 +++ b/python/sglang/srt/environ.py
-@@ -533,6 +533,9 @@ class Envs:
+@@ -533,6 +533,12 @@ class Envs:
      SGLANG_DSPARK_ENABLE_SPS_RECORD = EnvBool(False)
      SGLANG_DSPARK_FAST_KERNEL = EnvBool(True)
      SGLANG_DSPARK_FP32_LM_HEAD = EnvBool(False)
 +    # [3090 069] Load-time INT8 (per-channel symmetric) lm_head through GPTQ-Marlin
 +    # W8A16 for checkpoints that ship a bf16 head (our AWQ ships); skipped for tied heads.
 +    SGLANG_LM_HEAD_INT8 = EnvBool(False)
++    # Scale granularity for the INT8 head: -1 = per output channel, or a group size
++    # (32 / 64 / 128) along the hidden dim; Marlin takes either.
++    SGLANG_LM_HEAD_INT8_GROUP = EnvInt(-1)
      # Argmax every draft row, sampling requests included, accepted as a one-hot
      # draft: no step logits kept, lower acceptance at high temperatures.
      SGLANG_DSPARK_USE_GREEDY_DRAFT = EnvBool(False)
 diff --git a/python/sglang/srt/layers/quantization/lm_head_int8_marlin.py b/python/sglang/srt/layers/quantization/lm_head_int8_marlin.py
 new file mode 100644
-index 0000000000..08b637384a
+index 0000000000..52f803061e
 --- /dev/null
 +++ b/python/sglang/srt/layers/quantization/lm_head_int8_marlin.py
-@@ -0,0 +1,139 @@
+@@ -0,0 +1,152 @@
 +"""[3090 069] Load-time INT8 lm_head through the GPTQ-Marlin W8A16 kernel.
 +
 +Our AWQ ships leave ``lm_head`` in bf16 (the checkpoints' ``modules_to_not_convert``
@@ -95,17 +98,30 @@ index 0000000000..08b637384a
 +            logger.warning("lm_head int8: unsupported weight (%s, %s) — left unquantized", tuple(w.shape), w.dtype)
 +            return
 +        n, k = w.shape  # [vocab_per_partition, hidden]
-+        ok, why = check_marlin_supports_shape(n, k, k, -1)
-+        if not ok:
-+            logger.warning("lm_head int8: Marlin rejects shape n=%d k=%d (%s) — left unquantized", n, k, why)
-+            return
 +        device = w.device
 +        from sglang.kernels.ops.quantization.gptq_marlin_repack import gptq_marlin_repack
 +
++        from sglang.srt.environ import envs
++
++        group = envs.SGLANG_LM_HEAD_INT8_GROUP.get()  # -1 = per output channel; 32/64/128 = group along k
++        if group != -1 and (group not in (32, 64, 128) or k % group):
++            logger.warning("lm_head int8: group %d unsupported for k=%d — using per-channel", group, k)
++            group = -1
++        ok, why = check_marlin_supports_shape(n, k, k, group)
++        if not ok:
++            logger.warning("lm_head int8: Marlin rejects shape n=%d k=%d g=%d (%s) — left unquantized", n, k, group, why)
++            return
 +        with torch.no_grad():
 +            wf = w.data.float()
-+            scale = wf.abs().amax(dim=1, keepdim=True).clamp_(min=1e-8) / 127.0  # [n, 1]
-+            q = torch.round(wf / scale).clamp_(-128, 127)
++            if group == -1:
++                scale = wf.abs().amax(dim=1, keepdim=True).clamp_(min=1e-8) / 127.0  # [n, 1]
++                q = torch.round(wf / scale).clamp_(-128, 127)
++                scales_kn = scale.t()  # [1, n]
++            else:
++                g = wf.reshape(n, k // group, group)
++                sg = g.abs().amax(dim=2, keepdim=True).clamp_(min=1e-8) / 127.0  # [n, k/g, 1]
++                q = torch.round(g / sg).clamp_(-128, 127).reshape(n, k)
++                scales_kn = sg.reshape(n, k // group).t()  # [k/g, n]
 +            del wf
 +            # uint8b128: unsigned storage with a 128 bias (sym == zero point 128)
 +            q_u = (q + 128.0).to(torch.uint8).t().contiguous()  # [k, n]
@@ -116,8 +132,8 @@ index 0000000000..08b637384a
 +                packed, perm=torch.empty(0, dtype=torch.int, device=device), size_k=k, size_n=n, num_bits=8
 +            )
 +            del packed
-+            scales = scale.t().to(w.dtype).reshape(1, n).contiguous()
-+            marlin_s = marlin_permute_scales(scales, size_k=k, size_n=n, group_size=-1)
++            scales = scales_kn.to(w.dtype).contiguous()
++            marlin_s = marlin_permute_scales(scales, size_k=k, size_n=n, group_size=group)
 +
 +        layer.lm_head_qweight = Parameter(marlin_q, requires_grad=False)
 +        layer.lm_head_scales = Parameter(marlin_s, requires_grad=False)
@@ -131,8 +147,8 @@ index 0000000000..08b637384a
 +        layer.weight = Parameter(torch.empty(0, dtype=w.dtype, device=device), requires_grad=False)
 +        self.active = True
 +        logger.info(
-+            "lm_head int8: %d x %d repacked to Marlin W8A16 (per-channel symmetric), %.2f GB -> %.2f GB",
-+            n, k, n * k * 2 / 1e9, n * k / 1e9,
++            "lm_head int8: %d x %d repacked to Marlin W8A16 (%s symmetric), %.2f GB -> %.2f GB",
++            n, k, "per-channel" if group == -1 else f"group-{group}", n * k * 2 / 1e9, n * k / 1e9,
 +        )
 +
 +    # -- forward -----------------------------------------------------------------
