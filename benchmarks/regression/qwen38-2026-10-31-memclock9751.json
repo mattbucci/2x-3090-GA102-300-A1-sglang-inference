@@ -1,0 +1,35 @@
+{
+  "model": "qwen38 memclock 9751",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-10-31 13:53:37",
+  "output_tokens": 100,
+  "max_total_num_tokens": 680638,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1024,
+      "throughput": 68.5,
+      "ttft_ms": 304.49,
+      "tpot_ms": 11.57,
+      "tok_per_sec": 86.4
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32768,
+      "throughput": 22.93,
+      "ttft_ms": 3121.1,
+      "tpot_ms": 12.4,
+      "tok_per_sec": 80.6
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261916,
+      "throughput": 46.33,
+      "ttft_ms": 459.89,
+      "tpot_ms": 17.04,
+      "tok_per_sec": 58.7
+    }
+  ]
+}

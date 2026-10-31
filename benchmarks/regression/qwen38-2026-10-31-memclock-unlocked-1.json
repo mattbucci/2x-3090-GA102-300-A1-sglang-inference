@@ -1,0 +1,35 @@
+{
+  "model": "qwen38 unlocked-1",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-10-31 14:04:51",
+  "output_tokens": 100,
+  "max_total_num_tokens": 682923,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1024,
+      "throughput": 63.13,
+      "ttft_ms": 301.62,
+      "tpot_ms": 12.85,
+      "tok_per_sec": 77.8
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32768,
+      "throughput": 22.17,
+      "ttft_ms": 3146.52,
+      "tpot_ms": 13.67,
+      "tok_per_sec": 73.2
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261916,
+      "throughput": 43.86,
+      "ttft_ms": 447.42,
+      "tpot_ms": 18.4,
+      "tok_per_sec": 54.3
+    }
+  ]
+}

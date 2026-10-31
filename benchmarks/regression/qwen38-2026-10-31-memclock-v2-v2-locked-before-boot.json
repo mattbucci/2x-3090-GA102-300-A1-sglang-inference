@@ -1,0 +1,35 @@
+{
+  "model": "qwen38 v2-locked-before-boot",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-10-31 14:47:20",
+  "output_tokens": 100,
+  "max_total_num_tokens": 682923,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1024,
+      "throughput": 145.33,
+      "ttft_ms": 73.87,
+      "tpot_ms": 6.09,
+      "tok_per_sec": 164.2
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32768,
+      "throughput": 124.07,
+      "ttft_ms": 144.33,
+      "tpot_ms": 6.56,
+      "tok_per_sec": 152.4
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261916,
+      "throughput": 58.28,
+      "ttft_ms": 712.81,
+      "tpot_ms": 9.42,
+      "tok_per_sec": 106.2
+    }
+  ]
+}

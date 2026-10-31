@@ -994,16 +994,15 @@ CMD+=(
 if [[ "$SGLANG_SECURE_LAUNCH" == "0" ]]; then
     CMD+=(--trust-remote-code --enable-metrics)
 fi
-# Custom all-reduce stays OFF: it breaks cuda-graph capture on 3090 TP=2
-# (sm_86) and graphs are worth far more than the decode allreduce it would speed
-# up. Disabled 2026-04-12 (commit 45c4810, v0.5.11); RE-CONFIRMED still broken on
-# v0.5.12 2026-06-15 — `Capture cuda graph failed: invalid argument` at
-# custom_all_reduce.cuh:508. The ENABLE_CUSTOM_AR=1 toggle is kept so a future
-# sglang/driver bump can be re-tested in one flag (receipt:
-# benchmarks/allreduce-accel-null-2026-06-15.md). Don't ship it on until capture
-# survives. (symm-mem variants are a null result for decode — they touch only the
-# embedding allreduce, not the per-layer decode allreduce; same receipt.)
-[[ -z "${ENABLE_CUSTOM_AR:-}" ]] && CMD+=(--disable-custom-all-reduce)
+# Custom all-reduce: ON by default since 2026-10-31. It broke cuda-graph capture on
+# 3090 TP=2 from v0.5.11 (`Capture cuda graph failed: invalid argument` at
+# custom_all_reduce.cuh:508, receipt benchmarks/allreduce-accel-null-2026-06-15.md);
+# re-tested at the v0.5.22 rebase (driver 595) it captures and is the largest single
+# decode lever on the rig — qwen38 78.0 -> 86.3 / 73.2 -> 80.5 / 54.4 -> 58.3 tok/s at
+# 1K / 32K / 262K (+10.6 / +10.0 / +7.2 %, the NCCL allreduce share of the step), quality
+# parity (benchmarks/custom-allreduce-2026-10-31.md). DISABLE_CUSTOM_AR=1 restores the
+# old --disable-custom-all-reduce; ENABLE_CUSTOM_AR is a no-op now. Re-test at every rebase.
+[[ -n "${DISABLE_CUSTOM_AR:-}" ]] && CMD+=(--disable-custom-all-reduce)
 
 # Friendly model name for OpenAI-compatible API consumers (eg. opencode).
 # Defaults to the preset name; override with SERVED_NAME=foo.
