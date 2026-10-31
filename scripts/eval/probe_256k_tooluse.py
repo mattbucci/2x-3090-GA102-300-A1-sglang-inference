@@ -60,13 +60,21 @@ TASK = ("\n\nNow use the lookup_record tool to fetch the record. Use exactly the
 CHARS_PER_TOKEN_INIT = 6.6
 
 
+# Optional natural-text haystack (set from --haystack). The repeated-sentence filler is a
+# repetition attractor on Flint's NoPE layers (needle receipt 2026-10-22): Flint length-stops
+# on it from 131K while retrieving 8/8 from natural text at the same depth, so its tool-use
+# row on the filler is a floor, not a capability read.
+HAYSTACK_TEXT = None
+
+
 def build_prompt(approx_tokens: int, depth: float = 0.5,
                  chars_per_token: float = CHARS_PER_TOKEN_INIT) -> str:
     """~approx_tokens of filler with the needle instruction planted at `depth` (0..1
     through the filler) — vary depth to probe lost-in-the-middle tool-calling."""
     target_chars = int(approx_tokens * chars_per_token)
-    n = (target_chars // len(FILLER_UNIT)) + 1
-    body = (FILLER_UNIT * n)[:target_chars]
+    unit = HAYSTACK_TEXT or FILLER_UNIT
+    n = (target_chars // len(unit)) + 1
+    body = (unit * n)[:target_chars]
     pos = int(len(body) * depth)
     return body[:pos] + NEEDLE + body[pos:] + TASK
 
@@ -201,7 +209,16 @@ def main():
                          "with a sentinel and verify the model uses it (closes the "
                          "response-path blind spot)")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--haystack", default=None,
+                    help="path to a natural-text haystack (e.g. benchmarks/quality/haystack-platypus.txt) "
+                         "instead of the repeated-sentence filler")
+    ap.add_argument("--chars-per-token", type=float, default=None,
+                    help="initial chars/token for the haystack (natural Platypus text ≈ 3.3–3.4); "
+                         "the probe still recalibrates from the server's token count")
     args = ap.parse_args()
+    global HAYSTACK_TEXT
+    if args.haystack:
+        HAYSTACK_TEXT = open(args.haystack).read()
 
     url = f"http://localhost:{args.port}/v1/chat/completions"
     lengths = [int(x) for x in args.lengths.split(",")]
@@ -215,7 +232,7 @@ def main():
     print(f"256K tool-use probe: {args.tag}")
     print(f"{'approx':>8} {'actual':>8} {'finish':>12} {'valid':>6} {'correct':>8} {'id':>10} {'s':>5}")
     results = []
-    cpt = CHARS_PER_TOKEN_INIT
+    cpt = args.chars_per_token or (3.4 if HAYSTACK_TEXT else CHARS_PER_TOKEN_INIT)
     for L in lengths:
         res = probe_one(url, L, max_tokens=args.max_tokens, depth=args.depth,
                         chars_per_token=cpt, multi_turn=args.multi_turn)
@@ -240,6 +257,7 @@ def main():
 
     ok = [r for r in results if "error" not in r]
     summary = {
+        "haystack": "natural" if HAYSTACK_TEXT else "filler",
         "tag": args.tag,
         "results": results,
         "valid_rate": round(sum(r["valid_toolcall"] for r in ok) / len(ok), 3) if ok else None,
