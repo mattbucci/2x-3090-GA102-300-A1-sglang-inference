@@ -85,3 +85,8 @@ qwen36 **53/57, 29/30** (bf16: 53–54/57, 29/30). Parity → `launch.sh` now se
 model dtype for every preset (env override still wins); tripwire baselines re-saved for the four GDN presets as shipped
 and the serving image rebuilt (receipts below).
 
+**Tripwire baselines re-saved as shipped (INT8 head + matched conv state), 1K / 32K / 261,916 actual:** qwen36 241.0 / 213.2 / 135.1
+(morning bf16-head 223.7 / 198.4 / 128.9), qwen35-moe 239.8 / 219.8 / 165.3 (222.2 / 205.8 / 156.2), qwen36-dense 78.0 / 73.2 / 54.4
+(73.0 / 69.0 / 51.9), qwen38 78.0 / 73.2 / 54.4 (72.9 / 68.7 / 51.8). Serving image rebuilt on it: `50ef7b838d73`, smoke PASS on
+qwen36-ream (`benchmarks/quality/qwen36-ream/docker-serving-smoke-2026-10-31c.json`).
+
