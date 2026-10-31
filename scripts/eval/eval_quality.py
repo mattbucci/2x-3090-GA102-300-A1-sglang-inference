@@ -22,6 +22,21 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
+
+# A secure-launch (docker-served) endpoint needs a bearer; mirror bench_long_context.py:
+# SGLANG_API_KEY or OPENAI_API_KEY in the environment, nothing printed.
+_API_KEY = os.environ.get("SGLANG_API_KEY") or os.environ.get("OPENAI_API_KEY")
+_AUTH_HEADERS = {"Authorization": f"Bearer {_API_KEY}"} if _API_KEY else {}
+_orig_post = requests.post
+
+
+def _post(url, *a, **kw):
+    if _AUTH_HEADERS:
+        kw.setdefault("headers", {}).update(_AUTH_HEADERS)
+    return _orig_post(url, *a, **kw)
+
+
+requests.post = _post
 from datasets import load_dataset
 
 
