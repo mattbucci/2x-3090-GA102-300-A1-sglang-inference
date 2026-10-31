@@ -63,3 +63,19 @@ reports `decode=TritonGDNKernel`, with a logged fallback from the fused decode p
 
 `--cuda-graph-backend-decode breakable`: the server crashed at boot on this build (child failed during init; log `/var/tmp/pcie-hostread/serve-r4-graph-breakable.log`), so the breakable backend is not a discriminator here.
 
+## Side lever measured — conv state in the model dtype (fused GDN decode path)
+
+Every GDN preset here runs fp16 weights with the default bf16 conv state, so the fused "GDN decode QKVZ/BA unpack +
+indexed Conv1D" path logs `QKVZ, Conv1D state, and weight dtypes must match` and falls back on all of qwen36 /
+qwen35-moe / qwen36-dense / qwen38. `SGLANG_MAMBA_CONV_DTYPE=float16` engages it:
+
+| preset | 1K | 32K | 261,916 |
+|---|---:|---:|---:|
+| qwen38 | 77.0 → **78.1** (+1.4 %) | 72.3 → **73.2** (+1.2 %) | 53.9 → **54.5** (+1.1 %) |
+| qwen36-dense | 77.1 → **78.0** (+1.2 %) | 72.4 → **73.2** (+1.1 %) | 53.9 → **54.5** (+1.1 %) |
+
+(baselines = today's INT8-head level; `regression/{qwen38,qwen36-dense}-2026-10-31-conv-fp16.json`.) Also visible in
+both runs: the KV pool is 682,923 tokens, up from 652K, because the INT8 head freed 0.64 GB per card. Quality gate
+(fleet harness MMLU + HumanEval, sampled needle at 131K / 250K) on qwen38 and qwen36 decides whether launch.sh makes
+the conv state follow the model dtype for every preset.
+
