@@ -72,8 +72,7 @@ Depth 0.9: 14/14 on each arm. Depths 0.1 + 0.5: e5m2 2/14, bf16 1/12, and the hi
 246.5K @0.5 twice, bf16 takes 246.5K @0.1 once at the identical prompt — a greedy knife-edge, i.e. TP-2 nondeterminism, not
 the dtype). So the correct statement is not a cliff at one length but a **marginal zone from ≈240K at depths ≤ 0.5** whose
 cells flip with the surrounding text (R9700 saw the same text dependence in a 32K band), with depth 0.9 reliable to the
-window; the 2026-10-22 "243.5K @0.5 found" was one such cell. Where the zone begins between 131K (8/8 both arms) and 240K is
-untested — a 160K / 200K / 220K bracket is the follow-up. Nothing in the band separates e5m2 from bf16 KV.
+window; the 2026-10-22 "243.5K @0.5 found" was one such cell. **Onset bracket (e5m2 arm, greedy, flushed, ×2, depths 0.1 / 0.5 — `flint-natural-onset-160k-200k-220k-greedy-x2-2026-10-31.json`):** 155,462 actual 4/4, 195,012 actual 4/4, 214,245 actual **0/4** — and at 214K both depths and both draws return the *same* wrong content (a haystack sentence about license plates), i.e. the model continues the Open-Platypus text adjacent to the question instead of answering; a text-triggered continuation, the shape R9700 documented in a 32K band, rather than the deep band's confident wrong passwords. So the reliable range ends between 195K and 214K actual, and the last ~20 % of the 262,144 window is where retrieval becomes text-dependent. Nothing in the band separates e5m2 from bf16 KV.
 
 **Decision:** `fp8_e5m2` is the `flint` preset default from 2026-10-31 (`KV_DTYPE=auto` restores bf16 KV). Ship steps:
 fleet re-sweep → `benchmarks/flint/results.json` (bf16 sweep kept as `results-bf16kv-2026-10-25.json`), tripwire
