@@ -35,4 +35,4 @@ Instrument note: `needle_band_probe.py` now records `answered` (turn finished wi
 next to the fleet's `found` (needle anywhere in reasoning + content) — a haystack-quoting run to the budget scores
 `found` without answering.
 
-Serving image rebuilt on the new default the same day (`sglang-cuda-3090:local` = `a64ac6ea24ed`; the previous image stays as `v0522-keyorder`): parity smoke PASS — docker decode 159.5 / 148.4 / 104.6 tok/s vs the bare-metal baseline 159.0 / 147.7 / 104.7, scaffold audit, Responses-API probe, 2/2 isolated rollouts non-empty, leak audit clean ([receipt](../benchmarks/quality/flint/docker-serving-smoke-2026-10-31.json)).
+Serving image rebuilt on the new default the same day (`sglang-cuda-3090:local` = `a64ac6ea24ed`, kept as `v0522-e5m2` once the INT8-head image `6c9ede80f03a` replaced it later that day; `713a79eec75a` stays as `v0522-keyorder`): parity smoke PASS — docker decode 159.5 / 148.4 / 104.6 tok/s vs the bare-metal baseline 159.0 / 147.7 / 104.7, scaffold audit, Responses-API probe, 2/2 isolated rollouts non-empty, leak audit clean ([receipt](../benchmarks/quality/flint/docker-serving-smoke-2026-10-31.json)).
