@@ -1,0 +1,35 @@
+{
+  "model": "nemotron3-omni",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-10-31 02:39:37",
+  "output_tokens": 100,
+  "max_total_num_tokens": 5165533,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1024,
+      "throughput": 88.15,
+      "ttft_ms": 140.55,
+      "tpot_ms": 9.92,
+      "tok_per_sec": 100.8
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32768,
+      "throughput": 70.96,
+      "ttft_ms": 403.93,
+      "tpot_ms": 10.04,
+      "tok_per_sec": 99.6
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261916,
+      "throughput": 44.07,
+      "ttft_ms": 1194.66,
+      "tpot_ms": 10.74,
+      "tok_per_sec": 93.1
+    }
+  ]
+}
