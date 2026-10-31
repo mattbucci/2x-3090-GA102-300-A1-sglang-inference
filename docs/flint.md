@@ -29,11 +29,7 @@ pool 589K → 1.18M. Quality at parity with bf16 KV on the natural-haystack need
 hits and @0.1 / @0.5 miss on *both* — Flint's own cliff past ~250K, see below), HumanEval 29/40 vs 28/40, the 256K
 tool probe identical row by row. Receipt: [`benchmarks/flint/kv-dtype-ab-2026-10-31.md`](../benchmarks/flint/kv-dtype-ab-2026-10-31.md).
 
-**Retrieval cliff between 243.5K and 252K actual tokens** (KV-dtype independent): 243.5K @0.5 / @0.9 greedy found on
-2026-10-22; 252,401 actual — @0.1 and @0.5 miss on every draw with a confident wrong answer, @0.9 hits on every draw.
-Treat the last ~8 % of the 262,144 window as unreliable for mid-context retrieval. R9700 reproduces it the same day on their FP8 build (243.5K @0.1 miss, 248K @0.1 / @0.5 miss, @0.9 found; sink kernels verified against a torch reference), so it is the checkpoint's behaviour across INT4 / FP8 and CUDA / ROCm, not a quantization or serving defect. The stock filler of
-`probe_256k_tooluse.py` is the same repetition attractor as the filler needle (0.4, length-stops from 131K, both arms) —
-Flint needs a natural-haystack tool probe before its 256K tool-use row means anything.
+**Retrieval is marginal from ≈240K actual at depths ≤ 0.5, reliable at depth 0.9 to the window — KV-dtype independent.** Natural haystack, greedy, flushed, ×2–3 per cell at 240.8K / 246.5K / 252.4K on both bf16 and e5m2 KV: depth 0.9 14/14 on each arm; depths 0.1 + 0.5 e5m2 2/14, bf16 1/12, the hits not aligned by arm (greedy knife-edges at identical prompts), the misses confident wrong answers (`C`, `B`, `hunter2`, `swordfish`, "I don't know"). 131K is 8/8 on both arms; where the zone starts between 131K and 240K is the open bracket (160K / 200K / 220K). R9700 reproduces the band the same day on their FP8 build (243.5K @0.1 miss, 248K @0.1 / @0.5 miss, @0.9 found; sink kernels verified against a torch reference) and finds the same text dependence in a 32K band — the checkpoint's behaviour across INT4 / FP8 and CUDA / ROCm, not a quantization or serving defect. Treat the last ~8 % of the 262,144 window as unreliable for mid-context retrieval. The stock filler of `probe_256k_tooluse.py` is the same repetition attractor as the filler needle (0.4, length-stops from 131K, both arms) — Flint needs a natural-haystack tool probe before its 256K tool-use row means anything.
 
 Instrument note: `needle_band_probe.py` now records `answered` (turn finished with the password in the final content)
 next to the fleet's `found` (needle anywhere in reasoning + content) — a haystack-quoting run to the budget scores

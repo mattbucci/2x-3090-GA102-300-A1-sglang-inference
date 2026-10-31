@@ -55,7 +55,25 @@ repeated-sentence filler of `probe_256k_tooluse.py` is the same repetition attra
 Flint length-stops from 131K on it, identically on both arms; a natural-haystack variant of the tool probe is the
 instrument Flint needs.
 
-**Cross-stack confirmation (R9700, same day, FP8 per-channel build on ROCm, bf16 KV — their `07432a6`, `benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md`):** 243,481 actual @0.1 **miss** / @0.5 found / @0.9 found; 248,383 @0.1 miss / @0.5 **miss** (sampled 0/3, the model reasons that no password is present and invents one) / @0.9 found; every greedy miss reproduces byte-for-byte from a cold cache, and their sink kernels match a torch reference. Three quant formats (INT4 g64 bf16 KV, INT4 g64 e5m2 KV, FP8) and two stacks agree: the cliff is the checkpoint's — depth 0.1 goes first at ~243K, depth 0.5 by ~248K, depth 0.9 holds to the window. A 243.5K / 248K INT4 pass at all three depths is queued to close their depth-0.1 ask.
+**Cross-stack confirmation (R9700, same day, FP8 per-channel build on ROCm, bf16 KV — their `07432a6`, `benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md`):** 243,481 actual @0.1 **miss** / @0.5 found / @0.9 found; 248,383 @0.1 miss / @0.5 **miss** (sampled 0/3, the model reasons that no password is present and invents one) / @0.9 found; every greedy miss reproduces byte-for-byte from a cold cache, and their sink kernels match a torch reference. Three quant formats (INT4 g64 bf16 KV, INT4 g64 e5m2 KV, FP8) and two stacks agree: the cliff is the checkpoint's — depth 0.1 goes first at ~243K, depth 0.5 by ~248K, depth 0.9 holds to the window. The 243.5K / 248K INT4 pass at all three depths on both arms is the table below.
+
+## The deep band, both arms (greedy, flushed, ×2 per cell; strict read)
+
+| actual tokens | arm | @0.1 | @0.5 | @0.9 | receipt |
+|---:|---|:--:|:--:|:--:|---|
+| 240,840 | e5m2 | miss / miss | miss / miss | hit / hit | `flint-natural-243k-band-greedy-x2-2026-10-31.json` |
+| 240,840 | bf16 | miss / miss | miss / miss | hit / hit | `flint-kv-bf16-natural-243k-band-greedy-x2-2026-10-31.json` |
+| 246,531 | e5m2 | miss / miss | **hit / hit** | hit / hit | `flint-natural-248k-band-greedy-x2-2026-10-31.json` |
+| 246,531 | bf16 | **hit** / miss | miss / miss | hit / hit | `flint-kv-bf16-natural-248k-band-greedy-x2-2026-10-31.json` |
+| 252,401 | e5m2 (×3) | miss ×3 | miss ×3 | hit ×3 | above |
+| 252,401 | bf16 | miss / miss | miss / miss | hit / hit | above |
+
+Depth 0.9: 14/14 on each arm. Depths 0.1 + 0.5: e5m2 2/14, bf16 1/12, and the hits do not line up by arm (e5m2 takes
+246.5K @0.5 twice, bf16 takes 246.5K @0.1 once at the identical prompt — a greedy knife-edge, i.e. TP-2 nondeterminism, not
+the dtype). So the correct statement is not a cliff at one length but a **marginal zone from ≈240K at depths ≤ 0.5** whose
+cells flip with the surrounding text (R9700 saw the same text dependence in a 32K band), with depth 0.9 reliable to the
+window; the 2026-10-22 "243.5K @0.5 found" was one such cell. Where the zone begins between 131K (8/8 both arms) and 240K is
+untested — a 160K / 200K / 220K bracket is the follow-up. Nothing in the band separates e5m2 from bf16 KV.
 
 **Decision:** `fp8_e5m2` is the `flint` preset default from 2026-10-31 (`KV_DTYPE=auto` restores bf16 KV). Ship steps:
 fleet re-sweep → `benchmarks/flint/results.json` (bf16 sweep kept as `results-bf16kv-2026-10-25.json`), tripwire
