@@ -1,0 +1,35 @@
+{
+  "model": "coder-30b",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-10-31 05:37:04",
+  "output_tokens": 100,
+  "max_total_num_tokens": 504121,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1024,
+      "throughput": 188.3,
+      "ttft_ms": 62.42,
+      "tpot_ms": 4.62,
+      "tok_per_sec": 216.5
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32768,
+      "throughput": 141.17,
+      "ttft_ms": 114.6,
+      "tpot_ms": 5.89,
+      "tok_per_sec": 169.8
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261916,
+      "throughput": 57.25,
+      "ttft_ms": 410.97,
+      "tpot_ms": 13.38,
+      "tok_per_sec": 74.7
+    }
+  ]
+}

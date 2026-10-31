@@ -831,6 +831,10 @@ apply_preset() {
             REASONING="--reasoning-parser nemotron_3"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --tool-call-parser qwen3_coder --trust-remote-code"
+            # [069] INT8 lm_head OFF here: 65536 x 2688 per rank (0.35 GB) — the Marlin W8
+            # gemm costs more than the bf16 gemv saves at this shape (2026-10-31 tripwire:
+            # 100.8 -> 98.1 / 99.6 -> 97.9 / 93.1 -> 91.3 tok/s). Every other head is a win.
+            export SGLANG_LM_HEAD_INT8=0
             ;;
         *)
             echo "Unknown model: $1"
