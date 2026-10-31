@@ -1,0 +1,42 @@
+{
+  "preset": "flint",
+  "verdict": "PASS",
+  "serve_mode": "docker",
+  "image": "sglang-cuda-3090:local",
+  "image_id": "a64ac6ea24ed4a603f380558658c953db9287bab879a36291efe629716ac7f70",
+  "date": "2026-10-31T02:11:42",
+  "steps": {
+    "stop": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "responses_api": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "bench": {
+      "status": "PASS",
+      "detail": "flint/1024: 159.0 -> 159.5 tok/s (+0.3%) [ok]|flint/32768: 147.7 -> 148.4 tok/s (+0.5%) [ok]|flint/deep(261916): 104.7 -> 104.6 tok/s (-0.1%) [ok]|RESULT: PASS|"
+    },
+    "rollout": {
+      "status": "PASS",
+      "detail": "rc=0 preds=2 nonempty=2 meta=ok budget_lines=2"
+    },
+    "boot": {
+      "status": "PASS",
+      "detail": "117s to /health; /v1/models=[flint]"
+    },
+    "scaffold_audit": {
+      "status": "PASS",
+      "detail": "api_auth=True opencode:auth=ok dcode:auth=ok"
+    },
+    "leak_audit": {
+      "status": "PASS",
+      "detail": "Using the latest cached version of the dataset since princeton-nlp/SWE-bench_Lite couldn't be found on the Hugging Face Hub (offline mode is enabled)."
+    },
+    "api_auth": {
+      "status": "PASS",
+      "detail": "anon /v1/models -> 401"
+    }
+  }
+}
