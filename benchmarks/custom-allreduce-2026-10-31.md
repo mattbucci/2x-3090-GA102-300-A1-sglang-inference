@@ -36,3 +36,21 @@ on qwen38 and qwen36) and the fleet tripwire under the new default follow below.
 Parity → `launch.sh` turns the custom allreduce ON by default (`DISABLE_CUSTOM_AR=1` opts out); the fleet tripwire is
 re-saved under it and the serving image rebuilt (below).
 
+## Fleet tripwire re-saved under the custom allreduce (as shipped; 1K / 32K / 261,916 actual)
+
+| preset | before (today's prior level) | **after** | Δ 1K / 32K / deep |
+|---|---|---|---|
+| qwen36 | 241.0 / 213.2 / 135.1 | **289.0 / 247.5 / 148.4** | +20 / +16 / +10 % |
+| qwen35-moe | 239.8 / 219.8 / 165.3 | **285.7 / 258.4 / 185.5** | +19 / +18 / +12 % |
+| coder-30b | 216.5 / 169.8 / 74.7 | **253.2 / 191.2 / 78.9** | +17 / +13 / +6 % |
+| flint | 164.2 / 152.4 / 106.0 | **184.8 / 169.8 / 114.7** | +13 / +11 / +8 % |
+| qwen36-dense | 78.0 / 73.2 / 54.4 | **86.3 / 80.5 / 58.4** | +11 / +10 / +7 % |
+| qwen38 | 78.0 / 73.2 / 54.4 | **86.3 / 80.5 / 58.4** | +11 / +10 / +7 % |
+| devstral | 96.3 / 81.9 / 41.3 | **103.0 / 86.6 / 42.6** | +7 / +6 / +3 % |
+| gemma4 | 85.0 / 80.7 / 61.4 | **90.4 / 85.9 / 64.4** | +6 / +6 / +5 % |
+| nemotron3-omni | 100.8 / 99.6 / 93.1 | 101.1 / 100.4 / 94.6 | +0 / +1 / +2 % |
+
+The gain is the allreduce latency removed from every layer: it is largest where the step is shortest (the A3B MoE
+presets, whose 4–5 ms steps were a fifth allreduce), smallest on the Mamba2 hybrid (6 attention layers). The
+2026-09-10 profile charged NCCL 12 % of qwen38's step; the measured 10–11 % is that share.
+
