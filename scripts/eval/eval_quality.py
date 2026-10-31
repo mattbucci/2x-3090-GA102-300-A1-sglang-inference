@@ -14,6 +14,7 @@ Usage:
     python scripts/eval/eval_quality.py --port 23334 --tag "REAP-28B"
 """
 import argparse
+import os
 import json
 import re
 import sys
@@ -80,6 +81,9 @@ def mmlu_eval(url, n_samples=100, max_workers=8):
     return {"name": "MMLU", "correct": correct, "total": total, "accuracy": accuracy}
 
 
+HUMANEVAL_TIMEOUT_S = 30  # per-sample wall clock for the exec'd candidate + tests
+
+
 def humaneval_eval(url, n_samples=20, max_workers=4):
     """Run HumanEval code generation eval (pass@1)."""
     ds = load_dataset("openai/openai_humaneval", split="test")
@@ -106,11 +110,24 @@ def humaneval_eval(url, n_samples=20, max_workers=4):
             completion = re.sub(r"<think>.*", "", completion, flags=re.DOTALL)
             full_code = prompt + completion
 
-            # Try to execute
-            exec_globals = {}
-            exec(full_code + "\n" + test_code, exec_globals)
-            exec_globals["check"](exec_globals[entry_point])
-            return True
+            # Execute the candidate in a subprocess with a hard timeout. An
+            # in-process exec() has no way to stop a non-terminating completion
+            # (2026-10-31: a qwen38 sample spun the evaluator for 25 min on a
+            # live GPU — one thread at 95 % CPU, the server idle); a hung
+            # sample is a failed sample.
+            import subprocess, sys, tempfile
+            with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as f:
+                f.write(full_code + "\n" + test_code + f"\ncheck({entry_point})\n")
+                path = f.name
+            try:
+                r = subprocess.run([sys.executable, "-I", path], capture_output=True,
+                                   timeout=HUMANEVAL_TIMEOUT_S)
+                return r.returncode == 0
+            except subprocess.TimeoutExpired:
+                return False
+            finally:
+                try: os.unlink(path)
+                except OSError: pass
         except Exception:
             return False
 
