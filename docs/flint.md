@@ -31,7 +31,7 @@ tool probe identical row by row. Receipt: [`benchmarks/flint/kv-dtype-ab-2026-10
 
 **Retrieval cliff between 243.5K and 252K actual tokens** (KV-dtype independent): 243.5K @0.5 / @0.9 greedy found on
 2026-10-22; 252,401 actual — @0.1 and @0.5 miss on every draw with a confident wrong answer, @0.9 hits on every draw.
-Treat the last ~8 % of the 262,144 window as unreliable for mid-context retrieval. The stock filler of
+Treat the last ~8 % of the 262,144 window as unreliable for mid-context retrieval. R9700 reproduces it the same day on their FP8 build (243.5K @0.1 miss, 248K @0.1 / @0.5 miss, @0.9 found; sink kernels verified against a torch reference), so it is the checkpoint's behaviour across INT4 / FP8 and CUDA / ROCm, not a quantization or serving defect. The stock filler of
 `probe_256k_tooluse.py` is the same repetition attractor as the filler needle (0.4, length-stops from 131K, both arms) —
 Flint needs a natural-haystack tool probe before its 256K tool-use row means anything.
 

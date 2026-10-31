@@ -55,6 +55,8 @@ repeated-sentence filler of `probe_256k_tooluse.py` is the same repetition attra
 Flint length-stops from 131K on it, identically on both arms; a natural-haystack variant of the tool probe is the
 instrument Flint needs.
 
+**Cross-stack confirmation (R9700, same day, FP8 per-channel build on ROCm, bf16 KV — their `07432a6`, `benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md`):** 243,481 actual @0.1 **miss** / @0.5 found / @0.9 found; 248,383 @0.1 miss / @0.5 **miss** (sampled 0/3, the model reasons that no password is present and invents one) / @0.9 found; every greedy miss reproduces byte-for-byte from a cold cache, and their sink kernels match a torch reference. Three quant formats (INT4 g64 bf16 KV, INT4 g64 e5m2 KV, FP8) and two stacks agree: the cliff is the checkpoint's — depth 0.1 goes first at ~243K, depth 0.5 by ~248K, depth 0.9 holds to the window. A 243.5K / 248K INT4 pass at all three depths is queued to close their depth-0.1 ask.
+
 **Decision:** `fp8_e5m2` is the `flint` preset default from 2026-10-31 (`KV_DTYPE=auto` restores bf16 KV). Ship steps:
 fleet re-sweep → `benchmarks/flint/results.json` (bf16 sweep kept as `results-bf16kv-2026-10-25.json`), tripwire
 `BASELINE=save`, serving-image rebuild (the image bakes `launch.sh`), parity smoke.
