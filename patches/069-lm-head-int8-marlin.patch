@@ -20,10 +20,10 @@ index 77b16ef36f..f1695e59aa 100644
      SGLANG_DSPARK_USE_GREEDY_DRAFT = EnvBool(False)
 diff --git a/python/sglang/srt/layers/quantization/lm_head_int8_marlin.py b/python/sglang/srt/layers/quantization/lm_head_int8_marlin.py
 new file mode 100644
-index 0000000000..a7b6b76cfa
+index 0000000000..6473ba1fee
 --- /dev/null
 +++ b/python/sglang/srt/layers/quantization/lm_head_int8_marlin.py
-@@ -0,0 +1,204 @@
+@@ -0,0 +1,205 @@
 +"""[3090 069] Load-time INT8 lm_head through the GPTQ-Marlin W8A16 kernel.
 +
 +Our AWQ ships leave ``lm_head`` in bf16 (the checkpoints' ``modules_to_not_convert``
@@ -85,13 +85,14 @@ index 0000000000..a7b6b76cfa
 +    import json
 +    import os
 +
++    paths = []
 +    try:
-+        from sglang.srt.server_args import get_global_server_args
++        from sglang.srt.runtime_context import get_server_args  # the operator's raw input
 +
-+        sa = get_global_server_args()
++        sa = get_server_args()
 +        paths = [getattr(sa, "tokenizer_path", None), getattr(sa, "model_path", None)]
-+    except Exception:
-+        paths = []
++    except Exception as e:
++        logger.warning("lm_head int8: server args unavailable for the special-token lookup (%s)", e)
 +    for base in paths:
 +        if not base or not os.path.isdir(base):
 +            continue
