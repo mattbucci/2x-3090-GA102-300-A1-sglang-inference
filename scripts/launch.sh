@@ -74,6 +74,12 @@ WARMUP=""
 WATCHDOG=600
 TP=2
 EXTRA_ARGS="${EXTRA_ARGS:-}"
+# [069] Load-time INT8 lm_head (GPTQ-Marlin W8A16) for checkpoints that ship a bf16
+# head — every AWQ ship here. Default ON since 2026-10-31: qwen38 +5.6 / +5.2 / +4.1 %
+# decode at 1K / 32K / 262K at quality parity (HumanEval 36/40 both heads, needle
+# 12/12, tool probe 1.0 to 256K; receipt benchmarks/quality/lm-head-int8-2026-10-31.md).
+# Tied heads (Gemma 4) fall back to the dense path inside the server. SGLANG_LM_HEAD_INT8=0 disables.
+export SGLANG_LM_HEAD_INT8="${SGLANG_LM_HEAD_INT8:-1}"
 
 # --- Model presets (tuned for 48GB total VRAM) ---
 apply_preset() {

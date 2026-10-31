@@ -1,0 +1,35 @@
+{
+  "model": "Qwen3.8-27B AWQ, int8 lm_head",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "timestamp": "2026-10-31 04:54:18",
+  "output_tokens": 100,
+  "max_total_num_tokens": 682923,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1024,
+      "throughput": 62.47,
+      "ttft_ms": 303.92,
+      "tpot_ms": 12.99,
+      "tok_per_sec": 77.0
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32768,
+      "throughput": 21.82,
+      "ttft_ms": 3202.37,
+      "tpot_ms": 13.83,
+      "tok_per_sec": 72.3
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261916,
+      "throughput": 42.85,
+      "ttft_ms": 484.19,
+      "tpot_ms": 18.57,
+      "tok_per_sec": 53.9
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 # SGLang setup for 2x RTX 3090
 #
 # Clones SGLang v0.5.22 and applies the local patches in patches/*.patch
-# (idempotent — git apply --check skips already-applied). 31 patches; verified
+# (idempotent — git apply --check skips already-applied). 32 patches; verified
 # byte-identical to the live tree by the 3-gate pristine replay — scripted,
 # scripts/test_patch_gates.sh (flipped from v0.5.20 2026-10-20, v0.5.21 skipped;
 # 19 applied clean, 10 re-ported — MoE plumbing renamed tp_rank -> moe_tp_rank /
