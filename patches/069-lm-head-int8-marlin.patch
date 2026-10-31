@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
-index 77b16ef36f..d441b4a5f8 100644
+index 77b16ef36f..f1695e59aa 100644
 --- a/python/sglang/srt/environ.py
 +++ b/python/sglang/srt/environ.py
-@@ -533,6 +533,12 @@ class Envs:
+@@ -533,6 +533,15 @@ class Envs:
      SGLANG_DSPARK_ENABLE_SPS_RECORD = EnvBool(False)
      SGLANG_DSPARK_FAST_KERNEL = EnvBool(True)
      SGLANG_DSPARK_FP32_LM_HEAD = EnvBool(False)
@@ -12,15 +12,18 @@ index 77b16ef36f..d441b4a5f8 100644
 +    # Scale granularity for the INT8 head: -1 = per output channel, or a group size
 +    # (32 / 64 / 128) along the hidden dim; Marlin takes either.
 +    SGLANG_LM_HEAD_INT8_GROUP = EnvInt(-1)
++    # Keep the tokenizer's added / special-token rows (</think>, <|im_end|>, tool tags)
++    # exact in bf16 on top of the int8 head — they decide stop / think boundaries.
++    SGLANG_LM_HEAD_INT8_EXACT_SPECIALS = EnvBool(True)
      # Argmax every draft row, sampling requests included, accepted as a one-hot
      # draft: no step logits kept, lower acceptance at high temperatures.
      SGLANG_DSPARK_USE_GREEDY_DRAFT = EnvBool(False)
 diff --git a/python/sglang/srt/layers/quantization/lm_head_int8_marlin.py b/python/sglang/srt/layers/quantization/lm_head_int8_marlin.py
 new file mode 100644
-index 0000000000..52f803061e
+index 0000000000..a7b6b76cfa
 --- /dev/null
 +++ b/python/sglang/srt/layers/quantization/lm_head_int8_marlin.py
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,204 @@
 +"""[3090 069] Load-time INT8 lm_head through the GPTQ-Marlin W8A16 kernel.
 +
 +Our AWQ ships leave ``lm_head`` in bf16 (the checkpoints' ``modules_to_not_convert``
@@ -42,6 +45,7 @@ index 0000000000..52f803061e
 +import torch
 +from torch.nn.parameter import Parameter
 +
++from sglang.srt.environ import envs
 +from sglang.srt.layers.quantization.base_config import QuantizeMethodBase
 +from sglang.srt.layers.quantization.marlin_utils import (
 +    apply_gptq_marlin_linear,
@@ -73,6 +77,42 @@ index 0000000000..52f803061e
 +    return out
 +
 +
++def _added_token_ids() -> list[int]:
++    """Ids of the tokenizer's added / special tokens (``</think>``, ``<|im_end|>``,
++    tool-call tags, ...), read from tokenizer.json next to the served model. These
++    control tokens decide stop / tool / think boundaries at greedy knife-edges, so
++    their logits are kept exact (bf16) rather than int8."""
++    import json
++    import os
++
++    try:
++        from sglang.srt.server_args import get_global_server_args
++
++        sa = get_global_server_args()
++        paths = [getattr(sa, "tokenizer_path", None), getattr(sa, "model_path", None)]
++    except Exception:
++        paths = []
++    for base in paths:
++        if not base or not os.path.isdir(base):
++            continue
++        tj = os.path.join(base, "tokenizer.json")
++        if os.path.exists(tj):
++            try:
++                data = json.load(open(tj))
++                ids = sorted({int(x["id"]) for x in data.get("added_tokens", []) if "id" in x})
++                if ids:
++                    return ids
++            except Exception as e:  # pragma: no cover
++                logger.warning("lm_head int8: could not read %s (%s)", tj, e)
++        aj = os.path.join(base, "added_tokens.json")
++        if os.path.exists(aj):
++            try:
++                return sorted(int(v) for v in json.load(open(aj)).values())
++            except Exception:
++                pass
++    return []
++
++
 +class Int8MarlinLMHeadMethod(QuantizeMethodBase):
 +    """Wraps the layer's original (unquantized) embedding method: weight creation
 +    and loading stay bf16; the int8 Marlin repack happens after loading."""
@@ -100,8 +140,6 @@ index 0000000000..52f803061e
 +        n, k = w.shape  # [vocab_per_partition, hidden]
 +        device = w.device
 +        from sglang.kernels.ops.quantization.gptq_marlin_repack import gptq_marlin_repack
-+
-+        from sglang.srt.environ import envs
 +
 +        group = envs.SGLANG_LM_HEAD_INT8_GROUP.get()  # -1 = per output channel; 32/64/128 = group along k
 +        if group != -1 and (group not in (32, 64, 128) or k % group):
@@ -142,6 +180,16 @@ index 0000000000..52f803061e
 +        layer.lm_head_g_idx_sort = marlin_make_empty_g_idx(device)
 +        layer.lm_head_workspace = marlin_make_workspace(device)
 +        layer.lm_head_n, layer.lm_head_k = n, k
++        # Exact bf16 rows for the added / special tokens that fall in this partition.
++        layer.lm_head_exact_ids = None
++        if envs.SGLANG_LM_HEAD_INT8_EXACT_SPECIALS.get():
++            start = int(getattr(layer, "shard_indices", None).org_vocab_start_index) if getattr(layer, "shard_indices", None) is not None else 0
++            local = [i - start for i in _added_token_ids() if 0 <= i - start < n]
++            if local:
++                ids = torch.tensor(local, dtype=torch.long, device=device)
++                layer.lm_head_exact_ids = ids
++                layer.lm_head_exact_rows = Parameter(w.data[ids].clone(), requires_grad=False)  # [m, k] bf16
++                logger.info("lm_head int8: %d special-token rows kept exact (bf16)", len(local))
 +        # Drop the dense copy; keep a zero-size `weight` so callers that probe
 +        # `hasattr(lm_head, "weight")` / `.weight.dtype` still work.
 +        layer.weight = Parameter(torch.empty(0, dtype=w.dtype, device=device), requires_grad=False)
@@ -159,7 +207,7 @@ index 0000000000..52f803061e
 +            # Not repacked (tied / unsupported): plain dense matmul, same as the
 +            # unquantized LM-head path.
 +            return torch.nn.functional.linear(x, layer.weight, bias)
-+        return apply_gptq_marlin_linear(
++        out = apply_gptq_marlin_linear(
 +            input=x,
 +            weight=layer.lm_head_qweight,
 +            weight_scale=layer.lm_head_scales,
@@ -173,6 +221,13 @@ index 0000000000..52f803061e
 +            is_k_full=True,
 +            bias=bias,
 +        )
++        ids = getattr(layer, "lm_head_exact_ids", None)
++        if ids is not None:
++            exact = torch.nn.functional.linear(x, layer.lm_head_exact_rows)  # [tokens, m]
++            if bias is not None:
++                exact = exact + bias[ids]
++            out[..., ids] = exact.to(out.dtype)
++        return out
 diff --git a/python/sglang/srt/layers/vocab_parallel_embedding.py b/python/sglang/srt/layers/vocab_parallel_embedding.py
 index 4e7a955451..0d9d671f46 100644
 --- a/python/sglang/srt/layers/vocab_parallel_embedding.py
