@@ -393,7 +393,11 @@ def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50, needle_lengths=[1024
     else:
         print(f"\nHumanEval: {results['humaneval']['pass_rate']:.1%} (cached)")
 
-    if "labbench" not in results or not results["labbench"].get("_overall"):
+    if labbench_n <= 0:
+        # --labbench-samples 0 skips LAB-Bench (it used to mean "all 199 LitQA2 items" — an
+        # A/B that only wants MMLU + HumanEval burned an hour per arm on 2026-10-31).
+        print("\nLAB-Bench: skipped (--labbench-samples 0)")
+    elif "labbench" not in results or not results["labbench"].get("_overall"):
         print(f"\nLAB-Bench ({labbench_n} samples per benchmark, {len(LAB_BENCH_BENCHMARKS)} benchmarks)...")
         results["labbench"] = labbench_suite(url, n_samples=labbench_n, max_workers=workers, max_tokens=mc_budget)
         print(f"  Overall: {results['labbench']['_overall']['accuracy']:.1%}")
@@ -405,7 +409,10 @@ def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50, needle_lengths=[1024
             if bench in lb:
                 print(f"    {bench}: {lb[bench]['accuracy']:.1%}")
 
-    if "needle" not in results or not results["needle"].get("results"):
+    needle_lengths = [l for l in needle_lengths if l > 0]
+    if not needle_lengths:
+        print("\nNeedle: skipped (--needle-lengths 0)")
+    elif "needle" not in results or not results["needle"].get("results"):
         print(f"\nNeedle ({needle_lengths})...")
         results["needle"] = needle_eval(url, needle_lengths, max_tokens=mc_budget)
         for r in results["needle"]["results"]:
