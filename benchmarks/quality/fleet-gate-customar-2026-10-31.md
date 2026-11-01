@@ -14,7 +14,7 @@ Fleet harness (`eval_and_chart.py --mmlu-samples 60 --humaneval-samples 30 --mc-
 | `flint` | 47/57 | 25/30 | 3/6 (3 cells were window-overflow 400s, not misses — re-probed below) | 68 % MMLU-30 · 29/40 HE (KV A/B) |
 | `nemotron3-omni` | 50/57 | 30/30 | 6/6 | 30/30 · 25/25 (10-25) |
 
-**Verdict:** no preset moves outside its same-day arms where one exists (five presets), and the four with only a 30-sample 10-25 reference (devstral, gemma4, nemotron3-omni) or a different-harness reference (flint) sit within binomial noise of it; HumanEval is 29–30/30 on every preset but Flint (25/30, above its 29/40 KV-A/B arms). Needle 6/6 on eight presets; Flint's 131K cells 3/3 and its 250K cells were three 400s from the probe (the natural haystack tokenizes past the window at the default chars/token — the probe now rescales from the server's count and records `error`; re-probe below).
+**Verdict (final, with the controls):** every preset is cleared — devstral / gemma4 / nemotron3-omni read the same with the allreduce off (the 10-25 drift was the 30-sample set), Flint's deep band is identical on both arms. No preset moves outside its same-day arms where one exists (five presets), and the four with only a 30-sample 10-25 reference (devstral, gemma4, nemotron3-omni) or a different-harness reference (flint) sit within binomial noise of it; HumanEval is 29–30/30 on every preset but Flint (25/30, above its 29/40 KV-A/B arms). Needle 6/6 on eight presets; Flint's 131K cells 3/3 and its 250K cells were three 400s from the probe (the natural haystack tokenizes past the window at the default chars/token — the probe now rescales from the server's count and records `error`; re-probe below).
 
 ## Same-day control arms (allreduce off; devstral also with the INT8 head off = the 10-25 config)
 
@@ -28,5 +28,5 @@ Fleet harness (`eval_and_chart.py --mmlu-samples 60 --humaneval-samples 30 --mc-
 | `nemotron3-omni` | shipped (AR on; INT8 head pinned off) | 50/57 | 30/30 | |
 | `nemotron3-omni` | AR off | 52/57 | 30/30 | within two items, needle 6/6 — cleared |
 | `flint` | AR on, 250K natural re-probe at 244,606 actual, 2 sampled passes | needle 2/6 (pass 1: 0.5 + 0.9 found, 0.1 "I don't know"; pass 2: 0/3 — 0.1 "I don't know", 0.5 "Bazinga", 0.9 think-loop to the budget) | | the known text-dependent band (≥ 240K, both KV dtypes, R9700 FP8 too); AR-off re-run below decides whether the allreduce shifts the odds |
-| `flint` | AR off, same re-probe | _running_ | | |
+| `flint` | AR off, same re-probe, 2 sampled passes | needle 2/6 (depth 0.9 found both passes; 0.1 / 0.5 confident wrong answers) | | **same 2/6 as AR on → the allreduce is not the cause; the checkpoint's text-dependent band at ≥ 240K (depths ≤ 0.5), depth 0.9 3/4 across both arms. Flint keeps the shipped config.** |
 
