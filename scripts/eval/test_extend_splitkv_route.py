@@ -67,6 +67,7 @@ def time_us(fn, iters=10, repeats=5):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--presets", default="qwen38,flint"); ap.add_argument("--prefixes", default="8192,58000,197000")
     ap.add_argument("--mem", action="store_true", help="report free-memory delta across the first launch per preset and per-kernel regs/spills")
+    ap.add_argument("--route-chunk", type=int, default=0, help="emulate the served route for K > tile: consecutive chunks of this many rows, chunk c sees the prefix + the earlier new tokens through the pool (R9700 patch 110 shape)")
     ap.add_argument("--suffixes", default="1,8,16"); ap.add_argument("--kv-dtypes", default="bf16,e5m2", help="e4m3 has no Triton extend kernel on sm_86 (fp8e4nv unsupported)"); ap.add_argument("--out", default=None)
     a = ap.parse_args()
     from sglang.kernels.ops.attention.extend_attention import extend_attention_fwd
@@ -79,7 +80,7 @@ def main():
             kv_dtype = DT[kvn]; fp8 = kv_dtype != torch.bfloat16
             k_scale = 0.07 if fp8 else 1.0; v_scale = 0.05 if fp8 else 1.0
             for P in [int(x) for x in a.prefixes.split(",")]:
-                pool_n = P + 1024
+                pool_n = P + 1024 + max(int(x) for x in a.suffixes.split(","))
                 k_buf = (torch.randn(pool_n, p["h_kv"], p["head_dim"], device=dev) * (6.0 if fp8 else 0.5)).to(kv_dtype)
                 v_buf = (torch.randn(pool_n, p["h_kv"], p["v_head_dim"], device=dev) * (6.0 if fp8 else 0.5)).to(kv_dtype)
                 kv_indices = torch.randperm(pool_n, device=dev, dtype=torch.int32)[:P].contiguous()
@@ -100,9 +101,32 @@ def main():
                         q3 = torch.cat([q, q.new_zeros((pad,) + q.shape[1:])]); k3 = torch.cat([k_ext, k_ext.new_zeros((pad,) + k_ext.shape[1:])])
                         v3 = torch.cat([v_ext, v_ext.new_zeros((pad,) + v_ext.shape[1:])]); o3 = q3.new_empty((n_pad, p["h_q"], p["v_head_dim"]))
                         qo_pad = torch.tensor([0, n_pad], device=dev, dtype=torch.int32)
-                        def cand():
-                            return verify_splitkv_fwd(q3, k3, v3, o3, k_buf, v_buf, qo_pad, kv_indptr, kv_indices, None, True, None, n_pad,
-                                                      k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0, sinks=sinks, max_bs=1)
+                        tile = a.route_chunk
+                        if tile and K > tile:
+                            # the served path: new tokens' K/V sit in the pool (set_kv_buffer) at new_slots; chunk c attends to
+                            # prefix + new tokens before it via kv_indices, causally to its own rows via kc/vc
+                            new_slots = torch.arange(P, P + K, device=dev, dtype=torch.int32) + 512  # inside pool_n, off the prefix rows
+                            k_buf[new_slots] = k_ext.to(kv_dtype); v_buf[new_slots] = v_ext.to(kv_dtype)
+                            o_c = torch.empty(K, p["h_q"], p["v_head_dim"], device=dev, dtype=torch.bfloat16)
+                            chunks = []
+                            for start in range(0, K, tile):
+                                n_c = min(tile, K - start); n_pc = max(16, 1 << (n_c - 1).bit_length()); pad_c = n_pc - n_c
+                                qc = torch.cat([q[start:start + n_c], q.new_zeros((pad_c,) + q.shape[1:])]); kc = torch.cat([k_ext[start:start + n_c], k_ext.new_zeros((pad_c,) + k_ext.shape[1:])])
+                                vc = torch.cat([v_ext[start:start + n_c], v_ext.new_zeros((pad_c,) + v_ext.shape[1:])]); oc = qc.new_empty((n_pc, p["h_q"], p["v_head_dim"]))
+                                idx_c = kv_indices if start == 0 else torch.cat([kv_indices, new_slots[:start]]); ptr_c = torch.tensor([0, P + start], device=dev, dtype=torch.int32)
+                                chunks.append((start, n_c, n_pc, qc, kc, vc, oc, idx_c, ptr_c, torch.tensor([0, n_pc], device=dev, dtype=torch.int32)))
+                            def cand():
+                                ok_all = True
+                                for start, n_c, n_pc, qc, kc, vc, oc, idx_c, ptr_c, qo_c in chunks:
+                                    ok_all &= bool(verify_splitkv_fwd(qc, kc, vc, oc, k_buf, v_buf, qo_c, ptr_c, idx_c, None, True, None, n_pc,
+                                                                      k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0, sinks=sinks, max_bs=1))
+                                    o_c[start:start + n_c].copy_(oc[:n_c])
+                                return ok_all
+                            o3 = o_c  # compared below as o3[:K]
+                        else:
+                            def cand():
+                                return verify_splitkv_fwd(q3, k3, v3, o3, k_buf, v_buf, qo_pad, kv_indptr, kv_indices, None, True, None, n_pad,
+                                                          k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0, sinks=sinks, max_bs=1)
                         try:
                             ref(); torch.cuda.synchronize()
                         except Exception as e:
