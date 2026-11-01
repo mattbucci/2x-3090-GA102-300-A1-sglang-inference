@@ -316,11 +316,18 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
                 if "choices" in r:
                     err = None
                     break
-                err = str((r.get("error") or {}).get("message", r.get("error", r)))[:200] if isinstance(r, dict) else str(r)[:200]
-                m = re.search(r"input \((\d+) tokens\)", err)
+                err = str((r.get("error") or {}).get("message", r.get("error", r)))[:300] if isinstance(r, dict) else str(r)[:300]
+                # two server wordings: "The input (N tokens) is longer than the model's context length (L tokens)"
+                # and "Requested token count exceeds the model's maximum context length of L tokens. You requested
+                # a total of T tokens: N tokens from the input messages and B tokens for the completion."
+                m = re.search(r"input \((\d+) tokens\)", err) or re.search(r"(\d+) tokens from the input", err)
+                lim = re.search(r"context length(?: of)? \(?(\d+) tokens", err)
                 if not m:
                     break
-                chars_per_token = chars_per_token * ctx / int(m.group(1)) * 0.995
+                target = ctx
+                if lim:   # the prompt must leave room for the answer budget inside the window
+                    target = min(ctx, int(lim.group(1)) - needle_budget - 256)
+                chars_per_token = chars_per_token * target / int(m.group(1)) * 0.995
             try:
                 if err:
                     raise RuntimeError(err)
