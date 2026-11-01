@@ -1,0 +1,35 @@
+{
+ "timestamp": "2026-11-01 00:04",
+ "gpu": "NVIDIA GeForce RTX 3090",
+ "smi": [
+  "NVIDIA GeForce RTX 3090, 300.00 W, 1260 MHz, 2100 MHz",
+  "NVIDIA GeForce RTX 3090, 300.00 W, 210 MHz, 2100 MHz"
+ ],
+ "rows": [
+  {
+   "M": 8192,
+   "K": 8192,
+   "N": 8192,
+   "fp16_fp32acc_tflops": 93.8,
+   "torch_int_mm_tops": 51.7,
+   "sgl_int8_scaled_mm_tops": 163.2
+  },
+  {
+   "M": 8192,
+   "K": 5120,
+   "N": 5120,
+   "fp16_fp32acc_tflops": 82.2,
+   "torch_int_mm_tops": 52.3,
+   "sgl_int8_scaled_mm_tops": 196.1
+  },
+  {
+   "M": 8192,
+   "K": 5120,
+   "N": 17408,
+   "fp16_fp32acc_tflops": 111.1,
+   "torch_int_mm_tops": 47.3,
+   "sgl_int8_scaled_mm_tops": 185.3
+  }
+ ],
+ "note": "GPU 0 only; fp16 = torch.mm with fp32 accumulate (reduced-precision reduction off)."
+}
