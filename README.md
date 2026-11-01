@@ -36,7 +36,7 @@ Every deep point is **server-verified at its labeled depth** (`actual_input_toke
 
 ## Status & next steps
 
-**Live:** the SWE-bench Lite re-roll is **paused since 2026-10-31** (user call: the GPUs go to the decode experiments in item 3) with `qwen36-ream` at 117/300; the queue resumes from that row (`qwen35-moe`, `coder-30b-eval`, `coder-reap-25b`, `coder-30b-ream`, `devstral`, `gemma4`, `nemotron3-omni` behind it, about a day each) via `swebench-bakeoff.service`. Closed so far: `qwen38` 196, `qwen36-dense` 191, `flint` 182 (`omp` 186), `qwen36` 176 of 300 — table below. How the campaign got here (the 2026-09-20 isolation restart, the DSpark `-v4` restart, capture-at-wall, the harness defects each boundary fixed, the 2026-10-22 pruning to opencode): [`docs/swebench-bakeoff.md`](docs/swebench-bakeoff.md#campaign-history).
+**Live:** the SWE-bench Lite re-roll is **paused since 2026-10-31** (user call; the decode experiments it made room for are landed — item 3 — and the GPUs are idle on the new serving image) with `qwen36-ream` at 117/300; the queue resumes from that row (`qwen35-moe`, `coder-30b-eval`, `coder-reap-25b`, `coder-30b-ream`, `devstral`, `gemma4`, `nemotron3-omni` behind it, about a day each) via `swebench-bakeoff.service`. Closed so far: `qwen38` 196, `qwen36-dense` 191, `flint` 182 (`omp` 186), `qwen36` 176 of 300 — table below. How the campaign got here (the 2026-09-20 isolation restart, the DSpark `-v4` restart, capture-at-wall, the harness defects each boundary fixed, the 2026-10-22 pruning to opencode): [`docs/swebench-bakeoff.md`](docs/swebench-bakeoff.md#campaign-history).
 
 **Next steps, in order:**
 
