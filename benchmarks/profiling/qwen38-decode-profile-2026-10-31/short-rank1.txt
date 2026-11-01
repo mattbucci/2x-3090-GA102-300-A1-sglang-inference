@@ -1,0 +1,41 @@
+# qwen38 short — actual prompt_tokens=135, 64 decode steps, trace 1793500589.3168778-TP-1.trace.json.gz
+
+=== step[DECODE bs=1] × 60 steps (after skipping 3) ===
+  per step: CPU wall 1.74 ms | GPU span 11.55 ms | kernel-sum 12.94 ms
+  exposed time (sweep line):
+      7.930 ms/step   68.6%  marlin(int4)
+      1.404 ms/step   12.1%  gemm/gemv(fp16)+marlin(int4)
+      0.563 ms/step    4.9%  gdn
+      0.492 ms/step    4.3%  norm
+      0.396 ms/step    3.4%  misc
+      0.289 ms/step    2.5%  gemm/gemv(fp16)
+      0.242 ms/step    2.1%  attention
+      0.123 ms/step    1.1%  act
+      0.047 ms/step    0.4%  idle-gap
+      0.037 ms/step    0.3%  nccl
+  top 25 kernels (ms/step, count/step):
+      8.591   256.0  void sglang::device::marlin::Marlin<__half, 1125899906843648l, 256, 1, 8, 8, true, 4, 8, false>(int4
+      1.597    48.0  std::enable_if<!(false), void>::type internal::gemvx::kernel<int, int, __half, float, float, float, 
+      0.757     1.0  void sglang::device::marlin::Marlin<__half, 1125899923621888l, 256, 1, 8, 8, true, 4, -1, false>(int
+      0.458    48.0  fused_recurrent_gated_delta_rule_packed_decode_kernel
+      0.379   128.0  void flashinfer::norm::FusedAddRMSNormKernel<8u, __half>(__half*, __half*, __half*, unsigned int, un
+      0.311   129.0  void sglang::all_reduce_1shot_push_kernel<sglang::LoadStoreImpl<sglang::device::AlignedVector<__half
+      0.201    16.0  void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::Mask
+      0.111    48.0  _fused_qkvzba_causal_conv1d_update_contiguous_kernel
+      0.109    64.0  void sglang::act_and_mul_kernel<__half, (sglang::ActivationKind)0, false, false, false, false, false
+      0.097    48.0  void cublasLt::splitKreduce_kernel<32, 16, int, float, __half, float, __half, false, __half, __half,
+      0.078    48.0  _layer_norm_fwd_1pass_kernel
+      0.057    32.0  void at::native::vectorized_elementwise_kernel<4, at::native::ConvertToFloat8E4M3fnOp<c10::Half>, st
+      0.042    16.0  _fused_qk_rmsnorm_rope_gate_kernel
+      0.041    16.0  void flashinfer::PersistentVariableLengthMergeStatesKernel<8u, 32u, 4u, 4u, __half, __half, int>(__h
+      0.037     1.0  ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)
+      0.023    16.0  void sglang::store_kvcache_kernel<512l, 512l, 32u, false, long>(sglang::StoreKVCacheParams)
+      0.022    16.0  _fused_sigmoid_mul_kernel
+      0.003     1.0  void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda(at::TensorIteratorB
+      0.003     1.0  void dot_kernel<float, 128, 0, cublasDotParams<cublasGemvTensorStridedBatched<__half const>, cublasG
+      0.003     2.0  Memcpy DtoD (Device -> Device)
+      0.003     1.0  void flashinfer::norm::RMSNormKernel<8u, __half>(__half*, __half*, __half*, unsigned int, unsigned i
+      0.002     1.0  Memcpy HtoD (Pinned -> Device)
+      0.002     1.0  void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_put
+      0.002     1.0  void at_cuda_detail::cub::detail::scan::DeviceScanKernel<at_cuda_detail::cub::detail::scan::policy_h
+      0.002     1.0  _vocab_parallel_embedding_kernel
