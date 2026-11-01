@@ -1,0 +1,91 @@
+{
+ "tag": "gemma4-customar-needle-2026-10-31",
+ "timestamp": "2026-10-31 22:53",
+ "temperature": "default",
+ "haystack": "filler",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 131114,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 161,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " Found: \"The secret password is: BANANA42.\"\n\n    *   The secret password is BANANA42.\n\n    *   The user requested *just* the password.\n    0.  Answer: BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 131114,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 214,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " the lazy dog. The quick brown fox jumps over the lazy dog...\"\n    *   Password: `BANANA42`\n\n    *   The user requested *just* the password.\n\n    *   `BANANA42`",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131114,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 187,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "word is: BANANA42.\" explicitly identifies the password.\n    *   The password is `BANANA42`.\n\n    *   The user requested *just* the password.\n\n    *   `BANANA42`",
+    "answered": true
+   },
+   {
+    "context": 250000,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 250043,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 176,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " *   Output: BANANA4s (Wait, let me re-read).\n    *   Actual password in text: `BANANA42`\n\n    *   The request asks for \"just the password\".\n\n    *   `BANANA42`",
+    "answered": true
+   },
+   {
+    "context": 250000,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 250043,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 121,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " is: BANANA42.\"\n\n    *   \"The secret password is: BANANA42.\"\n\n    *   The user requested to \"Answer with just the password.\"\n    *   The password is `BANANA42`.",
+    "answered": true
+   },
+   {
+    "context": 250000,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 250043,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 162,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ick brown fox jumps over the lazy dog.\" (repeated many times)\n\n    *   Password: `BANANA42`\n\n    *   The user requested \"just the password\".\n\n    *   `BANANA42`",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}

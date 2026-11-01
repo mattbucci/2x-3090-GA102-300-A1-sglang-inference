@@ -1,0 +1,91 @@
+{
+ "tag": "flint-customar-needle-2026-10-31",
+ "timestamp": "2026-10-31 23:01",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 129784,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 126,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "NANA42\" appeared earlier: \"The secret password is: BANANA42.\" That likely is the secret password. The final asks answer with just password. So respond BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 129787,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 156,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ret password is: BANANA42.\" Yes! Near end: \"The secret password is: BANANA42.\" Then continues. So answer should be just BANANA42. Need final with just password.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 129787,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 39,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "We need answer user. Need parse final: \"The secret password is: BANANA42. Answer with just the password.\" So should output just BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 250000,
+    "depth": 0.1,
+    "found": false,
+    "actual_prompt_tokens": null,
+    "finish_reason": null,
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": null,
+    "content_tail": "",
+    "reasoning_tail": "",
+    "answered": false
+   },
+   {
+    "context": 250000,
+    "depth": 0.5,
+    "found": false,
+    "actual_prompt_tokens": null,
+    "finish_reason": null,
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": null,
+    "content_tail": "",
+    "reasoning_tail": "",
+    "answered": false
+   },
+   {
+    "context": 250000,
+    "depth": 0.9,
+    "found": false,
+    "actual_prompt_tokens": null,
+    "finish_reason": null,
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": null,
+    "content_tail": "",
+    "reasoning_tail": "",
+    "answered": false
+   }
+  ],
+  "score": 0.5,
+  "answered_score": 0.5
+ }
+}
