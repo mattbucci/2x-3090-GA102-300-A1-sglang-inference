@@ -40,7 +40,12 @@ jobs:
           sudo rsync -a /var/lib/docker/ /mnt/docker/
           printf '{"data-root":"/mnt/docker"}\n' | sudo tee /etc/docker/daemon.json
           sudo systemctl start docker
+      # driver: docker (not the default docker-container) runs BuildKit inside the host
+      # daemon, so `load: true` below is the build -- no export-then-reimport round trip
+      # writing a second full copy of the multi-stage build onto the runner's /mnt volume.
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          driver: docker
       - name: Run offline security checks
         run: |
           bash -n docker/*.sh scripts/*.sh
@@ -133,6 +138,11 @@ jobs:
           fi
           candidate_ref="${CANDIDATE_TAG}@${CANDIDATE_DIGEST}"
           docker buildx imagetools inspect "$candidate_ref"
+          # The candidate is in GHCR now. The builder's cache (the full multi-stage
+          # build, on /mnt) and the pulled image do not both fit on the runner's
+          # /mnt volume, so drop the cache before pulling the image back.
+          docker buildx prune --all --force
+          df -h /mnt
           docker pull "$candidate_ref"
           test "$(docker image inspect "$candidate_ref" --format '{{.Config.User}}')" = "10001:10001"
           docker run --rm --entrypoint /bin/sh "$candidate_ref" -ec '
