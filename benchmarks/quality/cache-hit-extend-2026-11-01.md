@@ -71,3 +71,16 @@ Cause: `_verify_combine_stage2` was launched with `num_warps=1` and materialised
 Second defect, found by the same test on a sink cell that scaled with the sink value: `VerifySplitKV.__call__` accepted `sinks` but did not forward them to the combine launch, so `HAS_SINKS` was always False and the route ignored Flint's learned sinks (output too large by the sink's softmax share: ~1 % at a +4.3 sink over an 8K prefix — the "ulp-class outlier" of the first test was this). Fixed; the sink cells now sit at the bf16 floor like the rest.
 
 Receipt `benchmarks/profiling/extend-splitkv-route-v2-2026-11-01.json` (qwen38, flint ± sinks, gemma4-31b, gemma4 × bf16/e5m2 × 8K/58K/197K × 1/8/16 new tokens — all cells pass; 7.0–7.3× (qwen38), 12–16× (flint), 9.6–12× (gemma4-31b), 20–22× (gemma4) per layer at 197K). The served Flint numbers above were measured with the sink-less kernel and are being re-taken; the Gemma 4 gates and the DSpark spec arm (same kernel, L_EXT = 4) run behind it.
+
+## Gemma 4 31B on the fixed route (kernel v2 + boot warm-up, 2026-11-01)
+
+Warm-up compiled both kernels at boot in 2.1 s (`[070] split-KV short-turn route warmed (h_q=16 h_kv=8 d=256 kv=e5m2)`); no first-request JIT.
+
+| gemma4-31b, cached prefix | +1 token before → with route | +16 tokens | +128 tokens |
+|---|---:|---:|---:|
+| 34,649 | 97 → **64 ms** | 144 → 140 ms | 183 → 178 ms |
+| 140,261 | 274 → **71 ms** | 471 → 473 ms | 528 → 526 ms |
+| 232,581 | 437 → **92 ms** | 782 → 791 ms | 848 → 860 ms |
+
+- The 1-token turn loses the whole serial-prefix walk (**−74 % at 140K, −79 % at 233K**) and what remains (71–92 ms) is the tokenizer + launch floor.
+- The bench's "16 new tokens" did **not** route on Gemma: the server counts the chat template's turn framing with the new text (`prompt_tokens` grows by 16 over the 1-token row, which itself carries ~6 template tokens), so the routed class `K ≤ 16` excludes it. Flint's shorter framing kept its 16-token row inside the cap. Short tool results are 20–60 tokens — the 16-row tile is the limit, not the lever: a 32/64-row tile test (`--suffixes 17,24,32,48,64`) and a served `MAX_TOKENS=64` arm on flint + gemma4-31b are queued.
