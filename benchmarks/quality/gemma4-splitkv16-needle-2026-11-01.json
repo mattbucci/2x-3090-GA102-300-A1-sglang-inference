@@ -1,0 +1,95 @@
+{
+ "tag": "gemma4-splitkv16-needle-2026-11-01",
+ "timestamp": "2026-11-01 13:29",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 140281,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 22,
+    "content_tail": "",
+    "reasoning_tail": "             print(\"BANANA42\")\n```\n\nThe secret password is: BANANA42.",
+    "answered": false
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 75,
+    "content_tail": "The secret password is: BANANA42.",
+    "reasoning_tail": "ovided text.\n\n    *   Scanning the text for the phrase \"secret password\".\n    *   Found: \"The secret password is: BANANA42.\"\n\nThe secret password is `BANANA42`.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 146,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "The secret password is: BANANA42.\"\n\n    *   The instructions are \"Answer with just the password.\"\n    *   The password is \"BANANA42\".\n\n    *   Target: BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 250000,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 238245,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 158,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "xplicitly says: \"The secret password is: BANANA42.\"\n\n    *   The user wants the secret password.\n    *   The secret password provided in the text is `BANANA42`.",
+    "answered": true
+   },
+   {
+    "context": 250000,
+    "depth": 0.5,
+    "found": false,
+    "actual_prompt_tokens": 238246,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 600,
+    "content_tail": "",
+    "reasoning_tail": "  \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            42",
+    "miss": {
+     "content": "",
+     "reasoning": "            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            \n            42"
+    },
+    "answered": false
+   },
+   {
+    "context": 250000,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 238247,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 213,
+    "content_tail": "",
+    "reasoning_tail": "      \n\n            \n\n            \n\n            \n\n            \n\n            \n\n            \n\n            \n\n            format: text\n            content: BANANA42",
+    "answered": false
+   }
+  ],
+  "score": 0.8333333333333334,
+  "answered_score": 0.5
+ }
+}

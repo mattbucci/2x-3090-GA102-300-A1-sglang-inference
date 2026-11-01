@@ -84,3 +84,8 @@ Warm-up compiled both kernels at boot in 2.1 s (`[070] split-KV short-turn route
 
 - The 1-token turn loses the whole serial-prefix walk (**−74 % at 140K, −79 % at 233K**) and what remains (71–92 ms) is the tokenizer + launch floor.
 - The bench's "16 new tokens" did **not** route on Gemma: the server counts the chat template's turn framing with the new text (`prompt_tokens` grows by 16 over the 1-token row, which itself carries ~6 template tokens), so the routed class `K ≤ 16` excludes it. Flint's shorter framing kept its 16-token row inside the cap. Short tool results are 20–60 tokens — the 16-row tile is the limit, not the lever: a 32/64-row tile test (`--suffixes 17,24,32,48,64`) and a served `MAX_TOKENS=64` arm on flint + gemma4-31b are queued.
+
+## Gate results, Gemma 4 (2026-11-01)
+
+- **gemma4-31b (routed, kernel v2):** MMLU 30/30, HumanEval 30/30, natural needle 6/6 at 131K + 250K. Shipped: `SGLANG_EXTEND_SPLITKV_MAX_TOKENS=16` is the preset default.
+- **gemma4 (26B-A4B, routed):** 1-token turn 197 → **59 ms** at 140K, 310 → **65 ms** at 233K (16-token rows outside the cap, as on the 31B); boot warm-up 0.65 s. Needle 5/6 — one miss at 250K depth 0.5 (600-token whitespace runaway) and two found-but-unanswered — against 6/6 and 12/12 on earlier servers. The needle requests are fresh prefills the route never touches, so this reads as Gemma's `temperature default` (1.0) sampling; a 250K re-probe (greedy + default, ×2) on the as-shipped server is queued before the 26B preset gets the env.

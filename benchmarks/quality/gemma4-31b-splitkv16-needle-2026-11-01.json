@@ -1,0 +1,91 @@
+{
+ "tag": "gemma4-31b-splitkv16-needle-2026-11-01",
+ "timestamp": "2026-11-01 13:08",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 140281,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 82,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "can the text for the phrase \"The secret password is:\".\n\nScanning the text...\n- Found: \"The secret password is: BANANA42.\"\n\nThe user requested just the password.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 56,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "rd\" mentioned in the provided text.\n\n    *   I scanned through the entire provided text.\n    *   I found a specific section: \"The secret password is: BANANA42.\"",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 299,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ANANA42.\nfer different groups of two marbles that he can choose.\"\n\nIt's an oddly placed sentence in the middle of a solution about marbles.\n\nPassword: BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 250000,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 238245,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 57,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "rom the provided text.\nI need to scan the text for the phrase \"The secret password is:\".\n\nLooking through the text...\nFound: \"The secret password is: BANANA42.\"",
+    "answered": true
+   },
+   {
+    "context": 250000,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 238246,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 228,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "a line that says:\n        \"The secret password is: BANANA42.\"\n\n    *   The request is \"Answer with just the password.\"\n    *   The password found is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 250000,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 238247,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 205,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "      The secret password is: BANANA42.\"\n\n    *   The text explicitly says: \"The secret password is: BANANA42.\"\n\n    *   The user requested \"just the password\".",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}
