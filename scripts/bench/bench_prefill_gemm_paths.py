@@ -48,7 +48,9 @@ for (M, K, N) in ((8192, 5120, 17408), (8192, 17408, 5120), (8192, 5120, 5120), 
     int8_full = bench(_int8_full)
     # transient INT4 -> INT8 weight: modelled as a bandwidth-bound pass (read N*K/2 bytes, write N*K bytes)
     src = torch.empty(N * K // 2, device="cuda", dtype=torch.uint8); dst = torch.empty(N, K, device="cuda", dtype=torch.int8)
-    deq = bench(lambda: dst.view(-1)[: N * K // 2].copy_(src) or dst.view(-1)[N * K // 2:].copy_(src))
+    def _deq():
+        dst.view(-1)[: N * K // 2].copy_(src); dst.view(-1)[N * K // 2:].copy_(src)
+    deq = bench(_deq)
     r = {"M": M, "K": K, "N": N, "fp16_ms": round(fp16 * 1e3, 2), "fp16_tflops": round(flop / fp16 / 1e12, 1),
          "marlin_w4a16_ms": round(marlin * 1e3, 2), "marlin_tflops": round(flop / marlin / 1e12, 1),
          "int8_gemm_ms": round(int8_only * 1e3, 2), "int8_tops": round(flop / int8_only / 1e12, 1),

@@ -62,7 +62,15 @@ f, n = sys.argv[1], int(sys.argv[2]); b = json.load(open(f))
 b["messages"][0]["content"] += "\n\n[turn] " + ("tool result line. " * max(1, n // 4))[: n * 4]
 json.dump(b, open(f, "w"))
 PY
-    log "$L: extend mode — $EXTEND_NEW new tokens on the cached prefix"
+    # warm the extend shape un-profiled (kernel JIT / plan) on a different suffix, then re-build the profiled one
+    curl -s -m 1800 "http://127.0.0.1:$PORT/v1/chat/completions" -H 'content-type: application/json' -d @"$body" -o "$resp.warmext"
+    python - "$body" "$EXTEND_NEW" <<'PY'
+import sys, json
+f, n = sys.argv[1], int(sys.argv[2]); b = json.load(open(f))
+b["messages"][0]["content"] = b["messages"][0]["content"].rsplit("\n\n[turn] ", 1)[0] + "\n\n[turn] " + ("second result line. " * max(1, n // 4))[: n * 4]
+json.dump(b, open(f, "w"))
+PY
+    log "$L: extend mode — $EXTEND_NEW new tokens on the cached prefix (shape warmed un-profiled: $(python -c 'import sys,json; j=json.load(open(sys.argv[1])); print(j.get("usage",{}).get("prompt_tokens"))' "$resp.warmext") prompt tokens)"
   else
     curl -s -X POST "http://127.0.0.1:$PORT/flush_cache" >/dev/null
   fi

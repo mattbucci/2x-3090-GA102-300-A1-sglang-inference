@@ -1,0 +1,39 @@
+# qwen38 fresh prefill — actual prompt_tokens=142336, trace 1793518199.2471-TP-0.trace.json.gz
+
+=== step[EXTEND bs=1] × 1 steps (after skipping 0) ===
+  per step: CPU wall 1416.28 ms | GPU span 2480.38 ms | kernel-sum 2474.38 ms
+  exposed time (sweep line):
+    1522.475 ms/step   61.4%  attention
+    723.482 ms/step   29.2%  marlin(int4)
+    148.148 ms/step    6.0%  nccl
+     33.158 ms/step    1.3%  gdn
+     26.719 ms/step    1.1%  norm
+     13.197 ms/step    0.5%  act
+      7.127 ms/step    0.3%  misc
+      5.998 ms/step    0.2%  idle-gap
+  top 25 kernels (ms/step, count/step):
+    1522.475    16.0  void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::Mask
+    711.336   768.0  void sglang::device::marlin::Marlin<__half, 1125899906843648l, 256, 4, 16, 4, false, 4, 8, false>(in
+    148.080   129.0  ncclDevKernel_AllReduce_Sum_f16_RING_LL(ncclDevKernelArgsStorage<4096ul>)
+     19.608   128.0  void flashinfer::norm::FusedAddRMSNormKernel<8u, __half>(__half*, __half*, __half*, unsigned int, un
+     12.143    64.0  void sglang::act_and_mul_kernel<__half, (sglang::ActivationKind)0, false, false, false, false, false
+     11.385   256.0  void sglang::device::marlin::Marlin<__half, 1125899906843648l, 256, 2, 16, 4, false, 4, 8, false>(in
+      7.887    48.0  chunk_gated_delta_rule_fwd_kernel_h_blockdim64
+      6.323    48.0  chunk_fwd_kernel_o
+      5.752    48.0  chunk_gated_delta_rule_fwd_kkt_solve_kernel
+      4.785    48.0  recompute_w_u_fwd_kernel
+      4.313    48.0  _causal_conv1d_fwd_kernel
+      3.669    48.0  fused_qkv_split_gdn_prefill_kernel
+      3.386    48.0  _layer_norm_fwd_1pass_kernel
+      2.558    48.0  ampere_fp16_s16816gemm_fp16_128x64_ldg8_f2f_stages_64x3_tn
+      2.052    16.0  _fused_qk_rmsnorm_rope_gate_kernel
+      2.015   112.0  void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<c10::Half>, std::array<cha
+      1.596    96.0  l2norm_fwd_kernel
+      1.055    16.0  _fused_sigmoid_mul_kernel
+      0.762     1.0  void sglang::device::marlin::Marlin<__half, 1125899923621888l, 256, 1, 8, 8, true, 4, -1, false>(int
+      0.461    49.0  void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_put
+      0.429    48.0  fused_gdn_gating_kernel
+      0.363    50.0  void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_ker
+      0.303    48.0  chunk_local_cumsum_scalar_kernel
+      0.249    49.0  void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_put
+      0.218    16.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::ConvertTo

@@ -45,7 +45,7 @@ def time_us(fn, iters=10, repeats=5):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--presets", default="qwen38,flint"); ap.add_argument("--prefixes", default="8192,58000,197000")
-    ap.add_argument("--suffixes", default="1,8,16"); ap.add_argument("--kv-dtypes", default="bf16,e4m3,e5m2"); ap.add_argument("--out", default=None)
+    ap.add_argument("--suffixes", default="1,8,16"); ap.add_argument("--kv-dtypes", default="bf16,e5m2", help="e4m3 has no Triton extend kernel on sm_86 (fp8e4nv unsupported)"); ap.add_argument("--out", default=None)
     a = ap.parse_args()
     from sglang.kernels.ops.attention.extend_attention import extend_attention_fwd
     from sglang.kernels.ops.attention.verify_splitkv import verify_splitkv_fwd
@@ -81,7 +81,11 @@ def main():
                         def cand():
                             return verify_splitkv_fwd(q3, k3, v3, o3, k_buf, v_buf, qo_pad, kv_indptr, kv_indices, None, True, None, n_pad,
                                                       k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0, sinks=sinks, max_bs=1)
-                        ref(); torch.cuda.synchronize()
+                        try:
+                            ref(); torch.cuda.synchronize()
+                        except Exception as e:
+                            results.append({"preset": pname, "kv": kvn, "prefix": P, "K": K, "sinks": use_sinks, "status": f"extend-ref error: {str(e).splitlines()[-1][:160]}"})
+                            print(f"{pname:6} {kvn:4} P={P:>6} K={K:>2} sinks={use_sinks!s:5} extend-ref ERROR {str(e).splitlines()[-1][:90]}", flush=True); continue
                         try:
                             ran = cand(); torch.cuda.synchronize()
                         except Exception as e:
@@ -92,7 +96,7 @@ def main():
                             print(f"{pname:6} {kvn:4} P={P:>6} K={K:>2} sinks={use_sinks!s:5} can_handle=False", flush=True); continue
                         ref32 = fp32_reference(q, k_ext, v_ext, k_buf, v_buf, kv_indices, k_scale, v_scale, sm_scale, sinks)
                         e_ref = err_vs(ref32, o_ref); e_new = err_vs(ref32, o3[:K])
-                        ok = e_new["finite"] and e_new["cosine"] >= 0.9999 and e_new["max_err_over_refmax"] <= max(1.25 * e_ref["max_err_over_refmax"], 1e-3)
+                        ok = e_new["finite"] and e_new["cosine"] >= 0.9999 and e_new["max_err_over_refmax"] <= max(1.25 * e_ref["max_err_over_refmax"], 4e-3)  # 4e-3 = one bf16 ulp at the output max
                         t_ref = time_us(ref); t_new = time_us(cand)
                         r = {"preset": pname, "kv": kvn, "prefix": P, "K": K, "sinks": use_sinks, "status": "ok" if ok else "FAIL",
                              "extend_err": e_ref, "splitkv_err": e_new, "extend_us": round(t_ref, 1), "splitkv_us": round(t_new, 1), "speedup": round(t_ref / t_new, 2)}
