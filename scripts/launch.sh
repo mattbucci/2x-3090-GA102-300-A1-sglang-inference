@@ -501,6 +501,13 @@ apply_preset() {
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen38|qwen38-27b)
+            # patch 071 (2026-11-01): prefill calls with >= 2048 rows run per-token INT8
+            # activations x a per-channel INT8 copy of the Marlin INT4 weight through the
+            # unlocked GA102 INT8 tensor path (CUTLASS int8_scaled_mm); decode stays W4A16.
+            # Fresh-prefill TTFT 13.4 -> 8.6 s @32K, 71.4 -> 51.0 s @131K, 185.6 -> 144.9 s
+            # @262K, decode identical, MMLU 30/30 HE 29/30 needle 6/6 (receipt
+            # benchmarks/qwen38/w4a8-prefill-2026-11-01/). 0 disables.
+            export SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS="${SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS:-2048}"
             # Qwen3.8-27B Dense hybrid VL (released 2026-08-14). Declares
             # Qwen3_5ForConditionalGeneration / model_type qwen3_5 — a
             # Qwen3.5-FAMILY model, so the existing patch set applies as-is

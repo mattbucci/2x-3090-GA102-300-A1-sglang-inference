@@ -14,3 +14,7 @@ Same tree, same session, arms back to back (`SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS=
 - Quality gate on the INT8 arm (needle 131K + 250K, MMLU / HumanEval) — see below.
 
 Receipts: `arm-0.json`, `arm-2048.json` (this directory); unit test `benchmarks/profiling/w4a8-prefill-unit-2026-11-01.json`.
+
+## Quality gate on the INT8 arm (same server)
+
+MMLU **30/30** (deterministic 30-subject subset; 57-sample reference 52/57), HumanEval **29/30** (reference 29/30), natural needle **6/6** at 131K + 250K (`qwen38-w4a8-2026-11-01.json`, `qwen38-w4a8-needle-2026-11-01.json`). Shipped as the `qwen38` preset default.
