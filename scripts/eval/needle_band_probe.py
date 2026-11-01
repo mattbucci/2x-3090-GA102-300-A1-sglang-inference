@@ -79,7 +79,8 @@ def main():
     for r in results:
         print(f"  {r['context']:>7} @ {r['depth']:<4} {'found' if r['found'] else ('ERROR' if r.get('error') else 'MISS ')}{'' if r['answered'] or not r['found'] else ' (unanswered)'} actual={r['actual_prompt_tokens']} "
               f"finish={r.get('finish_reason')} out={r.get('completion_tokens')}"
-              + ("" if r["found"] else f"  tail={r.get('content_tail') or r.get('reasoning_tail')!r}"))
+              + ("" if r["found"] else f"  tail={r.get('content_tail') or r.get('reasoning_tail')!r}")
+              + (f"  error={r['error'][:120]}" if r.get("error") else ""))
     print(f"score {score:.2f} answered {answered:.2f} -> {path}")
 
 
