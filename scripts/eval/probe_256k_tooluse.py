@@ -175,7 +175,10 @@ def probe_one(url, approx_tokens, max_tokens=2048, timeout=900, depth=0.5,
     if "error" in r:  # e.g. prompt overflowed the server window — caller may retry smaller
         return {"approx_tokens": approx_tokens,
                 "error": str(r["error"].get("message", r["error"]))[:120]}
-    choice = (r.get("choices") or [{}])[0]
+    if not r.get("choices"):  # a 200 with no choices, or a non-OpenAI error body — keep the evidence
+        return {"approx_tokens": approx_tokens,
+                "error": "no choices: " + json.dumps(r, default=str)[:140]}
+    choice = r["choices"][0]
     msg = choice.get("message") or {}
     finish = choice.get("finish_reason")
     prompt_tokens = (r.get("usage") or {}).get("prompt_tokens")
