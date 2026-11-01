@@ -89,3 +89,7 @@ Warm-up compiled both kernels at boot in 2.1 s (`[070] split-KV short-turn route
 
 - **gemma4-31b (routed, kernel v2):** MMLU 30/30, HumanEval 30/30, natural needle 6/6 at 131K + 250K. Shipped: `SGLANG_EXTEND_SPLITKV_MAX_TOKENS=16` is the preset default.
 - **gemma4 (26B-A4B, routed):** 1-token turn 197 → **59 ms** at 140K, 310 → **65 ms** at 233K (16-token rows outside the cap, as on the 31B); boot warm-up 0.65 s. Needle 5/6 — one miss at 250K depth 0.5 (600-token whitespace runaway) and two found-but-unanswered — against 6/6 and 12/12 on earlier servers. The needle requests are fresh prefills the route never touches, so this reads as Gemma's `temperature default` (1.0) sampling; a 250K re-probe (greedy + default, ×2) on the as-shipped server is queued before the 26B preset gets the env.
+
+## DSpark spec arm on kernel v2 (2026-11-01)
+
+`bench_regression.sh arm qwen38-spec` (natural prompts): **169.0 / 108.3 / 74.7 tok/s** at 1K / 32K / 262K against the 169.4 / 108.5 / 74.8 baseline — unchanged. R9700's +10–20 % DSpark decode from the same combine-kernel rework (their patch 109) does not transfer: on this box the DSpark verify step runs through the flashinfer backend, which never calls the split-KV verify kernel; only the triton presets (Flint, Gemma 4) touch it, and only on the short-turn route. Their gain is a Triton-verify-stack effect.
