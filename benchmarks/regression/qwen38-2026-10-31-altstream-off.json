@@ -1,0 +1,36 @@
+{
+  "model": "qwen38",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "prompt_source": "random",
+  "timestamp": "2026-10-31 20:47:27",
+  "output_tokens": 100,
+  "max_total_num_tokens": 680638,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1024,
+      "throughput": 68.75,
+      "ttft_ms": 302.16,
+      "tpot_ms": 11.53,
+      "tok_per_sec": 86.7
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32768,
+      "throughput": 22.71,
+      "ttft_ms": 3167.92,
+      "tpot_ms": 12.37,
+      "tok_per_sec": 80.8
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261916,
+      "throughput": 46.72,
+      "ttft_ms": 443.29,
+      "tpot_ms": 17.04,
+      "tok_per_sec": 58.7
+    }
+  ]
+}
