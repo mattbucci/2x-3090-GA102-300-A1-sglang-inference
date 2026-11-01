@@ -18,5 +18,14 @@ Fleet harness (`eval_and_chart.py --mmlu-samples 60 --humaneval-samples 30 --mc-
 
 ## Same-day control arms (allreduce off; devstral also with the INT8 head off = the 10-25 config)
 
-_filled in as the arms land_
+| preset | arm | MMLU | HumanEval | read |
+|---|---|---:|---:|---|
+| `devstral` | shipped (AR on, INT8 head) | 43/57 | 29/30 | |
+| `devstral` | AR off | 43/57 | 29/30 | identical |
+| `devstral` | AR off + bf16 head (the 10-25 config) | 43/57 | 29/30 | identical — the 10-25 25/30 was the 30-sample set, not a lever |
+| `gemma4` | shipped (AR on; head tied, INT8 inert) | 46/57 | 29/30 | |
+| `gemma4` | AR off | 47/57 | 29/30 | within one item — cleared |
+| `nemotron3-omni` | shipped (AR on; INT8 head pinned off) | 50/57 | 30/30 | |
+| `nemotron3-omni` | AR off | _running_ | | |
+| `flint` | 250K natural re-probe, AR off vs on, 2 passes each | _running_ | | the gate's 3 cells were probe 400s |
 
