@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "label": "flint-single",
+  "note": "",
+  "served_identity": {
+    "model_path": "/home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g64-gptq",
+    "attention_backend": "triton",
+    "fp8_gemm_runner_backend": "auto",
+    "triton_attention_num_kv_splits": 64,
+    "kv_cache_dtype": "fp8_e5m2",
+    "tp_size": 2,
+    "context_length": 262144,
+    "disable_cuda_graph": false,
+    "enable_cache_report": true
+  },
+  "runs": 2,
+  "method": "streaming TTFT of a cache-hit request appending N new tokens to a primed prefix; median of --runs, each run with a unique suffix",
+  "multi_turn": false,
+  "results": [
+    {
+      "requested_depth": 8192,
+      "prime": {
+        "prime_prompt_tokens": 7321,
+        "prime_seconds": 0.08,
+        "prime_completion_tokens": 1,
+        "multi_turn": false
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 7321,
+        "completion_tokens": 16,
+        "tpot_ms": 5.475,
+        "tok_per_sec": 182.642
+      },
+      "extend_rows": []
+    },
+    {
+      "requested_depth": 32768,
+      "prime": {
+        "prime_prompt_tokens": 29243,
+        "prime_seconds": 0.11,
+        "prime_completion_tokens": 1,
+        "multi_turn": false
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 29243,
+        "completion_tokens": 16,
+        "tpot_ms": 5.76,
+        "tok_per_sec": 173.6
+      },
+      "extend_rows": []
+    },
+    {
+      "requested_depth": 131072,
+      "prime": {
+        "prime_prompt_tokens": 116934,
+        "prime_seconds": 0.24,
+        "prime_completion_tokens": 1,
+        "multi_turn": false
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 116934,
+        "completion_tokens": 16,
+        "tpot_ms": 6.776,
+        "tok_per_sec": 147.573
+      },
+      "extend_rows": []
+    },
+    {
+      "requested_depth": 197000,
+      "prime": {
+        "prime_prompt_tokens": 175743,
+        "prime_seconds": 0.31,
+        "prime_completion_tokens": 1,
+        "multi_turn": false
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 175743,
+        "completion_tokens": 16,
+        "tpot_ms": 7.472,
+        "tok_per_sec": 133.838
+      },
+      "extend_rows": []
+    }
+  ]
+}

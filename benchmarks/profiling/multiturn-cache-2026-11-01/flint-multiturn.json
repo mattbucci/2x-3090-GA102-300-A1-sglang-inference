@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "label": "flint-multiturn",
+  "note": "",
+  "served_identity": {
+    "model_path": "/home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g64-gptq",
+    "attention_backend": "triton",
+    "fp8_gemm_runner_backend": "auto",
+    "triton_attention_num_kv_splits": 64,
+    "kv_cache_dtype": "fp8_e5m2",
+    "tp_size": 2,
+    "context_length": 262144,
+    "disable_cuda_graph": false,
+    "enable_cache_report": true
+  },
+  "runs": 2,
+  "method": "streaming TTFT of a cache-hit request sending N new tokens as a new user turn after the primed turn (user, assistant reply, user); median of --runs, each run with a unique suffix",
+  "multi_turn": true,
+  "results": [
+    {
+      "requested_depth": 8192,
+      "prime": {
+        "prime_prompt_tokens": 7321,
+        "prime_seconds": 2.06,
+        "prime_completion_tokens": 200,
+        "multi_turn": true
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 7321,
+        "completion_tokens": 16,
+        "tpot_ms": 5.257,
+        "tok_per_sec": 190.209
+      },
+      "extend_rows": []
+    },
+    {
+      "requested_depth": 32768,
+      "prime": {
+        "prime_prompt_tokens": 29243,
+        "prime_seconds": 4.06,
+        "prime_completion_tokens": 200,
+        "multi_turn": true
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 29243,
+        "completion_tokens": 16,
+        "tpot_ms": 5.749,
+        "tok_per_sec": 173.942
+      },
+      "extend_rows": []
+    },
+    {
+      "requested_depth": 131072,
+      "prime": {
+        "prime_prompt_tokens": 116934,
+        "prime_seconds": 25.39,
+        "prime_completion_tokens": 200,
+        "multi_turn": true
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 116934,
+        "completion_tokens": 16,
+        "tpot_ms": 6.764,
+        "tok_per_sec": 147.852
+      },
+      "extend_rows": []
+    },
+    {
+      "requested_depth": 197000,
+      "prime": {
+        "prime_prompt_tokens": 175743,
+        "prime_seconds": 30.58,
+        "prime_completion_tokens": 200,
+        "multi_turn": true
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 175743,
+        "completion_tokens": 16,
+        "tpot_ms": 7.509,
+        "tok_per_sec": 133.176
+      },
+      "extend_rows": []
+    }
+  ]
+}

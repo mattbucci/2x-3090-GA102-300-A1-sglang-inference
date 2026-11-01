@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "label": "qwen38-single",
+  "note": "",
+  "served_identity": {
+    "model_path": "/home/letsrtfm/AI/models/hf-mattbucci/Qwen3.8-27B-AWQ",
+    "attention_backend": "flashinfer",
+    "fp8_gemm_runner_backend": "auto",
+    "triton_attention_num_kv_splits": 8,
+    "kv_cache_dtype": "fp8_e4m3",
+    "tp_size": 2,
+    "context_length": 262144,
+    "disable_cuda_graph": false,
+    "enable_cache_report": false
+  },
+  "runs": 2,
+  "method": "streaming TTFT of a cache-hit request appending N new tokens to a primed prefix; median of --runs, each run with a unique suffix",
+  "multi_turn": false,
+  "results": [
+    {
+      "requested_depth": 8192,
+      "prime": {
+        "prime_prompt_tokens": 7371,
+        "prime_seconds": 2.57,
+        "prime_completion_tokens": 1,
+        "multi_turn": false
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 7371,
+        "completion_tokens": 16,
+        "tpot_ms": 11.58,
+        "tok_per_sec": 86.353
+      },
+      "extend_rows": [
+        {
+          "requested_depth": 8192,
+          "suffix_tokens_requested": 1,
+          "actual_prompt_tokens": 7372,
+          "cached_tokens": null,
+          "cache_hit_verified": false,
+          "runs_ttft_ms": [
+            203.48,
+            91.63
+          ],
+          "median_ttft_ms": 147.56,
+          "min_ttft_ms": 91.63,
+          "max_ttft_ms": 203.48,
+          "decode_tpot_ms": 11.58,
+          "extend_over_decode_ratio": 12.7
+        },
+        {
+          "requested_depth": 8192,
+          "suffix_tokens_requested": 64,
+          "actual_prompt_tokens": 7420,
+          "cached_tokens": null,
+          "cache_hit_verified": false,
+          "runs_ttft_ms": [
+            95.98,
+            94.95
+          ],
+          "median_ttft_ms": 95.47,
+          "min_ttft_ms": 94.95,
+          "max_ttft_ms": 95.98,
+          "decode_tpot_ms": 11.58,
+          "extend_over_decode_ratio": 8.2
+        }
+      ]
+    },
+    {
+      "requested_depth": 32768,
+      "prime": {
+        "prime_prompt_tokens": 29293,
+        "prime_seconds": 0.09,
+        "prime_completion_tokens": 1,
+        "multi_turn": false
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 29293,
+        "completion_tokens": 16,
+        "tpot_ms": 12.118,
+        "tok_per_sec": 82.525
+      },
+      "extend_rows": [
+        {
+          "requested_depth": 32768,
+          "suffix_tokens_requested": 1,
+          "actual_prompt_tokens": 29294,
+          "cached_tokens": null,
+          "cache_hit_verified": false,
+          "runs_ttft_ms": [
+            126.28,
+            138.04
+          ],
+          "median_ttft_ms": 132.16,
+          "min_ttft_ms": 126.28,
+          "max_ttft_ms": 138.04,
+          "decode_tpot_ms": 12.118,
+          "extend_over_decode_ratio": 10.9
+        },
+        {
+          "requested_depth": 32768,
+          "suffix_tokens_requested": 64,
+          "actual_prompt_tokens": 29343,
+          "cached_tokens": null,
+          "cache_hit_verified": false,
+          "runs_ttft_ms": [
+            135.43,
+            134.34
+          ],
+          "median_ttft_ms": 134.89,
+          "min_ttft_ms": 134.34,
+          "max_ttft_ms": 135.43,
+          "decode_tpot_ms": 12.118,
+          "extend_over_decode_ratio": 11.1
+        }
+      ]
+    },
+    {
+      "requested_depth": 131072,
+      "prime": {
+        "prime_prompt_tokens": 1,
+        "prime_seconds": 0.09,
+        "prime_completion_tokens": 1,
+        "multi_turn": false
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 1,
+        "completion_tokens": 1,
+        "tpot_ms": 0.0,
+        "tok_per_sec": 0.0
+      },
+      "extend_rows": []
+    },
+    {
+      "requested_depth": 197000,
+      "prime": {
+        "prime_prompt_tokens": 1,
+        "prime_seconds": 0.09,
+        "prime_completion_tokens": 1,
+        "multi_turn": false
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 1,
+        "completion_tokens": 1,
+        "tpot_ms": 0.0,
+        "tok_per_sec": 0.0
+      },
+      "extend_rows": []
+    }
+  ]
+}
