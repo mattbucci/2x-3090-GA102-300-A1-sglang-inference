@@ -291,19 +291,39 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
         # 4.5 chars/token measured for this filler across Qwen/Gemma/Mistral
         # tokenizers (2026-07-14 audit: the old 4.0 assumption under-filled all
         # labels to 89% — "250K" cells were ~222K actual). usage.prompt_tokens
-        # is recorded per cell below as the server-verified depth.
-        n_chars = int(ctx * chars_per_token)
-        body = (filler * (n_chars // len(filler) + 1))[:n_chars]
+        # is recorded per cell below as the server-verified depth. A natural
+        # haystack tokenizes differently per model: when the server rejects the
+        # prompt as longer than its window it names the true count, so the cell
+        # rescales chars/token from that and retries (the rescaled value carries
+        # to the later cells) instead of logging a silent miss (Flint 250K on
+        # 2026-10-31: three "misses" that were three 400s).
         for depth in depths:
-            pos = int(len(body) * depth)
-            prompt = (body[:pos] + "\n" + needle + "\n" + body[pos:]
-                      + "\n\nWhat is the secret password? Answer with just the password.")
+            err = None
+            for _attempt in range(4):
+                n_chars = int(ctx * chars_per_token)
+                body = (filler * (n_chars // len(filler) + 1))[:n_chars]
+                pos = int(len(body) * depth)
+                prompt = (body[:pos] + "\n" + needle + "\n" + body[pos:]
+                          + "\n\nWhat is the secret password? Answer with just the password.")
+                try:
+                    if flush:
+                        requests.post(url.rsplit("/v1/", 1)[0] + "/flush_cache", timeout=60)
+                    r = requests.post(url, json={"model": "default", "messages": [
+                        {"role": "user", "content": prompt}
+                    ], "max_tokens": needle_budget, **sampling}, timeout=max(600, ctx // 150)).json()
+                except Exception as e:
+                    r = {"error": {"message": f"request failed: {e}"}}
+                if "choices" in r:
+                    err = None
+                    break
+                err = str((r.get("error") or {}).get("message", r.get("error", r)))[:200] if isinstance(r, dict) else str(r)[:200]
+                m = re.search(r"input \((\d+) tokens\)", err)
+                if not m:
+                    break
+                chars_per_token = chars_per_token * ctx / int(m.group(1)) * 0.995
             try:
-                if flush:
-                    requests.post(url.rsplit("/v1/", 1)[0] + "/flush_cache", timeout=60)
-                r = requests.post(url, json={"model": "default", "messages": [
-                    {"role": "user", "content": prompt}
-                ], "max_tokens": needle_budget, **sampling}, timeout=max(600, ctx // 150)).json()
+                if err:
+                    raise RuntimeError(err)
                 msg = r["choices"][0]["message"]
                 found = "BANANA42" in (_answer_text(msg) or "")
                 actual = r.get("usage", {}).get("prompt_tokens")
@@ -318,17 +338,19 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
                 # with finish=stop (seen on Flint at 243K under sampling) is
                 # unreadable from a 160-char tail.
                 miss = None if found else {"content": msg.get("content"), "reasoning": msg.get("reasoning_content")}
-            except Exception:
+            except Exception as e:
                 found = False
                 actual = finish = comp_tok = None
                 excerpt = ("", "")
                 miss = None
+                err = err or str(e)[:200]
             results.append({"context": ctx, "depth": depth, "found": found,
                             "actual_prompt_tokens": actual, "finish_reason": finish,
                             "haystack": "natural" if haystack else "filler", "flushed": bool(flush),
                             "completion_tokens": comp_tok,
                             "content_tail": excerpt[0], "reasoning_tail": excerpt[1],
-                            **({"miss": miss} if miss else {})})
+                            **({"miss": miss} if miss else {}),
+                            **({"error": err} if err else {})})
     return {"results": results, "score": sum(r["found"] for r in results) / len(results) if results else 0}
 
 
