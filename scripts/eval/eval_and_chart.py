@@ -105,7 +105,9 @@ def thinking_format_eval(url, max_tokens=1024):
 def mmlu_eval(url, n_samples=200, max_workers=8, max_tokens=4096):
     """MMLU multiple-choice reasoning."""
     ds = load_dataset("cais/mmlu", "all", split="test")
-    subjects = list(set(ds["subject"]))
+    # sorted: set() order follows the per-process hash seed, so a sub-57-sample run used to draw a different
+    # subject subset every process (29/30 vs 23/30 on the same server, 2026-11-01). Full-57 runs cover every subject.
+    subjects = sorted(set(ds["subject"]))
     per_subject = max(1, n_samples // len(subjects))
     samples = []
     for subj in subjects:
