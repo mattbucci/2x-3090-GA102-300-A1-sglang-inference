@@ -1,0 +1,17 @@
+{
+  "model": "qwen38-chunk32768",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "bench_long_context natural-text (chat stream, cache flushed per point)",
+  "prompt_source": "natural",
+  "timestamp": "2026-10-31 20:35:40",
+  "output_tokens": 100,
+  "max_total_num_tokens": 680638,
+  "context_sweep": [
+    {
+      "context": 32768,
+      "error": "('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "invalid": true
+    }
+  ]
+}
