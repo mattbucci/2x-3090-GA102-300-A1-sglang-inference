@@ -1,0 +1,66 @@
+{
+ "timestamp": "2026-11-01 00:34",
+ "gpu": "NVIDIA GeForce RTX 3090",
+ "rows": [
+  {
+   "M": 8192,
+   "K": 5120,
+   "N": 17408,
+   "fp16_ms": 13.06,
+   "fp16_tflops": 111.8,
+   "marlin_w4a16_ms": 17.35,
+   "marlin_tflops": 84.2,
+   "int8_gemm_ms": 7.9,
+   "int8_tops": 184.9,
+   "int8_gemm_plus_actquant_ms": 7.71,
+   "int4_to_int8_weight_pass_ms": 0.32,
+   "w4a8_estimate_ms": 8.04,
+   "speedup_vs_marlin": 2.16
+  },
+  {
+   "M": 8192,
+   "K": 17408,
+   "N": 5120,
+   "fp16_ms": 13.09,
+   "fp16_tflops": 111.6,
+   "marlin_w4a16_ms": 18.68,
+   "marlin_tflops": 78.2,
+   "int8_gemm_ms": 7.46,
+   "int8_tops": 195.7,
+   "int8_gemm_plus_actquant_ms": 7.58,
+   "int4_to_int8_weight_pass_ms": 0.31,
+   "w4a8_estimate_ms": 7.89,
+   "speedup_vs_marlin": 2.37
+  },
+  {
+   "M": 8192,
+   "K": 5120,
+   "N": 5120,
+   "fp16_ms": 4.05,
+   "fp16_tflops": 106.1,
+   "marlin_w4a16_ms": 5.04,
+   "marlin_tflops": 85.3,
+   "int8_gemm_ms": 2.29,
+   "int8_tops": 187.2,
+   "int8_gemm_plus_actquant_ms": 2.35,
+   "int4_to_int8_weight_pass_ms": 0.1,
+   "w4a8_estimate_ms": 2.45,
+   "speedup_vs_marlin": 2.06
+  },
+  {
+   "M": 8192,
+   "K": 5120,
+   "N": 8192,
+   "fp16_ms": 6.61,
+   "fp16_tflops": 104.0,
+   "marlin_w4a16_ms": 8.23,
+   "marlin_tflops": 83.5,
+   "int8_gemm_ms": 3.61,
+   "int8_tops": 190.2,
+   "int8_gemm_plus_actquant_ms": 3.65,
+   "int4_to_int8_weight_pass_ms": 0.15,
+   "w4a8_estimate_ms": 3.81,
+   "speedup_vs_marlin": 2.16
+  }
+ ]
+}
