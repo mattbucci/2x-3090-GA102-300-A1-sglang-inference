@@ -2,7 +2,13 @@
 """Long-context single-user sweep (1K → 256K).
 
 Uses sglang.bench_serving with random prompts to measure TPOT/TTFT at long
-context. Writes JSON matching the format consumed by generate_charts.py so
+context (the fleet instrument), or — with --prompt-source natural — a natural-text
+prompt (the Open-Platypus haystack) streamed through /v1/chat/completions with a
+cache flush before every point: TTFT = first streamed token, TPOT = the remaining
+output tokens. Random prompts make a speculative-decoding draft near-perfect and
+the output degenerate (qwen38 DSpark read 230 tok/s at 262K that way), so a spec
+arm is only measurable on natural text; on a plain arm the two agree within a
+few percent. Writes JSON matching the format consumed by generate_charts.py so
 results drop straight into README tables.
 
 Usage: python bench_long_context.py --port 23334 --name "Devstral-24B 262K" \\
@@ -17,6 +23,8 @@ import sys
 import time
 
 import requests
+
+NATURAL_HAYSTACK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "benchmarks", "quality", "haystack-platypus.txt")
 
 
 DEFAULT_CONTEXTS = [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 196608, 262144]
@@ -79,6 +87,77 @@ def run_bench(base_url, model, input_len, output_len, tokenizer=None):
         metrics["tok_per_sec"] = round(1000.0 / metrics["tpot_ms"], 1)
     return metrics if metrics else {"error": "parse failed", "raw": text[-2000:]}
 
+_NATURAL = {"text": None, "cpt": 3.4}
+
+
+def _natural_prompt(approx_tokens, cpt):
+    if _NATURAL["text"] is None:
+        _NATURAL["text"] = open(os.environ.get("BENCH_HAYSTACK", NATURAL_HAYSTACK)).read()
+    text = _NATURAL["text"]
+    need = int(approx_tokens * cpt)
+    while len(text) < need:
+        text += "\n\n" + text
+    return text[:need] + "\n\nSummarize the passage above in one paragraph."
+
+
+def run_natural(base_url, model, input_len, output_len, flush=True):
+    """One streamed chat completion on natural text sized to input_len tokens (rescaled
+    from the server's own token count when the window overflows). Fresh prefill: the
+    radix cache is flushed first. Returns the same metric keys as run_bench."""
+    if flush:
+        try:
+            requests.post(f"{base_url}/flush_cache", timeout=30, headers=AUTH)
+        except Exception:
+            pass
+    url = f"{base_url}/v1/chat/completions"
+    for _attempt in range(4):
+        body = {"model": model, "messages": [{"role": "user", "content": _natural_prompt(input_len, _NATURAL["cpt"])}],
+                "max_tokens": output_len, "temperature": 0, "stream": True,
+                "stream_options": {"include_usage": True}, "ignore_eos": True,
+                "chat_template_kwargs": {"enable_thinking": False}}
+        t0 = time.perf_counter(); t_first = None; n_out = 0; usage = None; err = None
+        try:
+            with requests.post(url, json=body, stream=True, timeout=max(1800, input_len // 100), headers=AUTH) as r:
+                if r.status_code != 200:
+                    err = r.text[:300]
+                else:
+                    for line in r.iter_lines():
+                        if not line or not line.startswith(b"data:"):
+                            continue
+                        data = line[5:].strip()
+                        if data == b"[DONE]":
+                            break
+                        j = json.loads(data)
+                        if j.get("usage"):
+                            usage = j["usage"]
+                        for ch in j.get("choices") or []:
+                            d = ch.get("delta") or {}
+                            if d.get("content") or d.get("reasoning_content") or d.get("tool_calls"):
+                                if t_first is None:
+                                    t_first = time.perf_counter()
+                                n_out += 1
+                t_end = time.perf_counter()
+        except Exception as e:
+            return {"error": str(e)[:200]}
+        if err:
+            m = re.search(r"input \((\d+) tokens\)", err)
+            if m:   # window overflow: the server names the true count — rescale chars/token and retry
+                _NATURAL["cpt"] = _NATURAL["cpt"] * input_len / int(m.group(1)) * 0.995
+                continue
+            return {"error": err}
+        if t_first is None or usage is None:
+            return {"error": "no streamed tokens / no usage"}
+        n_tok = usage.get("completion_tokens") or n_out
+        ttft = (t_first - t0) * 1000
+        tpot = ((t_end - t_first) * 1000 / (n_tok - 1)) if n_tok > 1 else 0.0
+        actual = usage.get("prompt_tokens")
+        if actual:   # converge chars/token from the server's own count
+            _NATURAL["cpt"] = _NATURAL["cpt"] * input_len / actual
+        return {"actual_input_tokens": actual, "ttft_ms": round(ttft, 2), "tpot_ms": round(tpot, 2),
+                "throughput": round(n_tok / (t_end - t0), 2), "tok_per_sec": round(1000.0 / tpot, 1) if tpot > 0 else None,
+                "completion_tokens": n_tok}
+    return {"error": "could not fit the prompt into the window after 4 rescales"}
+
 
 def server_model(base_url):
     r = requests.get(f"{base_url}/v1/models", timeout=5, headers=AUTH)
@@ -131,7 +210,12 @@ def main():
                          "(--served-model-name on launch.sh) is not a valid HF "
                          "repo id or local path — bench_serving uses --model to "
                          "load the tokenizer.")
+    ap.add_argument("--prompt-source", choices=["random", "natural"], default="random",
+                    help="random = sglang.bench_serving random tokens (fleet instrument); natural = "
+                         "haystack text streamed through chat completions, cache flushed per point "
+                         "(the only honest instrument for a speculative-decoding arm)")
     args = ap.parse_args()
+    natural = args.prompt_source == "natural"
 
     base = f"http://localhost:{args.port}"
     try:
@@ -165,12 +249,16 @@ def main():
 
     print("Warmup (3x 128-in 10-out)...")
     for _ in range(3):
-        run_bench(base, model, 128, 10, tokenizer=args.tokenizer)
+        if natural:
+            run_natural(base, model, 128, 10, flush=False)
+        else:
+            run_bench(base, model, 128, 10, tokenizer=args.tokenizer)
 
     results = []
     for ctx in contexts:
         print(f"  ctx={ctx:>6}: ", end="", flush=True)
-        m = run_bench(base, model, ctx, args.output_tokens, tokenizer=args.tokenizer)
+        m = (run_natural(base, model, ctx, args.output_tokens) if natural
+             else run_bench(base, model, ctx, args.output_tokens, tokenizer=args.tokenizer))
         if m.get("ttft_ms", 1) == 0.0 or "tpot_ms" not in m:
             print(f"  WARN: ctx={ctx} produced a degenerate measurement (ttft=0 / "
                   f"no TPOT) — marking invalid", flush=True)
@@ -191,7 +279,8 @@ def main():
         "model": args.name,
         "engine": "SGLang",
         "hardware": "2x RTX 3090 TP=2",
-        "benchmark_tool": "sglang.bench_serving",
+        "benchmark_tool": "bench_long_context natural-text (chat stream, cache flushed per point)" if natural else "sglang.bench_serving",
+        "prompt_source": args.prompt_source,
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "output_tokens": args.output_tokens,
         "max_total_num_tokens": max_kv,

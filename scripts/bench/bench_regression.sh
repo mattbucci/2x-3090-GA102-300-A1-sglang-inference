@@ -69,7 +69,7 @@ STACK_TAG="${STACK_TAG:-sglang-v0.5.15}"
 # dense Marlin, Qwen3Moe native-AWQ, DeltaNet hybrid, group-32 AWQ fallback path,
 # Mamba2-hybrid moe_wna16 (the b09882f model), dense Mistral (tokenizer-backend
 # canary family, patches 054/057).
-TRIPWIRE_PRESETS=(qwen36 qwen36-dense coder-30b qwen35-moe gemma4 nemotron3-omni devstral)
+TRIPWIRE_PRESETS=(qwen36 qwen36-dense coder-30b qwen35-moe gemma4 nemotron3-omni devstral qwen38 flint qwen38-spec)
 
 mkdir -p "$RUNS_DIR"
 
@@ -225,8 +225,13 @@ bench_live() {
     if [ -z "$served" ]; then
         echo "ERROR: no server on $BASE_URL"; return 2
     fi
-    if [ "$served" != "$preset" ]; then
-        echo "ERROR: server is serving '$served', not '$preset' — bench-as-shipped requires the matching preset"
+    # A "<preset>-spec" arm is the preset launched with SPEC_DECODE=1 and benched on NATURAL text:
+    # random prompts make the draft near-perfect and the output degenerate (qwen38 DSpark read
+    # 230 tok/s at 262K that way, 2026-10-31), so a spec arm is only measurable on natural text.
+    local launch_preset="${preset%-spec}" prompt_source="${PROMPT_SOURCE:-random}"
+    [ "$launch_preset" != "$preset" ] && prompt_source=natural
+    if [ "$served" != "$launch_preset" ]; then
+        echo "ERROR: server is serving '$served', not '$launch_preset' — bench-as-shipped requires the matching preset"
         return 2
     fi
     local model_path; model_path="$(server_model_path)"
@@ -236,12 +241,13 @@ bench_live() {
     # RUN_SUFFIX keeps a side bench (docker-mode parity smoke) from overwriting
     # the day's arm/tripwire receipt for the same preset.
     local out="$RUNS_DIR/${preset}-${DATE}${RUN_SUFFIX:+-$RUN_SUFFIX}.json"
-    echo "=== $preset (tokenizer: $model_path) ==="
+    echo "=== $preset (tokenizer: $model_path, prompts: $prompt_source) ==="
     python "$PYBENCH" \
         --port "$PORT" --name "$preset" \
         --contexts 1024 32768 262144 \
         --output-tokens 100 \
         --tokenizer "$model_path" \
+        --prompt-source "$prompt_source" \
         --output "$out" || return 2
     process_run "$preset" "$out"
 }
@@ -303,7 +309,12 @@ arm() {
         fi
         echo ""
         echo "=== arm: launching $preset ==="
-        "$REPO_DIR/scripts/launch.sh" "$preset" > "$RUNS_DIR/serve-${preset}-${DATE}.log" 2>&1 &
+        local launch_preset="${preset%-spec}"
+        if [ "$launch_preset" != "$preset" ]; then   # spec arm: SPEC_DECODE=1 on the base preset, natural-text bench
+            SPEC_DECODE=1 "$REPO_DIR/scripts/launch.sh" "$launch_preset" > "$RUNS_DIR/serve-${preset}-${DATE}.log" 2>&1 &
+        else
+            "$REPO_DIR/scripts/launch.sh" "$preset" > "$RUNS_DIR/serve-${preset}-${DATE}.log" 2>&1 &
+        fi
         local lpid=$!
         if ! wait_health; then
             echo "ERROR: $preset did not become healthy in 30 min — see $RUNS_DIR/serve-${preset}-${DATE}.log"
