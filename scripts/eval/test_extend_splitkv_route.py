@@ -11,7 +11,28 @@ import argparse, json, statistics, sys, time, torch
 PRESETS = {  # per-rank (TP=2) full-attention shapes
     "qwen38": dict(h_q=32, h_kv=2, head_dim=256, v_head_dim=256, sinks=False),
     "flint": dict(h_q=16, h_kv=2, head_dim=128, v_head_dim=128, sinks=True),
+    "gemma4-31b": dict(h_q=16, h_kv=8, head_dim=256, v_head_dim=256, sinks=False),  # 32/16 heads, group 2
+    "gemma4": dict(h_q=8, h_kv=4, head_dim=256, v_head_dim=256, sinks=False),  # 26B-A4B: 16/8 heads, group 2
 }
+
+def kernel_stats():
+    """Registers / spills of every compiled split-KV kernel variant (the first launch of a spilling kernel makes the
+    driver reserve local memory for every resident thread — on a server with ~20 MiB free that launch fails with
+    'Triton Error [CUDA]: out of memory', which is how gemma4-31b died on the route 2026-11-01)."""
+    from sglang.kernels.ops.attention import verify_splitkv as vk
+    rows = []
+    for name in ("_verify_prefix_stage1", "_verify_combine_stage2"):
+        fn = getattr(vk, name, None)
+        caches = getattr(fn, "device_caches", None) or {}
+        for dev, entry in caches.items():
+            cache = entry[0] if isinstance(entry, tuple) else entry
+            for k in getattr(cache, "values", lambda: [])():
+                try:
+                    k._init_handles()
+                except Exception:
+                    pass
+                rows.append((name, getattr(k, "n_regs", None), getattr(k, "n_spills", None), getattr(k, "n_max_threads", None)))
+    return rows
 
 def fp32_reference(q, k_ext, v_ext, k_buf, v_buf, kv_indices, k_scale, v_scale, sm_scale, sinks):
     K, h_q, d = q.shape; h_kv = k_ext.shape[1]; grp = h_q // h_kv
@@ -45,6 +66,7 @@ def time_us(fn, iters=10, repeats=5):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--presets", default="qwen38,flint"); ap.add_argument("--prefixes", default="8192,58000,197000")
+    ap.add_argument("--mem", action="store_true", help="report free-memory delta across the first launch per preset and per-kernel regs/spills")
     ap.add_argument("--suffixes", default="1,8,16"); ap.add_argument("--kv-dtypes", default="bf16,e5m2", help="e4m3 has no Triton extend kernel on sm_86 (fp8e4nv unsupported)"); ap.add_argument("--out", default=None)
     a = ap.parse_args()
     from sglang.kernels.ops.attention.extend_attention import extend_attention_fwd
@@ -52,7 +74,7 @@ def main():
     dev = torch.device("cuda"); torch.manual_seed(0); results = []; fails = 0
     DT = {"bf16": torch.bfloat16, "e4m3": torch.float8_e4m3fn, "e5m2": torch.float8_e5m2}
     for pname in a.presets.split(","):
-        p = PRESETS[pname]; sm_scale = p["head_dim"] ** -0.5
+        p = PRESETS[pname]; sm_scale = p["head_dim"] ** -0.5; first_launch = True
         for kvn in a.kv_dtypes.split(","):
             kv_dtype = DT[kvn]; fp8 = kv_dtype != torch.bfloat16
             k_scale = 0.07 if fp8 else 1.0; v_scale = 0.05 if fp8 else 1.0
@@ -87,7 +109,14 @@ def main():
                             results.append({"preset": pname, "kv": kvn, "prefix": P, "K": K, "sinks": use_sinks, "status": f"extend-ref error: {str(e).splitlines()[-1][:160]}"})
                             print(f"{pname:6} {kvn:4} P={P:>6} K={K:>2} sinks={use_sinks!s:5} extend-ref ERROR {str(e).splitlines()[-1][:90]}", flush=True); continue
                         try:
+                            if a.mem and first_launch:
+                                torch.cuda.synchronize(); free0 = torch.cuda.mem_get_info()[0]
                             ran = cand(); torch.cuda.synchronize()
+                            if a.mem and first_launch:
+                                first_launch = False; free1 = torch.cuda.mem_get_info()[0]
+                                print(f"{pname:6} first launch: free {free0/2**20:.0f} -> {free1/2**20:.0f} MiB (delta {(free0-free1)/2**20:.0f} MiB)", flush=True)
+                                for row in kernel_stats(): print(f"    {row[0]}: regs {row[1]} spills {row[2]} max_threads {row[3]}", flush=True)
+                                results.append({"preset": pname, "first_launch_free_delta_mib": round((free0-free1)/2**20, 1), "kernels": [list(r) for r in kernel_stats()]})
                         except Exception as e:
                             results.append({"preset": pname, "kv": kvn, "prefix": P, "K": K, "sinks": use_sinks, "status": f"error: {str(e).splitlines()[0][:160]}"}); fails += 1
                             print(f"{pname:6} {kvn:4} P={P:>6} K={K:>2} sinks={use_sinks!s:5} ERROR {str(e).splitlines()[0][:90]}", flush=True); continue
