@@ -34,3 +34,22 @@
 
 Per-layer kernel numbers from the fp32-reference test (`test_extend_splitkv_route.py`, qwen38 shape, bf16 cache): split-KV vs extend kernel **2.9× at 8K, 6.5× at 58K, 7× at 197K** (28.2 → 4.0 ms per layer for one new token at 197K), cosine 0.999997 against fp32 in every cell, errors at the bf16 rounding floor on both kernels.
 
+
+## Flint served with the split-KV route (patch 070, 2026-11-01)
+
+`SGLANG_EXTEND_SPLITKV_MAX_TOKENS=16` on the shipped `flint` preset (triton, e5m2 KV, TP=2, 300 W); same bench as the table above, same server for the gate. Receipts: `cache-hit-extend-flint-splitkv16-2026-11-01.json`, `flint-splitkv16-2026-11-01.json`, `flint-splitkv16-needle-2026-11-01.json`.
+
+| flint, cached prefix | +1 token before → with route | +16 tokens | +128 tokens (not routed) |
+|---|---:|---:|---:|
+| 32,064 | 123 → **124 ms** | 133 → 133 ms | 114 → 127 ms |
+| 129,770 | 318 → **269 ms** | 338 → 268 ms | 344 → 338 ms |
+| 253,261 | 614 → **466 ms** | 619 → 464 ms | 638 → 650 ms |
+
+- **−15 % at 130K, −24 % at 253K** on the routed turns; the remaining ~250 ms at 253K is outside attention (re-tokenizing the whole prompt, HTTP, the SWA layers, Marlin) — the 164 → ~60 ms GPU share predicted by the profile.
+- **Quality on the routed server:** MMLU 29/30, HumanEval 27/30 (stock server 10-31: 47/57, 25/30); natural needle 131K 3/3 found (depth 0.9 answered inside the reasoning and hit the 2048-token cap — Flint's thinking shape, not the route), 250K 1/3 — the checkpoint's known ≈240K band (2/6 on both allreduce arms 10-31). Parity.
+- **Numerics:** fp32-reference test 53/54 cells at the bf16 floor; the one flagged cell (e5m2 + sinks, prefix 58K, K=16) re-run under five seeds reads max-err 3.5–6.5e-3 vs the extend kernel's 2.8–3.5e-3 and rms 6–7e-4 vs 4–5e-4 — one bf16 ulp class, not systematic.
+- Shipped as the `flint` preset default (`launch.sh`, 0 disables); the Gemma 4 triton presets get the same extend bench + gate before the env is widened to them.
+
+## qwen38 (flashinfer): 1-token vs 16-token extend at 142K — launch-bound either way (2026-11-01)
+
+`profile_prefill.sh EXTEND_NEW=1|16` + `trace_cpu_ops.py` on the warmed shape: CPU wall **178 ms / 185 ms**, GPU span 179 / 186 ms, kernel sum **84 / 70 ms**. The step costs the same with one new token as with sixteen and more than half of it is idle gap, so on the flashinfer GDN presets the per-turn tax is the un-graphed 64-layer eager extend, not attention work. The prefill-CUDA-graph A/B (`--cuda-graph-backend-prefill breakable|full --cuda-graph-max-bs-prefill 1 --cuda-graph-max-seq-len-prefill 16`) failed to boot on both backends: CUDA OOM (2.37 GiB) during capture at the preset's 0.85 memory fraction → re-queued with a smaller fraction / smaller KV pool for the A/B only.

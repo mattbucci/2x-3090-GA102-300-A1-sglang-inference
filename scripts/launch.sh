@@ -638,6 +638,14 @@ apply_preset() {
             export FLASHINFER_USE_CUDA_NORM=1
             export FLINT_STRICT_TOOLS="${FLINT_STRICT_TOOLS:-1}"
             export SGLANG_EXTERNAL_MODEL_PACKAGE="${SGLANG_EXTERNAL_MODEL_PACKAGE:-flint_sglang}"
+            #  * patch 070 (2026-11-01): a follow-up turn with <= 16 new tokens on a
+            #    cached prefix >= 4K runs its full-attention layers through the
+            #    split-KV verify kernel instead of the serial-prefix triton extend
+            #    kernel (learned sinks folded into the LSE merge, K/V upcast on
+            #    sm_86). Turn latency 318 -> 269 ms @130K, 614 -> 466 ms @253K at
+            #    parity (receipt benchmarks/quality/cache-hit-extend-2026-11-01.md).
+            #    Longer turns and decode are untouched; 0 disables.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS:-16}"
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Flint-AWQ-INT4-g64-gptq}"
             QUANT="${QUANT:-awq_marlin}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"

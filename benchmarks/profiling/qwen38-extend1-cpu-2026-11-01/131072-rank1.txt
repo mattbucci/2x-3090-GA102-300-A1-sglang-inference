@@ -1,0 +1,37 @@
+# qwen38 fresh prefill — actual prompt_tokens=142336, trace 1793521146.9668608-TP-1.trace.json.gz
+
+=== step[EXTEND bs=1] × 1 steps (after skipping 0) ===
+  per step: CPU wall 174.39 ms | GPU span 176.52 ms | kernel-sum 108.70 ms
+  exposed time (sweep line):
+     67.818 ms/step   38.4%  idle-gap
+     50.401 ms/step   28.6%  misc
+     29.022 ms/step   16.4%  attention
+     25.258 ms/step   14.3%  marlin(int4)
+      2.648 ms/step    1.5%  gdn
+      0.871 ms/step    0.5%  norm
+  top 25 kernels (ms/step, count/step):
+     48.250   129.0  void sglang::all_reduce_1shot_push_kernel<sglang::LoadStoreImpl<sglang::device::AlignedVector<__half
+     28.910    16.0  void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::Mask
+     15.300   256.0  void sglang::device::marlin::Marlin<__half, 1125899906843648l, 256, 4, 16, 4, false, 4, 8, false>(in
+      9.195   256.0  void sglang::device::marlin::Marlin<__half, 1125899906843648l, 256, 1, 8, 8, true, 4, 8, false>(int4
+      1.042    48.0  chunk_gated_delta_rule_fwd_kkt_solve_kernel
+      0.763     1.0  void sglang::device::marlin::Marlin<__half, 1125899923621888l, 256, 1, 8, 8, true, 4, -1, false>(int
+      0.536   128.0  void flashinfer::norm::FusedAddRMSNormKernel<8u, __half>(__half*, __half*, __half*, unsigned int, un
+      0.535    48.0  chunk_gated_delta_rule_fwd_kernel_h_blockdim64
+      0.420    49.0  void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_put
+      0.388    48.0  chunk_fwd_kernel_o
+      0.307    64.0  void sglang::act_and_mul_kernel<__half, (sglang::ActivationKind)0, false, false, false, false, false
+      0.276    48.0  recompute_w_u_fwd_kernel
+      0.270    48.0  void cutlass::Kernel2<cutlass_80_tensorop_f16_s16816gemm_relu_f16_64x64_32x6_tn_align8>(cutlass_80_t
+      0.258    50.0  void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_ker
+      0.254    48.0  _causal_conv1d_fwd_kernel
+      0.214    50.0  void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_put
+      0.184     2.0  void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_ker
+      0.163    49.0  void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda(at::TensorIteratorB
+      0.141   112.0  void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<c10::Half>, std::array<cha
+      0.136    96.0  l2norm_fwd_kernel
+      0.133    48.0  _layer_norm_fwd_1pass_kernel
+      0.111    16.0  void flashinfer::PersistentVariableLengthMergeStatesKernel<8u, 32u, 4u, 4u, __half, __half, int>(__h
+      0.097    48.0  void cublasLt::splitKreduce_kernel<32, 16, int, __half, __half, float, __half, false, __half, __half
+      0.090     1.0  create_flashinfer_kv_indices_triton
+      0.089    48.0  chunk_local_cumsum_scalar_kernel

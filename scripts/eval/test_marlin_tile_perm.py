@@ -19,9 +19,9 @@ AWQ_INTERLEAVE = torch.tensor([0, 2, 4, 6, 1, 3, 5, 7])
 
 
 def _awq_marlin_repack(packed, k, n, bits):
-    from sgl_kernel import awq_marlin_repack
+    from sglang.kernels.ops.quantization.awq_marlin_repack import awq_marlin_repack
 
-    return awq_marlin_repack(packed, k, n, bits)
+    return awq_marlin_repack(packed, size_k=k, size_n=n, num_bits=bits)
 
 
 def awq_pack(q_kn):  # logical uint4 [K, N] -> AWQ int32 [K, N/8]
@@ -78,11 +78,11 @@ def main():
     z = torch.randint(0, 16, (k // g, n), device=dev, dtype=torch.int32)
     s = (torch.rand(k // g, n, device=dev) * 0.02 + 0.005).half()
     packed = awq_pack(q); zp_packed = awq_pack(z)  # AWQ qzeros share the layout
-    mq = marlin_repack(packed, k, n); ms = marlin_permute_scales(s, k, n, g); mz = awq_to_marlin_zero_points(zp_packed, k, n, 4)
+    mq = marlin_repack(packed, k, n); ms = marlin_permute_scales(s, k, n, g); mz = awq_to_marlin_zero_points(zp_packed, k // g, n, 4)  # size_k here = number of groups (as the kernel object passes it)
     e = marlin_make_empty_g_idx(dev); ws = marlin_make_workspace(dev)
     I = torch.eye(k, device=dev, dtype=torch.float16)
     w_marlin = apply_awq_marlin_linear(input=I, weight=mq, weight_scale=ms, weight_zp=mz, g_idx=e, g_idx_sort_indices=e, workspace=ws,
-                                       quant_type=scalar_types.uint4b8, output_size_per_partition=n, input_size_per_partition=k)  # [k, n]
+                                       quant_type=scalar_types.uint4,  # AWQ (has_zp): the kernel wants the unbiased uint4 type output_size_per_partition=n, input_size_per_partition=k)  # [k, n]
     # dequant through the recovered map: read nibbles of mq, scatter to logical (k, n)
     nb = nibbles(mq).reshape(-1).to(torch.int32)
     q_rec = torch.empty(k * n, device=dev, dtype=torch.int32); q_rec[src] = nb; q_rec = q_rec.reshape(k, n)

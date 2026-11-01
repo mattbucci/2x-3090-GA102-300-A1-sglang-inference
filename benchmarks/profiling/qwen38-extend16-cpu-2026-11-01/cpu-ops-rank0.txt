@@ -1,0 +1,79 @@
+GPU timeline span: 192.9 ms
+
+== cpu_op: top by total CPU time (ms, count)
+      37.77 ms  x48     ChunkGatedDeltaRuleFunction
+      18.28 ms  x129    sglang::outplace_all_reduce
+      16.68 ms  x48     LayerNormFn
+       6.84 ms  x2106   aten::empty
+       4.82 ms  x342    c10d::broadcast_
+       3.99 ms  x591    aten::to
+       3.69 ms  x120    aten::_to_copy
+       2.95 ms  x136    aten::copy_
+       2.64 ms  x102    aten::index
+       2.49 ms  x386    aten::empty_like
+       2.35 ms  x962    aten::reshape
+       2.30 ms  x509    aten::empty_strided
+       2.07 ms  x48     aten::linear
+       2.05 ms  x1674   aten::view
+       1.75 ms  x103    aten::index_put_
+       1.72 ms  x48     aten::matmul
+       1.65 ms  x48     aten::mm
+       1.55 ms  x64     sglang::_run_activation_inplace
+       1.51 ms  x103    aten::_index_put_impl_
+       1.34 ms  x113    aten::zero_
+       1.26 ms  x64     aten::zeros
+       1.09 ms  x116    aten::fill_
+       1.06 ms  x49     aten::zeros_like
+       0.90 ms  x319    aten::slice
+       0.69 ms  x48     aten::gt
+
+== python_function: top by total CPU time (ms, count)
+    2063.76 ms  x5      threading.py(1032): _bootstrap
+    2063.76 ms  x5      threading.py(1075): _bootstrap_inner
+    1238.27 ms  x3      threading.py(1012): run
+     825.49 ms  x2      tqdm/_monitor.py(69): run
+     825.49 ms  x2      threading.py(655): wait
+     825.48 ms  x2      threading.py(359): wait
+     615.83 ms  x789    torch/nn/modules/module.py(1787): _call_impl
+     412.76 ms  x1      torch/_inductor/compile_worker/subproc_pool.py(387): _health_monitor
+     412.76 ms  x1      torch/_inductor/compile_worker/subproc_pool.py(323): _read_thread
+     412.75 ms  x1      torch/_inductor/compile_worker/subproc_pool.py(106): _recv_msg
+     412.75 ms  x1      /data/sglang-rebase-v0522/python/sglang/srt/utils/watchdog.py(127): _watchdog_thread
+     412.75 ms  x1      /data/sglang-rebase-v0522/python/sglang/srt/utils/watchdog.py(147): _watchdog_once
+     412.74 ms  x1      <string>(1): <module>
+     412.73 ms  x1      multiprocessing/spawn.py(122): spawn_main
+     412.73 ms  x1      multiprocessing/spawn.py(135): _main
+     412.73 ms  x1      multiprocessing/process.py(314): _bootstrap
+     412.73 ms  x1      multiprocessing/process.py(108): run
+     412.73 ms  x1      /data/sglang-rebase-v0522/python/sglang/srt/managers/scheduler.py(6134): run_scheduler_process
+     412.73 ms  x1      /data/sglang-rebase-v0522/python/sglang/srt/managers/scheduler.py(1924): run_event_loop
+     412.73 ms  x1      /data/sglang-rebase-v0522/python/sglang/srt/managers/scheduler.py(5981): dispatch_event_loop
+     412.72 ms  x1      /data/sglang-rebase-v0522/python/sglang/srt/managers/scheduler.py(5997): _dispatch_event_loop_once
+     412.72 ms  x1      torch/utils/_contextlib.py(124): decorate_context
+     412.72 ms  x1      /data/sglang-rebase-v0522/python/sglang/srt/managers/scheduler.py(1992): event_loop_overlap
+     402.04 ms  x1360   /data/sglang-rebase-v0522/python/sglang/srt/observability/scheduler_stage_metrics.py(174): wrapper
+     395.48 ms  x1360   /data/sglang-rebase-v0522/python/sglang/srt/utils/nvtx_utils.py(106): wrapper
+
+== cuda_runtime: top by total CPU time (ms, count)
+       4.89 ms  x899    cudaLaunchKernelExC
+       2.54 ms  x525    cudaLaunchKernel
+       1.85 ms  x47     cudaMemcpyAsync
+       0.96 ms  x674    cudaFuncSetAttribute
+       0.21 ms  x617    cudaDeviceGetAttribute
+       0.18 ms  x153    cudaEventRecordWithFlags
+       0.13 ms  x134    cudaStreamWaitEvent
+       0.11 ms  x318    cudaStreamIsCapturing
+       0.05 ms  x23     cudaEventQuery
+       0.04 ms  x13     cudaStreamSynchronize
+
+== user_annotation: top by total CPU time (ms, count)
+     380.59 ms  x340    scheduler.process_input_requests
+     186.88 ms  x1      scheduler.run_batch
+     185.32 ms  x1      step[EXTEND bs=1 toks=81]
+     181.27 ms  x1      sglang.vlm.language_model_prefill
+      94.04 ms  x338    scheduler.idle
+      66.61 ms  x340    scheduler.recv_requests
+      28.21 ms  x338    scheduler.sanity_check_cache
+      15.98 ms  x340    scheduler.get_next_batch_to_run
+       9.29 ms  x342    gloo:broadcast
+       5.21 ms  x1      scheduler.process_batch_result
