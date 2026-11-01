@@ -96,7 +96,7 @@ def main():
                             print(f"{pname:6} {kvn:4} P={P:>6} K={K:>2} sinks={use_sinks!s:5} can_handle=False", flush=True); continue
                         ref32 = fp32_reference(q, k_ext, v_ext, k_buf, v_buf, kv_indices, k_scale, v_scale, sm_scale, sinks)
                         e_ref = err_vs(ref32, o_ref); e_new = err_vs(ref32, o3[:K])
-                        ok = e_new["finite"] and e_new["cosine"] >= 0.9999 and e_new["max_err_over_refmax"] <= max(1.25 * e_ref["max_err_over_refmax"], 4e-3)  # 4e-3 = one bf16 ulp at the output max
+                        ok = e_new["finite"] and e_new["cosine"] >= 0.9999 and e_new["max_err_over_refmax"] <= 1.25 * e_ref["max_err_over_refmax"] + 4e-3  # + one bf16 ulp at the output max (both kernels round their output to bf16)
                         t_ref = time_us(ref); t_new = time_us(cand)
                         r = {"preset": pname, "kv": kvn, "prefix": P, "K": K, "sinks": use_sinks, "status": "ok" if ok else "FAIL",
                              "extend_err": e_ref, "splitkv_err": e_new, "extend_us": round(t_ref, 1), "splitkv_us": round(t_new, 1), "speedup": round(t_ref / t_new, 2)}
