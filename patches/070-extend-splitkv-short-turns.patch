@@ -1,5 +1,5 @@
 diff --git a/python/sglang/kernels/ops/attention/verify_splitkv.py b/python/sglang/kernels/ops/attention/verify_splitkv.py
-index 94bb8526f8..ac2c129bc4 100644
+index 94bb8526f8..921c71dfbf 100644
 --- a/python/sglang/kernels/ops/attention/verify_splitkv.py
 +++ b/python/sglang/kernels/ops/attention/verify_splitkv.py
 @@ -46,6 +46,27 @@ _MIN_BLOCK_KV = 32
@@ -208,17 +208,19 @@ index 94bb8526f8..ac2c129bc4 100644
              self.att_out.stride(0),
              self.att_out.stride(1),
              self.att_out.stride(2),
-@@ -561,7 +624,8 @@ class VerifySplitKV:
+@@ -561,7 +624,10 @@ class VerifySplitKV:
              V_HEAD_DIM=self.v_head_dim,
              BLOCK_DMODEL=triton.next_power_of_2(self.head_dim),
              BLOCK_DV=triton.next_power_of_2(self.v_head_dim),
 -            num_warps=1,
 +            HAS_SINKS=sinks is not None,
-+            num_warps=4,  # [3090 070] was 1: a 32-thread program over [16, 256] fp32 tiles spilled
++            # [3090 070] was 1 warp: a 32-thread program over [16, 256] fp32 tiles spilled 3 KB/thread.
++            # 4 warps for the 16-row tile; 8 for the 32-row tile at head_dim 256 (4 warps spill again there).
++            num_warps=8 if self.l_pad * triton.next_power_of_2(self.v_head_dim) > 4096 else 4,
              num_stages=1,
          )
  
-@@ -579,6 +643,7 @@ class VerifySplitKV:
+@@ -579,6 +645,7 @@ class VerifySplitKV:
          o_out=None,
          k_scale=1.0,
          v_scale=1.0,
@@ -226,7 +228,7 @@ index 94bb8526f8..ac2c129bc4 100644
      ):
          if o_out is None:
              o_out = torch.empty(
-@@ -611,6 +676,7 @@ class VerifySplitKV:
+@@ -611,6 +678,7 @@ class VerifySplitKV:
              o_out,
              qo_indptr,
              sm_scale,
@@ -234,7 +236,7 @@ index 94bb8526f8..ac2c129bc4 100644
          )
          return o_out
  
-@@ -627,9 +693,9 @@ _VK_CACHE = {}
+@@ -627,9 +695,9 @@ _VK_CACHE = {}
  
  
  def _get_vk(
@@ -246,7 +248,7 @@ index 94bb8526f8..ac2c129bc4 100644
      vk = _VK_CACHE.get(key)
      if vk is None:
          block_n, num_warps = block_config(head_dim)
-@@ -644,6 +710,7 @@ def _get_vk(
+@@ -644,6 +712,7 @@ def _get_vk(
              n_splits=n_splits,
              block_n=block_n,
              num_warps=num_warps,
@@ -254,7 +256,7 @@ index 94bb8526f8..ac2c129bc4 100644
          )
          _VK_CACHE[key] = vk
      else:
-@@ -680,7 +747,10 @@ def can_handle(
+@@ -680,7 +749,10 @@ def can_handle(
      (TritonAttnBackend does: ``use_verify_splitkv = ... and self.topk == 1``).
      At topk > 1 the tree is not causal and this path must stay disabled."""
      # No exotic features.
@@ -266,7 +268,7 @@ index 94bb8526f8..ac2c129bc4 100644
          return False
      if sliding_window_size is not None and sliding_window_size > 0:
          return False
-@@ -764,6 +834,7 @@ def verify_splitkv_fwd(
+@@ -764,6 +836,7 @@ def verify_splitkv_fwd(
      window_kv_offsets=None,
      xai_temperature_len=-1,
      max_bs=None,
@@ -274,7 +276,7 @@ index 94bb8526f8..ac2c129bc4 100644
  ):
      """Drop-in for extend_attention_fwd on the EAGLE target-verify (topk=1)
      shape. Returns True if it ran (o_extend written), False if the case is
-@@ -838,6 +909,7 @@ def verify_splitkv_fwd(
+@@ -838,6 +911,7 @@ def verify_splitkv_fwd(
          l_ext,
          q_extend.device,
          n_splits=n_splits,
@@ -282,7 +284,7 @@ index 94bb8526f8..ac2c129bc4 100644
      )
      vk(
          q_extend,
-@@ -852,6 +924,7 @@ def verify_splitkv_fwd(
+@@ -852,6 +926,7 @@ def verify_splitkv_fwd(
          o_out=o_extend,
          k_scale=k_scale,
          v_scale=v_scale,
@@ -291,7 +293,7 @@ index 94bb8526f8..ac2c129bc4 100644
  
      return True
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 64920d56b5..4c62e95671 100644
+index 64920d56b5..9592fbfa82 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
 @@ -1,5 +1,8 @@
@@ -320,7 +322,7 @@ index 64920d56b5..4c62e95671 100644
  from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
  from sglang.srt.layers.attention.verify_mask import VerifyMask, maybe_create_verify_mask
  from sglang.srt.layers.dcp import (
-@@ -478,6 +491,63 @@ class TritonAttnBackend(AttentionBackend):
+@@ -478,6 +491,64 @@ class TritonAttnBackend(AttentionBackend):
              self.dllm_attention = DllmFlashAttention(self)
              self.supports_prefill_cuda_graph_max_context_size = True
  
@@ -358,25 +360,26 @@ index 64920d56b5..4c62e95671 100644
 +            h_q, h_kv, d, dv = self.num_head, kb.shape[1], kb.shape[2], vb.shape[2]
 +            if d != dv:
 +                return
-+            n_pad = 16
-+            q3 = torch.zeros((n_pad, h_q, d), dtype=dt, device=dev)
-+            k3 = torch.zeros((n_pad, h_kv, d), dtype=dt, device=dev)
-+            v3 = torch.zeros((n_pad, h_kv, dv), dtype=dt, device=dev)
-+            o3 = torch.empty_like(q3)
-+            qo = torch.tensor([0, n_pad], dtype=torch.int32, device=dev)
 +            kv_indptr = torch.tensor([0, prefix], dtype=torch.int32, device=dev)
 +            kv_indices = torch.arange(prefix, dtype=torch.int32, device=dev)
-+            for sinks in (None, torch.zeros((h_q,), dtype=torch.float32, device=dev)):
-+                self.verify_splitkv_fwd(
-+                    q3, k3, v3, o3, kb, vb, qo, kv_indptr, kv_indices, None, True, None, n_pad,
-+                    1.0, 1.0, float(d) ** -0.5,
-+                    logit_cap=0.0, sliding_window_size=-1, sinks=sinks, window_kv_offsets=None,
-+                    xai_temperature_len=-1, max_bs=self.req_to_token_pool.size,
-+                )
++            tiles = [16] if min(_EXTEND_SPLITKV_MAX, 32) <= 16 else [16, 32]
++            for n_pad in tiles:
++                q3 = torch.zeros((n_pad, h_q, d), dtype=dt, device=dev)
++                k3 = torch.zeros((n_pad, h_kv, d), dtype=dt, device=dev)
++                v3 = torch.zeros((n_pad, h_kv, dv), dtype=dt, device=dev)
++                o3 = torch.empty_like(q3)
++                qo = torch.tensor([0, n_pad], dtype=torch.int32, device=dev)
++                for sinks in (None, torch.zeros((h_q,), dtype=torch.float32, device=dev)):
++                    self.verify_splitkv_fwd(
++                        q3, k3, v3, o3, kb, vb, qo, kv_indptr, kv_indices, None, True, None, n_pad,
++                        1.0, 1.0, float(d) ** -0.5,
++                        logit_cap=0.0, sliding_window_size=-1, sinks=sinks, window_kv_offsets=None,
++                        xai_temperature_len=-1, max_bs=self.req_to_token_pool.size,
++                    )
 +            torch.cuda.synchronize()
 +            logger.info(
-+                "[070] split-KV short-turn route warmed (h_q=%d h_kv=%d d=%d kv=%s) in %.2f s",
-+                h_q, h_kv, d, kb.dtype, time.perf_counter() - t0,
++                "[070] split-KV short-turn route warmed (h_q=%d h_kv=%d d=%d kv=%s tiles=%s) in %.2f s",
++                h_q, h_kv, d, kb.dtype, tiles, time.perf_counter() - t0,
 +            )
 +        except Exception as e:  # never block the boot on the warm-up
 +            logger.warning("[070] split-KV route warm-up skipped: %s", e)
@@ -384,7 +387,7 @@ index 64920d56b5..4c62e95671 100644
      def get_num_kv_splits(
          self,
          num_kv_splits: torch.Tensor,
-@@ -1864,6 +1934,74 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1864,6 +1935,76 @@ class TritonAttnBackend(AttentionBackend):
          ):
              return o
  
@@ -409,9 +412,11 @@ index 64920d56b5..4c62e95671 100644
 +            and self.forward_metadata.custom_mask is None
 +            and forward_batch.extend_seq_lens_cpu is not None
 +            and forward_batch.extend_prefix_lens_cpu is not None
-+            and 0 < forward_batch.extend_seq_lens_cpu[0] <= _EXTEND_SPLITKV_MAX
++            and 0 < forward_batch.extend_seq_lens_cpu[0] <= min(_EXTEND_SPLITKV_MAX, 32)
 +            and forward_batch.extend_prefix_lens_cpu[0] >= _EXTEND_SPLITKV_MIN_PREFIX
 +        ):
++            # hard cap 32: the 64-row combine tile overflows shared memory at head_dim 256
++            # (196 KB > 101 KB on sm_86) and is slower than the extend kernel where it compiles.
 +            n_new = int(forward_batch.extend_seq_lens_cpu[0])
 +            n_pad = max(16, triton.next_power_of_2(n_new))
 +            q3 = q.view(-1, layer.tp_q_head_num, layer.qk_head_dim)
