@@ -125,8 +125,13 @@ def real_cap(model_key, results):
     return FALLBACK_CAP.get(model_key, 10 ** 12)
 
 
-def reaches_256k(model_key, results):
-    return real_cap(model_key, results) >= TARGET_256K
+def reaches_256k(model_key, results, deep_ctx=None):
+    """True only when the pool holds 256K AND the sweep's deepest honest point sits
+    there — a preset served at a smaller window (qwen35-dense: CTX=32768 over a
+    610K pool) has a 256K-sized pool but never reaches 256K, and must draw hatched."""
+    if real_cap(model_key, results) < TARGET_256K:
+        return False
+    return deep_ctx is None or deep_ctx >= 0.95 * TARGET_256K
 
 
 def honest_sweep(model_key, results):
@@ -470,7 +475,7 @@ def make_decode_bar_chart(all_data):
         peak = max(sweep, key=lambda p: p["tok_per_sec"])
         deep = sweep[-1]
         rows.append({"meta": meta, "peak": peak["tok_per_sec"], "deep": deep["tok_per_sec"],
-                     "deep_ctx": deep["context"], "reaches": reaches_256k(key, results),
+                     "deep_ctx": deep["context"], "reaches": reaches_256k(key, results, deep["context"]),
                      "date": str(results.get("timestamp", ""))[:10]})
     if not rows:
         print("  SKIP decode bar chart (no fresh fleet data)")
@@ -729,7 +734,7 @@ def make_power_cap_chart(all_data):
             "d1k": (s300[0]["tok_per_sec"], by400[s300[0]["context"]]["tok_per_sec"]),
             "dmid": (mid["tok_per_sec"], by400[mid["context"]]["tok_per_sec"]),
             "ddeep": (deep["tok_per_sec"], by400[deep["context"]]["tok_per_sec"]),
-            "deep_ctx": deep["context"], "reaches": reaches_256k(key, r300),
+            "deep_ctx": deep["context"], "reaches": reaches_256k(key, r300, deep["context"]),
         })
     if not rows:
         print("  SKIP power-cap chart (no results-400w.json)")
