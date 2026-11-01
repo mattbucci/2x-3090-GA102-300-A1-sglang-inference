@@ -81,8 +81,9 @@ def main():
     mq = marlin_repack(packed, k, n); ms = marlin_permute_scales(s, k, n, g); mz = awq_to_marlin_zero_points(zp_packed, k // g, n, 4)  # size_k here = number of groups (as the kernel object passes it)
     e = marlin_make_empty_g_idx(dev); ws = marlin_make_workspace(dev)
     I = torch.eye(k, device=dev, dtype=torch.float16)
+    # AWQ (has_zp=True): the Marlin kernel wants the unbiased uint4 type, not uint4b8
     w_marlin = apply_awq_marlin_linear(input=I, weight=mq, weight_scale=ms, weight_zp=mz, g_idx=e, g_idx_sort_indices=e, workspace=ws,
-                                       quant_type=scalar_types.uint4,  # AWQ (has_zp): the kernel wants the unbiased uint4 type output_size_per_partition=n, input_size_per_partition=k)  # [k, n]
+                                       quant_type=scalar_types.uint4, output_size_per_partition=n, input_size_per_partition=k)  # [k, n]
     # dequant through the recovered map: read nibbles of mq, scatter to logical (k, n)
     nb = nibbles(mq).reshape(-1).to(torch.int32)
     q_rec = torch.empty(k * n, device=dev, dtype=torch.int32); q_rec[src] = nb; q_rec = q_rec.reshape(k, n)

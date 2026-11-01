@@ -53,3 +53,21 @@ Per-layer kernel numbers from the fp32-reference test (`test_extend_splitkv_rout
 ## qwen38 (flashinfer): 1-token vs 16-token extend at 142K — launch-bound either way (2026-11-01)
 
 `profile_prefill.sh EXTEND_NEW=1|16` + `trace_cpu_ops.py` on the warmed shape: CPU wall **178 ms / 185 ms**, GPU span 179 / 186 ms, kernel sum **84 / 70 ms**. The step costs the same with one new token as with sixteen and more than half of it is idle gap, so on the flashinfer GDN presets the per-turn tax is the un-graphed 64-layer eager extend, not attention work. The prefill-CUDA-graph A/B (`--cuda-graph-backend-prefill breakable|full --cuda-graph-max-bs-prefill 1 --cuda-graph-max-seq-len-prefill 16`) failed to boot on both backends: CUDA OOM (2.37 GiB) during capture at the preset's 0.85 memory fraction → re-queued with a smaller fraction / smaller KV pool for the A/B only.
+
+## Gemma 4 gate → two kernel defects, fixed (2026-11-01, kernel v2)
+
+Baselines without the route (same bench): **gemma4-31b** 16-token turn 144 / 471 / 782 ms at 35K / 140K / 233K (1 token 97 / 274 / 437); **gemma4** (26B-A4B) 137 / 408 / 678 ms (1 token 73 / 197 / 310). Both routed arms died on their first routed request with `Triton Error [CUDA]: out of memory` at the combine-kernel launch, with 1.9 GB (31B) and 3.4 GB (26B) free after graph capture.
+
+`test_extend_splitkv_route.py --mem` (first-launch free-memory delta + per-kernel registers/spills) on the free GPU:
+
+| variant (before) | regs | spills / thread | first-launch reserve |
+|---|---:|---:|---:|
+| combine, head_dim 256 | 168 | 3034 B | **1336 MiB** |
+| combine, head_dim 128 (Flint) | 128 | 1546 B | fits inside the 256 reserve |
+| prefix stage 1 | 63–96 | 0 | 0 |
+
+Cause: `_verify_combine_stage2` was launched with `num_warps=1` and materialised the whole `[N_SPLITS, 16, Dv]` prefix-partial tile and two `[16, 16, D]` broadcast products in registers; the driver sizes its per-thread local-memory pool for the worst kernel at first launch. Fix: stream the splits (one `[16, Dv]` tile per split), fp32-exact `tl.dot` for the draft-draft block at the 16-row tile (the spec-verify L_EXT = 4 tile keeps the broadcast form), 4 warps. After: 126 regs, **0 spills, 0 MiB** on every shape, and the kernel is faster (Flint per layer 121 → 52 µs at 8K, 334 → 265 µs at 58K; gemma4-31b 366 → 146, 994 → 784 µs).
+
+Second defect, found by the same test on a sink cell that scaled with the sink value: `VerifySplitKV.__call__` accepted `sinks` but did not forward them to the combine launch, so `HAS_SINKS` was always False and the route ignored Flint's learned sinks (output too large by the sink's softmax share: ~1 % at a +4.3 sink over an 8K prefix — the "ulp-class outlier" of the first test was this). Fixed; the sink cells now sit at the bf16 floor like the rest.
+
+Receipt `benchmarks/profiling/extend-splitkv-route-v2-2026-11-01.json` (qwen38, flint ± sinks, gemma4-31b, gemma4 × bf16/e5m2 × 8K/58K/197K × 1/8/16 new tokens — all cells pass; 7.0–7.3× (qwen38), 12–16× (flint), 9.6–12× (gemma4-31b), 20–22× (gemma4) per layer at 197K). The served Flint numbers above were measured with the sink-less kernel and are being re-taken; the Gemma 4 gates and the DSpark spec arm (same kernel, L_EXT = 4) run behind it.
