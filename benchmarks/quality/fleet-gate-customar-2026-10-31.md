@@ -26,6 +26,7 @@ Fleet harness (`eval_and_chart.py --mmlu-samples 60 --humaneval-samples 30 --mc-
 | `gemma4` | shipped (AR on; head tied, INT8 inert) | 46/57 | 29/30 | |
 | `gemma4` | AR off | 47/57 | 29/30 | within one item — cleared |
 | `nemotron3-omni` | shipped (AR on; INT8 head pinned off) | 50/57 | 30/30 | |
-| `nemotron3-omni` | AR off | _running_ | | |
-| `flint` | 250K natural re-probe, AR off vs on, 2 passes each | _running_ | | the gate's 3 cells were probe 400s |
+| `nemotron3-omni` | AR off | 52/57 | 30/30 | within two items, needle 6/6 — cleared |
+| `flint` | AR on, 250K natural re-probe at 244,606 actual, 2 sampled passes | needle 2/6 (pass 1: 0.5 + 0.9 found, 0.1 "I don't know"; pass 2: 0/3 — 0.1 "I don't know", 0.5 "Bazinga", 0.9 think-loop to the budget) | | the known text-dependent band (≥ 240K, both KV dtypes, R9700 FP8 too); AR-off re-run below decides whether the allreduce shifts the odds |
+| `flint` | AR off, same re-probe | _running_ | | |
 
