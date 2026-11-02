@@ -1,0 +1,5 @@
+# Unified diffs render an empty context line as a single space, and profiler/benchmark
+# receipts are verbatim tool output: exempt both from the whitespace check the image
+# workflow runs (`git show --check HEAD`), which otherwise fails every patch commit.
+patches/*.patch -whitespace
+benchmarks/** -whitespace
