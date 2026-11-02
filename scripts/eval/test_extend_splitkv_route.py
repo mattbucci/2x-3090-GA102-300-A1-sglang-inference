@@ -11,8 +11,9 @@ import argparse, json, statistics, sys, time, torch
 PRESETS = {  # per-rank (TP=2) full-attention shapes
     "qwen38": dict(h_q=32, h_kv=2, head_dim=256, v_head_dim=256, sinks=False),
     "flint": dict(h_q=16, h_kv=2, head_dim=128, v_head_dim=128, sinks=True),
-    "gemma4-31b": dict(h_q=16, h_kv=8, head_dim=256, v_head_dim=256, sinks=False),  # 32/16 heads, group 2
-    "gemma4": dict(h_q=8, h_kv=4, head_dim=256, v_head_dim=256, sinks=False),  # 26B-A4B: 16/8 heads, group 2
+    "gemma4-31b-swa": dict(h_q=16, h_kv=8, head_dim=256, v_head_dim=256, sinks=False),  # sliding layers: 32/16 heads x 256 (not routed)
+    "gemma4-31b": dict(h_q=16, h_kv=2, head_dim=512, v_head_dim=512, sinks=False),  # GLOBAL layers: 32 q / 4 kv heads x 512 — the routed shape
+    "gemma4": dict(h_q=8, h_kv=1, head_dim=512, v_head_dim=512, sinks=False),  # 26B-A4B global layers: 16 q / 2 kv x 512
 }
 
 def kernel_stats():
