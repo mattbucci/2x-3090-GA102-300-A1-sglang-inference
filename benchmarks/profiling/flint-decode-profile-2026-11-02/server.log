@@ -1,0 +1,484 @@
+==============================================
+flint — SGLang TP=2 on RTX 3090
+PyTorch 2.14.1+cu130
+Model:  /home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g64-gptq
+Quant:  awq_marlin  Context: 262144  Port: 23334
+==============================================
+[2026-11-02 14:28:39] Registered linear attn model: config=GigaChat35Config, backend=GDNAttnBackend, archs=['GigaChat35ForCausalLM', 'GigaChat35ForCausalLMNextN']
+[2026-11-02 14:28:41] The model is convertible to awq_marlin during runtime. Using awq_marlin kernel.
+[2026-11-02 14:28:41] Hybrid SWA model detected. architectures=['FlintForCausalLM']
+[2026-11-02 14:28:42] server_args={'model_path': '/home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g64-gptq', 'tokenizer_path': '/home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g64-gptq', 'tokenizer_mode': 'auto', 'tokenizer_backend': 'huggingface', 'tokenizer_worker_num': 1, 'detokenizer_worker_num': 1, 'skip_tokenizer_init': False, 'load_format': 'auto', 'model_loader_extra_config': '{}', 'trust_remote_code': True, 'context_length': 262144, 'is_embedding': False, 'enable_multimodal': None, 'revision': None, 'model_impl': 'auto', 'model_config_parser': 'auto', 'json_model_override_args': '{}', 'dtype': 'bfloat16', 'quantization': 'awq_marlin', 'quantization_param_path': None, 'kv_cache_dtype': 'fp8_e5m2', 'enable_fp32_lm_head': True, 'modelopt_quant': None, 'modelopt_checkpoint_restore_path': None, 'modelopt_checkpoint_save_path': None, 'modelopt_export_path': None, 'quantize_and_serve': False, 'rl_quant_profile': None, 'enable_tf32_matmul': False, 'mem_fraction_static': 0.85, 'max_running_requests': 1, 'max_queued_requests': None, 'max_total_tokens': None, 'chunked_prefill_size': 8192, 'prefill_decode_interval': 0, 'enable_dynamic_chunking': False, 'max_prefill_tokens': 16384, 'prefill_max_requests': None, 'schedule_policy': 'fcfs', 'enable_priority_scheduling': False, 'disable_priority_preemption': False, 'default_priority_value': None, 'abort_on_priority_when_disabled': False, 'schedule_low_priority_values_first': False, 'priority_scheduling_preemption_threshold': 10, 'retraction_policy': 'length', 'schedule_conservativeness': 1.0, 'page_size': 1, 'c128_page_size': 16, 'swa_full_tokens_ratio': 0.05, 'disable_hybrid_swa_memory': False, 'radix_eviction_policy': 'lru', 'radix_eviction_policy_config': None, 'prefill_only_disable_kv_cache': False, 'disable_radix_cache': False, 'enable_page_major_kv_layout': False, 'enable_unified_memory': False, 'disable_chunked_prefix_cache': False, 'disable_overlap_schedule': False, 'num_continuous_decode_steps': 4, 'scheduler_recv_interval': 1, 'enable_mixed_chunk': False, 'nccl_port': None, 'dist_timeout': None, 'dist_init_addr': None, 'gated_launch_port': None, 'nnodes': 1, 'node_rank': 0, 'tp_size': 2, 'dcp_size': 1, 'pp_size': 1, 'pp_max_micro_batch_size': None, 'pp_async_batch_depth': 0, 'dp_size': 1, 'attn_dp_size': 1, 'load_balance_method': 'round_robin', 'attn_cp_size': 1, 'moe_dp_size': 1, 'dwdp_size': 1, 'dcp_comm_backend': 'ag_rs', 'dcp_replicate_q_proj': None, 'enable_prefill_cp': False, 'cp_strategy': None, 'enable_dsa_cache_layer_split': False, 'enable_cp_decode_attn_tp': False, 'enable_kv_cache_sharding': False, 'enable_dp_attention': False, 'enable_dp_attention_local_control_broadcast': False, 'enable_dp_lm_head': False, 'enable_tp_lm_head_all_to_all': False, 'enable_attn_tp_input_scattered': False, 'enable_shared_experts_attn_tp': False, 'shared_experts_tp_size': None, 'enable_dense_mlp_attn_tp': False, 'enable_layernorm_sp': False, 'disable_attn_tp_gather': False, 'enable_p2p_check': False, 'device': 'cuda', 'base_gpu_id': 0, 'gpu_id_step': 1, 'random_seed': 143665352, 'mlx_enable_sampling': False, 'watchdog_timeout': 1800.0, 'soft_watchdog_timeout': None, 'sleep_on_idle': False, 'use_ray': False, 'custom_sigquit_handler': None, 'numa_node': None, 'gc_threshold': None, 'host': '0.0.0.0', 'port': 23334, 'fastapi_root_path': '', 'smg_grpc_mode': False, 'grpc_mode': False, 'grpc_port': None, 'grpc_worker_threads': 4, 'sidecar': None, 'sidecar_args': None, 'skip_server_warmup': True, 'warmups': None, 'enable_http2': False, 'http2_max_concurrent_streams': 200, 'http2_initial_connection_window_size': 1048576, 'ssl_keyfile': None, 'ssl_certfile': None, 'ssl_ca_certs': None, 'ssl_keyfile_password': None, 'enable_ssl_refresh': False, 'api_key': None, 'admin_api_key': None, 'served_model_name': 'flint', 'weight_version': 'default', 'chat_template': None, 'trust_request_chat_template': False, 'hf_chat_template_name': None, 'completion_template': None, 'file_storage_path': None, 'enable_cache_report': False, 'return_input_ids': False, 'return_output_ids': False, 'reasoning_parser': 'flint', 'default_chat_template_kwargs': None, 'strip_thinking_cache': False, 'enable_strict_thinking': False, 'tool_call_parser': 'flint', 'tool_server': None, 'sampling_defaults': 'model', 'asr_max_buffer_seconds': 60, 'asr_max_concurrent_sessions': 32, 'preferred_sampling_params': None, 'allow_auto_truncate': False, 'stream_interval': 1, 'batch_notify_size': 16, 'stream_response_default_include_usage': False, 'incremental_streaming_output': False, 'enable_streaming_session': False, 'enable_session_radix_cache': False, 'log_level': 'info', 'log_level_http': None, 'log_requests': False, 'log_requests_level': 2, 'log_requests_format': 'text', 'log_requests_target': None, 'uvicorn_access_log_exclude_prefixes': [], 'crash_dump_folder': None, 'show_time_cost': False, 'enable_metrics': True, 'smg_http_sidecar_port': None, 'enable_mfu_metrics': False, 'enable_metrics_for_all_schedulers': False, 'load_snapshot_publish_interval': 15, 'tokenizer_metrics_custom_labels_header': 'x-custom-labels', 'tokenizer_metrics_allowed_custom_labels': None, 'extra_metric_labels': None, 'bucket_time_to_first_token': None, 'bucket_inter_token_latency': None, 'bucket_e2e_request_latency': None, 'prompt_tokens_buckets': None, 'generation_tokens_buckets': None, 'gc_warning_threshold_secs': 0.0, 'decode_log_interval': 40, 'enable_request_time_stats_logging': False, 'kv_events_config': None, 'load_publish_endpoint': None, 'enable_forward_pass_metrics': False, 'forward_pass_metrics_worker_id': '', 'forward_pass_metrics_ipc_name': None, 'enable_trace': False, 'trace_modules': 'request', 'otlp_traces_endpoint': 'localhost:4317', 'export_metrics_to_file': False, 'export_metrics_to_file_dir': None, 'stat_loggers': None, 'constrained_json_whitespace_pattern': None, 'constrained_json_disable_any_whitespace': False, 'constrained_json_max_whitespace_cnt': None, 'attention_backend': 'triton', 'decode_attention_backend': None, 'enable_lean_attention': None, 'prefill_attention_backend': None, 'sampling_backend': 'flashinfer', 'grammar_backend': 'flint', 'radix_cache_backend': None, 'mm_attention_backend': None, 'fp8_gemm_runner_backend': 'auto', 'fp4_gemm_runner_backend': 'auto', 'bf16_gemm_backend': 'auto', 'dsa_prefill_backend': None, 'dsv4_prefill_backend': 'auto', 'dsa_decode_backend': None, 'dsa_paged_mqa_logits_backend': 'auto', 'dsa_topk_backend': 'sgl-kernel', 'disable_flashinfer_autotune': False, 'flashinfer_autotune_skip_ops': None, 'mamba_backend': 'triton', 'cuda_graph_config': {'decode': {'backend': 'full', 'max_bs': 1, 'bs': [1], 'tc_compiler': 'eager', 'max_context_size': None, 'full_prefill_max_req': None, 'full_prefill_prefix_chunk_tokens': None, 'max_seq_len': None}, 'prefill': {'backend': 'disabled', 'max_bs': 8192, 'bs': [4, 8, 12, 16, 20, 24, 28, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256, 288, 320, 352, 384, 416, 448, 480, 512, 576, 640, 704, 768, 832, 896, 960, 1024, 1280, 1536, 1792, 2048, 2304, 2560, 2816, 3072, 3328, 3584, 3840, 4096, 4608, 5120, 5632, 6144, 6656, 7168, 7680, 8192], 'tc_compiler': 'eager', 'max_context_size': None, 'full_prefill_max_req': None, 'full_prefill_prefix_chunk_tokens': None, 'max_seq_len': None}}, 'cuda_graph_backend_decode': None, 'cuda_graph_backend_prefill': 'disabled', 'cuda_graph_max_bs_decode': 1, 'cuda_graph_max_bs_prefill': None, 'cuda_graph_bs_decode': None, 'cuda_graph_bs_prefill': None, 'cuda_graph_prefill_max_context': None, 'disable_prefill_cuda_graph': False, 'disable_decode_cuda_graph': False, 'disable_cuda_graph': False, 'disable_cuda_graph_padding': False, 'enable_profile_cuda_graph': False, 'enable_cudagraph_gc': False, 'debug_cuda_graph': False, 'enable_layerwise_nvtx_marker': False, 'enable_nccl_nvls': False, 'enable_symm_mem': False, 'triton_attention_reduce_in_fp32': False, 'triton_attention_num_kv_splits': 64, 'triton_attention_split_tile_size': None, 'flashinfer_mla_disable_ragged': False, 'enable_fused_qk_norm_rope': False, 'enable_precise_embedding_interpolation': False, 'enable_fused_moe_sum_all_reduce': False, 'enable_deepseek_v4_fp4_indexer': False, 'disable_custom_all_reduce': False, 'enable_mscclpp': False, 'enable_torch_symm_mem': False, 'enable_scattered_sconv': False, 'pre_warm_nccl': False, 'boundary_reduction': 'rs+rsv', 'enable_quant_communications': False, 'enable_flashinfer_allreduce_fusion': False, 'enforce_disable_flashinfer_allreduce_fusion': False, 'flashinfer_allreduce_fusion_backend': None, 'enable_aiter_allreduce_fusion': False, 'enable_torch_compile': False, 'enable_torch_compile_debug_mode': False, 'torch_compile_max_bs': 32, 'speculative_algorithm': None, 'uno_lora_path': None, 'speculative_draft_model_path': None, 'speculative_draft_model_revision': None, 'speculative_draft_load_format': None, 'speculative_num_steps': None, 'speculative_eagle_topk': None, 'speculative_num_draft_tokens': None, 'speculative_dflash_block_size': None, 'speculative_dspark_block_size': None, 'speculative_dspark_sps_table_path': None, 'speculative_dspark_confidence_sts_path': None, 'speculative_dspark_align_verify_tokens_to_graph_tier': False, 'speculative_accept_threshold_single': 1.0, 'speculative_accept_threshold_acc': 1.0, 'speculative_use_rejection_sampling': False, 'speculative_token_map': None, 'speculative_attention_mode': 'prefill', 'speculative_draft_attention_backend': None, 'speculative_dsa_topk_backend': 'sgl-kernel', 'speculative_draft_kv_cache_dtype': None, 'speculative_draft_window_size': None, 'speculative_moe_runner_backend': 'auto', 'speculative_moe_a2a_backend': None, 'speculative_enable_w4a4_mxfp4_megamoe': None, 'speculative_draft_model_quantization': 'awq_marlin', '_speculative_draft_quantization_explicitly_set': False, 'speculative_skip_dp_mlp_sync': False, 'enable_multi_layer_eagle': False, 'speculative_adaptive': False, 'speculative_adaptive_config': None, 'decoupled_spec_bind_endpoint': None, 'decoupled_spec_connect_endpoints': None, 'decoupled_spec_rank': None, 'decoupled_spec_role': 'null', 'spec_trace_dir': None, 'speculative_ngram_min_bfs_breadth': 1, 'speculative_ngram_max_bfs_breadth': 10, 'speculative_ngram_match_type': 'BFS', 'speculative_ngram_max_trie_depth': 18, 'speculative_ngram_capacity': 10000000, 'speculative_ngram_external_corpus_path': None, 'speculative_ngram_external_sam_budget': 0, 'speculative_ngram_external_corpus_max_tokens': 10000000, 'ep_size': 1, 'moe_a2a_backend': 'none', 'enable_w4a4_mxfp4_megamoe': False, 'deepep_v2_mode': 'direct', 'moe_runner_backend': 'auto', 'flashinfer_mxfp4_moe_precision': 'default', 'deepep_mode': 'auto', 'fuseep_mode': 2, 'deepep_dispatcher_output_dtype': 'auto', 'ep_num_redundant_experts': 0, 'ep_dispatch_algorithm': None, 'init_expert_location': 'trivial', 'enable_eplb': False, 'eplb_algorithm': 'auto', 'eplb_rebalance_num_iterations': 1000, 'eplb_rebalance_layers_per_chunk': None, 'eplb_min_rebalancing_utilization_threshold': 1.0, 'expert_distribution_recorder_mode': None, 'expert_distribution_recorder_buffer_size': 1000, 'expert_balancedness_report_mode': 'off', 'deepep_config': None, 'moe_dense_tp_size': None, 'elastic_ep_backend': None, 'enable_elastic_expert_backup': False, 'mooncake_ib_device': None, 'enable_waterfill': False, 'ep_join_mode': None, 'ep_join_rank_offset': 0, 'elastic_ep_initial_size': None, 'max_ep_size': None, 'elastic_ep_scale_timeout': 600, 'disable_flashinfer_cutlass_moe_fp4_allgather': False, 'disable_shared_experts_fusion': False, 'enforce_shared_experts_fusion': False, 'max_mamba_cache_size': None, 'mamba_ssm_dtype': None, 'mamba_max_states_per_path': -1, 'enable_mamba_cache_stochastic_rounding': False, 'mamba_cache_philox_rounds': 0, 'mamba_full_memory_ratio': 0.9, 'mamba_radix_cache_strategy': 'auto', 'uses_mamba_radix_cache': False, 'mamba_track_interval': 256, 'enable_int8_mamba_checkpoint': False, 'int8_mamba_ckpt_size': None, 'linear_attn_backend': 'triton', 'linear_attn_decode_backend': None, 'linear_attn_prefill_backend': None, 'linear_attn_verify_backend': None, 'enable_linear_replayssm': False, 'linear_replayssm_cache_len': 16, 'enable_linear_replayssm_spec': False, 'enable_hierarchical_cache': False, 'hicache_host_memory_mode': 'cache', 'hicache_ratio': 2.0, 'hicache_size': 0, 'hicache_write_policy': 'write_through', 'hicache_io_backend': 'kernel', 'hicache_mem_layout': 'page_first', 'hicache_storage_backend': None, 'hicache_storage_prefetch_policy': 'timeout', 'hicache_storage_backend_extra_config': None, 'hicache_storage_prefetch_retry_poll_interval': 8, 'hicache_storage_prefetch_retry_max_attempts': 8, 'enable_unified_cache_external_linker': False, 'unified_cache_external_linker_backend': 'mooncake', 'enable_hisparse': False, 'hisparse_config': None, 'enable_broadcast_mm_inputs_process': False, 'enable_prefix_mm_cache': False, 'mm_enable_dp_encoder': False, 'mm_process_config': {}, 'mm_processor_worker_num': 0, 'mm_io_worker_num': 0, 'allowed_media_domains': [], 'media_url_max_file_size_mb': 64, 'mm_preprocess_cache_size_mb': None, 'trust_mm_content_hashes': False, 'limit_mm_data_per_request': None, 'enable_mm_global_cache': False, 'image_processor_backend': 'auto', 'mm_global_cache_backend': 'mooncake', 'disable_fast_image_processor': False, 'mm_feature_transport': 'cpu', 'enable_lora': None, 'enable_lora_overlap_loading': None, 'max_lora_rank': None, 'lora_target_modules': None, 'lora_paths': None, 'max_loaded_loras': None, 'max_loras_per_batch': 8, 'lora_eviction_policy': 'lru', 'lora_backend': 'csgmv', 'max_lora_chunk_size': 16, 'experts_shared_outer_loras': None, 'lora_use_virtual_experts': False, 'lora_strict_loading': False, 'lora_drain_wait_threshold': 0.0, 'enable_two_batch_overlap': False, 'enable_single_batch_overlap': False, 'tbo_token_distribution_threshold': 0.48, 'cpu_offload_gb': 0, 'offload_group_size': -1, 'offload_num_in_group': 1, 'offload_prefetch_step': 1, 'offload_mode': 'cpu', 'enable_lmcache': False, 'lmcache_config_file': None, 'enable_flexkv': False, 'flexkv_config_file': None, 'kt_weight_path': None, 'kt_method': 'AMXINT4', 'kt_cpuinfer': None, 'kt_threadpool_count': 2, 'kt_num_gpu_experts': None, 'kt_max_deferred_experts_per_token': None, 'dllm_algorithm': None, 'dllm_algorithm_config': None, 'dllm_fdfo': True, 'disaggregation_mode': 'null', 'disaggregation_transfer_backend': 'mooncake', 'disaggregation_bootstrap_port': 8998, 'disaggregation_ib_device': None, 'disaggregation_decode_enable_radix_cache': False, 'disaggregation_decode_enable_offload_kvcache': False, 'disaggregation_decode_retraction_backup': None, 'num_reserved_decode_tokens': 512, 'disaggregation_decode_extra_slots': None, 'disaggregation_decode_polling_interval': 1, 'optimistic_prefill_attempts': 0, 'encoder_only': False, 'language_only': False, 'language_model_only': False, 'encoder_transfer_backend': 'zmq_to_scheduler', 'encoder_urls': [], 'encoder_bootstrap_port': 8997, 'encoder_register_urls': [], 'enable_adaptive_dispatch_to_encoder': False, 'enable_pdmux': False, 'pdmux_config_path': None, 'sm_group_num': 8, 'startup_weight_load_mode': 'serial', 'custom_weight_loader': [], 'weight_loader_disable_mmap': False, 'weight_loader_prefetch_checkpoints': False, 'weight_loader_prefetch_num_threads': 4, 'weight_loader_drop_cache_after_load': False, 'remote_instance_weight_loader_seed_instance_ip': None, 'remote_instance_weight_loader_seed_instance_service_port': None, 'remote_instance_weight_loader_send_weights_group_ports': None, 'remote_instance_weight_loader_backend': 'nccl', 'remote_instance_weight_loader_start_seed_via_transfer_engine': False, 'engine_info_bootstrap_port': 6789, 'modelexpress_config': None, 'download_dir': None, 'model_checksum': None, 'delete_ckpt_after_loading': False, 'decrypted_config_file': None, 'decrypted_draft_config_file': None, 'checkpoint_engine_wait_weights_before_ready': False, 'enable_prefill_delayer': False, 'prefill_delayer_max_delay_passes': 30, 'prefill_delayer_token_usage_low_watermark': None, 'prefill_delayer_forward_passes_buckets': None, 'prefill_delayer_wait_seconds_buckets': None, 'prefill_delayer_queue_min_ratio': None, 'prefill_delayer_max_delay_ms': None, 'min_free_slots_delay': None, 'enable_deterministic_inference': False, 'rl_on_policy_target': None, 'kv_canary': 'none', 'kv_canary_real_data': 'none', 'kv_canary_sweep_interval': 0, 'enable_dynamic_batch_tokenizer': False, 'dynamic_batch_tokenizer_batch_size': 32, 'dynamic_batch_tokenizer_batch_timeout': 0.002, 'enable_tokenizer_batch_encode': False, 'disable_tokenizer_batch_decode': False, 'debug_tensor_dump_output_folder': None, 'debug_tensor_dump_layers': None, 'debug_tensor_dump_input_file': None, 'enable_memory_saver': False, 'enable_weights_cpu_backup': False, 'enable_draft_weights_cpu_backup': False, 'enable_custom_logit_processor': False, 'enable_return_hidden_states': False, 'return_hidden_states_mode': None, 'enable_return_routed_experts': False, 'enable_return_indexer_topk': False, 'sampling_mask_max_tokens': 4096, 'disable_outlines_disk_cache': False, 'enable_mis': False, 'weight_cache_mode': 'off', 'weight_cache_socket': None, 'weight_cache_timeout': 1800, 'forward_hooks': None, 'msprobe_dump_config': None, 'ple_offload_embedding': None, 'ple_offload_backend': 'pinned', 'ple_offload_dir': None, 'disaggregation_enable_kv_checksum': False, 'enable_pd_role_switch': False, 'speculative_domino_candidate_pool_size': 2048, 'flashinfer_a2a_dispatch_type': None, 'cuda_graph_max_seq_len_prefill': None, 'prefill_kv_cache_dequant_dtype': 'auto', 'dsv4_attn_backend': 'auto', 'otlp_service_name': None, '_radix_eviction_policy_explicitly_set': False, 'hicache_host_memory_fraction': 0.8, 'enable_linker_mla_dedup': False, '_swa_full_tokens_ratio_explicitly_set': True, 'swa_prefix_tails': None, 'enable_encoder_swa_bounded_replay': False, 'enable_decoder_swa_bounded_replay': False, 'enable_response_store': False, 'disaggregation_decode_host_receive_threshold': 1.0, 'qsa_indexer_dtype': 'auto', 'disaggregation_decode_allocation_policy': 'early', 'speculative_boundary_reduction': 'rs+rsv', 'speculative_use_block_verification': False, 'speculative_draft_sink_size': None, 'disable_aiter_allreduce_fusion_in_prefill': False, 'disable_aiter_allreduce_fusion_in_decode': False, 'dsa_triton_union': 0, 'decode_topk_pages': -1, 'decode_topk_page_size': 32, 'decode_topk_scorer': 'bbox', 'enable_dsa_fused_indexer': None, 'enable_cp_tp_group_sharing': False, 'enable_watermark': False, 'watermark_config': '<redacted>', 'watermark_key': '<redacted>', 'watermark_key_b': '<redacted>', 'watermark_context_window': 4, 'watermark_mixing_probability': 0.5, 'watermark_max_probability': 1.0, 'watermark_default_enabled': False, 'watermark_enforce_all': False, 'grpc_response_timeout_secs': 300}
+[2026-11-02 14:28:42] The model is convertible to awq_marlin during runtime. Using awq_marlin kernel.
+[2026-11-02 14:28:43] Tokenizer for /home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g64-gptq is still TokenizersBackend after retries with --trust-remote-code. Model-specific tokenizer attributes may be missing.
+[2026-11-02 14:28:43] [072] incremental tokenizer on (144 added tokens, add_special_tokens mode ok)
+[2026-11-02 14:28:43] Using default HuggingFace chat template with detected content format: string
+[2026-11-02 14:28:44] Auto-detected template features: reasoning_parser=deepseek-r1, tool_call_parser=glm45
+[2026-11-02 14:28:49 TP1] The model is convertible to awq_marlin during runtime. Using awq_marlin kernel.
+[2026-11-02 14:28:49 TP1] Init parallel begin.
+[2026-11-02 14:28:50 TP0] The model is convertible to awq_marlin during runtime. Using awq_marlin kernel.
+[2026-11-02 14:28:50 TP0] Init parallel begin.
+[2026-11-02 14:28:50 TP0] sglang is using nccl==2.30.7
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO ncclOsDlopen(libnccl-env.so) failed: libnccl-env.so: cannot open shared object file: No such file or directory
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO ENV/Plugin: Could not find: libnccl-env.so
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO cudaDriverVersion 13020
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO NCCL version 2.30.7+cuda13.3
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO NCCL git version HEAD a5187fa2e
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO ncclOsDlopen(libnccl-net.so) failed: libnccl-net.so: cannot open shared object file: No such file or directory
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO NET/Plugin: Could not find: libnccl-net.so
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Count not open libibverbs.so
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Count not open libibverbs.so.1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/net_ib/init.cc:526 (ncclIbInit) -> 3
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Failed to initialize NET plugin IB
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO NET/Socket : Using [0]enp13s0:192.168.2.141<0> [1]wlan0:192.168.86.27<0>
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Initialized NET plugin Socket
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Assigned NET plugin Socket to comm
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO ncclOsDlopen(libnccl-rma.so) failed: libnccl-rma.so: cannot open shared object file: No such file or directory
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO RMA/Plugin: Could not find: libnccl-rma.so
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO RMA/Plugin: Failed to load external plugin libnccl-rma.so, dlHandle: (nil), ncclRma: (nil)
+
+[2026-11-02 14:28:51] letsrtfm-amd:1799038:1799038 [0] misc/ibvwrap.cc:185 (wrap_ibv_alloc_pd) NCCL WARN lib wrapper not initialized.
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/net_ib/gdr.cc:55 (ibDmaBufSupportInitOnce) -> 3
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO RMA/Plugin: Failed to initialize any plugin
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO ncclOsDlopen(libnccl-gin.so) failed: libnccl-gin.so: cannot open shared object file: No such file or directory
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO GIN/Plugin: Could not find: libnccl-gin.so
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO GIN/Plugin: Failed to load external plugin libnccl-gin.so, dlHandle: (nil), ncclGin: (nil)
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO GIN/Plugin: Failed to initialize any GIN plugin
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Using network Socket
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Loaded NVML from libnvidia-ml.so.1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO [Rank 0] ncclCommInitRank comm 0x55d96794eb10 rank 0 nranks 2 cudaDev 0 nvmlDev 0 busId 1000 commId 0x59c320db2b0caa44 - Init START
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO RAS client listening socket at ::1<28028>
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO ncclTopoGetCpuAffinity: Affinity for GPU 0 is empty, ignoring. (GPU affinity =  ; CPU affinity = 0-23).
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Rank 0: 2 Net devices
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Rank 0: 0 CollNet devices
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Local Net device counts across ranks: min 2 max 2
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Local CollNet device counts across ranks: min 0 max 0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO comm 0x55d96794eb10 rank 0 nRanks 2 nNodes 1 localRanks 2 localRank 0 MNNVL 0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 00/04 : 0 1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 01/04 : 0 1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 02/04 : 0 1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 03/04 : 0 1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Trees [0] 1/-1/-1->0->-1 [1] -1/-1/-1->0->1 [2] 1/-1/-1->0->-1 [3] -1/-1/-1->0->1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO P2P Chunksize set to 524288
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO ncclOsDlopen(libnccl-profiler.so) failed: libnccl-profiler.so: cannot open shared object file: No such file or directory
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO PROFILER/Pletsrtfm-amd:1799039:1799039 [1] NCCL INFO ncclOsDlopen(libnccl-env.so) failed: libnccl-env.so: cannot open shared object file: No such file or directory
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO ENV/Plugin: Could not find: libnccl-env.so
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO cudaDriverVersion 13020
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO NCCL version 2.30.7+cuda13.3
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO NCCL git version HEAD a5187fa2e
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO ncclOsDlopen(libnccl-net.so) failed: libnccl-net.so: cannot open shared object file: No such file or directory
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO NET/Plugin: Could not find: libnccl-net.so
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Count not open libibverbs.so
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Count not open libibverbs.so.1
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/net_ib/init.cc:526 (ncclIbInit) -> 3
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Failed to initialize NET plugin IB
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO NET/Socket : Using [0]enp13s0:192.168.2.141<0> [1]wlan0:192.168.86.27<0>
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Initialized NET plugin Socket
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Assigned NET plugin Socket to comm
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO ncclOsDlopen(libnccl-rma.so) failed: libnccl-rma.so: cannot open shared object file: No such file or directory
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO RMA/Plugin: Could not find: libnccl-rma.so
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO RMA/Plugin: Failed to load external plugin libnccl-rma.so, dlHandle: (nil), ncclRma: (nil)
+
+[2026-11-02 14:28:51] letsrtfm-amd:1799039:1799039 [1] misc/ibvwrap.cc:185 (wrap_ibv_alloc_pd) NCCL WARN lib wrapper not initialized.
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/net_ib/gdr.cc:55 (ibDmaBufSupportInitOnce) -> 3
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO RMA/Plugin: Failed to initialize any plugin
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO ncclOsDlopen(libnccl-gin.so) failed: libnccl-gin.so: cannot open shared object file: No such file or directory
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO GIN/Plugin: Could not find: libnccl-gin.so
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO GIN/Plugin: Failed to load external plugin libnccl-gin.so, dlHandle: (nil), ncclGin: (nil)
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO GIN/Plugin: Failed to initialize any GIN plugin
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Using network Socket
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Loaded NVML from libnvidia-ml.so.1
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO [Rank 1] ncclCommInitRank comm 0x55bd93937c70 rank 1 nranks 2 cudaDev 1 nvmlDev 1 busId 3000 commId 0x59c320db2b0caa44 - Init START
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO RAS client listening socket at ::1<28028>
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO ncclTopoGetCpuAffinity: Affinity for GPU 1 is empty, ignoring. (GPU affinity =  ; CPU affinity = 0-23).
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Rank 1: 2 Net devices
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Rank 1: 0 CollNet devices
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO comm 0x55bd93937c70 rank 1 nRanks 2 nNodes 1 localRanks 2 localRank 1 MNNVL 0
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Trees [0] -1/-1/-1->1->0 [1] 0/-1/-1->1->-1 [2] -1/-1/-1->1->0 [3] 0/-1/-1->1->-1
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO P2P Chunksize set to 524288
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO ncclOsDlopen(libnccl-profiler.so) failed: libnccl-profiler.so: cannot open shared object file: No such file or directory
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO PROFILER/Plugin: Could not find: libnccl-profiler.so
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Check P2P Type isAllDirectP2p 1 directMode 0 isAllCudaP2p 1
+letsrtfm-amd:1799039:1799323 [0] NCCL INFO [Proxy Service] Device 1 CPU core 7
+letsrtfm-amd:1799039:1799325 [0] NCCL INFO [Proxy Service UDS] Device 1 CPU core 21
+letsrtfm-amd:1799039:1799323 [1] NCCL INFO proxy listening socket at 192.168.2.141<60905>
+letsrtfm-amd:1799039:1799323 [1] NCCL INFO lugin: Could not find: libnccl-profiler.so
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Check P2P Type isAllDirectP2p 1 directMode 0 isAllCudaP2p 1
+letsrtfm-amd:1799038:1799324 [0] NCCL INFO [Proxy Service] Device 0 CPU core 10
+letsrtfm-amd:1799038:1799326 [0] NCCL INFO [Proxy Service UDS] Device 0 CPU core 20
+letsrtfm-amd:1799038:1799324 [0] NCCL INFO proxy listening socket at 192.168.2.141<48475>
+letsrtfm-amd:1799038:1799324 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f3ce1000000 size 10485760 ipcDesc 0x7f3c44011cf0
+letsrtfm-amd:1799038:1799324 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f3ca4000000 size 10485760 ipcDesc 0x7f3c44011cf0
+letsrtfm-amd:1799038:1799324 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f3ca4a00000 size 10485760 ipcDesc 0x7f3c44011cf0
+letsrtfm-amd:1799038:1799324 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f3ca5400000 size 10485760 ipcDesc 0x7f3c44011cf0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 00/0 : 0[0] -> 1[1] via P2P/IPC
+letsrtfm-amd:1799038:1799324 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f3ca5e00000 size 2097152 ipcDesc 0x7f3c44011cf0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 01/0 : 0[0] -> 1[1] via P2P/IPC
+letsrtfm-amd:1799038:1799324 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f3ce1a00000 size 2097152 ipcDesc 0x7f3c44011cf0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 02/0 : 0[0] -> 1[1] via P2P/IPC
+letsrtfm-amd:1799038:1799324 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f3ce1c00000 size 2097152 ipcDesc 0x7f3c44011cf0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 03/0 : 0[0] -> 1[1] via P2P/IPC
+letsrtfm-amd:1799038:1799324 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f3ce1e00000 size 2097152 ipcDesc 0x7f3c44011cf0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 10485760 ptr 0x7f3c2e000000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 2097152 ptr 0x7f3c2ea00000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 10485760 ptr 0x7f3c2ec00000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 2097152 ptr 0x7f3c2f600000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 10485760 ptr 0x7f3c2c000000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 2097152 ptr 0x7f3c2ca00000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 10485760 ptr 0x7f3c2cc00000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 2097152 ptr 0x7f3c2d600000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Connected all rings, use ring PXN 0 GDR 1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Connected all trees
+letsrtfm-amd:1799038:1799328 [0] NCCL INFO [Proxy Progress] Device 0 CPU core 21
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO ncclOsDlopen(libnccl-tuner.so) failed: libnccl-tuner.so: cannot open shared object file: No such file or directory
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO TUNER/Plugin: Could not find: libnccl-tuner.so
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO threadThresholds 8/8/64 | 16/8/64 | 512 | 512
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO 4 coll channels, 4 collnet channels, 0 nvls channeltransport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f7e49000000 size 10485760 ipcDesc 0x7f7da4011cf0
+letsrtfm-amd:1799039:1799323 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f7db8000000 size 10485760 ipcDesc 0x7f7da4011cf0
+letsrtfm-amd:1799039:1799323 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f7db8a00000 size 10485760 ipcDesc 0x7f7da4011cf0
+letsrtfm-amd:1799039:1799323 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f7db9400000 size 10485760 ipcDesc 0x7f7da4011cf0
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Channel 00/0 : 1[1] -> 0[0] via P2P/IPC
+letsrtfm-amd:1799039:1799323 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f7db9e00000 size 2097152 ipcDesc 0x7f7da4011cf0
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Channel 01/0 : 1[1] -> 0[0] via P2P/IPC
+letsrtfm-amd:1799039:1799323 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f7e49a00000 size 2097152 ipcDesc 0x7f7da4011cf0
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Channel 02/0 : 1[1] -> 0[0] via P2P/IPC
+letsrtfm-amd:1799039:1799323 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f7e49c00000 size 2097152 ipcDesc 0x7f7da4011cf0
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Channel 03/0 : 1[1] -> 0[0] via P2P/IPC
+letsrtfm-amd:1799039:1799323 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x7f7e49e00000 size 2097152 ipcDesc 0x7f7da4011cf0
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 10485760 ptr 0x7f7da2000000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 2097152 ptr 0x7f7da2a00000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 10485760 ptr 0x7f7da2c00000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 2097152 ptr 0x7f7da3600000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 10485760 ptr 0x7f7d9a000000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 2097152 ptr 0x7f7d9aa00000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 10485760 ptr 0x7f7d9ac00000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 2097152 ptr 0x7f7d9b600000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Connected all rings, use ring PXN 0 GDR 1
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Connected all trees
+letsrtfm-amd:1799039:1799327 [0] NCCL INFO [Proxy Progress] Device 1 CPU core 22
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO ncclOsDlopen(libnccl-tuner.so) failed: libnccl-tuner.so: cannot open shared object file: No such file or directory
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO TUNER/Plugin: Could not find: libnccl-tuner.so
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO threadThresholds 8/8/64 | 16/8/64 | 512 | 512
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO 4 coll channels, 4 collnet channels, 0 nvls channels, 4 p2p channels, 4 p2p channels per peer
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Symmetric memory is not supported. cuMemEnable 0, globalGinSupport 0, cuMemGdrSupport 0
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO ncclCommInitRank comm 0x55bd93937c70 rank 1 nranks 2 cudaDev 1 nvmlDev 1 busId 3000 commId 0x59c320db2b0caa44 - Init COMPLETE
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Init timings - ncclCommInitRank: rank 1 nranks 2 total 0.[2026-11-02 14:28:51 TP0] All Reduce config: symmetric_memory = 20.01 MB, local_buffer = 2.00 MB, multicast = False, pull = True
+[2026-11-02 14:28:51 TP1] Init parallel ends. elapsed=1.16 s
+[2026-11-02 14:28:51 TP0] Init parallel ends. elapsed=1.12 s
+[2026-11-02 14:28:51] Tokenizer for /home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g64-gptq is still TokenizersBackend after retries with --trust-remote-code. Model-specific tokenizer attributes may be missing.
+[2026-11-02 14:28:52 TP1] Tokenizer for /home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g64-gptq is still TokenizersBackend after retries with --trust-remote-code. Model-specific tokenizer attributes may be missing.
+[2026-11-02 14:28:52 TP0] Tokenizer for /home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g64-gptq is still TokenizersBackend after retries with --trust-remote-code. Model-specific tokenizer attributes may be missing.
+[2026-11-02 14:28:53 TP0] The model is convertible to awq_marlin during runtime. Using awq_marlin kernel.
+[2026-11-02 14:28:53 TP1] The model is convertible to awq_marlin during runtime. Using awq_marlin kernel.
+[2026-11-02 14:28:53 TP0] Memory baseline taken. mem usage=0.00 GB
+[2026-11-02 14:28:53 TP1] Memory baseline taken. mem usage=0.00 GB
+[2026-11-02 14:28:53 TP0] Load weight begin. avail mem=22.85 GB
+[2026-11-02 14:28:53 TP1] Load weight begin. avail mem=22.99 GB
+[2026-11-02 14:28:53 TP1] Flint is validated upstream with one GPU per replica; {'tp': 2, 'moe_ep': 1, 'moe_tp': 2, 'pp': 1, 'attn_cp': 1} is not vendor-validated.
+[2026-11-02 14:28:53 TP0] Flint is validated upstream with one GPU per replica; {'tp': 2, 'moe_ep': 1, 'moe_tp': 2, 'pp': 1, 'attn_cp': 1} is not vendor-validated.
+Multi-thread loading shards:   0% Completed | 0/5 [00:00<?, ?it/s]Multi-thread loading shards:  20% Completed | 1/5 [00:17<01:10, 17.56s/it]Multi-thread loading shards:  40% Completed | 2/5 [00:26<00:38, 12.67s/it]Multi-thread loading shards:  60% Completed | 3/5 [00:35<00:21, 10.65s/it]Multi-thread loading shards:  80% Completed | 4/5 [00:43<00:09,  9.59s/it]Multi-thread loading shards: 100% Completed | 5/5 [00:43<00:00,  6.46s/it]Multi-thread loading shards: 100% Completed | 5/5 [00:43<00:00,  8.79s/it]
+[2026-11-02 14:29:45 TP0] lm_head int8: 75072 x 2048 repacked to Marlin W8A16 (per-channel symmetric), 0.31 GB -> 0.15 GB
+[2026-11-02 14:29:45 TP1] lm_head int8: 144 special-token rows kept exact (bf16)
+[2026-11-02 14:29:45 TP1] lm_head int8: 75072 x 2048 repacked to Marlin W8A16 (per-channel symmetric), 0.31 GB -> 0.15 GB
+[2026-11-02 14:29:45 TP0] Load weight end. elapsed=52.43 s, type=FlintForCausalLM, quant=awq, bits=4, avail mem=12.43 GB, mem usage=10.42 GB.
+[2026-11-02 14:29:45 TP1] Load weight end. elapsed=52.44 s, type=FlintForCausalLM, quant=awq, bits=4, avail mem=12.57 GB, mem usage=10.42 GB.
+[2026-11-02 14:29:47 TP0] Tokenizer for /home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g64-gptq is still TokenizersBackend after retries with --trust-remote-code. Model-specific tokenizer attributes may be missing.
+[2026-11-02 14:29:47 TP1] Tokenizer for /home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g64-gptq is still TokenizersBackend after retries with --trust-remote-code. Model-specific tokenizer attributes may be missing.
+[2026-11-02 14:29:48 TP0] Use sliding window memory pool. full_layer_tokens=1195984, swa_layer_tokens=59799
+[2026-11-02 14:29:48 TP1] Use sliding window memory pool. full_layer_tokens=1195984, swa_layer_tokens=59799
+[2026-11-02 14:29:48 TP1] Full KV Cache is allocated. dtype: torch.float8_e5m2, #tokens: 1195984, K size: 3.99 GB, V size: 3.99 GB
+[2026-11-02 14:29:48 TP0] Full KV Cache is allocated. dtype: torch.float8_e5m2, #tokens: 1195984, K size: 3.99 GB, V size: 3.99 GB
+[2026-11-02 14:29:48 TP1] SWA KV Cache is allocated. dtype: torch.float8_e5m2, #tokens: 59799, K size: 0.50 GB, V size: 0.50 GB
+[2026-11-02 14:29:48 TP1] SWAKVPool mem usage: 8.98 GB, swa size: 59799, full size: 1195984
+[2026-11-02 14:29:48 TP0] SWA KV Cache is allocated. dtype: torch.float8_e5m2, #tokens: 59799, K size: 0.50 GB, V size: 0.50 GB
+[2026-11-02 14:29:48 TP0] SWAKVPool mem usage: 8.98 GB, swa size: 59799, full size: 1195984
+[2026-11-02 14:29:48 TP1] Memory pool end. avail mem=3.55 GB
+[2026-11-02 14:29:48 TP0] Memory pool end. avail mem=3.41 GB
+[2026-11-02 14:29:48 TP0] [070] split-KV short-turn route warmed (h_q=16; h_kv=2 d=128 kv=torch.float8_e5m2 tiles=[16, 32]) in 0.37 s
+[2026-11-02 14:29:48 TP1] [070] split-KV short-turn route warmed (h_q=16; h_kv=2 d=128 kv=torch.float8_e5m2 tiles=[16, 32]) in 0.37 s
+[2026-11-02 14:29:48 TP0] Disable prefill CUDA graph because cuda_graph_config resolved prefill.backend='disabled' (e.g. via --cuda-graph-backend-prefill=disabled or auto-disable rules).
+[2026-11-02 14:29:48 TP1] Disable prefill CUDA graph because cuda_graph_config resolved prefill.backend='disabled' (e.g. via --cuda-graph-backend-prefill=disabled or auto-disable rules).
+[2026-11-02 14:29:48 TP0] Capture target decode CUDA graph begin. backend=full, num_tokens_per_req=1, avail mem=3.33 GB
+[2026-11-02 14:29:48 TP1] Capture target decode CUDA graph begin. backend=full, num_tokens_per_req=1, avail mem=3.48 GB
+  0%|          | 0/1 [00:00<?, ?it/s]Capturing batches (bs=1 avail_mem=3.33 GB):   0%|          | 0/1 [00:00<?, ?it/s][2026-11-02 14:29:48 TP1] You are running Marlin kernel with bf16 on GPUs before SM90. You can consider change to fp16 to achieve better performance if possible.
+[2026-11-02 14:29:48 TP0] You are running Marlin kernel with bf16 on GPUs before SM90. You can consider change to fp16 to achieve better performance if possible.
+[2026-11-02 14:29:49 TP1] multimem all-gather disabled (no multicast for world_size=2)
+[2026-11-02 14:29:49 TP0] multimem all-gather disabled (no multicast for world_size=2)
+Capturing batches (bs=1 avail_mem=3.33 GB): 100%|██████████| 1/1 [00:00<00:00,  1.50it/s]Capturing batches (bs=1 avail_mem=3.33 GB): 100%|██████████| 1/1 [00:00<00:00,  1.50it/s]
+[2026-11-02 14:29:49 TP1] Capture target decode CUDA graph end. bs=[1], elapsed=1.24 s, mem usage=0.06 GB, avail mem=3.41 GB.
+[2026-11-02 14:29:49 TP0] Capture target decode CUDA graph end. bs=[1], elapsed=1.24 s, mem usage=0.06 GB, avail mem=3.27 GB.
+[2026-11-02 14:29:49 TP0] max_total_num_tokens=1195984, chunked_prefill_size=8192, max_prefill_tokens=16384, max_running_requests=1, context_len=262144, available_gpu_mem=3.27 GB
+[2026-11-02 14:29:49 TP0] Init Unified Radix Cache. Components: (<ComponentType.FULL: 0>, <ComponentType.SWA: 1>). Tree Core: RustUnifiedTreeCore
+[2026-11-02 14:29:49 TP0] Tree cache initialized: source=default impl=UnifiedRadixCache hybrid_swa=True hybrid_ssm=False hicache_attached=False
+[2026-11-02 14:29:49 TP1] Init Unified Radix Cache. Components: (<ComponentType.FULL: 0>, <ComponentType.SWA: 1>). Tree Core: RustUnifiedTreeCore
+[2026-11-02 14:29:49 TP1] Tree cache initialized: source=default impl=UnifiedRadixCache hybrid_swa=True hybrid_ssm=False hicache_attached=False
+[2026-11-02 14:29:50] Engine startup timings (s): load_weight=52.44, kv_cache_allocation=0.32, scheduler_e2e=60.30, cuda_graph={prefill=0.00, decode=1.24, target_verify=0.00, draft_prefill=0.00, draft_decode=0.00, draft_extend=0.00}, tokenizer_e2e=68.24
+[2026-11-02 14:29:50] INFO:     Started server process [1798842]
+[2026-11-02 14:29:50] INFO:     Waiting for application startup.
+[2026-11-02 14:29:50] Using default chat sampling params from model generation config: {'temperature': 1.0, 'top_k': 20, 'top_p': 0.95}
+[2026-11-02 14:29:50] INFO:     Application startup complete.
+[2026-11-02 14:29:50] INFO:     Uvicorn running on http://0.0.0.0:23334 (Press CTRL+C to quit)
+[2026-11-02 14:29:50] post-warmup freeze_gc failed
+Traceback (most recent call last):
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/urllib3/connection.py", line 239, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/urllib3/util/connection.py", line 85, in create_connection
+    raise err
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/urllib3/util/connection.py", line 73, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/urllib3/connectionpool.py", line 793, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/urllib3/connectionpool.py", line 499, in _make_request
+    conn.request(
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/urllib3/connection.py", line 567, in request
+    self.endheaders()
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/http/client.py", line 1381, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/http/client.py", line 1141, in _send_output
+    self.send(msg)
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/http/client.py", line 1085, in send
+    self.connect()
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/urllib3/connection.py", line 398, in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/urllib3/connection.py", line 254, in _new_conn
+    raise NewConnectionError(
+urllib3.exceptions.NewConnectionError: HTTPConnection(host='127.0.0.1', port=23334): Failed to establish a new connection: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/urllib3/util/retry.py", line 555, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='127.0.0.1', port=23334): Max retries exceeded with url: /freeze_gc (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=23334): Failed to establish a new connection: [Errno 111] Connection refused"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/data/sglang-rebase-v0522/python/sglang/srt/entrypoints/http_server.py", line 2470, in _freeze_gc_after_server_warmup
+    res = requests.post(
+          ^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/requests/api.py", line 134, in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-v0522/lib/python3.12/site-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='127.0.0.1', port=23334): Max retries exceeded with url: /freeze_gc (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=23334): Failed to establish a new connection: [Errno 111] Connection refused"))
+[2026-11-02 14:29:50] The server is fired up and ready to roll!
+s, 4 p2p channels, 4 p2p channels per peer
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Symmetric memory is not supported. cuMemEnable 0, globalGinSupport 0, cuMemGdrSupport 0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO CC Off, workFifoBytes 1048576
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO ncclCommInitRank comm 0x55d96794eb10 rank 0 nranks 2 cudaDev 0 nvmlDev 0 busId 1000 commId 0x59c320db2b0caa44 - Init COMPLETE
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Init timings - ncclCommInitRank: rank 0 nranks 2 total 0.15 (kernels 0.11, alloc 0.01, bootstrap 0.00, allgathers 0.00, topo 0.01, graphs 0.00, connections 0.02, rest 0.00)
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Symmetric VA size=24GB
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Initialized NET plugin Socket
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Assigned NET plugin Socket to comm
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO RMA/Plugin: Failed to initialize any plugin
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO GIN/Plugin: Failed to initialize any GIN plugin
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Using network Socket
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO [Rank 0] ncclCommInitRankConfig comm 0x55d9b44cc7b0 rank 0 nranks 2 cudaDev 0 nvmlDev 0 busId 1000 commId 0x6e67d3d995700a16 - Init START
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO ncclTopoGetCpuAffinity: Affinity for GPU 0 is empty, ignoring. (GPU affinity =  ; CPU affinity = 0-23).
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Rank 0: 2 Net devices
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Rank 0: 0 CollNet devices
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Local Net device counts across ranks: min 2 max 2
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Local CollNet device counts across ranks: min 0 max 0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO comm 0x55d9b44cc7b0 rank 0 nRanks 2 nNodes 1 localRanks 2 localRank 0 MNNVL 0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 00/04 : 0 1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 01/04 : 0 1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 02/04 : 0 1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 03/04 : 0 1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Trees [0] 1/-1/-1->0->-1 [1] -1/-1/-1->0->1 [2] 1/-1/-1->0->-1 [3] -1/-1/-1->0->1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO P2P Chunksize set to 524288
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Check P2P Type isAllDirectP2p 1 directMode 0 isAllCudaP2p 1
+letsrtfm-amd:1799038:1800008 [0] NCCL INFO [Proxy Service] Device 0 CPU core 20
+letsrtfm-amd:1799038:1800008 [0] NCCL INFO proxy listening socket at 192.168.2.141<60937>
+letsrtfm-amd:1799038:1800010 [0] NCCL INFO [Proxy Service UDS] Device 0 CPU core 23
+letsrtfm-amd:1799038:1800008 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x44d8600000 size 10485760 ipcDesc 0x7f3b441215c0
+letsrtfm-amd:1799038:1800008 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x44d9000000 size 10485760 ipcDesc 0x7f3b441215c0
+letsrtfm-amd:1799038:1800008 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x3e36600000 size 10485760 ipcDesc 0x7f3b441215c0
+letsrtfm-amd:1799038:1800008 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x3e37000000 size 10485760 ipcDesc 0x7f3b441215c0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 00/0 : 0[0] -> 1[1] via P2P/IPC
+letsrtfm-amd:1799038:1800008 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x4b7b800000 size 2097152 ipcDesc 0x7f3b441215c0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 01/0 : 0[0] -> 1[1] via P2P/IPC
+letsrtfm-amd:1799038:1800008 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x4b7ba00000 size 2097152 ipcDesc 0x7f3b441215c0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 02/0 : 0[0] -> 1[1] via P2P/IPC
+letsrtfm-amd:1799038:1800008 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x4b7bc0000015 (kernels 0.11, alloc 0.01, bootstrap 0.00, allgathers 0.00, topo 0.01, graphs 0.00, connections 0.02, rest 0.00)
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Symmetric VA size=24GB
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Initialized NET plugin Socket
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Assigned NET plugin Socket to comm
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO RMA/Plugin: Failed to initialize any plugin
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO GIN/Plugin: Failed to initialize any GIN plugin
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Using network Socket
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO [Rank 1] ncclCommInitRankConfig comm 0x55bde0551f10 rank 1 nranks 2 cudaDev 1 nvmlDev 1 busId 3000 commId 0x6e67d3d995700a16 - Init START
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO ncclTopoGetCpuAffinity: Affinity for GPU 1 is empty, ignoring. (GPU affinity =  ; CPU affinity = 0-23).
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Rank 1: 2 Net devices
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Rank 1: 0 CollNet devices
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO comm 0x55bde0551f10 rank 1 nRanks 2 nNodes 1 localRanks 2 localRank 1 MNNVL 0
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Trees [0] -1/-1/-1->1->0 [1] 0/-1/-1->1->-1 [2] -1/-1/-1->1->0 [3] 0/-1/-1->1->-1
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO P2P Chunksize set to 524288
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Check P2P Type isAllDirectP2p 1 directMode 0 isAllCudaP2p 1
+letsrtfm-amd:1799039:1800011 [0] NCCL INFO [Proxy Service UDS] Device 1 CPU core 11
+letsrtfm-amd:1799039:1800009 [0] NCCL INFO [Proxy Service] Device 1 CPU core 20
+letsrtfm-amd:1799039:1800009 [1] NCCL INFO proxy listening socket at 192.168.2.141<42287>
+letsrtfm-amd:1799039:1800009 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x44d8600000 size 10485760 ipcDesc 0x7f7ccc10d310
+letsrtfm-amd:1799039:1800009 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x44d9000000 size 10485760 ipcDesc 0x7f7ccc10d310
+letsrtfm-amd:1799039:1800009 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x3e36600000 size 10485760 ipcDesc 0x7f7ccc10d310
+letsrtfm-amd:1799039:1800009 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x3e37000000 size 10485760 ipcDesc 0x7f7ccc10d310
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Channel 00/0 : 1[1] -> 0[0] via P2P/IPC
+letsrtfm-amd:1799039:1800009 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x4b7b800000 size 2097152 ipcDesc 0x7f7ccc10d310
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Channel 01/0 : 1[1] -> 0[0] via P2P/IPC
+letsrtfm-amd:1799039:1800009 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x4b7ba00000 size 2097152 ipcDesc 0x7f7ccc10d310
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Channel 02/0 : 1[1] -> 0[0] via P2P/IPC
+letsrtfm-amd:1799039:1800009 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x4b7bc00000 size 2097152 ipcDesc 0x7f7ccc10d310
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Channel 03/0 : 1[1] -> 0[0] via P2P/IPC
+letsrtfm-amd:1799039:1800009 [1] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x4b7be00000 size 2097152 ipcDesc 0x7f7ccc10d310
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 10485760 ptr 0x30f3200000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 2097152 ptr 0x44d9a00000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 10485760 ptr 0x7f7e0a200000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 2097152 ptr 0x44d9c00000
+letsrtfm-amd:1799039:[2026-11-02 14:29:52 TP0] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 0, full token usage: 0.00, swa token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.36
+[2026-11-02 14:29:53] INFO:     127.0.0.1:60600 - "GET /health HTTP/1.1" 200 OK
+[2026-11-02 14:29:53] INFO:     127.0.0.1:60616 - "GET /v1/models HTTP/1.1" 200 OK
+[2026-11-02 14:29:53 TP0] Prefill batch, #new-seq: 1, #new-token: 120, #cached-token: 0, full token usage: 0.00, swa token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 106.18
+[2026-11-02 14:29:53] INFO:     127.0.0.1:60628 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-11-02 14:29:53 TP0] Profiling starts. Traces will be saved to: /data/tmp/profile-flint-decode-profile-2026-11-02 (with profile id: 1793658593.8638775)
+[2026-11-02 14:29:53 TP1] Profiling starts. Traces will be saved to: /data/tmp/profile-flint-decode-profile-2026-11-02 (with profile id: 1793658593.8638775)
+1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 10485760 ptr 0x7f7e0ac00000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 2097152 ptr 0x44d9e00000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 10485760 ptr 0x7f7e0b600000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 1 size 2097152 ptr 0x3e37a00000
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Connected all rings, use ring PXN 0 GDR 1
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Connected all trees
+letsrtfm-amd:1799039:1800013 [0] NCCL INFO [Proxy Progress] Device 1 CPU core 22
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO threadThresholds 8/8/64 | 16/8/64 | 512 | 512
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO 4 coll channels, 4 collnet channels, 0 nvls channels, 4 p2p channels, 4 p2p channels per peer
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Symmetric memory is not supported. cuMemEnable 0, globalGinSupport 0, cuMemGdrSupport 0
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO ncclCommInitRankConfig comm 0x55bde0551f10 rank 1 nranks 2 cudaDev 1 nvmlDev 1 busId 3000 commId 0x6e67d3d995700a16 - Init COMPLETE
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Init timings - ncclCommInitRankConfig: rank 1 nranks 2 total 0.05 (kernels 0.00, alloc 0.00, bootstrap 0.00, allgathers 0.00, topo 0.02, graphs 0.00, connections 0.03, rest 0.00)
+letsrtfm-amd:1799039:1799039 [1] NCCL INFO Symmetric VA size=24GB
+ size 2097152 ipcDesc 0x7f3b441215c0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Channel 03/0 : 0[0] -> 1[1] via P2P/IPC
+letsrtfm-amd:1799038:1800008 [0] NCCL INFO transport/p2p.cc:255 (ncclP2pAllocateShareableBuffer) Allocated shareable buffer 0x4b7be00000 size 2097152 ipcDesc 0x7f3b441215c0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 10485760 ptr 0x30f3200000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 2097152 ptr 0x44d9a00000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 10485760 ptr 0x7f3c96200000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 2097152 ptr 0x44d9c00000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 10485760 ptr 0x7f3c96c00000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 2097152 ptr 0x44d9e00000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 10485760 ptr 0x7f3c97600000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO transport/p2p.cc:321 (ncclP2pImportShareableBuffer) Imported shareable buffer device 0 size 2097152 ptr 0x3e37a00000
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Connected all rings, use ring PXN 0 GDR 1
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Connected all trees
+letsrtfm-amd:1799038:1800012 [0] NCCL INFO [Proxy Progress] Device 0 CPU core 22
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO threadThresholds 8/8/64 | 16/8/64 | 512 | 512
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO 4 coll channels, 4 collnet channels, 0 nvls channels, 4 p2p channels, 4 p2p channels per peer
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Symmetric memory is not supported. cuMemEnable 0, globalGinSupport 0, cuMemGdrSupport 0
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO CC Off, workFifoBytes 1048576
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO ncclCommInitRankConfig comm 0x55d9b44cc7b0 rank 0 nranks 2 cudaDev 0 nvmlDev 0 busId 1000 commId 0x6e67d3d995700a16 - Init COMPLETE
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Init timings - ncclCommInitRankConfig: rank 0 nranks 2 total 0.05 (kernels 0.00, alloc 0.00, bootstrap 0.00, allgathers 0.00, topo 0.02, graphs 0.00, connections 0.03, rest 0.00)
+letsrtfm-amd:1799038:1799038 [0] NCCL INFO Symmetric VA size=24GB
+USDT:2026-11-02 14:29:53 1799039:1799039 SyncActivityProfilerHandler.cpp:39] profiler_startUSDT:2026-11-02 14:29:53 1799038:1799038 SyncActivityProfilerHandler.cpp:39] profiler_start
+
+[2026-11-02 14:29:53] INFO:     127.0.0.1:60642 - "POST /start_profile HTTP/1.1" 200 OK
+[2026-11-02 14:29:54 TP0] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 119, full token usage: 0.00, swa token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 3.51
+[2026-11-02 14:29:54 TP0] Decode batch, #running-req: 1, #full token: 161, full token usage: 0.00, #swa token: 161, swa token usage: 0.00, cuda graph: True, gen throughput (token/s): 8.99, #queue-req: 0
+[2026-11-02 14:29:54] INFO:     127.0.0.1:60654 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-11-02 14:29:54 TP0] Stop profiling...
+[2026-11-02 14:29:54 TP1] Stop profiling...
+USDT:2026-11-02 14:29:54 1799039:1799039 SyncActivityProfilerHandler.cpp:46] profiler_stop
+USDT:2026-11-02 14:29:54 1799038:1799038 SyncActivityProfilerHandler.cpp:46] profiler_stop
+[2026-11-02 14:30:04 TP0] Profiling done. Traces are saved to: /data/tmp/profile-flint-decode-profile-2026-11-02
+[2026-11-02 14:30:04 TP1] Profiling done. Traces are saved to: /data/tmp/profile-flint-decode-profile-2026-11-02
+[2026-11-02 14:30:05] INFO:     127.0.0.1:60660 - "POST /stop_profile HTTP/1.1" 200 OK
+[2026-11-02 14:31:10 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 109, full token usage: 0.01, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 8950, cuda graph: False, input throughput (token/s): 107.79
+[2026-11-02 14:31:10 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.01, swa token usage: 0.02, #running-req: 0, #queue-req: 0, #pending-token: 758, cuda graph: False, input throughput (token/s): 17267.05
+[2026-11-02 14:31:10 TP0] Prefill batch, #new-seq: 1, #new-token: 758, #cached-token: 0, full token usage: 0.00, swa token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 18996.36
+[2026-11-02 14:31:10] INFO:     127.0.0.1:51588 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-11-02 14:31:10] Endpoint '/get_server_info' is deprecated and will be removed in a future version. Please use '/server_info' instead.
+[2026-11-02 14:31:10] INFO:     127.0.0.1:51594 - "GET /get_server_info HTTP/1.1" 200 OK
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (270581 > 262144). Running this sequence through the model will result in indexing errors
+[2026-11-02 14:31:11] INFO:     127.0.0.1:51602 - "POST /v1/chat/completions HTTP/1.1" 400 Bad Request
+[2026-11-02 14:31:13 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 17250, full token usage: 0.03, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 216548, cuda graph: False, input throughput (token/s): 2872.68
+[2026-11-02 14:31:14 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.03, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 208356, cuda graph: False, input throughput (token/s): 6650.63
+[2026-11-02 14:31:16 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.04, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 200164, cuda graph: False, input throughput (token/s): 5750.15
+[2026-11-02 14:31:17 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.05, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 191972, cuda graph: False, input throughput (token/s): 5069.08
+[2026-11-02 14:31:19 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.06, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 183780, cuda graph: False, input throughput (token/s): 4534.40
+[2026-11-02 14:31:21 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.06, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 175588, cuda graph: False, input throughput (token/s): 4106.86
+[2026-11-02 14:31:23 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.07, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 167396, cuda graph: False, input throughput (token/s): 3748.64
+[2026-11-02 14:31:26 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.08, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 159204, cuda graph: False, input throughput (token/s): 3449.96
+[2026-11-02 14:31:28 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.08, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 151012, cuda graph: False, input throughput (token/s): 3192.11
+[2026-11-02 14:31:31 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.09, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 142820, cuda graph: False, input throughput (token/s): 2969.38
+[2026-11-02 14:31:34 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.10, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 134628, cuda graph: False, input throughput (token/s): 2778.13
+[2026-11-02 14:31:37 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.10, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 126436, cuda graph: False, input throughput (token/s): 2603.28
+[2026-11-02 14:31:40 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.11, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 118244, cuda graph: False, input throughput (token/s): 2450.79
+[2026-11-02 14:31:44 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.12, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 110052, cuda graph: False, input throughput (token/s): 2316.02
+[2026-11-02 14:31:48 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.12, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 101860, cuda graph: False, input throughput (token/s): 2195.86
+[2026-11-02 14:31:52 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.13, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 93668, cuda graph: False, input throughput (token/s): 2089.57
+[2026-11-02 14:31:56 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.14, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 85476, cuda graph: False, input throughput (token/s): 1991.87
+[2026-11-02 14:32:00 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.14, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 77284, cuda graph: False, input throughput (token/s): 1902.21
+[2026-11-02 14:32:04 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.15, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 69092, cuda graph: False, input throughput (token/s): 1820.65
+[2026-11-02 14:32:09 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.16, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 60900, cuda graph: False, input throughput (token/s): 1745.39
+[2026-11-02 14:32:14 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.17, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 52708, cuda graph: False, input throughput (token/s): 1676.93
+[2026-11-02 14:32:19 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.17, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 44516, cuda graph: False, input throughput (token/s): 1612.74
+[2026-11-02 14:32:24 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.18, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 36324, cuda graph: False, input throughput (token/s): 1552.32
+[2026-11-02 14:32:30 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.19, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 28132, cuda graph: False, input throughput (token/s): 1497.83
+[2026-11-02 14:32:36 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.19, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 19940, cuda graph: False, input throughput (token/s): 1450.19
+[2026-11-02 14:32:41 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.20, swa token usage: 0.15, #running-req: 0, #queue-req: 0, #pending-token: 11748, cuda graph: False, input throughput (token/s): 1401.45
+[2026-11-02 14:32:46 TP0] Prefill batch, #new-seq: 1, #new-token: 8192, #cached-token: 0, full token usage: 0.20, swa token usage: 0.07, #running-req: 0, #queue-req: 0, #pending-token: 3556, cuda graph: False, input throughput (token/s): 1809.19
+[2026-11-02 14:32:47 TP0] Prefill batch, #new-seq: 1, #new-token: 3556, #cached-token: 0, full token usage: 0.00, swa token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 3070.40
+[2026-11-02 14:32:47] INFO:     127.0.0.1:51604 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-11-02 14:32:47 TP0] Profiling starts. Traces will be saved to: /data/tmp/profile-flint-decode-profile-2026-11-02 (with profile id: 1793658767.607854)
+[2026-11-02 14:32:47 TP1] Profiling starts. Traces will be saved to: /data/tmp/profile-flint-decode-profile-2026-11-02 (with profile id: 1793658767.607854)
+USDT:2026-11-02 14:32:47 1799038:1799038 SyncActivityProfilerHandler.cpp:39] profiler_start
+USDT:2026-11-02 14:32:47 1799039:1799039 SyncActivityProfilerHandler.cpp:39] profiler_start
+[2026-11-02 14:32:47] INFO:     127.0.0.1:56186 - "POST /start_profile HTTP/1.1" 200 OK
+[2026-11-02 14:32:47 TP0] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 241989, full token usage: 0.20, swa token usage: 0.01, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 4.37
+[2026-11-02 14:32:47 TP0] Decode batch, #running-req: 1, #full token: 242008, full token usage: 0.20, #swa token: 530, swa token usage: 0.01, cuda graph: True, gen throughput (token/s): 0.23, #queue-req: 0
+[2026-11-02 14:32:48 TP0] Decode batch, #running-req: 1, #full token: 242048, full token usage: 0.20, #swa token: 570, swa token usage: 0.01, cuda graph: True, gen throughput (token/s): 115.14, #queue-req: 0
+[2026-11-02 14:32:48] INFO:     127.0.0.1:56190 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-11-02 14:32:48 TP0] Stop profiling...
+[2026-11-02 14:32:48 TP1] Stop profiling...
+USDT:2026-11-02 14:32:48 1799039:1799039 SyncActivityProfilerHandler.cpp:46] profiler_stop
+USDT:2026-11-02 14:32:48 1799038:1799038 SyncActivityProfilerHandler.cpp:46] profiler_stop
+[2026-11-02 14:32:58 TP0] Profiling done. Traces are saved to: /data/tmp/profile-flint-decode-profile-2026-11-02
+[2026-11-02 14:32:58 TP1] Profiling done. Traces are saved to: /data/tmp/profile-flint-decode-profile-2026-11-02
+[2026-11-02 14:32:58] INFO:     127.0.0.1:56196 - "POST /stop_profile HTTP/1.1" 200 OK
+[2026-11-02 14:34:00] SIGTERM received. signum=None frame=None. Draining requests and shutting down...
+[2026-11-02 14:34:00] SIGTERM received. signum=None frame=None. Draining requests and shutting down...
+[2026-11-02 14:34:02] Gracefully exiting... Remaining number of requests 0. Remaining requests remaining_rids=[].
+letsrtfm-amd:1799038:1803868 [0] NCCL INFO misc/socket.cc:51 (socketProgress) -> 3
+letsrtfm-amd:1799038:1803868 [0] NCCL INFO misc/socket.cc:68 (socketWait) -> 3
+letsrtfm-amd:1799038:1803868 [0] NCCL INFO misc/socket.cc:632 (ncclSocketSend) -> 3
+letsrtfm-amd:1799038:1800008 [0] NCCL INFO misc/socket.cc:707 (ncclSocketTryRecv) -> 3
+letsrtfm-amd:1799039:1803867 [1] NCCL INFO misc/socket.cc:51 (socketProgress) -> 3
+letsrtfm-amd:1799039:1803867 [1] NCCL INFO misc/socket.cc:68 (socketWait) -> 3
+letsrtfm-amd:1799039:1803867 [1] NCCL INFO misc/socket.cc:632 (ncclSocketSend) -> 3
+letsrtfm-amd:1799039:1800009 [1] NCCL INFO misc/socket.cc:707 (ncclSocketTryRecv) -> 3
+[2026-11-02 14:34:04] kill_process_tree called: parent_pid=1798842, include_parent=False, pid=1798842
+[2026-11-02 14:34:04] INFO:     Shutting down
+[2026-11-02 14:34:04] INFO:     Waiting for application shutdown.
+[2026-11-02 14:34:04] INFO:     Application shutdown complete.
+[2026-11-02 14:34:04] INFO:     Finished server process [1798842]
+[2026-11-02 14:34:04] kill_process_tree called: parent_pid=1798842, include_parent=False, pid=1798842
