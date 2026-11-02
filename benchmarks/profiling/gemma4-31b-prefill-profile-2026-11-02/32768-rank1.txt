@@ -1,0 +1,36 @@
+# gemma4-31b fresh prefill — actual prompt_tokens=34649, trace 1793649609.2433355-TP-1.trace.json.gz
+
+=== step[EXTEND bs=1] × 9 steps (after skipping 0) ===
+  per step: CPU wall 1910.72 ms | GPU span 2024.47 ms | kernel-sum 2021.83 ms
+  exposed time (sweep line):
+    1720.698 ms/step   85.0%  misc
+    132.781 ms/step    6.6%  nccl
+    104.509 ms/step    5.2%  marlin(int4)
+     43.094 ms/step    2.1%  norm
+     17.555 ms/step    0.9%  act
+  top 25 kernels (ms/step, count/step):
+    1192.274    60.0  _fwd_kernel
+    481.822   213.3  _ZN7cutlass6KernelINS_4gemm6kernel23GemmWithEpilogueVisitorINS1_11threadblock13MmaMultistageINS1_9Ge
+    132.735   120.0  ncclDevKernel_AllReduce_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)
+     57.724    53.3  void sglang::device::marlin::Marlin<__nv_bfloat16, 1125899906843648l, 256, 4, 16, 4, false, 4, 8, fa
+     45.265   213.3  _marlin_w4_to_int8_kernel
+     20.702   213.3  _per_token_quant_int8
+     17.555    60.0  void sglang::act_and_mul_kernel<__nv_bfloat16, (sglang::ActivationKind)2, false, false, false, false
+     12.316   121.0  void flashinfer::norm::RMSNormKernel<8u, __nv_bfloat16>(__nv_bfloat16*, __nv_bfloat16*, __nv_bfloat1
+     11.990    60.0  void flashinfer::norm::FusedAddRMSNormKernel<8u, __nv_bfloat16>(__nv_bfloat16*, __nv_bfloat16*, __nv
+      9.891    60.0  _gemma_qkv_rmsnorm_kernel
+      8.896    60.0  _gemma_rmsnorm_residual_kernel
+      6.216    50.0  void sglang::fused_rope_kernel<true, 256l, false, __nv_bfloat16, __nv_bfloat16, long, 32u>(sglang::F
+      5.349   120.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::BUnaryFun
+      5.125   120.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::float8_co
+      4.975   120.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::direct_co
+      3.187     1.0  void gemv2T_kernel_val<int, int, __nv_bfloat16, __nv_bfloat16, __nv_bfloat16, float, 128, 16, 4, 4, 
+      1.918    10.0  void sglang::fused_rope_kernel<true, 512l, false, __nv_bfloat16, __nv_bfloat16, long, 64u>(sglang::F
+      1.895    50.0  void sglang::store_kvcache_kernel<2048l, 2048l, 128u, false, long>(sglang::StoreKVCacheParams)
+      1.520    26.7  void sglang::device::marlin::Marlin<__nv_bfloat16, 1125899906843648l, 256, 2, 16, 4, false, 4, 8, fa
+      0.188    10.0  void sglang::store_kvcache_kernel<1024l, 1024l, 64u, false, long>(sglang::StoreKVCacheParams)
+      0.101     1.0  void at::native::vectorized_elementwise_kernel<4, at::native::AUnaryFunctor<c10::BFloat16, c10::BFlo
+      0.061     1.0  void at::native::vectorized_gather_kernel<16, long>(char*, char*, long*, int, long, long, long, long
+      0.045     1.0  ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)
+      0.011     2.0  create_flashinfer_kv_indices_triton
+      0.009     4.0  void at_cuda_detail::cub::detail::scan::DeviceScanKernel<at_cuda_detail::cub::detail::scan::policy_h
