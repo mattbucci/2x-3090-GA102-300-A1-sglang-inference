@@ -1,0 +1,26 @@
+diff --git a/python/sglang/srt/arg_groups/overrides.py b/python/sglang/srt/arg_groups/overrides.py
+index 20d3fb15c8..cd60733102 100644
+--- a/python/sglang/srt/arg_groups/overrides.py
++++ b/python/sglang/srt/arg_groups/overrides.py
+@@ -365,6 +365,10 @@ _MAMBA_RADIX_CACHE_ARCHS = frozenset(
+         "NemotronHForCausalLM",
+         "NemotronHPuzzleForCausalLM",
+         "NemotronH_Omni_Reasoning_V3",
++        # [3090 074] the Nano Omni checkpoint (models/nano_nemotron_vl.py) is the same
++        # Mamba2 hybrid; without it here the radix cache never tracks its state and
++        # every follow-up turn re-prefills up to a chunked-prefill size of tokens.
++        "NemotronH_Nano_Omni_Reasoning_V3",
+         "FalconH1ForCausalLM",
+         "JetNemotronForCausalLM",
+         "JetVLMForConditionalGeneration",
+@@ -399,6 +403,10 @@ _MAMBA_EXTRA_BUFFER_ARCHS = frozenset(
+         "NemotronHForCausalLM",
+         "NemotronHPuzzleForCausalLM",
+         "NemotronH_Omni_Reasoning_V3",
++        # [3090 074] the Nano Omni checkpoint (models/nano_nemotron_vl.py) is the same
++        # Mamba2 hybrid; without it here the radix cache never tracks its state and
++        # every follow-up turn re-prefills up to a chunked-prefill size of tokens.
++        "NemotronH_Nano_Omni_Reasoning_V3",
+         # KDA-based: same MambaPool ping-pong machinery as GDN; requires the
+         # KDA backend's track-snapshot writes (decode + extend) so donated
+         # slots hold real states for prefix-cache restores.
