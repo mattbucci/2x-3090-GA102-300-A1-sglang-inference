@@ -124,6 +124,16 @@ def main():
                                     o_c[start:start + n_c].copy_(oc[:n_c])
                                 return ok_all
                             o3 = o_c  # compared below as o3[:K]
+                            # fair reference for the chunked schedule: the extend kernel run over the SAME chunks (chunk c reads the
+                            # earlier new tokens from the fp8 pool exactly as the route does), so the gate measures the kernel, not the
+                            # cache's quantization policy (which every later turn pays anyway)
+                            o_ref_c = torch.empty(K, p["h_q"], p["v_head_dim"], device=dev, dtype=torch.bfloat16)
+                            def ref():
+                                for start, n_c, n_pc, qc, kc, vc, oc, idx_c, ptr_c, qo_c in chunks:
+                                    extend_attention_fwd(q[start:start + n_c], k_ext[start:start + n_c], v_ext[start:start + n_c], o_ref_c[start:start + n_c], k_buf, v_buf,
+                                                         torch.tensor([0, n_c], device=dev, dtype=torch.int32), ptr_c, idx_c, None, True, None, n_c,
+                                                         k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0, sinks=sinks)
+                            o_ref = o_ref_c
                         else:
                             def cand():
                                 return verify_splitkv_fwd(q3, k3, v3, o3, k_buf, v_buf, qo_pad, kv_indptr, kv_indices, None, True, None, n_pad,
