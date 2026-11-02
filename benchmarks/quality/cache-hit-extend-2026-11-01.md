@@ -110,3 +110,7 @@ Kernel (fp32-reference + extend-kernel-over-the-same-chunks gate, all cells exac
 | gemma4-31b | 32K / 131K / 197K | 75 / 111 / 141 ms | 145 → 95, 461 → 193, **666 → 270 ms** | 135 / 337 / 469 ms |
 
 Needle under the route: Flint 3/3 at 131K, 1/3 at 250K (its checkpoint band); Gemma 4 31B 6/6. Receipts: `cache-hit-extend-{flint,gemma4-31b}-splitkv64-2026-11-01.json`, `multiturn-cache-2026-11-01/{flint,gemma4-31b}-chunk-multiturn.json`, `extend-splitkv-route-chunked-b-2026-11-01.json`, `extend-splitkv-route-d512-2026-11-01.json`.
+
+## `gemma4` (26B-A4B) on the chunked route, cap 64 — shipped (2026-11-01, late)
+
+Same server shape as the 31B arm (16-row chunks on the 512-wide global layers). Single-message bench: 1-token 73 / 197 / 310 → **55 / 60 / 75 ms**; 16–64-token 137–178 / 408–460 / 678–732 → **103–105 / 221–247 / 370–391 ms** at 35K / 140K / 233K (128-token rows above the cap: 150 / 396 / 629). Gate on that server: stock-filler needle 3/3 at 250,043 tokens, natural needle 3/3 at 131K (the 26B's natural-text 238K band is a model property — 6/6 on the filler with the route off on the same tree). Receipts `cache-hit-extend-gemma4-splitkv64-2026-11-01.json`, `gemma4-splitkv64-filler-needle250-2026-11-01.json`, `gemma4-splitkv64-needle131-2026-11-01.json`.

@@ -295,6 +295,12 @@ apply_preset() {
             # bytes) so 256K fits comfortably on 2x24GB.
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096  # graphs capture fine at 0.85 with the full 652K pool (B1 G receipt)
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            #  * patch 070 (2026-11-01): <= 64-token follow-up turns on a cached prefix run the
+            #    512-wide global layers through the split-KV kernel in 16-row chunks: 1-token
+            #    turn 197 -> 59 ms @140K, 310 -> 65 ms @233K; 16-64-token turns 408 -> 221-247
+            #    @140K, 678 -> 370-391 @233K. Needle: filler 250K 3/3, natural 131K 3/3 (the
+            #    26B's natural-text 238K band is a model property, 6/6 on the filler either way).
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS:-64}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
             ;;
         gemma4-21b-reap)

@@ -1,0 +1,52 @@
+{
+ "tag": "gemma4-splitkv64-needle131-2026-11-01",
+ "timestamp": "2026-11-01 22:24",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 140281,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 269,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "NANA42.\" located in the middle of the list.\n    *   The task is clearly stated: \"What is the secret password? Answer with just the password.\"\n\n    *   BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 17,
+    "content_tail": "The secret password is: BANANA42.",
+    "reasoning_tail": "---\n<|channel>thought\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 362,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "  The user requests \"Answer with just the password\".\n\n    *   The password is BANANA42.\n\n    *   The user wants *only* the password.\n    *   Password: BANANA42.",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}

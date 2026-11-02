@@ -1,0 +1,52 @@
+{
+ "tag": "gemma4-splitkv64-filler-needle250-2026-11-01",
+ "timestamp": "2026-11-01 22:21",
+ "temperature": "default",
+ "haystack": "filler",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 250000,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 250043,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 179,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " `BANANA42`.\n\n    *   The answer should be `BANANA4s`? No, looking closer: `BANANA42`.\n\n    *   The user wants *just* the password.\n\n    *   Password: BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 250000,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 250043,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 148,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "   The text clearly states: \"The secret password is: BANANA42.\"\n\n    *   The instruction is \"Answer with just the password.\"\n    *   The password is `BANANA42`.",
+    "answered": true
+   },
+   {
+    "context": 250000,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 250043,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 196,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "\n\n    *   Found: `The secret password is: BANANA42.`\n    *   Password: `BANANA42`\n\n    *   The user requested \"Answer with just the password.\"\n\n    *   BANANA42",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}
