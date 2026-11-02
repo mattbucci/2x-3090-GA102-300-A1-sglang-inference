@@ -1,0 +1,30 @@
+{
+  "model": "qwen35-moe-w4a8-2048",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "bench_long_context natural-text (chat stream, cache flushed per point)",
+  "prompt_source": "natural",
+  "timestamp": "2026-11-01 23:48:11",
+  "output_tokens": 100,
+  "max_total_num_tokens": 2091473,
+  "context_sweep": [
+    {
+      "context": 32768,
+      "actual_input_tokens": 33442,
+      "ttft_ms": 2385.66,
+      "tpot_ms": 3.85,
+      "throughput": 36.14,
+      "tok_per_sec": 259.6,
+      "completion_tokens": 100
+    },
+    {
+      "context": 131072,
+      "actual_input_tokens": 132427,
+      "ttft_ms": 17046.46,
+      "tpot_ms": 4.52,
+      "throughput": 5.72,
+      "tok_per_sec": 221.5,
+      "completion_tokens": 100
+    }
+  ]
+}

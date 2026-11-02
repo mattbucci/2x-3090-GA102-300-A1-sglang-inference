@@ -1,0 +1,30 @@
+{
+  "model": "nemotron3-omni-w4a8-2048",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "bench_long_context natural-text (chat stream, cache flushed per point)",
+  "prompt_source": "natural",
+  "timestamp": "2026-11-02 00:12:58",
+  "output_tokens": 100,
+  "max_total_num_tokens": 5154815,
+  "context_sweep": [
+    {
+      "context": 32768,
+      "actual_input_tokens": 31849,
+      "ttft_ms": 3397.95,
+      "tpot_ms": 9.89,
+      "throughput": 22.85,
+      "tok_per_sec": 101.1,
+      "completion_tokens": 100
+    },
+    {
+      "context": 131072,
+      "actual_input_tokens": 131902,
+      "ttft_ms": 17870.25,
+      "tpot_ms": 10.18,
+      "throughput": 5.3,
+      "tok_per_sec": 98.2,
+      "completion_tokens": 100
+    }
+  ]
+}

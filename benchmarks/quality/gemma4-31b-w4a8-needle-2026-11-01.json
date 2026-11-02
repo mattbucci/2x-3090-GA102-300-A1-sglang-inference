@@ -1,0 +1,52 @@
+{
+ "tag": "gemma4-31b-w4a8-needle-2026-11-01",
+ "timestamp": "2026-11-01 23:16",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 140281,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 109,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " the phrase \"secret password\".\n    *   Found: \"The secret password is: BANANA42.\"\n\n    *   The request asks for \"just the password\".\n    *   Password: BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 113,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ts of many math problems and solutions.\n    *   Hidden within the text is the sentence: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 292,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "re, there are 15 ways to select 4 books from a shelf of 6 books, without regard to order. The secret password is: BANANA42.\"\n\nThe secret password is \"BANANA42\".",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}

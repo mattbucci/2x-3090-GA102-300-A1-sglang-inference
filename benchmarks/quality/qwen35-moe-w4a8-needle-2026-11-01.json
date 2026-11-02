@@ -1,0 +1,52 @@
+{
+ "tag": "qwen35-moe-w4a8-needle-2026-11-01",
+ "timestamp": "2026-11-01 23:49",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 142351,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 77,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "he text, I found the following line near the end of a section: \"The secret password is: BANANA42.\"\n\nThe request asks for the password only.\n\nPassword: BANANA42\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 142353,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1677,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": " prompt asks \"What is the secret password?\".\nThe text contains \"The secret password is: BANANA42.\"\nSo the password is BANANA42.\nI will provide just \"BANANA42\".\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 142353,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 790,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "d.\"\n\nI will output just the password.\n\nPassword: BANANA42.\nFormat: BANANA42.\nFinal check: The instruction is \"Answer with just the password.\" so no extra text.\n",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}

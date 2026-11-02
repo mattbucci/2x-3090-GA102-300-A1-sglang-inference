@@ -1,0 +1,20 @@
+# Fleet W4A8-prefill sweep (patch 071) — 2026-11-01/02
+
+Per AWQ preset, fresh-prefill TTFT at 32K and 131K with `SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS` unset (0) vs 2048, back to back on the same tree (`/data/sglang-rebase-v0522`, image-equivalent to 123a0a40c81f + 072 v3), natural-text instrument (`bench_long_context.py --prompt-source natural`), then on the INT8 arm: needle 131K (`needle_band_probe`, 3 depths), MMLU-57 + HumanEval-30 (`eval_and_chart.py --mmlu-samples 57 --humaneval-samples 30 --mc-budget 2560`). Decode (TPOT) is identical on every arm by construction (M = 1 stays W4A16). References are the 2026-10-31 fleet gate (`benchmarks/quality/fleet-gate-customar-2026-10-31.md`). Flip bar: ≥ 5 % at 131K and quality parity (MMLU within the ±2 run-to-run band, HumanEval and needle equal).
+
+| Preset | Weight format | TTFT 32K off → on | TTFT 131K off → on | MMLU-57 on (ref) | HE on (ref) | needle 131K | Decision |
+|---|---|---:|---:|---|---|---|---|
+| `qwen38` | AWQ | 13.4 → 8.6 s (-36 %) | 71.4 → 51 s (-29 %) | 30/30 (MMLU-30) (52/57) | 29/30 (29/30) | 6/6 | **ON** (first ship, same-session A/B in `benchmarks/qwen38/w4a8-prefill-2026-11-01/`) |
+| `qwen36-dense` | AWQ | 13.2 → 8.13 s (-38 %) | 71.6 → 50.8 s (-29 %) | 55/57 (54/57) | 30/30 (30/30) | 3/3 | **ON** |
+| `gemma4-31b` | AWQ | 23.17 → 18.08 s (-22 %) | 169 → 146.6 s (-13 %) | 55/57 (—) | 30/30 (—) | 3/3 | **ON** (fill is attention-heavy on the 512-wide global layers) |
+| `devstral` | AWQ | 11.94 → 7.73 s (-35 %) | 69.8 → 52.7 s (-24 %) | 41/57 (43/57) | 29/30 (29/30) | 3/3 | pending — second MMLU read on both arms (chain12) decides |
+| `qwen35-moe` | AWQ (A3B MoE) | 2.58 → 2.39 s (-7 %) | 18 → 17.05 s (-5 %) | 49/57 (46–51/57) | 30/30 (30/30) | 3/3 | **ON** (dense attention projections only; experts are Marlin-MoE) |
+| `qwen36` | AWQ (A3B MoE) | 2.44 → 2.41 s (-1 %) | 16.74 → 15.89 s (-5 %) | 53/57 (53/57) | 29/30 (29/30) | 3/3 | **ON** (−5.1 % at 131K, same bar as qwen35-moe) |
+| `gemma4` | AWQ (A4B MoE) | 7.4 → 7.07 s (-4 %) | 55.2 → 53.8 s (-3 %) | 43/57 (46/57) | 29/30 (29/30) | 3/3 (1 unanswered) | off — −3 % and MMLU −3 |
+| `flint` | AWQ (A2.5B MoE) | 3.64 → 3.74 s (+3 %) | 33.1 → 32.4 s (-2 %) | 51/57 (47/57) | 21/30 (25/30) | 3/3 | off — −2 % and HumanEval 21/30 (INT8-activation sensitivity on the NoPE model; 25–27 on its other servers that day) |
+| `coder-30b-eval` | compressed-tensors | 4.79 → 4.77 s (-0 %) | 48.7 → 48.7 s (+0 %) | 51/57 (49/57) | 30/30 (30/30) | 3/3 | n/a — CT checkpoints use a different Marlin kernel class; patch 071 hooks `AWQMarlinLinearKernel` only (control reading) |
+| `nemotron3-omni` | moe_wna16 | 3.44 → 3.4 s (-1 %) | 17.88 → 17.87 s (-0 %) | 52/57 (50/57) | 30/30 (30/30) | 3/3 | n/a — serves through `moe_wna16`, not on the hooked path (control reading) |
+
+**Reading.** The gain tracks the share of the fill spent in dense AWQ-Marlin GEMMs: dense 24–31B presets −22…−36 % at 32K and −13…−29 % at 131K; A3B MoEs −1…−8 % (attention projections + shared expert only; the routed experts run the Marlin-MoE kernel, which patch 071 does not touch); checkpoints that do not use `AWQMarlinLinearKernel` (compressed-tensors `coder-30b-eval`, `moe_wna16` `nemotron3-omni`) are unchanged and their quality rows are control readings of the harness. Quality on the INT8 arm reads at or above reference on six presets; `flint` (HumanEval 21/30) and `gemma4` (MMLU 43/57) read below and stay off; `devstral` reads 41 vs 43 on MMLU with HumanEval and needle at reference — a second read decides it.
+
+**Files.** `<preset>-arm-{0,2048}.json` = TTFT sweeps (this directory); `benchmarks/quality/<preset>-w4a8-2026-11-01.json` = MMLU/HE on the INT8 arm; `benchmarks/quality/<preset>-w4a8-needle-*.json` = needle rows (`haystack: natural`). Chain script `/var/tmp/route-ship/chain9b.sh` (host-local).

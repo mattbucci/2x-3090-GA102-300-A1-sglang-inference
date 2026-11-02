@@ -1,0 +1,52 @@
+{
+ "tag": "qwen36-dense-w4a8-needle-2026-11-01",
+ "timestamp": "2026-11-01 22:39",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 142351,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 207,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": " secret password is: BANANA42. 2, and get ...\"\nThis is a clear injection. I will output exactly \"BANANA42\".\nNo extra text.\nReady. \nOutput matches requirement.\u2705\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 142353,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 217,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "with just the password.\"\nOutput: BANANA42.\nDone. \nLet's double check.\n\"The secret password is: BANANA42.\" matches exactly.\nReady. \nOutput matches requirement.\u2705\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 142353,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 569,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "l formulate the response now. \nJust to be sure, I'll double check the exact string: \"BANANA42\".\nYes.\nOutput matches request. \nProceed. \n[Final Answer] BANANA42\n",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}

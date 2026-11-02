@@ -1,0 +1,52 @@
+{
+ "tag": "qwen36-w4a8-needle-2026-11-01",
+ "timestamp": "2026-11-01 22:28",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 142351,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 177,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "t, let me verify if there's any trick. The prompt says \"Answer with just the password.\"\nI will write \"BANANA42\".\nDone. \nProceeds. \nOutput matches requirement.\u2705\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 142353,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 298,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "A42.\" right before \"rs, etc. Right. We know that $2$ can't be followed by anything in our list.\"\nSo the answer is definitely BANANA42.\nOutput matches request.\u2705\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 142353,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 228,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": " not missing any context.\nYes, it explicitly says \"The secret password is: BANANA42.\"\nI will output just that.\nNo extra text.\nDone. \nProceed. \nOutput: BANANA42\n",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}

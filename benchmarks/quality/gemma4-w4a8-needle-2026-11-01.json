@@ -1,0 +1,52 @@
+{
+ "tag": "gemma4-w4a8-needle-2026-11-01",
+ "timestamp": "2026-11-01 23:32",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 140281,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 137,
+    "content_tail": "",
+    "reasoning_tail": " find the secret password. The secret password is mentioned at the end of the provided text.\n\nThe secret password is: BANANA42.\"\n            }\n        }\n    ]\n}",
+    "answered": false
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 192,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "? Answer with just the password.\"\n\n    *   The secret password is \"BANANA42\".\n\n    *   The instruction says: \"Answer with just the password.\"\n\n    *   BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 16,
+    "content_tail": "The secret password is: BANANA42",
+    "reasoning_tail": "---\n<|channel>thought\n",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 0.6666666666666666
+ }
+}

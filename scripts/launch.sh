@@ -768,6 +768,10 @@ apply_preset() {
             EXTRA_ARGS="${EXTRA_ARGS:-} --cuda-graph-backend-prefill disabled --tool-call-parser qwen25 --sampling-defaults model"
             ;;
         qwen36)
+            # patch 071 (2026-11-01): W4A8 prefill on the dense AWQ-Marlin linears (attention
+            # projections; the experts stay Marlin-MoE) — TTFT 16.7 -> 15.9 s @131K (-5 %),
+            # decode identical, MMLU 53/57, HE 29/30, needle 3/3 (benchmarks/fleet-w4a8-2026-11-01/). 0 disables.
+            export SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS="${SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS:-2048}"
             # Qwen3.6-35B-A3B (thinking + vision): 256-expert hybrid DeltaNet
             # + gated attn, 3B active, 262K native context. Loads as
             # Qwen3_5MoeForConditionalGeneration.

@@ -1,0 +1,52 @@
+{
+ "tag": "nemotron3-omni-w4a8-needle-2026-11-01",
+ "timestamp": "2026-11-02 00:14",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 138069,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1181,
+    "content_tail": "\nBANANA42",
+    "reasoning_tail": "Search for \"secret password\" elsewhere: I see earlier \"The secret password is: BANANA42.\" Indeed that's the only mention.\n\nThus answer: BANANA42.\n\nReturn that.\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 138072,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1469,
+    "content_tail": "\nBANANA42",
+    "reasoning_tail": "rd appears elsewhere. I don't see any other mention.\n\nThus answer: BANANA42.\n\nWe need to output just the password, no extra text.\n\nThus final answer: BANANA42.\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 138072,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 76,
+    "content_tail": "\nBANANA42",
+    "reasoning_tail": "ncludes many unrelated problems, then at the end: \"The secret password is: BANANA42.\"\n\nSo answer should be \"BANANA42\". Ensure just the password, no extra text.\n",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}
