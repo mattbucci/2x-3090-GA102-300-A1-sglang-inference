@@ -1,5 +1,17 @@
-# Unified diffs render an empty context line as a single space, and profiler/benchmark
-# receipts are verbatim tool output: exempt both from the whitespace check the image
-# workflow runs (`git show --check HEAD`), which otherwise fails every patch commit.
-patches/*.patch -whitespace
-benchmarks/** -whitespace
+# The build-image workflow's offline checks run `git show -m --check` on the
+# pushed commit; git's whitespace checker flags these paths falsely:
+# - Patch files are themselves diffs. A blank context line is exactly one space,
+#   which reads as trailing whitespace. setup.sh's `git diff --check` on the
+#   applied SGLang tree is unaffected.
+# - Chat templates are model input; their whitespace is load-bearing, so the
+#   fix for a flagged line is never to strip it.
+# - benchmarks/ and evals/ hold run receipts (server logs, profiler dumps) kept
+#   verbatim; their whitespace is the tool's output, not an edit.
+*.patch                   -whitespace
+*.diff                    -whitespace
+*.jinja                   -whitespace
+patches/**                -whitespace
+llmcompressor-patches/**  -whitespace
+ream-patches/**           -whitespace
+benchmarks/**             -whitespace
+evals/**                  -whitespace

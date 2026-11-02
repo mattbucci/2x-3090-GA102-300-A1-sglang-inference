@@ -15,7 +15,7 @@ def main():
     for e in ev:
         if e.get("ph") != "X": continue
         cat = e.get("cat", ""); dur = float(e.get("dur", 0)); name = e.get("name", "")[:110]
-        if cat in ("kernel", "gpu_memcpy", "gpu_memset"): 
+        if cat in ("kernel", "gpu_memcpy", "gpu_memset"):
             ts = float(e["ts"]); span[0] = ts if span[0] is None else min(span[0], ts); span[1] = ts + dur if span[1] is None else max(span[1], ts + dur); continue
         by_cat[cat][name][0] += dur; by_cat[cat][name][1] += 1
     if span[0] is not None: print(f"GPU timeline span: {(span[1]-span[0])/1000:.1f} ms")
