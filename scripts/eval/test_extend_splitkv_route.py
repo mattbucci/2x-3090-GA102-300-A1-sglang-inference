@@ -106,7 +106,8 @@ def main():
                             # the served path: new tokens' K/V sit in the pool (set_kv_buffer) at new_slots; chunk c attends to
                             # prefix + new tokens before it via kv_indices, causally to its own rows via kc/vc
                             new_slots = torch.arange(P, P + K, device=dev, dtype=torch.int32) + 512  # inside pool_n, off the prefix rows
-                            k_buf[new_slots] = k_ext.to(kv_dtype); v_buf[new_slots] = v_ext.to(kv_dtype)
+                            # the pool stores K/V pre-divided by the layer scale (set_kv_buffer does this for fp8); the kernel re-applies k_scale/v_scale
+                            k_buf[new_slots] = (k_ext.float() / k_scale).to(kv_dtype); v_buf[new_slots] = (v_ext.float() / v_scale).to(kv_dtype)
                             o_c = torch.empty(K, p["h_q"], p["v_head_dim"], device=dev, dtype=torch.bfloat16)
                             chunks = []
                             for start in range(0, K, tile):
