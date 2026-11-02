@@ -40,3 +40,13 @@ Same probe, same session, `SGLANG_INCREMENTAL_TOKENIZE=0` then `1` (verify off),
 - py-spy on the tokenizer-manager process during 1-token turns at 208K (Flint, off): **94 % of samples in `tokenizer.encode`** via `_render_and_encode_chat_template → parallel_prompt_encode` (its parallel branch is not taken on this stack; `_plan_for` falls back to the plain encode), jinja render < 1 %. qwen38 (off, 229K): 77 % encode + **8.5 % `tokenizer.decode`** — the chat path decodes the whole prompt back to text for its template cache on multimodal-flagged models; next item.
 - The first served A/B read no gain because the hook sat on a helper that chat requests never take; the profile found the real path. A single growing message with no special token inside reuses nothing (by design: boundaries are added tokens) and now costs a plain encode (the first version's offset mapping made it 20 % slower).
 - Remaining per-turn floor: Flint 76–90 ms flat in depth (route + launch + HTTP), qwen38 87–142 ms (the launch-bound flashinfer extend plus the decode-back; prefill-graph A/B queued).
+
+## Lazy decode-back on multimodal-flagged models (patch 072 v3, 2026-11-01)
+
+`serving_chat` decoded every prompt back to text (`tokenizer.decode(prompt_ids)`, 8.5 % of a qwen38 turn at 229K in the py-spy profile) because multimodal models keep a template cache keyed on the decoded text and may send the text form to the engine. Now decoded only when `_engine_prompt` actually returns the text form (media attached, or ids not reusable). Agentic shape, medians of 3:
+
+| preset | prefix | 1-token turn (072 v2 → v3) | 64-token turn |
+|---|---:|---:|---:|
+| qwen38 | 32K / 131K / 197K | 87 / 120 / 142 → **79 / 88 / 92 ms** | 95 / 136 / 145 → 85 / 99 / 103 ms |
+
+Capabilities probe on the same server (`validate_capabilities.py`): basic, tool call, thinking, **vision, video** — 5/5, so the media path (which still decodes) is intact. Receipt `qwen38-lazydecode.json`.
