@@ -293,7 +293,7 @@ index 94bb8526f8..921c71dfbf 100644
  
      return True
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 64920d56b5..41f9e26f24 100644
+index 64920d56b5..27e508e5c3 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
 @@ -1,5 +1,8 @@
@@ -327,7 +327,7 @@ index 64920d56b5..41f9e26f24 100644
  from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
  from sglang.srt.layers.attention.verify_mask import VerifyMask, maybe_create_verify_mask
  from sglang.srt.layers.dcp import (
-@@ -478,6 +496,64 @@ class TritonAttnBackend(AttentionBackend):
+@@ -478,6 +496,65 @@ class TritonAttnBackend(AttentionBackend):
              self.dllm_attention = DllmFlashAttention(self)
              self.supports_prefill_cuda_graph_max_context_size = True
  
@@ -346,7 +346,7 @@ index 64920d56b5..41f9e26f24 100644
 +        try:
 +            prefix = max(_EXTEND_SPLITKV_MIN_PREFIX, 64)
 +            n_layers = getattr(model_runner.model_config, "num_hidden_layers", 1) or 1
-+            kb = vb = None
++            shapes = {}  # (h_kv, d, dv) -> (kb, vb): Gemma 4 has 256-wide SWA layers and 512-wide global ones
 +            for lid in range(n_layers):
 +                try:
 +                    kb_, vb_ = (
@@ -355,36 +355,37 @@ index 64920d56b5..41f9e26f24 100644
 +                    )
 +                except Exception:
 +                    continue
-+                if kb_.dim() == 3 and kb_.shape[0] >= prefix + 32:
-+                    kb, vb = kb_, vb_
-+                    break
-+            if kb is None:
++                if kb_.dim() == 3 and kb_.shape[0] >= prefix + 32 and kb_.shape[2] == vb_.shape[2]:
++                    shapes.setdefault((kb_.shape[1], kb_.shape[2], vb_.shape[2]), (kb_, vb_))
++            if not shapes:
 +                return
-+            dev = kb.device
 +            dt = model_runner.dtype
-+            h_q, h_kv, d, dv = self.num_head, kb.shape[1], kb.shape[2], vb.shape[2]
-+            if d != dv:
-+                return
-+            kv_indptr = torch.tensor([0, prefix], dtype=torch.int32, device=dev)
-+            kv_indices = torch.arange(prefix, dtype=torch.int32, device=dev)
-+            tiles = [16] if min(_EXTEND_SPLITKV_MAX, _EXTEND_SPLITKV_TILE) <= 16 else [16, 32]
-+            for n_pad in tiles:
-+                q3 = torch.zeros((n_pad, h_q, d), dtype=dt, device=dev)
-+                k3 = torch.zeros((n_pad, h_kv, d), dtype=dt, device=dev)
-+                v3 = torch.zeros((n_pad, h_kv, dv), dtype=dt, device=dev)
-+                o3 = torch.empty_like(q3)
-+                qo = torch.tensor([0, n_pad], dtype=torch.int32, device=dev)
-+                for sinks in (None, torch.zeros((h_q,), dtype=torch.float32, device=dev)):
-+                    self.verify_splitkv_fwd(
-+                        q3, k3, v3, o3, kb, vb, qo, kv_indptr, kv_indices, None, True, None, n_pad,
-+                        1.0, 1.0, float(d) ** -0.5,
-+                        logit_cap=0.0, sliding_window_size=-1, sinks=sinks, window_kv_offsets=None,
-+                        xai_temperature_len=-1, max_bs=self.req_to_token_pool.size,
-+                    )
++            h_q = self.num_head
++            warmed = []
++            for (h_kv, d, dv), (kb, vb) in shapes.items():
++                dev = kb.device
++                kv_indptr = torch.tensor([0, prefix], dtype=torch.int32, device=dev)
++                kv_indices = torch.arange(prefix, dtype=torch.int32, device=dev)
++                tile = _EXTEND_SPLITKV_TILE if triton.next_power_of_2(dv) <= 256 else 16
++                tiles = [16] if min(_EXTEND_SPLITKV_MAX, tile) <= 16 else [16, 32]
++                for n_pad in tiles:
++                    q3 = torch.zeros((n_pad, h_q, d), dtype=dt, device=dev)
++                    k3 = torch.zeros((n_pad, h_kv, d), dtype=dt, device=dev)
++                    v3 = torch.zeros((n_pad, h_kv, dv), dtype=dt, device=dev)
++                    o3 = torch.empty_like(q3)
++                    qo = torch.tensor([0, n_pad], dtype=torch.int32, device=dev)
++                    for sinks in (None, torch.zeros((h_q,), dtype=torch.float32, device=dev)):
++                        self.verify_splitkv_fwd(
++                            q3, k3, v3, o3, kb, vb, qo, kv_indptr, kv_indices, None, True, None, n_pad,
++                            1.0, 1.0, float(d) ** -0.5,
++                            logit_cap=0.0, sliding_window_size=-1, sinks=sinks, window_kv_offsets=None,
++                            xai_temperature_len=-1, max_bs=self.req_to_token_pool.size,
++                        )
++                warmed.append(f"h_kv={h_kv} d={d} kv={kb.dtype} tiles={tiles}")
 +            torch.cuda.synchronize()
 +            logger.info(
-+                "[070] split-KV short-turn route warmed (h_q=%d h_kv=%d d=%d kv=%s tiles=%s) in %.2f s",
-+                h_q, h_kv, d, kb.dtype, tiles, time.perf_counter() - t0,
++                "[070] split-KV short-turn route warmed (h_q=%d; %s) in %.2f s",
++                h_q, "; ".join(warmed), time.perf_counter() - t0,
 +            )
 +        except Exception as e:  # never block the boot on the warm-up
 +            logger.warning("[070] split-KV route warm-up skipped: %s", e)
@@ -392,7 +393,7 @@ index 64920d56b5..41f9e26f24 100644
      def get_num_kv_splits(
          self,
          num_kv_splits: torch.Tensor,
-@@ -1864,6 +1940,98 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1864,6 +1941,100 @@ class TritonAttnBackend(AttentionBackend):
          ):
              return o
  
@@ -423,7 +424,9 @@ index 64920d56b5..41f9e26f24 100644
 +        ):
 +            n_new = int(forward_batch.extend_seq_lens_cpu[0])
 +            n_prefix = int(forward_batch.extend_prefix_lens_cpu[0])
-+            tile = _EXTEND_SPLITKV_TILE
++            # 32-row chunks up to head_dim 256; the 32x512 combine tile (Gemma 4 global layers) needs
++            # 192 KB of shared memory on sm_86 (limit 99 KB), the 16x512 tile fits (96 KB)
++            tile = _EXTEND_SPLITKV_TILE if triton.next_power_of_2(layer.v_head_dim) <= 256 else 16
 +            q3 = q.view(-1, layer.tp_q_head_num, layer.qk_head_dim)
 +            k3 = k.contiguous().view(-1, layer.tp_k_head_num, layer.qk_head_dim)
 +            v3 = v.contiguous().view(-1, layer.tp_k_head_num, layer.v_head_dim)
