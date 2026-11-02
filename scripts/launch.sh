@@ -467,6 +467,10 @@ apply_preset() {
             CUDA_GRAPH="--cuda-graph-backend-decode disabled --cuda-graph-backend-prefill disabled"
             ;;
         qwen36-dense|qwen36-27b)
+            # patch 071 (2026-11-01): W4A8 prefill, same path as qwen38 (dense 27B GDN hybrid):
+            # fresh-prefill TTFT 71.6 -> 50.8 s @131K (-29 %), decode identical, MMLU 55/57 (ref 54),
+            # HE 30/30, needle 3/3 (receipt benchmarks/fleet-w4a8-2026-11-01/). 0 disables.
+            export SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS="${SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS:-2048}"
             # Qwen3.6-27B Dense AWQ. Canonical preset name is qwen36-dense
             # (alias: qwen36-27b). The earlier `qwen35` alias was removed
             # because it served a Qwen3.6-family model — misleading.
