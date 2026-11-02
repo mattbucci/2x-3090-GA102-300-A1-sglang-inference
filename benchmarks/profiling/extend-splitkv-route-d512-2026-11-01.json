@@ -1,0 +1,1056 @@
+{
+ "timestamp": "2026-11-01 17:09",
+ "gpu": "NVIDIA GeForce RTX 3090",
+ "results": [
+  {
+   "preset": "gemma4-31b",
+   "first_launch_free_delta_mib": 0.0,
+   "kernels": [
+    [
+     "_verify_prefix_stage1",
+     168,
+     0,
+     384
+    ],
+    [
+     "_verify_combine_stage2",
+     128,
+     0,
+     512
+    ]
+   ]
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "bf16",
+   "prefix": 8192,
+   "K": 1,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.00268
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003156
+   },
+   "extend_us": 1794.0,
+   "splitkv_us": 228.6,
+   "speedup": 7.85
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "bf16",
+   "prefix": 8192,
+   "K": 16,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.002592
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999975,
+    "max_err_over_refmax": 0.003195
+   },
+   "extend_us": 1585.5,
+   "splitkv_us": 203.6,
+   "speedup": 7.79
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "bf16",
+   "prefix": 8192,
+   "K": 33,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.00226
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999974,
+    "max_err_over_refmax": 0.002997
+   },
+   "extend_us": 4896.8,
+   "splitkv_us": 626.0,
+   "speedup": 7.82
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "bf16",
+   "prefix": 8192,
+   "K": 64,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999987,
+    "max_err_over_refmax": 0.00247
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999975,
+    "max_err_over_refmax": 0.002923
+   },
+   "extend_us": 6522.9,
+   "splitkv_us": 838.6,
+   "speedup": 7.78
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "bf16",
+   "prefix": 58000,
+   "K": 1,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.003301
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003301
+   },
+   "extend_us": 11090.3,
+   "splitkv_us": 1190.3,
+   "speedup": 9.32
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "bf16",
+   "prefix": 58000,
+   "K": 16,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.003379
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003679
+   },
+   "extend_us": 11097.2,
+   "splitkv_us": 1177.2,
+   "speedup": 9.43
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "bf16",
+   "prefix": 58000,
+   "K": 33,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999987,
+    "max_err_over_refmax": 0.003381
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999974,
+    "max_err_over_refmax": 0.00356
+   },
+   "extend_us": 33419.2,
+   "splitkv_us": 3697.8,
+   "speedup": 9.04
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "bf16",
+   "prefix": 58000,
+   "K": 64,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.003216
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999972,
+    "max_err_over_refmax": 0.003386
+   },
+   "extend_us": 44579.9,
+   "splitkv_us": 4957.5,
+   "speedup": 8.99
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "bf16",
+   "prefix": 197000,
+   "K": 1,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.002876
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.00244
+   },
+   "extend_us": 37654.9,
+   "splitkv_us": 4152.8,
+   "speedup": 9.07
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "bf16",
+   "prefix": 197000,
+   "K": 16,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999985,
+    "max_err_over_refmax": 0.002838
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.00365
+   },
+   "extend_us": 37672.9,
+   "splitkv_us": 4219.8,
+   "speedup": 8.93
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "bf16",
+   "prefix": 197000,
+   "K": 33,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.002974
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999974,
+    "max_err_over_refmax": 0.003336
+   },
+   "extend_us": 113142.2,
+   "splitkv_us": 12546.1,
+   "speedup": 9.02
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "bf16",
+   "prefix": 197000,
+   "K": 64,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.002767
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999974,
+    "max_err_over_refmax": 0.003416
+   },
+   "extend_us": 150888.8,
+   "splitkv_us": 17001.5,
+   "speedup": 8.88
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "e5m2",
+   "prefix": 8192,
+   "K": 1,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999987,
+    "max_err_over_refmax": 0.002413
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999974,
+    "max_err_over_refmax": 0.002879
+   },
+   "extend_us": 1503.1,
+   "splitkv_us": 191.2,
+   "speedup": 7.86
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "e5m2",
+   "prefix": 8192,
+   "K": 16,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.002219
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.00277
+   },
+   "extend_us": 1504.2,
+   "splitkv_us": 192.3,
+   "speedup": 7.82
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "e5m2",
+   "prefix": 8192,
+   "K": 33,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999928,
+    "max_err_over_refmax": 0.007301
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999917,
+    "max_err_over_refmax": 0.00808
+   },
+   "extend_us": 4642.9,
+   "splitkv_us": 500.6,
+   "speedup": 9.28
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "e5m2",
+   "prefix": 8192,
+   "K": 64,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999837,
+    "max_err_over_refmax": 0.009068
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999825,
+    "max_err_over_refmax": 0.009068
+   },
+   "extend_us": 6201.8,
+   "splitkv_us": 654.7,
+   "speedup": 9.47
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "e5m2",
+   "prefix": 58000,
+   "K": 1,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.003123
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003
+   },
+   "extend_us": 10589.4,
+   "splitkv_us": 1073.9,
+   "speedup": 9.86
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "e5m2",
+   "prefix": 58000,
+   "K": 16,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.003139
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003987
+   },
+   "extend_us": 10595.9,
+   "splitkv_us": 1098.3,
+   "speedup": 9.65
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "e5m2",
+   "prefix": 58000,
+   "K": 33,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999976,
+    "max_err_over_refmax": 0.00407
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999962,
+    "max_err_over_refmax": 0.00407
+   },
+   "extend_us": 31912.8,
+   "splitkv_us": 3546.6,
+   "speedup": 9.0
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "e5m2",
+   "prefix": 58000,
+   "K": 64,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999961,
+    "max_err_over_refmax": 0.004621
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999947,
+    "max_err_over_refmax": 0.00486
+   },
+   "extend_us": 42559.6,
+   "splitkv_us": 4772.4,
+   "speedup": 8.92
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "e5m2",
+   "prefix": 197000,
+   "K": 1,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.002775
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999971,
+    "max_err_over_refmax": 0.002991
+   },
+   "extend_us": 35940.6,
+   "splitkv_us": 3953.1,
+   "speedup": 9.09
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "e5m2",
+   "prefix": 197000,
+   "K": 16,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.002772
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003224
+   },
+   "extend_us": 35961.5,
+   "splitkv_us": 4054.1,
+   "speedup": 8.87
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "e5m2",
+   "prefix": 197000,
+   "K": 33,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999983,
+    "max_err_over_refmax": 0.00322
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.999997,
+    "max_err_over_refmax": 0.003931
+   },
+   "extend_us": 108016.3,
+   "splitkv_us": 12062.9,
+   "speedup": 8.95
+  },
+  {
+   "preset": "gemma4-31b",
+   "kv": "e5m2",
+   "prefix": 197000,
+   "K": 64,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.999998,
+    "max_err_over_refmax": 0.003883
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999965,
+    "max_err_over_refmax": 0.004114
+   },
+   "extend_us": 144041.2,
+   "splitkv_us": 16243.9,
+   "speedup": 8.87
+  },
+  {
+   "preset": "gemma4",
+   "first_launch_free_delta_mib": 0.0,
+   "kernels": [
+    [
+     "_verify_prefix_stage1",
+     168,
+     0,
+     384
+    ],
+    [
+     "_verify_prefix_stage1",
+     168,
+     0,
+     384
+    ],
+    [
+     "_verify_combine_stage2",
+     128,
+     0,
+     512
+    ]
+   ]
+  },
+  {
+   "preset": "gemma4",
+   "kv": "bf16",
+   "prefix": 8192,
+   "K": 1,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.003303
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999974,
+    "max_err_over_refmax": 0.00386
+   },
+   "extend_us": 1649.5,
+   "splitkv_us": 124.8,
+   "speedup": 13.21
+  },
+  {
+   "preset": "gemma4",
+   "kv": "bf16",
+   "prefix": 8192,
+   "K": 16,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.002731
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003084
+   },
+   "extend_us": 1578.1,
+   "splitkv_us": 123.8,
+   "speedup": 12.74
+  },
+  {
+   "preset": "gemma4",
+   "kv": "bf16",
+   "prefix": 8192,
+   "K": 33,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.002768
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999971,
+    "max_err_over_refmax": 0.003266
+   },
+   "extend_us": 4866.4,
+   "splitkv_us": 381.0,
+   "speedup": 12.77
+  },
+  {
+   "preset": "gemma4",
+   "kv": "bf16",
+   "prefix": 8192,
+   "K": 64,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.002594
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003219
+   },
+   "extend_us": 6496.8,
+   "splitkv_us": 509.0,
+   "speedup": 12.76
+  },
+  {
+   "preset": "gemma4",
+   "kv": "bf16",
+   "prefix": 58000,
+   "K": 1,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999987,
+    "max_err_over_refmax": 0.003037
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999972,
+    "max_err_over_refmax": 0.003037
+   },
+   "extend_us": 11148.3,
+   "splitkv_us": 608.0,
+   "speedup": 18.34
+  },
+  {
+   "preset": "gemma4",
+   "kv": "bf16",
+   "prefix": 58000,
+   "K": 16,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999987,
+    "max_err_over_refmax": 0.003182
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003742
+   },
+   "extend_us": 11150.7,
+   "splitkv_us": 609.0,
+   "speedup": 18.31
+  },
+  {
+   "preset": "gemma4",
+   "kv": "bf16",
+   "prefix": 58000,
+   "K": 33,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999987,
+    "max_err_over_refmax": 0.003454
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003499
+   },
+   "extend_us": 33585.4,
+   "splitkv_us": 2004.2,
+   "speedup": 16.76
+  },
+  {
+   "preset": "gemma4",
+   "kv": "bf16",
+   "prefix": 58000,
+   "K": 64,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.003386
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999971,
+    "max_err_over_refmax": 0.003481
+   },
+   "extend_us": 44782.5,
+   "splitkv_us": 2681.4,
+   "speedup": 16.7
+  },
+  {
+   "preset": "gemma4",
+   "kv": "bf16",
+   "prefix": 197000,
+   "K": 1,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999985,
+    "max_err_over_refmax": 0.002922
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003165
+   },
+   "extend_us": 37840.3,
+   "splitkv_us": 2118.1,
+   "speedup": 17.87
+  },
+  {
+   "preset": "gemma4",
+   "kv": "bf16",
+   "prefix": 197000,
+   "K": 16,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.003024
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999974,
+    "max_err_over_refmax": 0.003191
+   },
+   "extend_us": 37849.5,
+   "splitkv_us": 2170.2,
+   "speedup": 17.44
+  },
+  {
+   "preset": "gemma4",
+   "kv": "bf16",
+   "prefix": 197000,
+   "K": 33,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.003111
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.00354
+   },
+   "extend_us": 113683.0,
+   "splitkv_us": 6429.0,
+   "speedup": 17.68
+  },
+  {
+   "preset": "gemma4",
+   "kv": "bf16",
+   "prefix": 197000,
+   "K": 64,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.003174
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999974,
+    "max_err_over_refmax": 0.003659
+   },
+   "extend_us": 151604.0,
+   "splitkv_us": 8608.5,
+   "speedup": 17.61
+  },
+  {
+   "preset": "gemma4",
+   "kv": "e5m2",
+   "prefix": 8192,
+   "K": 1,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999985,
+    "max_err_over_refmax": 0.002268
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.002645
+   },
+   "extend_us": 1550.6,
+   "splitkv_us": 116.2,
+   "speedup": 13.35
+  },
+  {
+   "preset": "gemma4",
+   "kv": "e5m2",
+   "prefix": 8192,
+   "K": 16,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.002184
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999974,
+    "max_err_over_refmax": 0.002993
+   },
+   "extend_us": 1508.9,
+   "splitkv_us": 116.2,
+   "speedup": 12.99
+  },
+  {
+   "preset": "gemma4",
+   "kv": "e5m2",
+   "prefix": 8192,
+   "K": 33,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999931,
+    "max_err_over_refmax": 0.006346
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999919,
+    "max_err_over_refmax": 0.006346
+   },
+   "extend_us": 4654.7,
+   "splitkv_us": 358.8,
+   "speedup": 12.97
+  },
+  {
+   "preset": "gemma4",
+   "kv": "e5m2",
+   "prefix": 8192,
+   "K": 64,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999832,
+    "max_err_over_refmax": 0.010755
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999821,
+    "max_err_over_refmax": 0.010755
+   },
+   "extend_us": 6215.9,
+   "splitkv_us": 479.0,
+   "speedup": 12.98
+  },
+  {
+   "preset": "gemma4",
+   "kv": "e5m2",
+   "prefix": 58000,
+   "K": 1,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999986,
+    "max_err_over_refmax": 0.003332
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003339
+   },
+   "extend_us": 10630.0,
+   "splitkv_us": 573.9,
+   "speedup": 18.52
+  },
+  {
+   "preset": "gemma4",
+   "kv": "e5m2",
+   "prefix": 58000,
+   "K": 16,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999985,
+    "max_err_over_refmax": 0.003666
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.003757
+   },
+   "extend_us": 10632.9,
+   "splitkv_us": 578.0,
+   "speedup": 18.4
+  },
+  {
+   "preset": "gemma4",
+   "kv": "e5m2",
+   "prefix": 58000,
+   "K": 33,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999978,
+    "max_err_over_refmax": 0.004465
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999964,
+    "max_err_over_refmax": 0.004841
+   },
+   "extend_us": 32026.6,
+   "splitkv_us": 1910.4,
+   "speedup": 16.76
+  },
+  {
+   "preset": "gemma4",
+   "kv": "e5m2",
+   "prefix": 58000,
+   "K": 64,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999961,
+    "max_err_over_refmax": 0.004966
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999946,
+    "max_err_over_refmax": 0.005757
+   },
+   "extend_us": 42704.0,
+   "splitkv_us": 2564.6,
+   "speedup": 16.65
+  },
+  {
+   "preset": "gemma4",
+   "kv": "e5m2",
+   "prefix": 197000,
+   "K": 1,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999987,
+    "max_err_over_refmax": 0.002515
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999973,
+    "max_err_over_refmax": 0.002969
+   },
+   "extend_us": 36090.3,
+   "splitkv_us": 2041.0,
+   "speedup": 17.68
+  },
+  {
+   "preset": "gemma4",
+   "kv": "e5m2",
+   "prefix": 197000,
+   "K": 16,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999987,
+    "max_err_over_refmax": 0.002883
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999974,
+    "max_err_over_refmax": 0.003407
+   },
+   "extend_us": 36099.2,
+   "splitkv_us": 2100.9,
+   "speedup": 17.18
+  },
+  {
+   "preset": "gemma4",
+   "kv": "e5m2",
+   "prefix": 197000,
+   "K": 33,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.9999984,
+    "max_err_over_refmax": 0.003044
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999972,
+    "max_err_over_refmax": 0.0037
+   },
+   "extend_us": 108422.3,
+   "splitkv_us": 6156.1,
+   "speedup": 17.61
+  },
+  {
+   "preset": "gemma4",
+   "kv": "e5m2",
+   "prefix": 197000,
+   "K": 64,
+   "sinks": false,
+   "status": "ok",
+   "extend_err": {
+    "finite": true,
+    "cosine": 0.999998,
+    "max_err_over_refmax": 0.003258
+   },
+   "splitkv_err": {
+    "finite": true,
+    "cosine": 0.9999968,
+    "max_err_over_refmax": 0.003466
+   },
+   "extend_us": 144592.8,
+   "splitkv_us": 8283.3,
+   "speedup": 17.46
+  }
+ ]
+}

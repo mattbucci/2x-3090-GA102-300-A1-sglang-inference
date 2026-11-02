@@ -352,7 +352,9 @@ apply_preset() {
             #    their full-attention layers through the split-KV kernel: 1-token turn
             #    274 -> 71 ms @140K, 437 -> 92 ms @233K at parity (MMLU 30/30, HE 30/30,
             #    needle 6/6; receipt benchmarks/quality/cache-hit-extend-2026-11-01.md).
-            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS:-16}"
+            #    Cap 64 (chunked, 16-row chunks on the 512-wide global layers): agentic
+            #    64-token turn at 197K 666 -> 270 ms with the tokenizer cache, needle 6/6.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS:-64}"
             KV_DTYPE="${_ENV_KV_DTYPE:-fp8_e5m2}"  # A5: e5m2 FP8 KV compiles on triton sm_86 (e4m3/fp8e4nv does not) -> 130K->260K pool, retrieval 1.0 to 258K true
             # BF16 — Gemma 4 SigLIP vision tower NaNs in FP16 (attention softmax
             # overflows past 65504). Override DTYPE=float16 only for text-only use.
@@ -663,8 +665,10 @@ apply_preset() {
             #    kernel (learned sinks folded into the LSE merge, K/V upcast on
             #    sm_86). Turn latency 318 -> 269 ms @130K, 614 -> 466 ms @253K at
             #    parity (receipt benchmarks/quality/cache-hit-extend-2026-11-01.md).
-            #    Longer turns and decode are untouched; 0 disables.
-            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS:-16}"
+            #    Cap raised 16 -> 64 the same day (R9700 110 port): turns up to 64 new tokens
+            #    run in consecutive 32-row chunks (agentic 64-token turn at 197K 442 -> 104 ms
+            #    with the tokenizer cache). Longer turns and decode are untouched; 0 disables.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS:-64}"
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Flint-AWQ-INT4-g64-gptq}"
             QUANT="${QUANT:-awq_marlin}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"

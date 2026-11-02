@@ -97,3 +97,16 @@ Warm-up compiled both kernels at boot in 2.1 s (`[070] split-KV short-turn route
 ## Wider route tiles (2026-11-01)
 
 `test_extend_splitkv_route.py --suffixes 17,24,32,48,64` (receipts `extend-splitkv-route-wide-2026-11-01.json`, `-wide32-`): the **32-row tile** (17–32 new tokens) is exact on every shape and keeps most of the speed-up — per layer at 197K: Flint 12.3 → 1.4 ms (8.7×), gemma4-31b 23.3 → 2.9 ms (8.0×), qwen38 23.4 → 4.7 ms (5.0×); at head_dim 256 it needs 8 warps (4 warps spill 2.7 KB/thread again — the same first-launch reserve trap), now chosen by tile size. The **64-row tile** overflows shared memory at head_dim 256 (`tl.dot` staging 196 KB > 101 KB on sm_86) and where it compiles (Flint) is slower than the extend kernel at 8K (0.9×) and only 4.4× at 197K. So the route is hard-capped at **32 new tokens** in the backend (the env can lower it, not raise it), the boot warm-up compiles both tiles when the cap is above 16, and the served arm at `MAX_TOKENS=32` (flint + gemma4-31b, turns of 1/16/24/32/64/128 tokens) is queued — that is what brings the 16-token Gemma rows (template framing counted) under the route.
+
+## Chunked route, cap 64 — shipped on `flint` and `gemma4-31b` (2026-11-01)
+
+Port of R9700's patch 110: new tokens beyond one tile are served in consecutive chunks; chunk c attends to the prefix plus the earlier new tokens (already in the KV pool, via `kv_indices` + `out_cache_loc`) and causally to its own rows. Tile 32 rows, or 16 on head_dim 512 — **Gemma 4's global (full-attention) layers are 512-wide with 4 (31B) / 2 (26B) KV heads** (`global_head_dim`), the SWA layers 256-wide; the first served arm died on the 32×512 combine tile (192 KB of shared memory, limit 99 KB) because the kernel test and the boot warm-up had only seen the SWA shape. Warm-up now covers every distinct head shape.
+
+Kernel (fp32-reference + extend-kernel-over-the-same-chunks gate, all cells exact): per layer at 197K, Flint 33 tok 6.3×, 64 tok 5.5×, 128 tok 2.9×, 256 tok 1.6×; Gemma 4 31B (512) 16–64 tok 8.9×; Gemma 4 26B 17.5×; the 64-row tile overflows SMEM at 512 and loses at 8K prefixes (0.9–1.2×). Served (agentic shape, tokenizer cache on):
+
+| preset | prefix | 1 token | 64 tokens (before → now) | 200 tokens (above the cap) |
+|---|---:|---:|---:|---:|
+| flint | 32K / 131K / 197K | 77 / 80 / 85 ms | 115 → 79, 281 → 93, **442 → 104 ms** | 76 / 143 / 197 ms |
+| gemma4-31b | 32K / 131K / 197K | 75 / 111 / 141 ms | 145 → 95, 461 → 193, **666 → 270 ms** | 135 / 337 / 469 ms |
+
+Needle under the route: Flint 3/3 at 131K, 1/3 at 250K (its checkpoint band); Gemma 4 31B 6/6. Receipts: `cache-hit-extend-{flint,gemma4-31b}-splitkv64-2026-11-01.json`, `multiturn-cache-2026-11-01/{flint,gemma4-31b}-chunk-multiturn.json`, `extend-splitkv-route-chunked-b-2026-11-01.json`, `extend-splitkv-route-d512-2026-11-01.json`.
