@@ -18,7 +18,11 @@ PRESETS = {"flint": "/data/models/hf-mattbucci/Flint-AWQ-INT4-g64-gptq", "qwen38
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--presets", default="flint,qwen38,gemma4-31b"); ap.add_argument("--target-tokens", type=int, default=250000)
-    ap.add_argument("--chunk-chars", type=int, default=6000); ap.add_argument("--out", default=None); a = ap.parse_args()
+    ap.add_argument("--chunk-chars", type=int, default=6000); ap.add_argument("--out", default=None)
+    ap.add_argument("--paths", default="", help="extra name=path pairs (comma separated) to test beyond the built-in presets")
+    a = ap.parse_args()
+    for kv in filter(None, a.paths.split(",")):
+        k, v = kv.split("=", 1); PRESETS[k] = v
     hay = open(os.path.join(os.path.dirname(__file__), "..", "..", "benchmarks", "quality", "haystack-platypus.txt")).read()
     while len(hay) < 3_000_000: hay += hay
     results = []; fails = 0
@@ -26,7 +30,7 @@ def main():
         tok = AutoTokenizer.from_pretrained(PRESETS[name]); inc = IncrementalTokenizer(tok, verify=False)
         row = {"preset": name, "enabled": inc.enabled, "special_prefix_ok": inc.special_prefix_ok, "turns": []}
         if not inc.enabled:
-            print(f"{name}: incremental tokenizer DISABLED by the exactness check"); results.append(row); fails += 1; continue
+            print(f"{name}: incremental tokenizer DISABLED by the exactness check (safe fallback, not a failure)"); results.append(row); continue
         msgs = [{"role": "system", "content": "You are a careful assistant. " + hay[:2000]}]
         pos = 2000; turn = 0; n_tok = 0; mism = 0; checkpoints = []
         while n_tok < a.target_tokens:

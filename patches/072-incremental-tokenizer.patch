@@ -30,10 +30,10 @@ index 4b361f28f7..4131efb0b4 100644
              if cache_key is not None
 diff --git a/python/sglang/srt/managers/incremental_tokenizer.py b/python/sglang/srt/managers/incremental_tokenizer.py
 new file mode 100644
-index 0000000000..e18050f2d6
+index 0000000000..95f490ed12
 --- /dev/null
 +++ b/python/sglang/srt/managers/incremental_tokenizer.py
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,170 @@
 +"""[3090 072] Incremental tokenization for append-only prompts (the agentic follow-up turn at depth).
 +
 +Every chat turn re-sends the whole conversation and the server re-tokenizes it from scratch: Flint's fast
@@ -102,6 +102,15 @@ index 0000000000..e18050f2d6
 +        self.stats = {"calls": 0, "hits": 0, "reused_tokens": 0, "encoded_tokens": 0, "mismatches": 0, "saved_s": 0.0}
 +        self.enabled, self.special_prefix_ok, why = self._check(tokenizer)
 +        self._added = set(tokenizer.added_tokens_decoder.keys()) if self.enabled else set()
++        self._added_id = {str(t): i for i, t in tokenizer.added_tokens_decoder.items()} if self.enabled else {}
++        self._split_re = None
++        self._special_prefix = ()
++        if self.enabled:
++            import re
++
++            # leftmost-longest match of any added token = the tokenizer's own pre-split (no lstrip/rstrip/normalized)
++            self._split_re = re.compile("(" + "|".join(re.escape(t) for t in sorted(self._added_id, key=len, reverse=True)) + ")")
++            self._special_prefix = tuple(tokenizer("", add_special_tokens=True)["input_ids"])
 +        if self.enabled:
 +            logger.info("[072] incremental tokenizer on (%d added tokens, add_special_tokens mode %s)",
 +                        len(self._added), "ok" if self.special_prefix_ok else "off")
@@ -128,17 +137,26 @@ index 0000000000..e18050f2d6
 +        return True, prefix_ok, ""
 +
 +    def _encode_full(self, text: str, add_special_tokens: bool):
-+        enc = self.tok(text, add_special_tokens=add_special_tokens, return_offsets_mapping=True)
-+        ids = enc["input_ids"]
-+        offs = enc["offset_mapping"]
-+        ends, ntoks = [], []
-+        added = self._added
-+        for i, tid in enumerate(ids):
-+            if tid in added:
-+                s, e = offs[i]
-+                if e > s:  # an added token present in the text (post-processor specials have (0, 0))
-+                    ends.append(e)
-+                    ntoks.append(i + 1)
++        """Encode ``text`` the way the tokenizer does — split on added tokens first (leftmost-longest, the
++        tokenizer's own pre-split), encode the plain segments as a batch, splice the added ids back in — and
++        return the added-token boundaries for free. No offset mapping (that made a full encode ~20 % slower)."""
++        parts = self._split_re.split(text) if self._split_re is not None else [text]
++        segs = parts[0::2]  # plain text between added tokens (may be empty)
++        toks = parts[1::2]  # the added tokens themselves, in order
++        if add_special_tokens and self._special_prefix:
++            ids = list(self._special_prefix)
++        else:
++            ids = []
++        enc = self.tok(segs, add_special_tokens=False)["input_ids"] if any(segs) else [[] for _ in segs]
++        ends, ntoks, pos = [], [], 0
++        for i, seg_ids in enumerate(enc):
++            ids.extend(seg_ids)
++            pos += len(segs[i])
++            if i < len(toks):
++                ids.append(self._added_id[toks[i]])
++                pos += len(toks[i])
++                ends.append(pos)
++                ntoks.append(len(ids))
 +        return ids, ends, ntoks
 +
 +    def encode(self, text: str, add_special_tokens: bool = False) -> List[int]:
