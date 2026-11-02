@@ -17,15 +17,34 @@ import argparse, json, sys, time, urllib.request
 
 def post(url, body, timeout=1800):
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        detail = e.read()[:600].decode("utf-8", "replace")
+        raise SystemExit(f"HTTP {e.code} from {url}: {detail}")
 
 def chat(base, model, messages, max_tokens):
     t0 = time.time()
     r = post(f"{base}/v1/chat/completions", {"model": model, "messages": messages, "temperature": 0, "top_p": 1, "top_k": 1,
-                                             "max_tokens": max_tokens, "chat_template_kwargs": {"enable_thinking": False}})
+                                             "max_tokens": max_tokens, "chat_template_kwargs": {"enable_thinking": False},
+                                             "logprobs": True, "top_logprobs": 5})
     c = r["choices"][0]
+    # first generated token's top-5 distribution: {token: logprob}
+    first = {}
+    try:
+        lp = (c.get("logprobs") or {}).get("content") or []
+        if lp:
+            first = {t["token"]: t["logprob"] for t in lp[0].get("top_logprobs", [])}
+    except Exception:
+        first = {}
+    chat.last_first_top = first
     return (c["message"].get("content") or ""), c.get("finish_reason"), r.get("usage", {}).get("prompt_tokens"), time.time() - t0
+
+def top_delta(d1, d2):
+    """max |logprob delta| over tokens present in both top-5 lists; None when no overlap."""
+    common = set(d1) & set(d2)
+    return round(max(abs(d1[t] - d2[t]) for t in common), 3) if common else None
 
 def flush(base):
     try: post(f"{base}/flush_cache", {}, timeout=60)
@@ -60,17 +79,19 @@ def main():
             doc = text[start:start + n]
             m1 = [{"role": "user", "content": f"Read this document.\n\n{doc}\n\n{q1s[i % 3]}"}]
             flush(base)
-            a_fresh, f1, p1, t1 = chat(base, model, m1, a.max_tokens)
-            a_hit, f2, p2, t2 = chat(base, model, m1, a.max_tokens)
+            a_fresh, f1, p1, t1 = chat(base, model, m1, a.max_tokens); lp_a_fresh = chat.last_first_top
+            a_hit, f2, p2, t2 = chat(base, model, m1, a.max_tokens); lp_a_hit = chat.last_first_top
             m2 = m1 + [{"role": "assistant", "content": a_fresh}, {"role": "user", "content": q2s[i % 3]}]
-            b_hit, f3, p3, t3 = chat(base, model, m2, a.max_tokens)
+            b_hit, f3, p3, t3 = chat(base, model, m2, a.max_tokens); lp_b_hit = chat.last_first_top
             flush(base)
-            b_fresh, f4, p4, t4 = chat(base, model, m2, a.max_tokens)
+            b_fresh, f4, p4, t4 = chat(base, model, m2, a.max_tokens); lp_b_fresh = chat.last_first_top
             # noise floor: a second fresh run of each (greedy is not run-to-run exact on this stack)
             flush(base)
-            a_fresh2, _, _, _ = chat(base, model, m1, a.max_tokens)
+            a_fresh2, _, _, _ = chat(base, model, m1, a.max_tokens); lp_a_fresh2 = chat.last_first_top
             flush(base)
-            b_fresh2, _, _, _ = chat(base, model, m2, a.max_tokens)
+            b_fresh2, _, _, _ = chat(base, model, m2, a.max_tokens); lp_b_fresh2 = chat.last_first_top
+            lp = {"A_hit_vs_fresh": top_delta(lp_a_fresh, lp_a_hit), "A_fresh_vs_fresh": top_delta(lp_a_fresh, lp_a_fresh2),
+                  "B_hit_vs_fresh": top_delta(lp_b_fresh, lp_b_hit), "B_fresh_vs_fresh": top_delta(lp_b_fresh, lp_b_fresh2)}
             def pref(x, y):
                 k = 0
                 while k < min(len(x), len(y)) and x[k] == y[k]: k += 1
@@ -86,10 +107,12 @@ def main():
                    "A_hit_prefix": a_hitp, "A_fresh_fresh_prefix": a_floor, "B_hit_prefix": b_hitp, "B_fresh_fresh_prefix": b_floor,
                    "A_worse_than_noise": worse_a, "B_worse_than_noise": worse_b,
                    "A_len": [len(a_fresh), len(a_hit), len(a_fresh2)], "B_len": [len(b_fresh), len(b_hit), len(b_fresh2)],
-                   "finish": [f1, f2, f3, f4], "secs": [round(t1, 1), round(t2, 1), round(t3, 1), round(t4, 1)]}
+                   "finish": [f1, f2, f3, f4], "secs": [round(t1, 1), round(t2, 1), round(t3, 1), round(t4, 1)],
+                   "first_token_top5_max_abs_logprob_delta": lp}
             results.append(row)
             print(f"{a.tag} {tok} cell {i}: prompt={p1} A hit-prefix {a_hitp}/{len(a_fresh)} vs fresh-fresh {a_floor} {'WORSE' if worse_a else 'ok'} | "
-                  f"B hit-prefix {b_hitp}/{len(b_fresh)} vs fresh-fresh {b_floor} {'WORSE' if worse_b else 'ok'} secs={row['secs']}", flush=True)
+                  f"B hit-prefix {b_hitp}/{len(b_fresh)} vs fresh-fresh {b_floor} {'WORSE' if worse_b else 'ok'} secs={row['secs']} "
+                  f"first-tok dlogp hit/fresh A={lp['A_hit_vs_fresh']} (floor {lp['A_fresh_vs_fresh']}) B={lp['B_hit_vs_fresh']} (floor {lp['B_fresh_vs_fresh']})", flush=True)
     out = a.out or f"benchmarks/quality/cache-hit-consistency-{a.tag}.json"
     json.dump({"tag": a.tag, "model": model, "mismatches": bad, "results": results}, open(out, "w"), indent=1)
     print(f"{a.tag}: {bad} hit comparisons worse than the fresh-vs-fresh noise floor, of {2*len(results)} -> {out}")
