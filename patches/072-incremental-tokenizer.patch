@@ -30,10 +30,10 @@ index 4b361f28f7..4131efb0b4 100644
              if cache_key is not None
 diff --git a/python/sglang/srt/managers/incremental_tokenizer.py b/python/sglang/srt/managers/incremental_tokenizer.py
 new file mode 100644
-index 0000000000..95f490ed12
+index 0000000000..26e04c348a
 --- /dev/null
 +++ b/python/sglang/srt/managers/incremental_tokenizer.py
-@@ -0,0 +1,170 @@
+@@ -0,0 +1,179 @@
 +"""[3090 072] Incremental tokenization for append-only prompts (the agentic follow-up turn at depth).
 +
 +Every chat turn re-sends the whole conversation and the server re-tokenizes it from scratch: Flint's fast
@@ -66,19 +66,28 @@ index 0000000000..95f490ed12
 +MIN_CHARS = 4096  # below this a full encode is cheaper than the bookkeeping
 +
 +
++_BLOCK = 1 << 16
++
++
 +def _common_prefix_len(a: str, b: str) -> int:
-+    """Length of the common prefix of two strings in O(log n) C-level slice compares."""
-+    if a is b or a == b:
-+        return len(a)
++    """Length of the common prefix: scan 64 K-char blocks forward (one C compare each, no copies of the
++    whole string), then binary-search inside the first differing block. Linear in the shared prefix,
++    not O(n log n) slice copies — this was 5 % of a 229K-token turn as a plain binary search."""
 +    n = min(len(a), len(b))
 +    if n == 0 or a[0] != b[0]:
 +        return 0
-+    if a[:n] == b[:n]:
++    lo = 0
++    while lo < n:
++        hi = min(lo + _BLOCK, n)
++        if a[lo:hi] != b[lo:hi]:
++            break
++        lo = hi
++    else:
 +        return n
-+    lo, hi = 0, n  # invariant: a[:lo] == b[:lo], a[:hi] != b[:hi]
++    # a[lo:hi] differs: binary search the first mismatch inside the block
 +    while hi - lo > 1:
 +        mid = (lo + hi) // 2
-+        if a[:mid] == b[:mid]:
++        if a[lo:mid] == b[lo:mid]:
 +            lo = mid
 +        else:
 +            hi = mid
