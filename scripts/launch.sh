@@ -82,6 +82,13 @@ EXTRA_ARGS="${EXTRA_ARGS:-}"
 # (SGLANG_LM_HEAD_INT8_EXACT_SPECIALS=1); SGLANG_LM_HEAD_INT8_GROUP=-1|32|64|128.
 # Tied heads (Gemma 4) are untouched. SGLANG_LM_HEAD_INT8=0 disables; nemotron3-omni pins it off.
 export SGLANG_LM_HEAD_INT8="${SGLANG_LM_HEAD_INT8:-1}"
+# patch 072 (2026-11-01): exact incremental tokenization for append-only chat prompts — the
+# server re-encoded the whole conversation every turn (Flint 1.7 us/token: 415 ms of a 466 ms
+# turn at 253K). Reuses the previous prompt's ids up to the last special-token boundary of the
+# shared prefix and encodes only the tail; the guard disables itself on tokenizers it cannot
+# prove exact (Devstral's tekken backend). Agentic 1-token turn at 197K: Flint 331 -> 90 ms,
+# qwen38 364 -> 142 ms. 0 disables; SGLANG_INCREMENTAL_TOKENIZE_VERIFY=1 cross-checks every call.
+export SGLANG_INCREMENTAL_TOKENIZE="${SGLANG_INCREMENTAL_TOKENIZE:-1}"
 
 # --- Model presets (tuned for 48GB total VRAM) ---
 apply_preset() {

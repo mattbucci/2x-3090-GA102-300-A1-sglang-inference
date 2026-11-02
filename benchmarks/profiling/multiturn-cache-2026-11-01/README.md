@@ -23,3 +23,20 @@ Trigger: R9700's R97-R (their `b8c9276`): under the HIP default `no_buffer` a Ma
 - **Flint (triton, route on), fixed probe:** cached 116,935 of 116,937 and 175,744 of 175,746 across the turn boundary; 1-token turn **238 / 320 ms** at 117K / 176K (same-message 232 / 332), 64-token turn 286 / 427 ms (above the route cap) — the turn is the tokenizer (1.7 µs/token) plus the routed extend. qwen38 same-message append at depth: 253 / 357 ms (1 token) vs 296 / 425 ms multi-turn — within two-run noise with ~80 more recomputed tokens.
 
 Receipts: `*.json` in this directory; R9700 relay in their `CROSS-TEAM.md`.
+
+## Patch 072 (incremental tokenization) on the real chat path — SHIPPED (2026-11-01)
+
+Same probe, same session, `SGLANG_INCREMENTAL_TOKENIZE=0` then `1` (verify off), medians of 3 runs; agentic shape (200-token reply replayed as history, new user message of k tokens):
+
+| preset | prefix | 1-token turn off → on | 64-token turn off → on |
+|---|---:|---:|---:|
+| flint | 32K | 120 → **76 ms** | 115 → 71 ms |
+|  | 131K | 239 → **82 ms** | 281 → 135 ms |
+|  | 197K | 331 → **90 ms** | 442 → 191 ms |
+| qwen38 | 32K | 123 → **87 ms** | 132 → 95 ms |
+|  | 131K | 254 → **120 ms** | 283 → 136 ms |
+|  | 197K | 364 → **142 ms** | 370 → 145 ms |
+
+- py-spy on the tokenizer-manager process during 1-token turns at 208K (Flint, off): **94 % of samples in `tokenizer.encode`** via `_render_and_encode_chat_template → parallel_prompt_encode` (its parallel branch is not taken on this stack; `_plan_for` falls back to the plain encode), jinja render < 1 %. qwen38 (off, 229K): 77 % encode + **8.5 % `tokenizer.decode`** — the chat path decodes the whole prompt back to text for its template cache on multimodal-flagged models; next item.
+- The first served A/B read no gain because the hook sat on a helper that chat requests never take; the profile found the real path. A single growing message with no special token inside reuses nothing (by design: boundaries are added tokens) and now costs a plain encode (the first version's offset mapping made it 20 % slower).
+- Remaining per-turn floor: Flint 76–90 ms flat in depth (route + launch + HTTP), qwen38 87–142 ms (the launch-bound flashinfer extend plus the decode-back; prefill-graph A/B queued).
