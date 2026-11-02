@@ -94,11 +94,11 @@ export SGLANG_INCREMENTAL_TOKENIZE="${SGLANG_INCREMENTAL_TOKENIZE:-1}"
 apply_preset() {
     case "$1" in
         devstral)
-            # patch 071 (2026-11-02): W4A8 prefill on the dense AWQ-Marlin linears — fresh-prefill
-            # TTFT 11.9 -> 7.7 s @32K (-35 %), 69.8 -> 52.7 s @131K (-25 %), decode identical,
-            # needle 131K 3/3 on the INT8 arm (MMLU 42/57 on both arms — short prompts never
-            # reach the 2048-row threshold, so that read is a control). 0 disables.
-            export SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS="${SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS:-2048}"
+            # patch 071 W4A8 prefill: OFF here (2026-11-02). TTFT would be -35 % @32K / -25 % @131K
+            # and the 131K needle is 3/3 on the INT8 arm, but the 256K reasoning probe through the
+            # path reads 100 % off -> 0 % on at 143K actual (multikey + vartrack + aggregate all
+            # wrong; Mistral-arch activations do not survive per-token INT8 at depth). Repeat in
+            # flight (chain17); opt in with SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS=2048.
             # Devstral-Small-2-24B-Instruct-2512 — in-house BF16->GPTQ->AWQ rebuild
             # (mattbucci/Devstral-Small-2-24B-AWQ). The community AWQ degenerated on
             # tool prompts (under-calibrated [TOOL_CALLS] pathway); this rebuild adds
