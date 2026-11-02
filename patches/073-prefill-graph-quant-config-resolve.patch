@@ -1,12 +1,11 @@
 diff --git a/python/sglang/srt/model_executor/runner/prefill_cuda_graph_runner.py b/python/sglang/srt/model_executor/runner/prefill_cuda_graph_runner.py
-index b4c1fccd91..fc8ccd094c 100644
+index b4c1fccd91..04c5b685b3 100644
 --- a/python/sglang/srt/model_executor/runner/prefill_cuda_graph_runner.py
 +++ b/python/sglang/srt/model_executor/runner/prefill_cuda_graph_runner.py
-@@ -240,6 +240,35 @@ def _slice_output_rows(output: Any, num_tokens: int) -> Any:
+@@ -239,6 +239,35 @@ def _slice_output_rows(output: Any, num_tokens: int) -> Any:
+     raise TypeError(f"Unsupported full prefill CUDA graph output: {type(output)}")
  
  
- @dataclass(frozen=True)
-+
 +def _resolve_model_quant_config(model):
 +    """[3090 073] The piecewise forward context carries the model's quant config and
 +    ``unified_apply_gptq_marlin_gemm`` reads ``quant_type`` from it, so a ``None`` here
@@ -35,9 +34,10 @@ index b4c1fccd91..fc8ccd094c 100644
 +                return qc
 +    return None
 +
++
+ @dataclass(frozen=True)
  class _ChunkedPrefixCaptureBuffers:
      """Runner-owned tensors shared by every prefix and token-bucket variant.
- 
 @@ -322,7 +351,7 @@ class PrefillCudaGraphRunner(BaseCudaGraphRunner):
          )
          self._fa4_prefill = getattr(prefill_attn_backend, "fa_impl_ver", None) == 4
