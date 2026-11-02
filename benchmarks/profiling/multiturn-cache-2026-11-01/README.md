@@ -48,5 +48,6 @@ Same probe, same session, `SGLANG_INCREMENTAL_TOKENIZE=0` then `1` (verify off),
 | preset | prefix | 1-token turn (072 v2 → v3) | 64-token turn |
 |---|---:|---:|---:|
 | qwen38 | 32K / 131K / 197K | 87 / 120 / 142 → **79 / 88 / 92 ms** | 95 / 136 / 145 → 85 / 99 / 103 ms |
+| gemma4-31b | 32K / 131K / 197K | 75 / 111 / 141 → **63 / 70 / 82 ms** | 95 / 193 / 270 → 82 / 151 / 210 ms |
 
 Capabilities probe on the same server (`validate_capabilities.py`): basic, tool call, thinking, **vision, video** — 5/5, so the media path (which still decodes) is intact. Receipt `qwen38-lazydecode.json`.
