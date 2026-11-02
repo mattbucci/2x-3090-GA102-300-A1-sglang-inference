@@ -1,43 +1,33 @@
 diff --git a/python/sglang/srt/entrypoints/openai/serving_chat.py b/python/sglang/srt/entrypoints/openai/serving_chat.py
-index 4b361f28f7..c979b4c437 100644
+index 4b361f28f7..4131efb0b4 100644
 --- a/python/sglang/srt/entrypoints/openai/serving_chat.py
 +++ b/python/sglang/srt/entrypoints/openai/serving_chat.py
-@@ -678,14 +678,27 @@ class OpenAIServingChat(OpenAIServingBase):
-                 if request.tools
-                 else None
+@@ -1852,9 +1852,22 @@ class OpenAIServingChat(OpenAIServingBase):
+                 return_dict=False,
+                 **template_kwargs,
              )
--            prompt_ids = self.tokenizer_manager.tokenizer.apply_chat_template(
--                messages,
--                tokenize=True,
--                add_generation_prompt=True,
--                tools=request_tools,
--                return_dict=False,
--                **template_kwargs,
+-            prompt_ids = parallel_prompt_encode(
+-                self.tokenizer_manager.tokenizer, rendered_prompt, encode_kwargs
 -            )
 +            inc = getattr(self.tokenizer_manager, "incremental_tokenizer", None)
-+            if inc is not None and inc.enabled:
-+                # [3090 072] render, then encode incrementally against the previous turns
-+                # (apply_chat_template(tokenize=True) is encode(rendered, add_special_tokens=False)).
-+                rendered = self.tokenizer_manager.tokenizer.apply_chat_template(
-+                    messages,
-+                    tokenize=False,
-+                    add_generation_prompt=True,
-+                    tools=request_tools,
-+                    **template_kwargs,
++            if (
++                inc is not None
++                and inc.enabled
++                and not (set(encode_kwargs or {}) - {"add_special_tokens"})
++            ):
++                # [3090 072] reuse the previous turns' ids up to the last special-token boundary of
++                # the shared prefix; only the tail is encoded (exact: HF splits on added tokens first).
++                prompt_ids = inc.encode(
++                    rendered_prompt,
++                    add_special_tokens=(encode_kwargs or {}).get("add_special_tokens", True),
 +                )
-+                prompt_ids = inc.encode(rendered, add_special_tokens=False)
 +            else:
-+                prompt_ids = self.tokenizer_manager.tokenizer.apply_chat_template(
-+                    messages,
-+                    tokenize=True,
-+                    add_generation_prompt=True,
-+                    tools=request_tools,
-+                    return_dict=False,
-+                    **template_kwargs,
++                prompt_ids = parallel_prompt_encode(
++                    self.tokenizer_manager.tokenizer, rendered_prompt, encode_kwargs
 +                )
-             if assistant_prefix:
-                 prompt_ids = self._append_assistant_prefix_to_prompt_ids(
-                     prompt_ids, assistant_prefix
+         decoded_prompt = (
+             self.tokenizer_manager.tokenizer.decode(prompt_ids)
+             if cache_key is not None
 diff --git a/python/sglang/srt/managers/incremental_tokenizer.py b/python/sglang/srt/managers/incremental_tokenizer.py
 new file mode 100644
 index 0000000000..e18050f2d6

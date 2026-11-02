@@ -293,7 +293,7 @@ index 94bb8526f8..921c71dfbf 100644
  
      return True
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 64920d56b5..9592fbfa82 100644
+index 64920d56b5..41f9e26f24 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
 @@ -1,5 +1,8 @@
@@ -305,7 +305,7 @@ index 64920d56b5..9592fbfa82 100644
  from dataclasses import dataclass
  from typing import TYPE_CHECKING, List, Optional
  
-@@ -53,6 +56,16 @@ from sglang.srt.distributed.device_communicators.pynccl_allocator import (
+@@ -53,6 +56,21 @@ from sglang.srt.distributed.device_communicators.pynccl_allocator import (
      use_symmetric_memory,
  )
  from sglang.srt.environ import envs
@@ -318,11 +318,16 @@ index 64920d56b5..9592fbfa82 100644
 +# 0 (default) = off. Port of R9700's patch 107 (c159375) with learned-sink support.
 +_EXTEND_SPLITKV_MAX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MAX_TOKENS", "0") or 0)
 +_EXTEND_SPLITKV_MIN_PREFIX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MIN_PREFIX", "4096") or 0)
++# Rows per split-KV call (R9700 patch 110 shape): new tokens beyond one tile are served in consecutive
++# chunks, each attending to the prefix plus the new tokens before it (already in the KV pool) and
++# causally within itself. 32 is the widest tile on sm_86 (the 64-row combine tile overflows shared
++# memory at head_dim 256); 16 is the floor.
++_EXTEND_SPLITKV_TILE = min(32, max(16, int(os.environ.get("SGLANG_EXTEND_SPLITKV_TILE", "32") or 32)))
 +logger = logging.getLogger(__name__)
  from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
  from sglang.srt.layers.attention.verify_mask import VerifyMask, maybe_create_verify_mask
  from sglang.srt.layers.dcp import (
-@@ -478,6 +491,64 @@ class TritonAttnBackend(AttentionBackend):
+@@ -478,6 +496,64 @@ class TritonAttnBackend(AttentionBackend):
              self.dllm_attention = DllmFlashAttention(self)
              self.supports_prefill_cuda_graph_max_context_size = True
  
@@ -362,7 +367,7 @@ index 64920d56b5..9592fbfa82 100644
 +                return
 +            kv_indptr = torch.tensor([0, prefix], dtype=torch.int32, device=dev)
 +            kv_indices = torch.arange(prefix, dtype=torch.int32, device=dev)
-+            tiles = [16] if min(_EXTEND_SPLITKV_MAX, 32) <= 16 else [16, 32]
++            tiles = [16] if min(_EXTEND_SPLITKV_MAX, _EXTEND_SPLITKV_TILE) <= 16 else [16, 32]
 +            for n_pad in tiles:
 +                q3 = torch.zeros((n_pad, h_q, d), dtype=dt, device=dev)
 +                k3 = torch.zeros((n_pad, h_kv, d), dtype=dt, device=dev)
@@ -387,7 +392,7 @@ index 64920d56b5..9592fbfa82 100644
      def get_num_kv_splits(
          self,
          num_kv_splits: torch.Tensor,
-@@ -1864,6 +1935,76 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1864,6 +1940,98 @@ class TritonAttnBackend(AttentionBackend):
          ):
              return o
  
@@ -412,53 +417,75 @@ index 64920d56b5..9592fbfa82 100644
 +            and self.forward_metadata.custom_mask is None
 +            and forward_batch.extend_seq_lens_cpu is not None
 +            and forward_batch.extend_prefix_lens_cpu is not None
-+            and 0 < forward_batch.extend_seq_lens_cpu[0] <= min(_EXTEND_SPLITKV_MAX, 32)
++            and 0 < forward_batch.extend_seq_lens_cpu[0] <= _EXTEND_SPLITKV_MAX
 +            and forward_batch.extend_prefix_lens_cpu[0] >= _EXTEND_SPLITKV_MIN_PREFIX
++            and forward_batch.out_cache_loc is not None
 +        ):
-+            # hard cap 32: the 64-row combine tile overflows shared memory at head_dim 256
-+            # (196 KB > 101 KB on sm_86) and is slower than the extend kernel where it compiles.
 +            n_new = int(forward_batch.extend_seq_lens_cpu[0])
-+            n_pad = max(16, triton.next_power_of_2(n_new))
++            n_prefix = int(forward_batch.extend_prefix_lens_cpu[0])
++            tile = _EXTEND_SPLITKV_TILE
 +            q3 = q.view(-1, layer.tp_q_head_num, layer.qk_head_dim)
 +            k3 = k.contiguous().view(-1, layer.tp_k_head_num, layer.qk_head_dim)
 +            v3 = v.contiguous().view(-1, layer.tp_k_head_num, layer.v_head_dim)
-+            if n_pad != n_new:
-+                pad = n_pad - n_new
-+                q3 = torch.cat([q3, q3.new_zeros((pad,) + q3.shape[1:])])
-+                k3 = torch.cat([k3, k3.new_zeros((pad,) + k3.shape[1:])])
-+                v3 = torch.cat([v3, v3.new_zeros((pad,) + v3.shape[1:])])
-+            o3 = q3.new_empty((n_pad, layer.tp_q_head_num, layer.v_head_dim))
++            o_full = o.view(-1, layer.tp_q_head_num, layer.v_head_dim)
++            k_buf = self.token_to_kv_pool.get_key_buffer(layer.layer_id)
++            v_buf = self.token_to_kv_pool.get_value_buffer(layer.layer_id)
 +            cache = getattr(self, "_extend_splitkv_qo_cache", None)
 +            if cache is None:
 +                cache = self._extend_splitkv_qo_cache = {}
-+            qo_pad = cache.get(n_pad)
-+            if qo_pad is None:
-+                qo_pad = cache[n_pad] = torch.tensor([0, n_pad], dtype=torch.int32, device=q.device)
-+            if self.verify_splitkv_fwd(
-+                q3,
-+                k3,
-+                v3,
-+                o3,
-+                self.token_to_kv_pool.get_key_buffer(layer.layer_id),
-+                self.token_to_kv_pool.get_value_buffer(layer.layer_id),
-+                qo_pad,
-+                kv_indptr,
-+                kv_indices,
-+                None,
-+                True,
-+                None,
-+                n_pad,
-+                k_descale,
-+                v_descale,
-+                layer.scaling,
-+                logit_cap=0.0,
-+                sliding_window_size=-1,
-+                sinks=sinks,
-+                window_kv_offsets=None,
-+                xai_temperature_len=-1,
-+                max_bs=self.req_to_token_pool.size,
-+            ):
-+                o.view(-1, layer.tp_q_head_num, layer.v_head_dim)[:n_new].copy_(o3[:n_new])
++            # the new tokens' K/V are already in the pool (set_kv_buffer ran above): chunk c
++            # attends to the prefix plus the new tokens before it through kv_indices, and
++            # causally to its own rows through kc/vc.
++            new_slots = None
++            ran = True
++            for start in range(0, n_new, tile):
++                n_c = min(tile, n_new - start)
++                n_pad = max(16, triton.next_power_of_2(n_c))
++                qc, kc, vc = q3[start : start + n_c], k3[start : start + n_c], v3[start : start + n_c]
++                if n_pad != n_c:
++                    pad = n_pad - n_c
++                    qc = torch.cat([qc, qc.new_zeros((pad,) + qc.shape[1:])])
++                    kc = torch.cat([kc, kc.new_zeros((pad,) + kc.shape[1:])])
++                    vc = torch.cat([vc, vc.new_zeros((pad,) + vc.shape[1:])])
++                oc = qc.new_empty((n_pad, layer.tp_q_head_num, layer.v_head_dim))
++                qo_pad = cache.get(n_pad)
++                if qo_pad is None:
++                    qo_pad = cache[n_pad] = torch.tensor([0, n_pad], dtype=torch.int32, device=q.device)
++                if start == 0:
++                    kv_indptr_c, kv_indices_c = kv_indptr, kv_indices
++                else:
++                    if new_slots is None:
++                        new_slots = forward_batch.out_cache_loc.to(kv_indices.dtype)
++                    kv_indices_c = torch.cat([kv_indices[:n_prefix], new_slots[:start]])
++                    kv_indptr_c = torch.tensor([0, n_prefix + start], dtype=kv_indptr.dtype, device=q.device)
++                if not self.verify_splitkv_fwd(
++                    qc,
++                    kc,
++                    vc,
++                    oc,
++                    k_buf,
++                    v_buf,
++                    qo_pad,
++                    kv_indptr_c,
++                    kv_indices_c,
++                    None,
++                    True,
++                    None,
++                    n_pad,
++                    k_descale,
++                    v_descale,
++                    layer.scaling,
++                    logit_cap=0.0,
++                    sliding_window_size=-1,
++                    sinks=sinks,
++                    window_kv_offsets=None,
++                    xai_temperature_len=-1,
++                    max_bs=self.req_to_token_pool.size,
++                ):
++                    ran = False
++                    break
++                o_full[start : start + n_c].copy_(oc[:n_c])
++            if ran:
 +                return o
 +
          self._forward_extend_kernel(
