@@ -814,7 +814,13 @@ apply_preset() {
             # MoE-marlin TP regression qwen3-ream documents). MEM 0.85 -> 0.80
             # for graph+warmup headroom — the 0.85 config died at the final init
             # step with avail 2.9 GB (KV pool still ~900K >> 262K at 0.80).
-            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
+            # 2026-11-02: prefill CUDA graph (breakable, bs-1 captures for 8-128-token
+            # extends) — the flashinfer extend of a cache-hit follow-up turn was launch-bound.
+            # Agentic 1-token turn 77 / 89 / 83 -> 32 / 37 / 37 ms at 32K / 131K / 197K,
+            # 64-token 75 / 83 / 87 -> 29 / 43 / 51 ms; MMLU 54/57, HE 30/30, needle 3/3,
+            # caps 5/5 (benchmarks/profiling/multiturn-cache-2026-11-01/). The bucket list is
+            # the token-count capture list — without it the capture silently disables.
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill breakable --cuda-graph-bs-prefill 8 16 32 64 128 --cuda-graph-max-bs-prefill 1 --cuda-graph-max-seq-len-prefill 128"
             # 2026-05-13: bakeoff p13 ran qwen36 x claw at 1/300 = 0.3%. Forensics
             # (286/300 .claw-only diffs) showed the model emits valid
             # <function=NAME><parameter=...>VAL</parameter></function> tool tags
