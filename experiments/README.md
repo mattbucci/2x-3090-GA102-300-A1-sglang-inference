@@ -18,6 +18,7 @@ Vetted execution queue from the 2026-07-18 fleet audit. Each doc is a self-conta
 | 10 | 3090-J | [Second-request intrusion at 256K: radix-prefix survival, mixed-depth concurrency wall, and a measured ops rule for the production endpoint](10-concurrency-at-depth-radix.md) | experiment | ready | 3090-box | 2-3 days elapsed (instrument ~0.5 day; ~24-cell matrix + wall probe ~10-16h GPU in bake-off gaps; mitigation A/B ~2-4h) |
 | 11 | 3090-K | [Extend the regression tripwire to the production presets, characterize variance vs the 10% gate, and attach a GPU-telemetry sidecar (attested baselines)](11-tripwire-prod-presets-telemetry-variance.md) | task | ready | 3090-box | ~1-1.5 days total (~2-3h sidecar authoring no-GPU + ~2-3h detached arming + ~1-2h variance repeats in bake-off gaps); power rider ~30-60min attended, MATT-GATED |
 | 12 | 3090-L | [DiffusionGemma structured reads on SGLang: adopt M4 patch 025, run end to end](12-diffusiongemma-structured-reads.md) | experiment | blocked (51.6 GB BF16 > 48 GB; quantized loading rejected) — procedure kept, run on the R9700 first | 3090-box / r9700-box | 1-2 d |
+| 13 | 3090-M | [Measure the agentic follow-up in chat shape; check the hybrid-cache checkpoint that serves it](13-chat-shape-turn-tax.md) | task | ready | 3090-box | ~2 h attended |
 
 ## Cross-rig edges touching this lane
 
