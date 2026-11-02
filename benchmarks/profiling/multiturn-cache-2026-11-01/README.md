@@ -51,3 +51,15 @@ Same probe, same session, `SGLANG_INCREMENTAL_TOKENIZE=0` then `1` (verify off),
 | gemma4-31b | 32K / 131K / 197K | 75 / 111 / 141 → **63 / 70 / 82 ms** | 95 / 193 / 270 → 82 / 151 / 210 ms |
 
 Capabilities probe on the same server (`validate_capabilities.py`): basic, tool call, thinking, **vision, video** — 5/5, so the media path (which still decodes) is intact. Receipt `qwen38-lazydecode.json`.
+
+## Prefill CUDA graph for small extends — shipped on `qwen38` (2026-11-01)
+
+`--cuda-graph-backend-prefill breakable --cuda-graph-bs-prefill 8 16 32 64 128 --cuda-graph-max-bs-prefill 1 --cuda-graph-max-seq-len-prefill 128` at the preset's own memory fraction (capture 0.14 GB). Agentic shape, medians of 3, tokenizer cache + lazy decode on in both columns:
+
+| prefix | 1 token (eager → graph) | 16 tokens | 64 tokens |
+|---|---:|---:|---:|
+| 32K | 79 → **39 ms** | — → 40 ms | 85 → 42 ms |
+| 131K | 88 → 120 ms (first-two-turns effect: 124 / 120 / 87 in every arm) | — → 92 ms | 99 → 66 ms |
+| 197K | 92 → **72 ms** | — → 81 ms | 103 → 109 ms |
+
+Gate on that server: MMLU **53/57** (reference 52/57), HumanEval **29/30**, natural needle **6/6** at 131K + 250K, capabilities 5/5. Three dead ends on the way: the `full` backend crashes at capture (`IndexError`); without `--cuda-graph-bs-prefill` the capture is silently disabled ("capture size is not set"); passing `1` there captured only 1-token prefills. Receipts `qwen38-pg4.json`, `qwen38-pg4-2026-11-01.json`, `qwen38-pg4-needle-2026-11-01.json`.

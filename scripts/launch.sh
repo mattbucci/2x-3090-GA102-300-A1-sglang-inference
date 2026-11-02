@@ -555,7 +555,13 @@ apply_preset() {
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192; DECODE_STEPS=32
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
-            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
+            # prefill CUDA graph (2026-11-01): bs-1 captures for 8/16/32/64/128-token prefills, so a
+            # cache-hit follow-up turn replays a graph instead of an eager 64-layer launch (the
+            # 120 ms idle gap in the extend profile). Agentic 1-token turn 79 / 88 / 92 -> 39 / 72 ms
+            # at 32K / 197K; MMLU 53/57, HE 29/30, needle 6/6, caps 5/5; capture costs 0.14 GB.
+            # `full` crashes at capture (IndexError) and the bucket list is the token-count list —
+            # without it the capture silently disables. Receipt benchmarks/profiling/multiturn-cache-2026-11-01/.
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill breakable --cuda-graph-bs-prefill 8 16 32 64 128 --cuda-graph-max-bs-prefill 1 --cuda-graph-max-seq-len-prefill 128"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             # SPEC_DECODE opt-in: DSpark speculative decoding with RedHatAI's
             # Qwen3.8-27B-speculator.dspark (gamma 8, 5-layer sliding-window
