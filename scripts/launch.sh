@@ -751,8 +751,12 @@ apply_preset() {
             REASONING="--reasoning-parser qwen3"
             # 2026-06-07: CUDA graph ENABLED — same stale-disable fix as the
             # qwen36 family (DeltaNet+MoE hybrid; ~4x single-user 256K decode,
-            # 5/5 capabilities under graph replay). bs=1 capture, piecewise off.
-            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
+            # 5/5 capabilities under graph replay). bs=1 capture.
+            # 2026-11-02: prefill CUDA graph (breakable, bs-1 captures for 8-128-token
+            # extends) — agentic 1-token turn 78 / 88 / 83 -> 32 / 34 / 38 ms at
+            # 32K / 131K / 197K, 64-token 77 / 84 / 89 -> 29 / 45 / 53 ms; MMLU 46/57,
+            # HE 30/30, needle 3/3, caps 5/5 (benchmarks/profiling/multiturn-cache-2026-11-01/).
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill breakable --cuda-graph-bs-prefill 8 16 32 64 128 --cuda-graph-max-bs-prefill 1 --cuda-graph-max-seq-len-prefill 128"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen3-ream)
