@@ -1,0 +1,52 @@
+{
+ "tag": "qwen36-dense-pg-needle-2026-11-02",
+ "timestamp": "2026-11-02 00:35",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 142351,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 243,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "just the password.\"\nI will output \"BANANA42\".\nDone. \nChecking constraints: \"Answer with just the password.\" -> BANANA42.\nProceed. \nOutput matches requirement.\u2705\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 142353,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 276,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "is the secret password? Answer with just the password.\"\nText says: \"The secret password is: BANANA42.\"\nAnswer: BANANA42. \nAll good. \nOutput Generation. \n[Done]\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 142353,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 638,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "the password.\"\nOutput: BANANA42. \nProceeds. \n[Final Check]\nThe text says: \"The secret password is: BANANA42.\"\nMatches exactly.\nReady. \nOutput matches request.\u2705\n",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}

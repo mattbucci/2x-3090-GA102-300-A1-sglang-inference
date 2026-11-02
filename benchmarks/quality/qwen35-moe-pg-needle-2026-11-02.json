@@ -1,0 +1,52 @@
+{
+ "tag": "qwen35-moe-pg-needle-2026-11-02",
+ "timestamp": "2026-11-02 00:51",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 142351,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 397,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "ons).\n- No other mentions of \"password\".\n\nSo the password is BANANA42.\n\nThe instruction says \"Answer with just the password.\"\n\nI will output just the password.\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 142353,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1429,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": "tion is \"What is the secret password?\". The text says \"The secret password is: BANANA42.\"\n    So the answer is BANANA42.\n\n    I will output exactly \"BANANA42\".\n",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 142353,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1037,
+    "content_tail": "\n\nBANANA42",
+    "reasoning_tail": " the four di The secret password is: BANANA42. fferent colors, and then another marble...\"\nSo the password is indeed BANANA42.\n\nI will output just that string.\n",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}
