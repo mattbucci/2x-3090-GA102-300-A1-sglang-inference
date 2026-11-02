@@ -361,6 +361,11 @@ apply_preset() {
             #    Cap 64 (chunked, 16-row chunks on the 512-wide global layers): agentic
             #    64-token turn at 197K 666 -> 270 ms with the tokenizer cache, needle 6/6.
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS:-64}"
+            #  * patch 071 (2026-11-01): W4A8 prefill on the dense AWQ-Marlin linears —
+            #    fresh-prefill TTFT 169 -> 147 s @131K (-13 %; the 512-wide global-layer
+            #    attention is the larger share here), decode identical, MMLU 55/57, HE 30/30,
+            #    needle 3/3 (receipt benchmarks/fleet-w4a8-2026-11-01/). 0 disables.
+            export SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS="${SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS:-2048}"
             KV_DTYPE="${_ENV_KV_DTYPE:-fp8_e5m2}"  # A5: e5m2 FP8 KV compiles on triton sm_86 (e4m3/fp8e4nv does not) -> 130K->260K pool, retrieval 1.0 to 258K true
             # BF16 — Gemma 4 SigLIP vision tower NaNs in FP16 (attention softmax
             # overflows past 65504). Override DTYPE=float16 only for text-only use.
