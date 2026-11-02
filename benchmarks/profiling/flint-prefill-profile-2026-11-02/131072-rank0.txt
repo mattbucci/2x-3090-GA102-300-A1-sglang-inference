@@ -1,0 +1,36 @@
+# flint fresh prefill — actual prompt_tokens=129770, trace 1793661902.866667-TP-0.trace.json.gz
+
+=== step[EXTEND bs=1] × 16 steps (after skipping 0) ===
+  per step: CPU wall 1852.61 ms | GPU span 1952.46 ms | kernel-sum 1949.84 ms
+  exposed time (sweep line):
+    1628.847 ms/step   83.4%  misc
+    188.846 ms/step    9.7%  marlin(int4)
+    104.223 ms/step    5.3%  nccl
+     20.250 ms/step    1.0%  norm
+      6.927 ms/step    0.4%  act
+  top 25 kernels (ms/step, count/step):
+    1575.733    49.0  _fwd_kernel
+    104.167    99.0  ncclDevKernel_AllReduce_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)
+     94.435    94.0  void sglang::device::marlin_moe::Marlin<__nv_bfloat16, 1125899906843648l, 1125899906909960l, 256, 4,
+     93.813   209.9  void sglang::device::marlin::Marlin<__nv_bfloat16, 1125899906843648l, 256, 4, 16, 4, false, 4, 4, fa
+     15.607    98.0  void flashinfer::norm::FusedAddRMSNormKernel<8u, __nv_bfloat16>(__nv_bfloat16*, __nv_bfloat16*, __nv
+     12.646    47.0  void moe_sum_reduce_warp_per_token_vec_kernel<8>(c10::BFloat16 const*, c10::BFloat16*, long, long, l
+     10.522    47.0  void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<c10::BFloat16>, std::array
+      8.794    47.0  void at::native::sbtopk::gatherTopK<float, unsigned int, 2, false>(at::cuda::detail::TensorInfo<floa
+      5.927    96.0  void sglang::act_and_mul_kernel<__nv_bfloat16, (sglang::ActivationKind)0, false, false, false, false
+      5.577    47.0  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<c10::BFloat16>, std::a
+      4.558    49.0  void sglang::fused_qknorm_warp<128l, false, __nv_bfloat16>(sglang::QKNormParams)
+      4.078    47.0  void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_128x256_32x3_tn_align8>(cutlass_
+      3.413    35.0  void sglang::fused_rope_kernel<true, 128l, false, __nv_bfloat16, __nv_bfloat16, long, 16u>(sglang::F
+      1.435    98.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::BUnaryFun
+      1.387    98.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::direct_co
+      1.357    98.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::float8_co
+      1.102    47.0  void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunct
+      1.000    47.0  void at::native::vectorized_elementwise_kernel<4, at::native::sigmoid_kernel_cuda(at::TensorIterator
+      0.776    48.0  void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda(at::TensorIteratorB
+      0.742    47.0  void count_and_sort_expert_tokens_kernel<int>(int const*, int*, int*, unsigned long, bool)
+      0.534    47.0  void moe_align_block_size_kernel<int>(int const*, int*, int*, int*, int, int, unsigned long, int*, b
+      0.452    47.0  void at::native::_scatter_gather_elementwise_kernel<128, 8, at::native::_cuda_scatter_gather_interna
+      0.401    12.2  void sglang::device::marlin::Marlin<__nv_bfloat16, 1125899906843648l, 256, 3, 16, 4, false, 4, 4, fa
+      0.392    49.0  void sglang::store_kvcache_kernel<256l, 256l, 32u, false, long>(sglang::StoreKVCacheParams)
+      0.197     1.0  void sglang::device::marlin::Marlin<__nv_bfloat16, 1125899923621888l, 128, 1, 4, 8, true, 4, -1, fal
