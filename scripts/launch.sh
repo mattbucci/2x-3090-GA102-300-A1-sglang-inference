@@ -715,6 +715,10 @@ apply_preset() {
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen35-moe)
+            # patch 071 (2026-11-01): W4A8 prefill on the dense AWQ-Marlin linears — fresh-prefill
+            # TTFT 2.58 -> 2.39 s @32K, 18.0 -> 17.0 s @131K (-5 %), decode identical, MMLU 49/57,
+            # HE 30/30, needle 3/3 (receipt benchmarks/fleet-w4a8-2026-11-01/). 0 disables.
+            export SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS="${SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS:-2048}"
             # Repointed 2026-05-02 from local Apr-14 REAP-AWQ (broken thinking
             # — Open-Platypus calibration stripped <think> tags) to the recal
             # built with `balanced_thinking_vision` recipe + llava_instruct
