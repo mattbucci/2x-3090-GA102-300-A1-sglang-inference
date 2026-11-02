@@ -509,6 +509,13 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
+            # 2026-11-02: prefill CUDA graph (breakable, bs-1 captures for 8-128-token
+            # extends) — the flashinfer extend of a cache-hit follow-up turn was launch-bound.
+            # Agentic 1-token turn 84 / 91 / 90 -> (32K first-request warm-up) / 44 / 48 ms at
+            # 32K / 131K / 197K, 64-token 82 / 97 / 102 -> 43 / 87 / 102 ms; MMLU 55/57,
+            # HE 30/30, needle 3/3, caps 5/5 (benchmarks/profiling/multiturn-cache-2026-11-01/).
+            # The bucket list is the token-count capture list — without it the capture silently disables.
+            CUDA_GRAPH="--cuda-graph-backend-prefill breakable --cuda-graph-bs-prefill 8 16 32 64 128 --cuda-graph-max-bs-prefill 1 --cuda-graph-max-seq-len-prefill 128"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         qwen36-dense-ct)
