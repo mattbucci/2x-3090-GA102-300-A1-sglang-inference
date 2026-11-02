@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "label": "devstral-pg-off",
+  "note": "",
+  "served_identity": {
+    "model_path": "/home/letsrtfm/AI/models/hf-mattbucci/Devstral-Small-2-24B-AWQ",
+    "attention_backend": "flashinfer",
+    "fp8_gemm_runner_backend": "auto",
+    "triton_attention_num_kv_splits": 8,
+    "kv_cache_dtype": "fp8_e4m3",
+    "tp_size": 2,
+    "context_length": 262144,
+    "disable_cuda_graph": false,
+    "enable_cache_report": false
+  },
+  "runs": 2,
+  "method": "streaming TTFT of a cache-hit request sending N new tokens as a new user turn after the primed turn (user, assistant reply, user); median of --runs, each run with a unique suffix",
+  "multi_turn": true,
+  "results": [
+    {
+      "requested_depth": 32768,
+      "prime": {
+        "prime_prompt_tokens": 29377,
+        "prime_seconds": 11.98,
+        "prime_completion_tokens": 200,
+        "multi_turn": true
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 29377,
+        "completion_tokens": 16,
+        "tpot_ms": 11.162,
+        "tok_per_sec": 89.592
+      },
+      "extend_rows": [
+        {
+          "requested_depth": 32768,
+          "suffix_tokens_requested": 1,
+          "actual_prompt_tokens": 29575,
+          "cached_tokens": null,
+          "cache_hit_verified": false,
+          "runs_ttft_ms": [
+            60.76,
+            39.11
+          ],
+          "median_ttft_ms": 49.94,
+          "min_ttft_ms": 39.11,
+          "max_ttft_ms": 60.76,
+          "decode_tpot_ms": 11.162,
+          "extend_over_decode_ratio": 4.5
+        },
+        {
+          "requested_depth": 32768,
+          "suffix_tokens_requested": 64,
+          "actual_prompt_tokens": 29632,
+          "cached_tokens": null,
+          "cache_hit_verified": false,
+          "runs_ttft_ms": [
+            39.0,
+            37.84
+          ],
+          "median_ttft_ms": 38.42,
+          "min_ttft_ms": 37.84,
+          "max_ttft_ms": 39.0,
+          "decode_tpot_ms": 11.162,
+          "extend_over_decode_ratio": 3.4
+        }
+      ]
+    },
+    {
+      "requested_depth": 131072,
+      "prime": {
+        "prime_prompt_tokens": 117465,
+        "prime_seconds": 51.49,
+        "prime_completion_tokens": 200,
+        "multi_turn": true
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 117465,
+        "completion_tokens": 16,
+        "tpot_ms": 15.805,
+        "tok_per_sec": 63.272
+      },
+      "extend_rows": [
+        {
+          "requested_depth": 131072,
+          "suffix_tokens_requested": 1,
+          "actual_prompt_tokens": 117666,
+          "cached_tokens": null,
+          "cache_hit_verified": false,
+          "runs_ttft_ms": [
+            108.92,
+            47.18
+          ],
+          "median_ttft_ms": 78.05,
+          "min_ttft_ms": 47.18,
+          "max_ttft_ms": 108.92,
+          "decode_tpot_ms": 15.805,
+          "extend_over_decode_ratio": 4.9
+        },
+        {
+          "requested_depth": 131072,
+          "suffix_tokens_requested": 64,
+          "actual_prompt_tokens": 117723,
+          "cached_tokens": null,
+          "cache_hit_verified": false,
+          "runs_ttft_ms": [
+            56.79,
+            66.84
+          ],
+          "median_ttft_ms": 61.82,
+          "min_ttft_ms": 56.79,
+          "max_ttft_ms": 66.84,
+          "decode_tpot_ms": 15.805,
+          "extend_over_decode_ratio": 3.9
+        }
+      ]
+    },
+    {
+      "requested_depth": 197000,
+      "prime": {
+        "prime_prompt_tokens": 176540,
+        "prime_seconds": 52.5,
+        "prime_completion_tokens": 200,
+        "multi_turn": true
+      },
+      "decode_reference": {
+        "actual_prompt_tokens": 176540,
+        "completion_tokens": 16,
+        "tpot_ms": 18.831,
+        "tok_per_sec": 53.103
+      },
+      "extend_rows": [
+        {
+          "requested_depth": 197000,
+          "suffix_tokens_requested": 1,
+          "actual_prompt_tokens": 176740,
+          "cached_tokens": null,
+          "cache_hit_verified": false,
+          "runs_ttft_ms": [
+            164.33,
+            48.13
+          ],
+          "median_ttft_ms": 106.23,
+          "min_ttft_ms": 48.13,
+          "max_ttft_ms": 164.33,
+          "decode_tpot_ms": 18.831,
+          "extend_over_decode_ratio": 5.6
+        },
+        {
+          "requested_depth": 197000,
+          "suffix_tokens_requested": 64,
+          "actual_prompt_tokens": 176797,
+          "cached_tokens": null,
+          "cache_hit_verified": false,
+          "runs_ttft_ms": [
+            75.6,
+            84.01
+          ],
+          "median_ttft_ms": 79.8,
+          "min_ttft_ms": 75.6,
+          "max_ttft_ms": 84.01,
+          "decode_tpot_ms": 18.831,
+          "extend_over_decode_ratio": 4.2
+        }
+      ]
+    }
+  ]
+}
