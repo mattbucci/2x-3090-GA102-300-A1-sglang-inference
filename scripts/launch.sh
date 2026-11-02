@@ -207,8 +207,14 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3-Coder-30B-A3B-AWQ}"
             QUANT="compressed-tensors"
             CTX=262144; MEM=0.90; MAX_RUNNING=1; CHUNKED=4096; DECODE_STEPS=8
-            CUDA_GRAPH="--cuda-graph-max-bs-decode 1"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --cuda-graph-backend-prefill disabled --tool-call-parser qwen3_coder"
+            # 2026-11-02: prefill CUDA graph (breakable, bs-1 captures for 8-128-token
+            # extends) — agentic 1-token turn 84 / 108 -> 63 / 84 ms at 131K / 197K,
+            # 64-token 67 / 84 -> 58 / 77 ms (smaller cut than the DeltaNet presets: the
+            # Marlin-MoE experts sit outside the breakable graph); MMLU 50/57, HE 30/30,
+            # needle 3/3, caps 2/2; capture fit with 1.9 GB free at MEM 0.85
+            # (benchmarks/profiling/multiturn-cache-2026-11-01/).
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill breakable --cuda-graph-bs-prefill 8 16 32 64 128 --cuda-graph-max-bs-prefill 1 --cuda-graph-max-seq-len-prefill 128"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
         coder-reap-25b|coder-reap-30b)
             # 2026-05-14: SWAPPED from Cerebras pre-pruned 25B-AWQ to R9700's
