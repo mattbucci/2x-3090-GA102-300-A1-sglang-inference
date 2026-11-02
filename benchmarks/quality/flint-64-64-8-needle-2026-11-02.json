@@ -1,0 +1,52 @@
+{
+ "tag": "flint-64-64-8-needle-2026-11-02",
+ "timestamp": "2026-11-02 15:37",
+ "temperature": 0.0,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 129784,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 146,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ANANA42.\" Then later final: \"What is the secret password? Answer with just the password.\" Likely answer should be BANANA42. Need just password. Ensure no extra.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 129787,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 65,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ssword.\" We need provide just password. From conversation, at some point: \"The secret password is: BANANA42.\" So final should be just BANANA42. Ensure no extra.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 129787,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 256,
+    "content_tail": "",
+    "reasoning_tail": " with a yellow marble, but not a red or green marble, since those would be the same as {red, blue} and {green, blue}, respectively. That's one more group: {blue",
+    "answered": false
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 0.6666666666666666
+ }
+}

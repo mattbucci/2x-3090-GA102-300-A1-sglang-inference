@@ -1,0 +1,52 @@
+{
+ "tag": "flint-pv-fp32-needle-2026-11-02",
+ "timestamp": "2026-11-02 15:51",
+ "temperature": 0.0,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 129784,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 256,
+    "content_tail": "",
+    "reasoning_tail": "al user content ends with: \"The secret password is: BANANA42.\" Wait the final user content is the huge block ending with \"... The secret password is: BANANA42.\"",
+    "answered": false
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 129787,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 102,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ssword is: BANANA42.\" Then later huge. The final asks \"What is the secret password? Answer with just the password.\" So should output just BANANA42. Need comply.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 129787,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 48,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " secret password? Answer with just the password.\" We need provide just password. From conversation, secret password is BANANA42. Must answer with just password.",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 0.6666666666666666
+ }
+}
