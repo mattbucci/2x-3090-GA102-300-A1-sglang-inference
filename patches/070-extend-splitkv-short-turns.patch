@@ -293,7 +293,7 @@ index 94bb8526f8..921c71dfbf 100644
  
      return True
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 64920d56b5..27e508e5c3 100644
+index 64920d56b5..bbcef35fc8 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
 @@ -1,5 +1,8 @@
@@ -305,7 +305,7 @@ index 64920d56b5..27e508e5c3 100644
  from dataclasses import dataclass
  from typing import TYPE_CHECKING, List, Optional
  
-@@ -53,6 +56,21 @@ from sglang.srt.distributed.device_communicators.pynccl_allocator import (
+@@ -53,6 +56,30 @@ from sglang.srt.distributed.device_communicators.pynccl_allocator import (
      use_symmetric_memory,
  )
  from sglang.srt.environ import envs
@@ -318,6 +318,15 @@ index 64920d56b5..27e508e5c3 100644
 +# 0 (default) = off. Port of R9700's patch 107 (c159375) with learned-sink support.
 +_EXTEND_SPLITKV_MAX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MAX_TOKENS", "0") or 0)
 +_EXTEND_SPLITKV_MIN_PREFIX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MIN_PREFIX", "4096") or 0)
++# Prefix-aware cap: the chunked route's advantage grows with the prefix (the kernel test read a
++# 128-token route at 2.9x per layer at 197K but <= 1.2x at 8K), so a second cap applies once the
++# cached prefix is >= SGLANG_EXTEND_SPLITKV_DEEP_PREFIX tokens. Defaults keep the single cap.
++_EXTEND_SPLITKV_MAX_DEEP = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP", "0") or 0) or _EXTEND_SPLITKV_MAX
++_EXTEND_SPLITKV_DEEP_PREFIX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_DEEP_PREFIX", "32768") or 32768)
++
++
++def _extend_splitkv_cap(prefix_len: int) -> int:
++    return _EXTEND_SPLITKV_MAX_DEEP if prefix_len >= _EXTEND_SPLITKV_DEEP_PREFIX else _EXTEND_SPLITKV_MAX
 +# Rows per split-KV call (R9700 patch 110 shape): new tokens beyond one tile are served in consecutive
 +# chunks, each attending to the prefix plus the new tokens before it (already in the KV pool) and
 +# causally within itself. 32 is the widest tile on sm_86 (the 64-row combine tile overflows shared
@@ -327,7 +336,7 @@ index 64920d56b5..27e508e5c3 100644
  from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
  from sglang.srt.layers.attention.verify_mask import VerifyMask, maybe_create_verify_mask
  from sglang.srt.layers.dcp import (
-@@ -478,6 +496,65 @@ class TritonAttnBackend(AttentionBackend):
+@@ -478,6 +505,65 @@ class TritonAttnBackend(AttentionBackend):
              self.dllm_attention = DllmFlashAttention(self)
              self.supports_prefill_cuda_graph_max_context_size = True
  
@@ -393,7 +402,7 @@ index 64920d56b5..27e508e5c3 100644
      def get_num_kv_splits(
          self,
          num_kv_splits: torch.Tensor,
-@@ -1864,6 +1941,100 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1864,6 +1950,102 @@ class TritonAttnBackend(AttentionBackend):
          ):
              return o
  
@@ -418,8 +427,10 @@ index 64920d56b5..27e508e5c3 100644
 +            and self.forward_metadata.custom_mask is None
 +            and forward_batch.extend_seq_lens_cpu is not None
 +            and forward_batch.extend_prefix_lens_cpu is not None
-+            and 0 < forward_batch.extend_seq_lens_cpu[0] <= _EXTEND_SPLITKV_MAX
 +            and forward_batch.extend_prefix_lens_cpu[0] >= _EXTEND_SPLITKV_MIN_PREFIX
++            and 0
++            < forward_batch.extend_seq_lens_cpu[0]
++            <= _extend_splitkv_cap(int(forward_batch.extend_prefix_lens_cpu[0]))
 +            and forward_batch.out_cache_loc is not None
 +        ):
 +            n_new = int(forward_batch.extend_seq_lens_cpu[0])

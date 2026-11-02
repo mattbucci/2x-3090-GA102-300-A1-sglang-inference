@@ -312,6 +312,11 @@ apply_preset() {
             #    @140K, 678 -> 370-391 @233K. Needle: filler 250K 3/3, natural 131K 3/3 (the
             #    26B's natural-text 238K band is a model property, 6/6 on the filler either way).
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS:-64}"
+            # 2026-11-02: prefix-aware cap — once the cached prefix is >= 32K the route takes turns of
+            # up to 128 new tokens (tool results); 128-token turn at 131K / 197K: gemma4-31b 273 -> 190 /
+            # 382 -> 254 ms, flint 136 -> 105 / 194 -> 121 ms; 64/96-token turns and <32K unchanged;
+            # needle outputs identical. 0 keeps the single cap.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP:-128}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
             ;;
         gemma4-21b-reap)
@@ -372,6 +377,11 @@ apply_preset() {
             #    Cap 64 (chunked, 16-row chunks on the 512-wide global layers): agentic
             #    64-token turn at 197K 666 -> 270 ms with the tokenizer cache, needle 6/6.
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS:-64}"
+            # 2026-11-02: prefix-aware cap — once the cached prefix is >= 32K the route takes turns of
+            # up to 128 new tokens (tool results); 128-token turn at 131K / 197K: gemma4-31b 273 -> 190 /
+            # 382 -> 254 ms, flint 136 -> 105 / 194 -> 121 ms; 64/96-token turns and <32K unchanged;
+            # needle outputs identical. 0 keeps the single cap.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP:-128}"
             #  * patch 071 (2026-11-01): W4A8 prefill on the dense AWQ-Marlin linears —
             #    fresh-prefill TTFT 169 -> 147 s @131K (-13 %; the 512-wide global-layer
             #    attention is the larger share here), decode identical, MMLU 55/57, HE 30/30,
@@ -708,6 +718,11 @@ apply_preset() {
             #    run in consecutive 32-row chunks (agentic 64-token turn at 197K 442 -> 104 ms
             #    with the tokenizer cache). Longer turns and decode are untouched; 0 disables.
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS:-64}"
+            # 2026-11-02: prefix-aware cap — once the cached prefix is >= 32K the route takes turns of
+            # up to 128 new tokens (tool results); 128-token turn at 131K / 197K: gemma4-31b 273 -> 190 /
+            # 382 -> 254 ms, flint 136 -> 105 / 194 -> 121 ms; 64/96-token turns and <32K unchanged;
+            # needle outputs identical. 0 keeps the single cap.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP:-128}"
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Flint-AWQ-INT4-g64-gptq}"
             QUANT="${QUANT:-awq_marlin}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"

@@ -36,3 +36,18 @@ capture costs ≈ 0.1 GB per preset and fit beside every KV pool at the presets'
 arms identical), quality JSONs `benchmarks/quality/<preset>-pg-2026-11-02.json` and `<preset>-pg-needle-2026-11-02.json`;
 nemotron turn-cost sweeps `nemotron3-omni-turn-{depths,131k}.json`. Launch-side changes: `scripts/launch.sh`
 `CUDA_GRAPH=` lines of the four flipped presets.
+
+## Prefix-aware split-KV route cap (patch 070 v4, 2026-11-02)
+
+Same instrument, suffixes 64 / 96 / 128 new tokens, `off` = shipped cap 64 everywhere, `on` = `SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP=128` once the cached prefix is ≥ 32,768 tokens (`*-deepcap-{off,on}.json`).
+
+| Preset | turn | 32K off → on | 131K off → on | 197K off → on |
+|---|--:|---|---|---|
+| `flint` | 64 | 93 → 84 | 94 → 92 | 106 → 103 |
+| `flint` | 96 | 77 → 76 | 95 → 93 | 107 → 104 |
+| `flint` | 128 | 76 → 73 | **136 → 105** | **194 → 121** |
+| `gemma4-31b` | 64 | 90 → 86 | 152 → 151 | 318 → 316 (first-row effect, both arms) |
+| `gemma4-31b` | 96 | 83 → 84 | 153 → 153 | 207 → 207 |
+| `gemma4-31b` | 128 | 111 → 111 | **273 → 190** | **382 → 254** |
+
+Reading: at 128 new tokens the serial extend is 1.5–1.9× the chunked route at depth on both presets; at 96 the two already cost the same, so the win is confined to the 97–128 band and to prefixes ≥ 32K (below that the cap stays 64 on purpose). Greedy 131K needle 3/3 on both on-arms with outputs identical to the off-arm runs (gemma 96 / 120 / 121 tokens). Shipped as the default on `flint`, `gemma4-31b`, `gemma4`.

@@ -1,0 +1,52 @@
+{
+ "tag": "flint-deepcap-needle-2026-11-02",
+ "timestamp": "2026-11-02 13:18",
+ "temperature": 0.0,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 129784,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 148,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "NA42\" from earlier: \"The secret password is: BANANA42.\" Ah yes at top: \"The secret password is: BANANA42.\" So final answer should be just BANANA42. Need comply.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 129787,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 87,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "is a line: \"The secret password is: BANANA42.\" So answer should be BANANA42. Must comply with \"Answer with just the password.\" So final should be just BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 129787,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 512,
+    "content_tail": "",
+    "reasoning_tail": " are rolled.\n\nThe numbers $1, 2, 3, 4, 5, 6, 7,$ and $8$ are randomly written on the faces of a regular octahedron so that each face contains a different number",
+    "answered": false
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 0.6666666666666666
+ }
+}
