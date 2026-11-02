@@ -249,7 +249,28 @@ bench_live() {
         --tokenizer "$model_path" \
         --prompt-source "$prompt_source" \
         --output "$out" || return 2
-    process_run "$preset" "$out"
+    if process_run "$preset" "$out"; then return 0; fi
+    # A spec arm's deep point moves +/-15 % run to run on an identical config: greedy decoding is
+    # not run-to-run exact on this stack and the draft's acceptance follows the continuation
+    # (2026-11-02, docs/decode-levers.md). One automatic retry separates that from a regression;
+    # the retry's receipt is kept beside the first run.
+    if [ "$launch_preset" != "$preset" ] && [ -z "$SAVE_BASELINE" ]; then
+        echo "=== $preset: spec arm flagged — one retry (continuation variance, not yet a regression) ==="
+        local out2="$RUNS_DIR/${preset}-${DATE}-retry${RUN_SUFFIX:+-$RUN_SUFFIX}.json"
+        python "$PYBENCH" \
+            --port "$PORT" --name "$preset" \
+            --contexts 1024 32768 262144 \
+            --output-tokens 100 \
+            --tokenizer "$model_path" \
+            --prompt-source "$prompt_source" \
+            --output "$out2" || return 2
+        if process_run "$preset" "$out2"; then
+            echo "  $preset: retry within threshold — the first run was continuation variance"
+            return 0
+        fi
+        echo "  $preset: retry also below threshold — REGRESSION stands"
+    fi
+    return 1
 }
 
 wait_health() {   # up to 30 min — cold-cache TP=2 loads (patch 049 territory)
