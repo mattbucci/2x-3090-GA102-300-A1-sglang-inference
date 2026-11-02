@@ -1,0 +1,52 @@
+{
+ "tag": "gemma4-31b-split-bm16-bn64-w4-needle-2026-11-02",
+ "timestamp": "2026-11-02 13:10",
+ "temperature": 0.0,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 140281,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 129,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ecret password is: BANANA42.\"\n    *   The user's prompt asks: \"What is the secret password? Answer with just the password.\"\n\n    *   The password is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 118,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "   *   Scanning...\n    *   Found a section: \"The secret password is: BANANA42.\"\n\n    *   The user wants *only* the password.\n    *   The password is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 163,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "... The secret password is: BANANA42.\"\n\n    *   The text explicitly states: \"The secret password is: BANANA42.\"\n\n    *   The user requested \"just the password\".",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}
