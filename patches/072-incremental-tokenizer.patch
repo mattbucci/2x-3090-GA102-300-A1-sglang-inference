@@ -1,14 +1,47 @@
 diff --git a/python/sglang/srt/entrypoints/openai/serving_chat.py b/python/sglang/srt/entrypoints/openai/serving_chat.py
-index 4b361f28f7..4131efb0b4 100644
+index 4b361f28f7..bb94bafdd8 100644
 --- a/python/sglang/srt/entrypoints/openai/serving_chat.py
 +++ b/python/sglang/srt/entrypoints/openai/serving_chat.py
-@@ -1852,9 +1852,22 @@ class OpenAIServingChat(OpenAIServingBase):
+@@ -1169,7 +1169,10 @@ class OpenAIServingChat(OpenAIServingBase):
+             and not chat_encoding.spec_renders_prompt_ids(self.chat_encoding_spec)
+             and not prefers_prompt_ids
+         ):
+-            return "text", processed_messages.prompt
++            prompt = processed_messages.prompt
++            if prompt is None and isinstance(processed_messages.prompt_ids, list):
++                prompt = self.tokenizer_manager.tokenizer.decode(processed_messages.prompt_ids)
++            return "text", prompt
+         if isinstance(processed_messages.prompt_ids, str):
+             return "text", processed_messages.prompt_ids
+         return "input_ids", processed_messages.prompt_ids
+@@ -1776,11 +1779,10 @@ class OpenAIServingChat(OpenAIServingBase):
+                 decoded_prompt = None
+ 
+             if is_multimodal:
+-                prompt = (
+-                    decoded_prompt
+-                    if decoded_prompt is not None
+-                    else self.tokenizer_manager.tokenizer.decode(prompt_ids)
+-                )
++                # [3090 072] decode lazily: _engine_prompt decodes only when the engine
++                # actually takes the text form (media attached, or ids not reusable). The
++                # eager decode of a 229K-token prompt was 8 % of a text-only agentic turn.
++                prompt = decoded_prompt
+ 
+         stop = request.stop
+         image_data = image_data if image_data else None
+@@ -1852,14 +1854,23 @@ class OpenAIServingChat(OpenAIServingBase):
                  return_dict=False,
                  **template_kwargs,
              )
 -            prompt_ids = parallel_prompt_encode(
 -                self.tokenizer_manager.tokenizer, rendered_prompt, encode_kwargs
 -            )
+-        decoded_prompt = (
+-            self.tokenizer_manager.tokenizer.decode(prompt_ids)
+-            if cache_key is not None
+-            else None
+-        )
 +            inc = getattr(self.tokenizer_manager, "incremental_tokenizer", None)
 +            if (
 +                inc is not None
@@ -25,9 +58,10 @@ index 4b361f28f7..4131efb0b4 100644
 +                prompt_ids = parallel_prompt_encode(
 +                    self.tokenizer_manager.tokenizer, rendered_prompt, encode_kwargs
 +                )
-         decoded_prompt = (
-             self.tokenizer_manager.tokenizer.decode(prompt_ids)
-             if cache_key is not None
++        decoded_prompt = None  # [3090 072] decoded on demand by _engine_prompt
+ 
+         if cache_key is not None:
+             self._chat_template_cache[cache_key] = (tuple(prompt_ids), decoded_prompt)
 diff --git a/python/sglang/srt/managers/incremental_tokenizer.py b/python/sglang/srt/managers/incremental_tokenizer.py
 new file mode 100644
 index 0000000000..26e04c348a
