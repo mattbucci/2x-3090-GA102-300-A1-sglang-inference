@@ -1,0 +1,751 @@
+{
+ "tag": "qwen36-dense-w4a8on-2026-11-03",
+ "model": "qwen36-dense",
+ "mismatches": 9,
+ "results": [
+  {
+   "tokens": 32768,
+   "cell": 0,
+   "prompt_tokens": 40109,
+   "A_same": false,
+   "B_same": false,
+   "A_hit_prefix": 8,
+   "A_fresh_fresh_prefix": 690,
+   "B_hit_prefix": 63,
+   "B_fresh_fresh_prefix": 578,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": true,
+   "A_len": [
+    690,
+    401,
+    690
+   ],
+   "B_len": [
+    578,
+    593,
+    578
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "length",
+    "length"
+   ],
+   "secs": [
+    12.2,
+    2.5,
+    2.2,
+    11.9
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.981,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.562,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "1. In a tournament where each player plays every other player exactly once, if exactly half of each player's points are earned against the ten lowest-scoring players, the total number of players in the tournament is 25.\n2. For a set of consecutive positive integers $\\{4, 5, 6, \\ldots, n\\}$, the largest value of $n$ such that all ten-element subsets possess the triangle property is 253.\n3. When eight congruent equilateral triangles of different colors are used to construct a regular octahedron, there are 1680 distinguishable ways to construct it, calculated by fixing one face and dividing the permutations of the remaining seven colors by the three possible rotations about that face.",
+    "A_hit": "1. In a board game spinner divided into three parts where the probability of landing on A is 1/3 and on B is 5/12, the probability of landing on C is 1/4.\n2. The number of ways to arrange the letters of the word TARTAR, which contains two identical A's, two identical R's, and two identical T's, is 90.\n3. For a standard 52-card deck, the probability that the top three cards are all spades is 11/850.",
+    "A_fresh2": "1. In a tournament where each player plays every other player exactly once, if exactly half of each player's points are earned against the ten lowest-scoring players, the total number of players in the tournament is 25.\n2. For a set of consecutive positive integers $\\{4, 5, 6, \\ldots, n\\}$, the largest value of $n$ such that all ten-element subsets possess the triangle property is 253.\n3. When eight congruent equilateral triangles of different colors are used to construct a regular octahedron, there are 1680 distinguishable ways to construct it, calculated by fixing one face and dividing the permutations of the remaining seven colors by the three possible rotations about that face.",
+    "B_fresh": "The most surprising claim is that the largest value of $n$ for which all ten-element subsets of $\\{4, 5, \\ldots, n\\}$ possess the triangle property is **253**.\n\nThis is surprising because the number 253 is significantly larger than one might intuitively expect for a set where *every* possible combination of 10 numbers must form a valid triangle. The reasoning relies on constructing a \"worst-case\" subset that fails the triangle property (where each number is at least the sum of the two preceding ones, similar to the Fibonacci sequence: 4, 5, 9, 14, 23, 37, 60, 97, 157, 254",
+    "B_hit": "The most surprising claim is that the largest value of $n$ for the set $\\{4, 5, 6, \\ldots, n\\}$ such that all ten-element subsets possess the triangle property is **253**.\n\nThis is surprising because the number 253 is significantly larger than one might intuitively expect for a constraint involving the \"triangle property\" (where the sum of any two sides must exceed the third). The solution relies on constructing a specific \"worst-case\" subset of ten integers that *fails* the triangle property (specifically, a sequence growing like the Fibonacci numbers: 4, 5, 9, 14, 23, 37, 60, 97, 157,",
+    "B_fresh2": "The most surprising claim is that the largest value of $n$ for which all ten-element subsets of $\\{4, 5, \\ldots, n\\}$ possess the triangle property is **253**.\n\nThis is surprising because the number 253 is significantly larger than one might intuitively expect for a set where *every* possible combination of 10 numbers must form a valid triangle. The reasoning relies on constructing a \"worst-case\" subset that fails the triangle property (where each number is at least the sum of the two preceding ones, similar to the Fibonacci sequence: 4, 5, 9, 14, 23, 37, 60, 97, 157, 254"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "1": -0.9467355012893677,
+     "Based": -1.0561105012893677,
+     "The": -1.5248605012893677,
+     "In": -3.806110382080078,
+     "Here": -4.649860382080078
+    },
+    "A_hit": {
+     "1": -0.8342244029045105,
+     "Based": -1.0529744625091553,
+     "The": -1.6623494625091553,
+     "Here": -4.740474224090576,
+     "In": -4.787349224090576
+    },
+    "A_fresh2": {
+     "1": -0.9467355012893677,
+     "Based": -1.0561105012893677,
+     "The": -1.5248605012893677,
+     "In": -3.806110382080078,
+     "Here": -4.649860382080078
+    },
+    "B_fresh": {
+     "The": -0.003297370159998536,
+     "**": -7.222047328948975,
+     "I": -7.831422328948975,
+     "Claim": -8.229860305786133,
+     "To": -8.534547805786133
+    },
+    "B_hit": {
+     "The": -0.002535939682275057,
+     "**": -7.533785820007324,
+     "I": -8.393160820007324,
+     "Claim": -8.744723320007324,
+     "To": -8.791598320007324
+    },
+    "B_fresh2": {
+     "The": -0.003297370159998536,
+     "**": -7.222047328948975,
+     "I": -7.831422328948975,
+     "Claim": -8.229860305786133,
+     "To": -8.534547805786133
+    }
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 1,
+   "prompt_tokens": 40351,
+   "A_same": false,
+   "B_same": false,
+   "A_hit_prefix": 98,
+   "A_fresh_fresh_prefix": 531,
+   "B_hit_prefix": 10,
+   "B_fresh_fresh_prefix": 672,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": true,
+   "A_len": [
+    531,
+    559,
+    531
+   ],
+   "B_len": [
+    672,
+    605,
+    672
+   ],
+   "finish": [
+    "stop",
+    "length",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    11.9,
+    2.1,
+    1.9,
+    12.0
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.82,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.383,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "Based on the document provided, here are five proper nouns in the order they first appear:\n\n1. **April** (from the problem: \"April has four different basil plants...\")\n2. **Coach Yellsalot** (from the problem: \"The Screamers are coached by Coach Yellsalot.\")\n3. **Bob** (from the problem: \"...two of them, Bob and Yogi, refuse to play together.\")\n4. **Yogi** (from the problem: \"...two of them, Bob and Yogi, refuse to play together.\")\n5. **Alicia** (from the problem: \"...including a set of 3 triplets: Alicia, Amanda, and Anna.\")",
+    "A_hit": "Based on the document provided, here are five proper nouns in the order they first appear:\n\n1. **Alicia** (from the volleyball team problem)\n2. **Amanda** (from the volleyball team problem)\n3. **Anna** (from the volleyball team problem)\n4. **Screamers** (the name of the team coached by Coach Yellsalot)\n5. **Coach Yellsalot** (the coach of the Screamers)\n\n*(Note: Other proper nouns appearing later include Bob, Yogi, April, Bertha, Dave, Alexio, Sam, William, Reckha, Max, Liz, Jessica, Crestwood Elementary School, Justin, Tim, Anna, Erika, Asha, Dr. Smith",
+    "A_fresh2": "Based on the document provided, here are five proper nouns in the order they first appear:\n\n1. **April** (from the problem: \"April has four different basil plants...\")\n2. **Coach Yellsalot** (from the problem: \"The Screamers are coached by Coach Yellsalot.\")\n3. **Bob** (from the problem: \"...two of them, Bob and Yogi, refuse to play together.\")\n4. **Yogi** (from the problem: \"...two of them, Bob and Yogi, refuse to play together.\")\n5. **Alicia** (from the problem: \"...including a set of 3 triplets: Alicia, Amanda, and Anna.\")",
+    "B_fresh": "I found **Yogi** to be the hardest to locate.\n\nIt appears relatively late in the document, specifically in the problem regarding the \"Screamers\" volleyball team. This problem is located roughly **one-third of the way down** the text, following the problems about April\u2019s plants and the simplification of the factorial fraction.\n\nThe specific sentence is:\n> \"The Screamers have 12 players, but two of them, **Bob** and **Yogi**, refuse to play together.\"\n\nWhile \"Bob\" appears in the same sentence, \"Yogi\" is the second name listed, making it slightly less prominent in a quick scan than the first name or the more common names like \"April\" or \"Alicia\" which appear earlier.",
+    "B_hit": "I found **Coach Yellsalot** the hardest to locate.\n\nIt appears relatively early in the document, specifically in the fourth problem block (after the spinner probability problem and the coin toss sequence problem). The text reads: \"The Screamers are coached by Coach Yellsalot.\"\n\nIt was slightly tricky because it is a fictional name embedded within a word problem, and unlike \"April\" (which is a common name and appears in the third problem block) or \"Bob\" and \"Yogi\" (which appear in the fifth problem block), \"Coach Yellsalot\" is a unique, multi-word proper noun that stands out less as a standard name.",
+    "B_fresh2": "I found **Yogi** to be the hardest to locate.\n\nIt appears relatively late in the document, specifically in the problem regarding the \"Screamers\" volleyball team. This problem is located roughly **one-third of the way down** the text, following the problems about April\u2019s plants and the simplification of the factorial fraction.\n\nThe specific sentence is:\n> \"The Screamers have 12 players, but two of them, **Bob** and **Yogi**, refuse to play together.\"\n\nWhile \"Bob\" appears in the same sentence, \"Yogi\" is the second name listed, making it slightly less prominent in a quick scan than the first name or the more common names like \"April\" or \"Alicia\" which appear earlier."
+   },
+   "first_top5": {
+    "A_fresh": {
+     "Based": -0.02069055661559105,
+     "1": -3.989440441131592,
+     "Here": -6.551940441131592,
+     "The": -9.06756591796875,
+     "Alice": -9.69256591796875
+    },
+    "A_hit": {
+     "Based": -0.01206717174500227,
+     "1": -4.5276923179626465,
+     "Here": -7.3714423179626465,
+     "The": -8.918316841125488,
+     "A": -9.074566841125488
+    },
+    "A_fresh2": {
+     "Based": -0.02069055661559105,
+     "1": -3.989440441131592,
+     "Here": -6.551940441131592,
+     "The": -9.06756591796875,
+     "Alice": -9.69256591796875
+    },
+    "B_fresh": {
+     "I": -0.8525488376617432,
+     "The": -1.5087988376617432,
+     "As": -2.774423837661743,
+     "**": -2.836923837661743,
+     "Actually": -2.915048837661743
+    },
+    "B_hit": {
+     "I": -0.8914282321929932,
+     "The": -1.3445532321929932,
+     "**": -2.516428232192993,
+     "Actually": -2.532053232192993,
+     "Of": -3.391428232192993
+    },
+    "B_fresh2": {
+     "I": -0.8525488376617432,
+     "The": -1.5087988376617432,
+     "As": -2.774423837661743,
+     "**": -2.836923837661743,
+     "Actually": -2.915048837661743
+    }
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 2,
+   "prompt_tokens": 41463,
+   "A_same": true,
+   "B_same": true,
+   "A_hit_prefix": 149,
+   "A_fresh_fresh_prefix": 149,
+   "B_hit_prefix": 104,
+   "B_fresh_fresh_prefix": 104,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": false,
+   "A_len": [
+    149,
+    149,
+    149
+   ],
+   "B_len": [
+    104,
+    104,
+    104
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    11.0,
+    0.6,
+    0.5,
+    10.9
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.047,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.094,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "The last complete sentence of the document is:\n\n\"Of the $70$ fish caught in September, $40\\%$ were not there in May, so $42$ fish were there in May.\"",
+    "A_hit": "The last complete sentence of the document is:\n\n\"Of the $70$ fish caught in September, $40\\%$ were not there in May, so $42$ fish were there in May.\"",
+    "A_fresh2": "The last complete sentence of the document is:\n\n\"Of the $70$ fish caught in September, $40\\%$ were not there in May, so $42$ fish were there in May.\"",
+    "B_fresh": "1. \"Of the $70$ fish caught in September, $40\\%$ were not there in May, so $42$ fish were there in May.\"",
+    "B_hit": "1. \"Of the $70$ fish caught in September, $40\\%$ were not there in May, so $42$ fish were there in May.\"",
+    "B_fresh2": "1. \"Of the $70$ fish caught in September, $40\\%$ were not there in May, so $42$ fish were there in May.\""
+   },
+   "first_top5": {
+    "A_fresh": {
+     "The": -0.7290968894958496,
+     "Of": -0.9947218894958496,
+     "Since": -1.9947218894958496,
+     "What": -4.99472188949585,
+     "\"": -6.26034688949585
+    },
+    "A_hit": {
+     "The": -0.7290642261505127,
+     "Of": -0.9790642261505127,
+     "Since": -2.0415642261505127,
+     "What": -4.947813987731934,
+     "\"": -6.213438987731934
+    },
+    "A_fresh2": {
+     "The": -0.7290968894958496,
+     "Of": -0.9947218894958496,
+     "Since": -1.9947218894958496,
+     "What": -4.99472188949585,
+     "\"": -6.26034688949585
+    },
+    "B_fresh": {
+     "1": -0.0008908117306418717,
+     "The": -7.282140731811523,
+     "Here": -9.344640731811523,
+     "There": -11.188390731811523,
+     "To": -11.297765731811523
+    },
+    "B_hit": {
+     "1": -0.0008168459753505886,
+     "The": -7.375816822052002,
+     "Here": -9.39144229888916,
+     "There": -11.25081729888916,
+     "To": -11.36019229888916
+    },
+    "B_fresh2": {
+     "1": -0.0008908117306418717,
+     "The": -7.282140731811523,
+     "Here": -9.344640731811523,
+     "There": -11.188390731811523,
+     "To": -11.297765731811523
+    }
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 3,
+   "prompt_tokens": 41382,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 543,
+   "A_fresh_fresh_prefix": 543,
+   "B_hit_prefix": 328,
+   "B_fresh_fresh_prefix": 486,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    543,
+    543,
+    543
+   ],
+   "B_len": [
+    486,
+    491,
+    486
+   ],
+   "finish": [
+    "length",
+    "length",
+    "length",
+    "length"
+   ],
+   "secs": [
+    12.4,
+    2.1,
+    2.1,
+    12.5
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.12,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.086,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "Based on the document provided, here are summaries of three specific factual claims:\n\n1. In a 1000-step process involving switches labeled with integers of the form $2^x3^y5^z$, exactly 650 switches remain in position A after the process completes.\n2. The number of non-similar regular 1000-pointed stars is 199, calculated by determining the number of integers $m$ between 1 and 999 that are relatively prime to 1000, excluding 1 and 999, and dividing the result by 2.\n3. The coefficient of $x^5$ in the binomial expansion of $(2x+3)^7$ is 60",
+    "A_hit": "Based on the document provided, here are summaries of three specific factual claims:\n\n1. In a 1000-step process involving switches labeled with integers of the form $2^x3^y5^z$, exactly 650 switches remain in position A after the process completes.\n2. The number of non-similar regular 1000-pointed stars is 199, calculated by determining the number of integers $m$ between 1 and 999 that are relatively prime to 1000, excluding 1 and 999, and dividing the result by 2.\n3. The coefficient of $x^5$ in the binomial expansion of $(2x+3)^7$ is 60",
+    "A_fresh2": "Based on the document provided, here are summaries of three specific factual claims:\n\n1. In a 1000-step process involving switches labeled with integers of the form $2^x3^y5^z$, exactly 650 switches remain in position A after the process completes.\n2. The number of non-similar regular 1000-pointed stars is 199, calculated by determining the number of integers $m$ between 1 and 999 that are relatively prime to 1000, excluding 1 and 999, and dividing the result by 2.\n3. The coefficient of $x^5$ in the binomial expansion of $(2x+3)^7$ is 60",
+    "B_fresh": "The most surprising claim is that there are exactly **199** non-similar regular 1000-pointed stars.\n\nThis is surprising because the number 199 is derived from a highly specific number-theoretic calculation involving Euler's totient function ($\\phi$). Specifically, the number of such stars is $\\frac{\\phi(1000) - 2}{2}$. Since $1000 = 2^3 \\cdot 5^3$, $\\phi(1000) = 1000(1 - 1/2)(1 - 1/5) = 400$. Subtracting the two cases that form polygons rather than stars (1 and 999) and dividing by",
+    "B_hit": "The most surprising claim is that there are exactly **199** non-similar regular 1000-pointed stars.\n\nThis is surprising because the number 199 is derived from a highly specific number-theoretic calculation involving Euler's totient function ($\\phi$). Specifically, the number of such stars is $\\frac{\\phi(1000) - 2}{2}$. Since $\\phi(1000) = 1000(1 - 1/2)(1 - 1/5) = 400$, the calculation becomes $(400 - 2) / 2 = 199$. It is counterintuitive that a geometric question about \"stars\" with 1000",
+    "B_fresh2": "The most surprising claim is that there are exactly **199** non-similar regular 1000-pointed stars.\n\nThis is surprising because the number 199 is derived from a highly specific number-theoretic calculation involving Euler's totient function ($\\phi$). Specifically, the number of such stars is $\\frac{\\phi(1000) - 2}{2}$. Since $1000 = 2^3 \\cdot 5^3$, $\\phi(1000) = 1000(1 - 1/2)(1 - 1/5) = 400$. Subtracting the two cases that form polygons rather than stars (1 and 999) and dividing by"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "Based": -0.8264641761779785,
+     "1": -0.9045891761779785,
+     "The": -2.0295891761779785,
+     "In": -4.3889641761779785,
+     "After": -5.7483391761779785
+    },
+    "A_hit": {
+     "Based": -0.8211528658866882,
+     "1": -0.9149028658866882,
+     "The": -2.008652925491333,
+     "In": -4.508652687072754,
+     "After": -5.758652687072754
+    },
+    "A_fresh2": {
+     "Based": -0.8264641761779785,
+     "1": -0.9045891761779785,
+     "The": -2.0295891761779785,
+     "In": -4.3889641761779785,
+     "After": -5.7483391761779785
+    },
+    "B_fresh": {
+     "The": -0.004348821938037872,
+     "I": -7.2074737548828125,
+     "**": -7.6137237548828125,
+     "Based": -7.8012237548828125,
+     "To": -8.059036254882812
+    },
+    "B_hit": {
+     "The": -0.00426727719604969,
+     "I": -7.25426721572876,
+     "**": -7.57457971572876,
+     "Based": -7.84020471572876,
+     "To": -8.144892692565918
+    },
+    "B_fresh2": {
+     "The": -0.004348821938037872,
+     "I": -7.2074737548828125,
+     "**": -7.6137237548828125,
+     "Based": -7.8012237548828125,
+     "To": -8.059036254882812
+    }
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 0,
+   "prompt_tokens": 164681,
+   "A_same": true,
+   "B_same": true,
+   "A_hit_prefix": 236,
+   "A_fresh_fresh_prefix": 236,
+   "B_hit_prefix": 489,
+   "B_fresh_fresh_prefix": 489,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": false,
+   "A_len": [
+    236,
+    236,
+    236
+   ],
+   "B_len": [
+    489,
+    489,
+    489
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "length",
+    "length"
+   ],
+   "secs": [
+    71.7,
+    1.2,
+    2.6,
+    73.2
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.039,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.078,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "1. In a standard 52-card deck, the probability that the top three cards are all spades is 11/850.\n2. The number of ways to arrange the letters of the word TARTAR is 90.\n3. The expected value of the roll of a standard 6-sided die is 3.5.",
+    "A_hit": "1. In a standard 52-card deck, the probability that the top three cards are all spades is 11/850.\n2. The number of ways to arrange the letters of the word TARTAR is 90.\n3. The expected value of the roll of a standard 6-sided die is 3.5.",
+    "A_fresh2": "1. In a standard 52-card deck, the probability that the top three cards are all spades is 11/850.\n2. The number of ways to arrange the letters of the word TARTAR is 90.\n3. The expected value of the roll of a standard 6-sided die is 3.5.",
+    "B_fresh": "The most surprising claim is that **the probability that the top three cards are all spades is 11/850**.\n\nThis is surprising because the intuitive calculation for drawing three spades in a row from a standard deck is $\\frac{13}{52} \\times \\frac{12}{51} \\times \\frac{11}{50}$, which simplifies to $\\frac{1}{4} \\times \\frac{12}{51} \\times \\frac{11}{50} = \\frac{132}{10200} = \\frac{11}{850}$. While the math is correct, the result is counter-intuitively low for a \"simple\" probability problem",
+    "B_hit": "The most surprising claim is that **the probability that the top three cards are all spades is 11/850**.\n\nThis is surprising because the intuitive calculation for drawing three spades in a row from a standard deck is $\\frac{13}{52} \\times \\frac{12}{51} \\times \\frac{11}{50}$, which simplifies to $\\frac{1}{4} \\times \\frac{12}{51} \\times \\frac{11}{50} = \\frac{132}{10200} = \\frac{11}{850}$. While the math is correct, the result is counter-intuitively low for a \"simple\" probability problem",
+    "B_fresh2": "The most surprising claim is that **the probability that the top three cards are all spades is 11/850**.\n\nThis is surprising because the intuitive calculation for drawing three spades in a row from a standard deck is $\\frac{13}{52} \\times \\frac{12}{51} \\times \\frac{11}{50}$, which simplifies to $\\frac{1}{4} \\times \\frac{12}{51} \\times \\frac{11}{50} = \\frac{132}{10200} = \\frac{11}{850}$. While the math is correct, the result is counter-intuitively low for a \"simple\" probability problem"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "1": -0.37987852096557617,
+     "Based": -1.8955035209655762,
+     "The": -2.536128520965576,
+     "Here": -2.708003520965576,
+     "In": -4.364253520965576
+    },
+    "A_hit": {
+     "1": -0.3719080090522766,
+     "Based": -1.9344079494476318,
+     "The": -2.512532949447632,
+     "Here": -2.731282949447632,
+     "In": -4.371908187866211
+    },
+    "A_fresh2": {
+     "1": -0.37987852096557617,
+     "Based": -1.8955035209655762,
+     "The": -2.536128520965576,
+     "Here": -2.708003520965576,
+     "In": -4.364253520965576
+    },
+    "B_fresh": {
+     "The": -0.007532172370702028,
+     "I": -6.179407119750977,
+     "**": -7.257532119750977,
+     "Actually": -7.304407119750977,
+     "None": -7.491907119750977
+    },
+    "B_hit": {
+     "The": -0.007779065053910017,
+     "I": -6.164029121398926,
+     "**": -7.210904121398926,
+     "Actually": -7.226529121398926,
+     "None": -7.445279121398926
+    },
+    "B_fresh2": {
+     "The": -0.007532172370702028,
+     "I": -6.179407119750977,
+     "**": -7.257532119750977,
+     "Actually": -7.304407119750977,
+     "None": -7.491907119750977
+    }
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 1,
+   "prompt_tokens": 165457,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 422,
+   "A_fresh_fresh_prefix": 422,
+   "B_hit_prefix": 330,
+   "B_fresh_fresh_prefix": 654,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    422,
+    422,
+    422
+   ],
+   "B_len": [
+    654,
+    693,
+    654
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "length",
+    "length"
+   ],
+   "secs": [
+    73.7,
+    1.9,
+    2.6,
+    74.4
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.031,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.051,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "Based on the document provided, here are five proper nouns in the order they first appear:\n\n1. **Alicia** (from the volleyball team problem: \"...including a set of 3 triplets: Alicia, Amanda, and Anna.\")\n2. **Amanda** (from the same problem)\n3. **Anna** (from the same problem)\n4. **Bob** (from the Screamers basketball problem: \"...two of them, Bob and Yogi, refuse to play together.\")\n5. **Yogi** (from the same problem)",
+    "A_hit": "Based on the document provided, here are five proper nouns in the order they first appear:\n\n1. **Alicia** (from the volleyball team problem: \"...including a set of 3 triplets: Alicia, Amanda, and Anna.\")\n2. **Amanda** (from the same problem)\n3. **Anna** (from the same problem)\n4. **Bob** (from the Screamers basketball problem: \"...two of them, Bob and Yogi, refuse to play together.\")\n5. **Yogi** (from the same problem)",
+    "A_fresh2": "Based on the document provided, here are five proper nouns in the order they first appear:\n\n1. **Alicia** (from the volleyball team problem: \"...including a set of 3 triplets: Alicia, Amanda, and Anna.\")\n2. **Amanda** (from the same problem)\n3. **Anna** (from the same problem)\n4. **Bob** (from the Screamers basketball problem: \"...two of them, Bob and Yogi, refuse to play together.\")\n5. **Yogi** (from the same problem)",
+    "B_fresh": "I found **Anna** to be the hardest to locate.\n\nIt appears very early in the document, specifically in the first paragraph of the text provided (which discusses a volleyball team). The sentence reads: *\"Our school's girls volleyball team has 14 players, including a set of 3 triplets: Alicia, Amanda, and Anna.\"*\n\nIt was difficult to locate because:\n1.  It is part of a list of three names, making it easy to skip over if one is only scanning for the first name.\n2.  The document begins with a block of code (`[asy]...[/asy]`) and a probability problem about spinners, which distracts from the narrative text where the names appear.\n3.  The name \"Anna\" is",
+    "B_hit": "I found **Anna** to be the hardest to locate.\n\nIt appears very early in the document, specifically in the first paragraph of the text provided (which discusses a volleyball team). The sentence reads: *\"Our school's girls volleyball team has 14 players, including a set of 3 triplets: Alicia, Amanda, and Anna.\"*\n\nIt was difficult because it is part of a list of names that appears almost immediately, and while \"Alicia\" and \"Amanda\" are also proper nouns, \"Anna\" is the third one in that specific sequence. Additionally, the name \"Anna\" appears again later in the document in a nearly identical problem setup (*\"Our school's girls volleyball team has 14 players, including a set of 3 triplets:",
+    "B_fresh2": "I found **Anna** to be the hardest to locate.\n\nIt appears very early in the document, specifically in the first paragraph of the text provided (which discusses a volleyball team). The sentence reads: *\"Our school's girls volleyball team has 14 players, including a set of 3 triplets: Alicia, Amanda, and Anna.\"*\n\nIt was difficult to locate because:\n1.  It is part of a list of three names, making it easy to skip over if one is only scanning for the first name.\n2.  The document begins with a block of code (`[asy]...[/asy]`) and a probability problem about spinners, which distracts from the narrative text where the names appear.\n3.  The name \"Anna\" is"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "Based": -0.019316302612423897,
+     "1": -4.11306619644165,
+     "Here": -5.98806619644165,
+     "A": -9.441191673278809,
+     "The": -10.566191673278809
+    },
+    "A_hit": {
+     "Based": -0.01991596817970276,
+     "1": -4.08241605758667,
+     "Here": -5.95741605758667,
+     "A": -9.457415580749512,
+     "Five": -10.519915580749512
+    },
+    "A_fresh2": {
+     "Based": -0.019316302612423897,
+     "1": -4.11306619644165,
+     "Here": -5.98806619644165,
+     "A": -9.441191673278809,
+     "The": -10.566191673278809
+    },
+    "B_fresh": {
+     "I": -0.7867850065231323,
+     "Actually": -1.6617850065231323,
+     "The": -2.036785125732422,
+     "Of": -3.161785125732422,
+     "As": -3.193035125732422
+    },
+    "B_hit": {
+     "I": -0.7748337984085083,
+     "Actually": -1.7123337984085083,
+     "The": -1.9935837984085083,
+     "As": -3.1810836791992188,
+     "Of": -3.2123336791992188
+    },
+    "B_fresh2": {
+     "I": -0.7867850065231323,
+     "Actually": -1.6617850065231323,
+     "The": -2.036785125732422,
+     "Of": -3.161785125732422,
+     "As": -3.193035125732422
+    }
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 2,
+   "prompt_tokens": 166812,
+   "A_same": false,
+   "B_same": true,
+   "A_hit_prefix": 0,
+   "A_fresh_fresh_prefix": 402,
+   "B_hit_prefix": 403,
+   "B_fresh_fresh_prefix": 403,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": false,
+   "A_len": [
+    402,
+    59,
+    402
+   ],
+   "B_len": [
+    403,
+    403,
+    403
+   ],
+   "finish": [
+    "length",
+    "stop",
+    "length",
+    "length"
+   ],
+   "secs": [
+    75.2,
+    0.5,
+    2.7,
+    75.2
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.811,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.738,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "It is easier to count the number of integers from 1 to 150 that are perfect squares or perfect cubes. We see there are 12 perfect squares from 1 to 150, namely $1^{2}, 2^{2}, \\ldots, 12^{2}$, and there are 5 perfect cubes, namely $1^{3}, \\ldots, 5^{3}$. Then notice there are two repetitions, $1^{6} =1^2 = 1^3 = 1$ and $2^{6} = 8^2 = 4^3 = 64$. So there is a total of $12+5-2=15$ integers from 1 to 15",
+    "A_hit": "So there is a total of $12+5-2=15$ integers from 1 to 150 t",
+    "A_fresh2": "It is easier to count the number of integers from 1 to 150 that are perfect squares or perfect cubes. We see there are 12 perfect squares from 1 to 150, namely $1^{2}, 2^{2}, \\ldots, 12^{2}$, and there are 5 perfect cubes, namely $1^{3}, \\ldots, 5^{3}$. Then notice there are two repetitions, $1^{6} =1^2 = 1^3 = 1$ and $2^{6} = 8^2 = 4^3 = 64$. So there is a total of $12+5-2=15$ integers from 1 to 15",
+    "B_fresh": "1. It is easier to count the number of integers from 1 to 150 that are perfect squares or perfect cubes. We see there are 12 perfect squares from 1 to 150, namely $1^{2}, 2^{2}, \\ldots, 12^{2}$, and there are 5 perfect cubes, namely $1^{3}, \\ldots, 5^{3}$. Then notice there are two repetitions, $1^{6} =1^2 = 1^3 = 1$ and $2^{6} = 8^2 = 4^3 = 64$. So there is a total of $12+5-2=15$ integers from 1 to ",
+    "B_hit": "1. It is easier to count the number of integers from 1 to 150 that are perfect squares or perfect cubes. We see there are 12 perfect squares from 1 to 150, namely $1^{2}, 2^{2}, \\ldots, 12^{2}$, and there are 5 perfect cubes, namely $1^{3}, \\ldots, 5^{3}$. Then notice there are two repetitions, $1^{6} =1^2 = 1^3 = 1$ and $2^{6} = 8^2 = 4^3 = 64$. So there is a total of $12+5-2=15$ integers from 1 to ",
+    "B_fresh2": "1. It is easier to count the number of integers from 1 to 150 that are perfect squares or perfect cubes. We see there are 12 perfect squares from 1 to 150, namely $1^{2}, 2^{2}, \\ldots, 12^{2}$, and there are 5 perfect cubes, namely $1^{3}, \\ldots, 5^{3}$. Then notice there are two repetitions, $1^{6} =1^2 = 1^3 = 1$ and $2^{6} = 8^2 = 4^3 = 64$. So there is a total of $12+5-2=15$ integers from 1 to "
+   },
+   "first_top5": {
+    "A_fresh": {
+     "It": -0.8969534635543823,
+     "So": -1.2563284635543823,
+     "The": -1.6625784635543823,
+     "What": -2.318828582763672,
+     "There": -5.381328582763672
+    },
+    "A_hit": {
+     "So": -0.7707304954528809,
+     "It": -1.4269804954528809,
+     "The": -1.4426054954528809,
+     "What": -3.130105495452881,
+     "There": -5.005105495452881
+    },
+    "A_fresh2": {
+     "It": -0.8969534635543823,
+     "So": -1.2563284635543823,
+     "The": -1.6625784635543823,
+     "What": -2.318828582763672,
+     "There": -5.381328582763672
+    },
+    "B_fresh": {
+     "1": -0.1477617472410202,
+     "The": -2.757136821746826,
+     "It": -3.022761821746826,
+     "Based": -4.272761821746826,
+     "Here": -5.647761821746826
+    },
+    "B_hit": {
+     "1": -0.11968560516834259,
+     "It": -2.869685649871826,
+     "The": -3.260310649871826,
+     "Based": -5.010310649871826,
+     "Here": -5.150935649871826
+    },
+    "B_fresh2": {
+     "1": -0.1477617472410202,
+     "The": -2.757136821746826,
+     "It": -3.022761821746826,
+     "Based": -4.272761821746826,
+     "Here": -5.647761821746826
+    }
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 3,
+   "prompt_tokens": 175094,
+   "A_same": false,
+   "B_same": false,
+   "A_hit_prefix": 482,
+   "A_fresh_fresh_prefix": 516,
+   "B_hit_prefix": 36,
+   "B_fresh_fresh_prefix": 813,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": true,
+   "A_len": [
+    516,
+    544,
+    516
+   ],
+   "B_len": [
+    813,
+    701,
+    813
+   ],
+   "finish": [
+    "length",
+    "length",
+    "length",
+    "length"
+   ],
+   "secs": [
+    81.2,
+    2.6,
+    2.7,
+    81.1
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 1.272,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 1.015,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "1. In a set of 1000 switches labeled with integers of the form $2^x 3^y 5^z$ (where $0 \\le x,y,z \\le 9$), exactly 650 switches remain in position A after a process where each switch is advanced by itself and all switches whose labels divide its label.\n2. The number of non-similar regular 1000-pointed stars is 199, calculated by determining the number of integers $m$ between 1 and 999 that are relatively prime to 1000, excluding 1 and 999, and dividing the result by 2.\n3. For a polynomial $P(x)$ of degree 4 with",
+    "A_hit": "1. In a set of 1000 switches labeled with integers of the form $2^x 3^y 5^z$ (where $0 \\le x,y,z \\le 9$), exactly 650 switches remain in position A after a process where each switch is advanced by itself and all switches whose labels divide its label.\n2. The number of non-similar regular 1000-pointed stars is 199, calculated by determining the number of integers $m$ between 1 and 999 that are relatively prime to 1000, excluding 1 and 999, and dividing the result by 2.\n3. For a regular octagon with vertices and center labeled with distinct",
+    "A_fresh2": "1. In a set of 1000 switches labeled with integers of the form $2^x 3^y 5^z$ (where $0 \\le x,y,z \\le 9$), exactly 650 switches remain in position A after a process where each switch is advanced by itself and all switches whose labels divide its label.\n2. The number of non-similar regular 1000-pointed stars is 199, calculated by determining the number of integers $m$ between 1 and 999 that are relatively prime to 1000, excluding 1 and 999, and dividing the result by 2.\n3. For a polynomial $P(x)$ of degree 4 with",
+    "B_fresh": "The most surprising claim is that **exactly 650 switches remain in position A** after the 1000-step process.\n\nThis is surprising because the problem involves a complex dependency structure where each switch is affected by all its divisors, creating a non-linear and seemingly chaotic system of updates. One might intuitively expect the final state to be a random distribution or require a computationally expensive simulation to determine. However, the solution reveals that the final position depends solely on whether the total number of divisors (including the number itself) for each label is a multiple of 4. This reduces a dynamic, sequential process into a static number-theoretic property (the divisor count function $\\tau(n)$), allowing for an elegant combinatorial calculation rather than a step-by-step",
+    "B_hit": "The most surprising claim is that **there are exactly 199 non-similar regular 1000-pointed stars**.\n\nThis is surprising because the definition of a \"regular star\" provided in the text is highly restrictive and non-intuitive. Most people might assume that a \"regular 1000-pointed star\" is a single, unique geometric shape (like a standard pentagram is the unique regular 5-pointed star). However, the claim reveals that there are actually 199 distinct, non-similar shapes that fit this specific mathematical definition. This counter-intuitive result stems from the fact that a regular $n$-pointed star is defined by how the vertices are connected (specifically, by choosing a step size $m$ such that $\\",
+    "B_fresh2": "The most surprising claim is that **exactly 650 switches remain in position A** after the 1000-step process.\n\nThis is surprising because the problem involves a complex dependency structure where each switch is affected by all its divisors, creating a non-linear and seemingly chaotic system of updates. One might intuitively expect the final state to be a random distribution or require a computationally expensive simulation to determine. However, the solution reveals that the final position depends solely on whether the total number of divisors (including the number itself) for each label is a multiple of 4. This reduces a dynamic, sequential process into a static number-theoretic property (the divisor count function $\\tau(n)$), allowing for an elegant combinatorial calculation rather than a step-by-step"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "1": -0.40946245193481445,
+     "Based": -1.5813374519348145,
+     "The": -2.2219624519348145,
+     "Here": -4.3313374519348145,
+     "In": -6.2532124519348145
+    },
+    "A_hit": {
+     "1": -0.3875931203365326,
+     "Based": -1.778218150138855,
+     "The": -2.1375930309295654,
+     "Here": -4.1532182693481445,
+     "In": -4.9813432693481445
+    },
+    "A_fresh2": {
+     "1": -0.40946245193481445,
+     "Based": -1.5813374519348145,
+     "The": -2.2219624519348145,
+     "Here": -4.3313374519348145,
+     "In": -6.2532124519348145
+    },
+    "B_fresh": {
+     "The": -0.008642885833978653,
+     "**": -5.586767673492432,
+     "Based": -7.399267673492432,
+     "I": -7.696142673492432,
+     "To": -7.961767673492432
+    },
+    "B_hit": {
+     "The": -0.008977407589554787,
+     "**": -6.02460241317749,
+     "I": -6.68085241317749,
+     "Based": -7.57928991317749,
+     "Claim": -7.64178991317749
+    },
+    "B_fresh2": {
+     "The": -0.008642885833978653,
+     "**": -5.586767673492432,
+     "Based": -7.399267673492432,
+     "I": -7.696142673492432,
+     "To": -7.961767673492432
+    }
+   }
+  }
+ ]
+}
