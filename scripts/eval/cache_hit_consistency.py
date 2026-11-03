@@ -47,8 +47,23 @@ def top_delta(d1, d2):
     return round(max(abs(d1[t] - d2[t]) for t in common), 3) if common else None
 
 def flush(base):
-    try: post(f"{base}/flush_cache", {}, timeout=60)
-    except Exception: urllib.request.urlopen(f"{base}/flush_cache", timeout=60).read()
+    """POST then GET /flush_cache, retried: the server answers 400 'Flush cache failed.' while a
+    request is still draining. A flush that never succeeds is reported, not fatal — the
+    fresh arm would then be a hit, visible in the server's #cached-token lines."""
+    for attempt in range(8):
+        for method in ("POST", "GET"):
+            try:
+                req = urllib.request.Request(f"{base}/flush_cache", data=b"{}" if method == "POST" else None,
+                                             headers={"Content-Type": "application/json"}, method=method)
+                urllib.request.urlopen(req, timeout=60).read()
+                return True
+            except urllib.error.HTTPError as e:
+                last = f"HTTP {e.code}: {e.read()[:120].decode('utf-8', 'replace')}"
+            except Exception as e:
+                last = repr(e)[:120]
+        time.sleep(2)
+    print(f"WARNING: flush_cache kept failing ({last}); continuing", flush=True)
+    return False
 
 def main():
     ap = argparse.ArgumentParser()
@@ -108,7 +123,10 @@ def main():
                    "A_worse_than_noise": worse_a, "B_worse_than_noise": worse_b,
                    "A_len": [len(a_fresh), len(a_hit), len(a_fresh2)], "B_len": [len(b_fresh), len(b_hit), len(b_fresh2)],
                    "finish": [f1, f2, f3, f4], "secs": [round(t1, 1), round(t2, 1), round(t3, 1), round(t4, 1)],
-                   "first_token_top5_max_abs_logprob_delta": lp}
+                   "first_token_top5_max_abs_logprob_delta": lp,
+                   # raw material for cross-run comparison (cache_hit_crossarm.py): texts + first-token top-5
+                   "texts": {"A_fresh": a_fresh, "A_hit": a_hit, "A_fresh2": a_fresh2, "B_fresh": b_fresh, "B_hit": b_hit, "B_fresh2": b_fresh2},
+                   "first_top5": {"A_fresh": lp_a_fresh, "A_hit": lp_a_hit, "A_fresh2": lp_a_fresh2, "B_fresh": lp_b_fresh, "B_hit": lp_b_hit, "B_fresh2": lp_b_fresh2}}
             results.append(row)
             print(f"{a.tag} {tok} cell {i}: prompt={p1} A hit-prefix {a_hitp}/{len(a_fresh)} vs fresh-fresh {a_floor} {'WORSE' if worse_a else 'ok'} | "
                   f"B hit-prefix {b_hitp}/{len(b_fresh)} vs fresh-fresh {b_floor} {'WORSE' if worse_b else 'ok'} secs={row['secs']} "
