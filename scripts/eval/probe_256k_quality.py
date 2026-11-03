@@ -39,6 +39,12 @@ WORDS = ["maple", "cobalt", "zenith", "falcon", "quartz", "nimbus", "tundra", "s
 # so `--lengths 262144` genuinely probes ~256K. Override `--chars-per-token` for other
 # tokenizers; always read the printed `actual` column to confirm the real length hit.
 CHARS_PER_TOKEN = 6.9
+# `--haystack FILE` swaps the repetitive filler for natural text (cycled to length). The
+# stock filler is a repetition attractor for NoPE-layer models (Flint scored 0/3 at 131K on
+# it in its shipped config, 2026-11-02, while retrieving fine from natural text) — the same
+# reason needle_band_probe.py has --haystack. Natural English runs ~4.2 chars/token.
+HAYSTACK_CPT = 4.2
+_HAYSTACK = None
 
 
 def _answer(msg):
@@ -49,8 +55,9 @@ def _answer(msg):
 
 def fill(approx_tokens, cpt=CHARS_PER_TOKEN):
     target = int(approx_tokens * cpt)
-    n = target // len(FILLER) + 1
-    return (FILLER * n)[:target]
+    src = _HAYSTACK or FILLER
+    n = target // len(src) + 1
+    return (src * n)[:target]
 
 
 def plant(body, facts):
@@ -128,7 +135,10 @@ def run_one(url, approx, task_fn, rng, max_tokens, cpt=CHARS_PER_TOKEN):
         choice = (r.get("choices") or [{}])[0]
         pt = (r.get("usage") or {}).get("prompt_tokens")
         ans = _answer(choice.get("message") or {})
-        return {"actual_tokens": pt, "correct": bool(check(ans)), "s": round(time.time() - t0, 1)}
+        return {"actual_tokens": pt, "correct": bool(check(ans)), "s": round(time.time() - t0, 1),
+                "finish_reason": choice.get("finish_reason"),
+                "completion_tokens": (r.get("usage") or {}).get("completion_tokens"),
+                "answer_tail": ans[-240:]}
     except Exception as e:
         return {"actual_tokens": None, "error": str(e)[:90]}
 
@@ -142,20 +152,27 @@ def main():
     # server fast-rejects. 256000 prompt + 3000 = 259000 < 262144 — a genuine "at 256K".
     ap.add_argument("--lengths", default="1024,32768,65536,131072,200000,256000")
     ap.add_argument("--max-tokens", type=int, default=3000)
-    ap.add_argument("--chars-per-token", type=float, default=CHARS_PER_TOKEN)
+    ap.add_argument("--chars-per-token", type=float, default=None,
+                    help=f"default {CHARS_PER_TOKEN} (stock filler) / {HAYSTACK_CPT} (--haystack)")
+    ap.add_argument("--haystack", default=None,
+                    help="natural-text file used as filler instead of the repetitive stock sentence")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
+    global _HAYSTACK
+    if args.haystack:
+        _HAYSTACK = Path(args.haystack).read_text(encoding="utf-8", errors="replace")
+    cpt = args.chars_per_token or (HAYSTACK_CPT if _HAYSTACK else CHARS_PER_TOKEN)
 
     url = f"http://localhost:{args.port}/v1/chat/completions"
     lengths = [int(x) for x in args.lengths.split(",")]
-    print(f"256K reasoning-quality probe: {args.tag}")
+    print(f"256K reasoning-quality probe: {args.tag}" + (f"  (haystack {args.haystack}, {cpt} chars/token)" if _HAYSTACK else ""))
     print(f"  {'approx':>8} {'actual':>8} {'multikey':>9} {'vartrack':>9} {'aggregate':>10} {'score':>6}")
     results = []
     for L in lengths:
         rng = random.Random(42)  # reset per length -> identical task instances, only ctx varies
         row = {"approx": L}
         for tname, tfn in TASKS.items():
-            row[tname] = run_one(url, L, tfn, rng, args.max_tokens, args.chars_per_token)
+            row[tname] = run_one(url, L, tfn, rng, args.max_tokens, cpt)
         oks = [row[t].get("correct") for t in TASKS]
         actual = next((row[t].get("actual_tokens") for t in TASKS if row[t].get("actual_tokens")), None)
         row["actual_tokens"] = actual
