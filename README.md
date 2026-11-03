@@ -66,12 +66,9 @@ on the flashinfer presets, with Mamba-state tracking on `nemotron3-omni` (patch 
 Cold prefill: W4A8 (patch 071, per-token INT8 activations through the unlocked INT8 tensor path) is the
 default on `qwen38` (**8.6 s @32K, 51 s @131K, 145 s @262K**), `qwen36-dense`, `gemma4-31b`,
 `qwen35-moe` and `qwen36`; `devstral` is excluded because its long-prompt reasoning collapses under it.
-The INT8 path changes greedy outputs in about half of the cache-hit cells on `qwen38` and `qwen36-dense`
-(first-token Δlogp up to 2.8 nats; fp16 activations reproduce a fresh fill to within 0.1 nats), a change the
-single-turn gates cannot see; whether it costs agentic quality is
-[issue #20](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/20), and
-`SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS=1000000000` turns it off per launch
-([receipt](benchmarks/quality/cache-hit-w4a8-2026-11-02.md)).
+Its INT8 path moves greedy outputs in about half of the cache-hit cells (up to 2.8 nats; fp16 stays within
+0.1), invisible to the single-turn gates; agentic cost is [issue #20](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/20),
+off switch `SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS=1000000000` ([receipt](benchmarks/quality/cache-hit-w4a8-2026-11-02.md)).
 The triton presets (Flint, the Gemma 4s) are bound by the extend-attention kernel at 40–50 % of peak
 ([issue #12](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/12)); on `flint` a
 128×128 tile plus the bf16 softmax·V dot (patch 075) take the cold fill to **2.97 s @32K and 23.4 s @131K**
@@ -94,7 +91,7 @@ leak audit at 0 exposed. **Only full-300 cells are compared.** Mechanics and rec
 | `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **191/300 (63.7 %)** |
 | `flint` (Flint 40B-A2.5B, calibrated AWQ, thinking) | **182/300 (60.7 %)** · `omp` lane **186/300** (McNemar tie, p = 0.57) |
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **176/300 (58.7 %)** |
-| `qwen36-ream` · `qwen35-moe` · `coder-30b-eval` · `coder-reap-25b` · `coder-30b-ream` · `devstral` · `gemma4` · `nemotron3-omni` | *pending* (queue order) |
+| `qwen36-ream` · `qwen35-moe` · `coder-30b-eval` · `coder-reap-25b` · `coder-30b-ream` · `devstral` · `gemma4` · `nemotron3-omni` · `qwopus38` (opencode + omp, [issue #21](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/21)) | *pending* (queue order) |
 
 The harness pick (plain opencode) comes from a five-scaffold bake-off on `qwen38`: opencode 196 / +DCP 203 /
 little-coder 193 / +RTK 202 / prime 187, every pair a McNemar tie except prime vs the plugin lanes
@@ -112,6 +109,7 @@ tool-use ladder and the 256K reasoning probe with footnotes: [`docs/quality-eval
 | `qwen36-dense` | **98.2 %** | **97.5 %** | ✓ 250K | 1.0 → 258K | 100 % |
 | `qwen36` / `qwen36-ream` | 93.0 / 84.2 % | **97.5 %** | ✓ 250K | 1.0 → 255,889 | 100 % |
 | `qwen38` | **93 %** | **96 %** | ✓ 250K | DSpark cell, 196/300 SWE-bench | — |
+| `qwopus38` | 87.7 % | **100 %** | ✓ 250K | caps 5/5 (tool, image, video) | **100 %** |
 | `gemma4-31b` | 93.0 % | **97.5 %** | ✓ 250K | 1.0 → 258K | **100 %** |
 | `gemma4` / `gemma4-21b-reap` / `gemma4-12b` | 82.5 / 80.7 / 77.2 % | 97.5 / 0 † / 92.5 % | ✓ 250K | 1.0 → 255,957 / 258K / 258K | 94 / 94 / 61 % |
 | `qwen35-moe` | 69.6 % | 80.0 % | ✓ | 1.0 → 255,889 | 72 % (multikey soft ≥ 131K) |
@@ -152,6 +150,7 @@ Full table with notes, the HuggingFace zoo, MoE coverage and KV limits: [`docs/m
 | `gemma4-12b` | Gemma 4 12B Unified AWQ | omni, encoder-free (5/5) | 262K | 106 → **65** | [link](https://huggingface.co/mattbucci/gemma-4-12B-AWQ) |
 | `gemma4-31b` | Gemma 4 31B Dense AWQ | dense (VL), fp8_e5m2 KV, triton | 262K | 55 → **33** | [link](https://huggingface.co/mattbucci/gemma-4-31B-AWQ) |
 | `qwen38` | Qwen3.8-27B AWQ | dense + DeltaNet (VL + video); `SPEC_DECODE=1` = DSpark | 262K | 81 → **58** (spec 125 → 58 @250K) | [link](https://huggingface.co/mattbucci/Qwen3.8-27B-AWQ) |
+| `qwopus38` | Qwopus3.8-27B-Coder-Flash AWQ (coding / agentic SFT of Qwen3.8) | dense + DeltaNet (VL + video), same stack as `qwen38` | 262K | 80 → **58** | [link](https://huggingface.co/mattbucci/Qwopus3.8-27B-Coder-Flash-AWQ) |
 | `qwen36-dense` | Qwen3.6-27B Dense AWQ | dense + DeltaNet (VL) | 262K | 81 → **58** | [link](https://huggingface.co/mattbucci/Qwen3.6-27B-AWQ) |
 | `devstral` | Devstral-Small-2-24B AWQ | dense (VL, tools), 339K pool | 262K | 87 → **43** | [link](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ) |
 | `qwen3-vl-32b` | Qwen3-VL-32B AWQ | dense (VL) | 131K | 61 → **41** | [link](https://huggingface.co/mattbucci/Qwen3-VL-32B-AWQ) |
