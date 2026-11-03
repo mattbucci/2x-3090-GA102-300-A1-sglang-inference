@@ -56,7 +56,7 @@ doc rot).
   `--disable-cuda-graph --cuda-graph-backend-prefill disabled`.
 - Receipt for why graphs stay on: enabling them took qwen36 single-user decode
   **31 → 129 tok/s @262K (4.15×, TPOT 32.1 → 7.8 ms)** with 5/5 capabilities under
-  graph replay (launch.sh:589-599 preset comment, 2026-06-07).
+  graph replay (launch.sh preset comment).
 - `--disable-custom-all-reduce` is a SEPARATE flag and a launch.sh **global default**
   (launch.sh:808): custom AR breaks graph capture on sm_86 TP=2. Retest only via
   `ENABLE_CUSTOM_AR=1`. Receipt: `benchmarks/allreduce-accel-null-2026-06-15.md`.
@@ -89,7 +89,7 @@ upstream BF16 → GPTQ calibration (llmcompressor) → compressed-tensors → CT
 ```
 
 ### Division of labor — calibrations do NOT run on this box
-Since 2026-05-19, **all calibrations run on the separate same-repo calibration device**;
+**All calibrations run on the separate same-repo calibration device**;
 this eval box only `git pull --rebase`s to pick up its commits. **Rule 1: never run a
 calibration concurrently with serving/eval on the same box** (host OOM + crash receipt in
 CLAUDE.md). The pipeline notes below are reference for the calibration device.
