@@ -66,6 +66,12 @@ on the flashinfer presets, with Mamba-state tracking on `nemotron3-omni` (patch 
 Cold prefill: W4A8 (patch 071, per-token INT8 activations through the unlocked INT8 tensor path) is the
 default on `qwen38` (**8.6 s @32K, 51 s @131K, 145 s @262K**), `qwen36-dense`, `gemma4-31b`,
 `qwen35-moe` and `qwen36`; `devstral` is excluded because its long-prompt reasoning collapses under it.
+The INT8 path changes greedy outputs in about half of the cache-hit cells on `qwen38` and `qwen36-dense`
+(first-token Δlogp up to 2.8 nats; fp16 activations reproduce a fresh fill to within 0.1 nats), a change the
+single-turn gates cannot see; whether it costs agentic quality is
+[issue #20](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/20), and
+`SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS=1000000000` turns it off per launch
+([receipt](benchmarks/quality/cache-hit-w4a8-2026-11-02.md)).
 The triton presets (Flint, the Gemma 4s) are bound by the extend-attention kernel at 40–50 % of peak
 ([issue #12](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/12)); on `flint` a
 128×128 tile plus the bf16 softmax·V dot (patch 075) take the cold fill to **2.97 s @32K and 23.4 s @131K**
