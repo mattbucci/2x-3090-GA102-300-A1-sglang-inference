@@ -14,6 +14,7 @@
 #   devstral / devstral-32k                  Devstral-Small-2-24B AWQ (262K / 32K)
 #   qwen35-dense                              Qwen3.5-27B Dense AWQ
 #   qwen38 / qwen38-27b                       Qwen3.8-27B Dense hybrid VL (video, MTP)
+#   qwopus38 / qwopus38-27b                   Qwopus3.8-27B-Coder-Flash (Qwen3.8 coding SFT, same stack)
 #   qwen36-dense / qwen36-27b                 Qwen3.6-27B Dense AWQ (native)
 #   qwen36-dense-ct                           Qwen3.6-27B Dense compressed-tensors
 #   gemma4-31b                                Gemma 4 31B Dense AWQ (thinking+image+video)
@@ -552,6 +553,12 @@ apply_preset() {
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="${EXTRA_ARGS:-} --tool-call-parser qwen3_coder"
             ;;
+        qwopus38|qwopus38-27b)
+            # Jackrong/Qwopus3.8-27B-Coder-Flash (coding / agentic SFT of Qwen3.8-27B, same
+            # architecture) — in-house GPTQ -> AWQ ship, same recipe as qwen38; everything below
+            # is the qwen38 block (fallthrough), only the checkpoint and the served name differ.
+            MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwopus3.8-27B-Coder-Flash-AWQ}"
+            ;&
         qwen38|qwen38-27b)
             # patch 071 (2026-11-01): prefill calls with >= 2048 rows run per-token INT8
             # activations x a per-channel INT8 copy of the Marlin INT4 weight through the
