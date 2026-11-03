@@ -1,0 +1,43 @@
+diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
+index f72ff2bfa2..136543566b 100644
+--- a/python/sglang/kernels/ops/attention/extend_attention.py
++++ b/python/sglang/kernels/ops/attention/extend_attention.py
+@@ -19,6 +19,7 @@ It supports page size = 1 and prefill with KV cache (i.e. extend).
+ import math
+ from typing import Optional
+ 
++import os
+ import torch
+ import triton
+ import triton.language as tl
+@@ -41,7 +42,10 @@ _is_gfx1250 = _is_hip and is_gfx1250_supported()
+ # dot (upstream's own comment records the bf16 downcast of p as the accuracy loss).
+ # That is the fp32-accumulation path this stack has carried for Ampere/RDNA4 since
+ # v0.5.11 (256K needle / long-context quality), so take it on every platform.
+-_FP32_SOFTMAX_PV = True
++# [3090 experiment 2026-11-02] env-gated A/B of that choice on Ampere: the fp32 P.V dot runs on the
++# TF32/FMA path there, not the bf16 tensor-core path. SGLANG_EXTEND_ATTN_FP32_PV=0 restores upstream's
++# bf16 p downcast for the P.V dot (fp32 accumulation either way). Default unchanged.
++_FP32_SOFTMAX_PV = os.environ.get("SGLANG_EXTEND_ATTN_FP32_PV", "1") == "1"
+ 
+ try:
+     _triton_version_parts = tuple(
+@@ -147,6 +151,18 @@ def _get_block_sizes_for_extend_attention(Lq: int, Lv: int):
+ 
+         num_warps = 4 if Lq <= 64 else 8
+ 
++    # [3090 experiment] env-gated tile override for one head dim on sm_86 / sm_89 (default off):
++    # SGLANG_EXTEND_ATTN_TILE="<Lq>:<BLOCK_M>,<BLOCK_N>,<num_warps>", e.g. "128:128,64,8".
++    _ov = os.environ.get("SGLANG_EXTEND_ATTN_TILE", "")
++    if _ov and _is_cuda and CUDA_CAPABILITY[0] == 8 and CUDA_CAPABILITY[1] in (6, 9):
++        try:
++            _lq, _cfg = _ov.split(":")
++            if int(_lq) == Lq:
++                _bm, _bn, _nw = (int(x) for x in _cfg.split(","))
++                BLOCK_M, BLOCK_N, num_warps = _bm, _bn, _nw
++        except ValueError:
++            pass
++
+     return BLOCK_DMODEL, BLOCK_DPE, BLOCK_DV, BLOCK_M, BLOCK_N, num_warps
+ 
+ 

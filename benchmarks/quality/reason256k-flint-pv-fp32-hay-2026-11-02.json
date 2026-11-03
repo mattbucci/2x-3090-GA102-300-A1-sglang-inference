@@ -1,0 +1,93 @@
+{
+  "tag": "flint-pv-fp32-hay-2026-11-02",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 29413,
+        "correct": true,
+        "s": 6.8,
+        "finish_reason": "stop",
+        "completion_tokens": 666,
+        "answer_tail": "<value> maybe placeholder. Could be \"ANSWER: 3286, 7912, and 2424\" but exact? Better: \"ANSWER: 3286, 7912, 2424\" maybe.\n\nLet's final with minimal.\nThe access codes are:\n- Cobalt: 3286\n- Tundra: 7912\n- Verbena: 2424\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 29373,
+        "correct": true,
+        "s": 5.3,
+        "finish_reason": "stop",
+        "completion_tokens": 399,
+        "answer_tail": "s 'ANSWER: <value>'.\"\n\nThus answer should be 84.\n\nNeed final response with reasoning maybe concise, end with exact line. Ensure final line format exactly 'ANSWER: 84'.\nVAR_A is 37, VAR_B is 37 + 5 = 42, and VAR_C is 42 \u00d7 2 = 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 29399,
+        "correct": true,
+        "s": 4.2,
+        "finish_reason": "stop",
+        "completion_tokens": 268,
+        "answer_tail": "d include step by step then final line. Ensure exact format maybe \"ANSWER: 269\".\nThe five items mentioned are Onyx (85), Falcon (45), Tundra (10), Cobalt (30), and Verbena (99). Their total cost is 85 + 45 + 10 + 30 + 99 = 269.\n\nANSWER: 269"
+      },
+      "actual_tokens": 29413,
+      "score": 1.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 118547,
+        "correct": true,
+        "s": 29.7,
+        "finish_reason": "stop",
+        "completion_tokens": 405,
+        "answer_tail": "SWER: 3286, 7912, 2424\" or just value? Format exactly 'ANSWER: <value>'. To be safe final line: ANSWER: 3286, 7912, 2424\n\nNeed not overdo.</think>The access codes are:\n\n- Cobalt: 3286\n- Tundra: 7912\n- Verbena: 2424\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 118511,
+        "correct": true,
+        "s": 32.4,
+        "finish_reason": "stop",
+        "completion_tokens": 818,
+        "answer_tail": "lue 84.\n\nNeed end reply with line formatted exactly as 'ANSWER: <value>'. So final answer should be maybe \"The final numeric value of VAR_C is 84.\\n\\nANSWER: 84\". Ensure last line exactly.\nThe final numeric value of VAR_C is 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 118533,
+        "correct": false,
+        "s": 46.6,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "? No.\n\nMaybe the five items are the five math problems? No.\n\nMaybe the final question is from a different source and the \"five items\" are the five items in the final answer? The final answer should be a line formatted exactly as 'ANSWER: <\n"
+      },
+      "actual_tokens": 118547,
+      "score": 0.6666666666666666
+    },
+    {
+      "approx": 240000,
+      "multikey": {
+        "actual_tokens": 218994,
+        "correct": true,
+        "s": 83.6,
+        "finish_reason": "stop",
+        "completion_tokens": 304,
+        "answer_tail": "ccess codes are:\n- Cobalt: 3286\n- Tundra: 7912\n- Verbena: 2424\n\nANSWER: 3286, 7912, 2424\n\nNeed final line exactly formatted. That should satisfy.\nThe access codes are:\n\n- Cobalt: 3286\n- Tundra: 7912\n- Verbena: 2424\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 218958,
+        "correct": false,
+        "s": 81.6,
+        "finish_reason": "stop",
+        "completion_tokens": 233,
+        "answer_tail": "your reply with a line formatted exactly as 'ANSWER: <value>'. So final response should end with that line. Include maybe calculation. Final line exactly.</think>VAR_A = 5, so VAR_B = VAR_A + 5 = 10. Then VAR_C = VAR_B \u00d7 2 = 20.\n\nANSWER: 20"
+      },
+      "aggregate": {
+        "actual_tokens": 218980,
+        "correct": false,
+        "s": 104.2,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "total cost of five items. Could be 100? No.\n\nLet's consider if the final question is from a known problem: \"What is the total cost in credits of all five items mentioned?\" Maybe the five items are from a previous problem in the conversation"
+      },
+      "actual_tokens": 218994,
+      "score": 0.3333333333333333
+    }
+  ],
+  "overall": 0.667
+}

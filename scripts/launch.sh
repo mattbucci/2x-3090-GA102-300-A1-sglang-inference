@@ -723,6 +723,11 @@ apply_preset() {
             # 382 -> 254 ms, flint 136 -> 105 / 194 -> 121 ms; 64/96-token turns and <32K unchanged;
             # needle outputs identical. 0 keeps the single cap.
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP:-128}"
+            # 2026-11-02: triton extend-attention tile for head dim 128 on sm_86 — the kernel's default
+            # 64x128 / 8 warps is beaten by 128x128 / 8 (fresh prefill 3.60 -> 3.38 s @32K, 32.7 -> 30.6 s
+            # @131K; exact, same kernel); 64x64 and 4-warp variants are 12-22 % slower. Preset-scoped:
+            # Gemma 4 (head dim 256 / 512) is unaffected. Receipt benchmarks/profiling/flint-d128-tiles-2026-11-02/.
+            export SGLANG_EXTEND_ATTN_TILE="${SGLANG_EXTEND_ATTN_TILE:-128:128,128,8}"
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Flint-AWQ-INT4-g64-gptq}"
             QUANT="${QUANT:-awq_marlin}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"
