@@ -53,3 +53,20 @@ parity on Flint → `flint` preset default (`SGLANG_EXTEND_ATTN_FP32_PV=0`, with
 prefill 3.62 → 2.97 s @32K, 32.98 → 23.40 s @131K (−18 % / −29 %), decode unchanged. `gemma4-31b` stays
 fp32 (mixed speed at parity).** Combined-arm receipts: `flint-bf16-128-128-8.json`, `flint-bf16-128-64-8.json`
 (128×64 + bf16 = 3.03 s / 25.9 s). Repeat receipts: `benchmarks/quality/reason256k-flint-pv-{fp32,bf16}-hayrep{,2}-2026-11-02.json`.
+
+## `gemma4` (26B MoE, head dim 256 sliding / 512 global) — chain44
+
+| arm | TTFT 32K (34.0K actual) | TTFT 131K (132.7K actual) | needle 131K | reasoning 131K / 256K | MMLU-57 |
+|---|--:|--:|:--:|:--:|:--:|
+| fp32 (shipped) | 7.33 s | 54.79 s | 3/3 | 67 % / 100 % | 43 |
+| bf16 P·V | 7.79 s (+6 %) | 55.31 s (+1 %) | 3/3 | 67 % / 67 % | 51 |
+
+No speed gain (the Gemma 4 tiles are 32×32 / 64×64 where the P·V dot is not the cost), single-cell reasoning
+flips in the 26B's known noisy band, MMLU swing within its run-to-run range → **`gemma4` stays fp32**, as does
+`gemma4-31b`. The bf16 win is specific to Flint's 128-wide heads on the large tile.
+
+**D=256 tile sweep: not possible on sm_86.** The kernel's 64×64 / 8-warp default for head dim 256 is the
+shared-memory ceiling (Q 32 KB + K 32 KB + V 32 KB ≈ 96 KB of 99 KB); `128×64` fails to compile
+(`OutOfResources: shared memory, Required: 131072, Hardware limit: 101376`) and the wider N tiles need more.
+Only smaller tiles fit, and the D=512 sweep already showed those lose. Gemma 4 prefill attention needs a
+kernel that does not stage the full head width (issue #12), not a tile.

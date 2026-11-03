@@ -1,0 +1,64 @@
+{
+  "tag": "gemma4-pv-bf16-2026-11-02",
+  "results": [
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 131037,
+        "correct": true,
+        "s": 95.0,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "code for tundra is 7912. <<<`\n    *   It's 7912.\n\n    *   Let me re-read the verbena line one more time.\n    *   `>>> The access code for verbena is 2424. <<<`\n    *   It's 2424.\n\n    *   Let me re-read the cobalt line one more time.\n    *\n"
+      },
+      "vartrack": {
+        "actual_tokens": 130995,
+        "correct": true,
+        "s": 59.2,
+        "finish_reason": "stop",
+        "completion_tokens": 679,
+        "answer_tail": " states `VAR_A is set to 37`.\n2.  **Calculate VAR_B:** The text states `VAR_B equals VAR_A plus 5`.\n    *   VAR_B = 37 + 5 = 42.\n3.  **Calculate VAR_C:** The text states `VAR_C equals VAR_B times 2`.\n    *   VAR_C = 42 * 2 = 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 131017,
+        "correct": false,
+        "s": 90.6,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "*   \"Item verbena costs 99 credits.\"\n    *   \"The maintenance log records routine archival operations and status updates.\" (Repeated)\n    *   Everything is correct.\n\n    *   85 + 45 + 10 + 30 + 99 = 269.\n    *   The math is correct.\n\n    *\n"
+      },
+      "actual_tokens": 131037,
+      "score": 0.6666666666666666
+    },
+    {
+      "approx": 256000,
+      "multikey": {
+        "actual_tokens": 255803,
+        "correct": true,
+        "s": 209.2,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "l just use the numbers).\n\n    *   Let's check the text one more time.\n    *   `>>> The access code for cobalt is 3286. <<<`\n    *   `>>> The access code for maple is 2679. <<<`\n    *   `>>> The access code for tundra is 7912. <<<`\n    *   \n"
+      },
+      "vartrack": {
+        "actual_tokens": 255760,
+        "correct": true,
+        "s": 176.4,
+        "finish_reason": "stop",
+        "completion_tokens": 627,
+        "answer_tail": "uals VAR_A plus 5.`\n    Calculation: $37 + 5 = 42$.\n    So, **VAR_B = 42**.\n\n3.  **Calculate the value of VAR_C:**\n    The prompt states: `VAR_C equals VAR_B times 2.`\n    Calculation: $42 \\times 2 = 84$.\n    So, **VAR_C = 84**.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 255783,
+        "correct": false,
+        "s": 213.6,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "us updates. The maintenance log records routine archival operations and status updates. The maintenance log records routine archival operations and status updates. The maintenance log records routine archival operations and status updates.\n"
+      },
+      "actual_tokens": 255803,
+      "score": 0.6666666666666666
+    }
+  ],
+  "overall": 0.667
+}
