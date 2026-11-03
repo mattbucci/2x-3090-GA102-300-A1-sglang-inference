@@ -1,0 +1,752 @@
+{
+ "tag": "qwen38-chunk8192-2026-11-02",
+ "model": "qwen38",
+ "mismatches": 7,
+ "results": [
+  {
+   "tokens": 32768,
+   "cell": 0,
+   "prompt_tokens": 40109,
+   "A_same": false,
+   "B_same": false,
+   "A_hit_prefix": 0,
+   "A_fresh_fresh_prefix": 579,
+   "B_hit_prefix": 147,
+   "B_fresh_fresh_prefix": 612,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": true,
+   "A_len": [
+    579,
+    551,
+    579
+   ],
+   "B_len": [
+    612,
+    752,
+    612
+   ],
+   "finish": [
+    "length",
+    "stop",
+    "length",
+    "length"
+   ],
+   "secs": [
+    12.1,
+    2.0,
+    2.1,
+    11.9
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 2.028,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 1.103,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "Here are the three most specific factual claims from the document, summarized in one sentence each:\n\n1. In a tournament where each player plays every other player once, if exactly half of the points earned by each player were earned against the ten players with the least points, the total number of players in the tournament is 25.\n2. The number of increasing sequences of positive integers $a_1 \\le a_2 \\le \\dots \\le a_{10} \\le 2007$ such that $a_i - i$ is even for all $1 \\le i \\le 10$ is equal to $\\binom{1008}{10}$.\n3. The probability that Allen and Bethany, who arrive at a",
+    "A_hit": "1. The probability of a spinner landing on region C is 3/10, calculated by subtracting the probabilities of regions A (1/2) and B (1/5) from 1.\n2. There are 516 triangles with positive area that can be formed using vertices from a 4x4 grid of integer coordinates, derived by subtracting 44 collinear point combinations from the total 560 possible triples.\n3. The largest two-digit prime factor of the integer $\\binom{200}{100}$ is 61, determined by identifying the largest prime $p$ where $3p < 200$ to ensure sufficient multiplicity in the numerator.",
+    "A_fresh2": "Here are the three most specific factual claims from the document, summarized in one sentence each:\n\n1. In a tournament where each player plays every other player once, if exactly half of the points earned by each player were earned against the ten players with the least points, the total number of players in the tournament is 25.\n2. The number of increasing sequences of positive integers $a_1 \\le a_2 \\le \\dots \\le a_{10} \\le 2007$ such that $a_i - i$ is even for all $1 \\le i \\le 10$ is equal to $\\binom{1008}{10}$.\n3. The probability that Allen and Bethany, who arrive at a",
+    "B_fresh": "The single most surprising claim is that **the total number of players in the tournament is 25**.\n\n**Why it is surprising:**\nThis result is counter-intuitive because it relies on a very specific, non-obvious algebraic constraint derived from the problem's conditions. The problem states that each player earned half their points against the bottom 10 players. This implies that the top $n$ players earned exactly as many points against the bottom 10 as they did against each other. This leads to the equation $n^2 - n + 90 = \\frac{(n+10)(n+9)}{2}$, which simplifies to $n^2 - 21n + 90 = 0$. The solutions are $n=",
+    "B_hit": "The single most surprising claim is that **the total number of players in the tournament is 25**.\n\n**Why it is surprising:**\nThis result is counterintuitive because it relies on a very specific and rigid mathematical constraint that forces a unique solution. The condition that \"exactly half of the points earned by each player were earned against the ten players with the least number of points\" creates a system of equations that only has one valid integer solution for the total number of players ($n=15$ strong players + $10$ weak players = $25$).\n\nMost people might assume that such a condition could apply to a range of tournament sizes or that the \"strong\" and \"weak\" groups would have a more fluid relationship. However, the math shows that the",
+    "B_fresh2": "The single most surprising claim is that **the total number of players in the tournament is 25**.\n\n**Why it is surprising:**\nThis result is counter-intuitive because it relies on a very specific, non-obvious algebraic constraint derived from the problem's conditions. The problem states that each player earned half their points against the bottom 10 players. This implies that the top $n$ players earned exactly as many points against the bottom 10 as they did against each other. This leads to the equation $n^2 - n + 90 = \\frac{(n+10)(n+9)}{2}$, which simplifies to $n^2 - 21n + 90 = 0$. The solutions are $n="
+   },
+   "first_top5": {
+    "A_fresh": {
+     "Here": -0.43225184082984924,
+     "1": -1.6353768110275269,
+     "Based": -1.8853768110275269,
+     "The": -5.619751930236816,
+     "To": -8.026001930236816
+    },
+    "A_hit": {
+     "1": -0.7321621179580688,
+     "Based": -1.2009121179580688,
+     "Here": -1.6696621179580688,
+     "The": -3.5915369987487793,
+     "*": -7.435286998748779
+    },
+    "A_fresh2": {
+     "Here": -0.43225184082984924,
+     "1": -1.6353768110275269,
+     "Based": -1.8853768110275269,
+     "The": -5.619751930236816,
+     "To": -8.026001930236816
+    },
+    "B_fresh": {
+     "The": -0.03466707468032837,
+     "Based": -4.519042015075684,
+     "**": -5.003417015075684,
+     "Actually": -5.690917015075684,
+     "One": -6.159667015075684
+    },
+    "B_hit": {
+     "The": -0.028584139421582222,
+     "**": -4.606709003448486,
+     "Actually": -5.497334003448486,
+     "Based": -5.622334003448486,
+     "I": -5.934834003448486
+    },
+    "B_fresh2": {
+     "The": -0.03466707468032837,
+     "Based": -4.519042015075684,
+     "**": -5.003417015075684,
+     "Actually": -5.690917015075684,
+     "One": -6.159667015075684
+    }
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 1,
+   "prompt_tokens": 40351,
+   "A_same": false,
+   "B_same": false,
+   "A_hit_prefix": 98,
+   "A_fresh_fresh_prefix": 556,
+   "B_hit_prefix": 55,
+   "B_fresh_fresh_prefix": 649,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": true,
+   "A_len": [
+    556,
+    455,
+    556
+   ],
+   "B_len": [
+    649,
+    693,
+    649
+   ],
+   "finish": [
+    "length",
+    "stop",
+    "length",
+    "stop"
+   ],
+   "secs": [
+    12.0,
+    1.6,
+    2.1,
+    11.8
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 1.5,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.344,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "Based on the document provided, here are five proper nouns in the order they first appear:\n\n1.  **TH** (appears in the coin toss sequence description: \"We denote these by TH, HH, and etc.\")\n2.  **Alicia** (appears in the volleyball team problem: \"including a set of 3 triplets: Alicia, Amanda, and Anna\")\n3.  **Amanda** (appears in the volleyball team problem: \"including a set of 3 triplets: Alicia, Amanda, and Anna\")\n4.  **Anna** (appears in the volleyball team problem: \"including a set of 3 triplets: Alicia, Amanda, and Anna\")\n5.  **Coach Yellsalot**",
+    "A_hit": "Based on the document provided, here are five proper nouns in the order they first appear:\n\n1.  **Coach Yellsalot** (appears in the paragraph about the Screamers volleyball team)\n2.  **Bob** (appears in the same paragraph about the Screamers)\n3.  **Yogi** (appears in the same paragraph about the Screamers)\n4.  **April** (appears in the paragraph about basil and tomato plants)\n5.  **Bertha** (appears in the paragraph about daughters and granddaughters)",
+    "A_fresh2": "Based on the document provided, here are five proper nouns in the order they first appear:\n\n1.  **TH** (appears in the coin toss sequence description: \"We denote these by TH, HH, and etc.\")\n2.  **Alicia** (appears in the volleyball team problem: \"including a set of 3 triplets: Alicia, Amanda, and Anna\")\n3.  **Amanda** (appears in the volleyball team problem: \"including a set of 3 triplets: Alicia, Amanda, and Anna\")\n4.  **Anna** (appears in the volleyball team problem: \"including a set of 3 triplets: Alicia, Amanda, and Anna\")\n5.  **Coach Yellsalot**",
+    "B_fresh": "Actually, none of them were particularly hard to locate, as they all appear in the first few paragraphs of the text.\n\nHowever, **TH** was the most \"tricky\" to identify as a proper noun in the traditional sense (like a person's name or place). It appears in the second paragraph, in the sentence: *\"We denote these by TH, HH, and etc.\"*\n\nIt is an acronym for a specific sequence of coin tosses (Tail followed by Head), which functions as a label or proper noun in the context of that specific problem, but it is less of a standard proper noun than the names **Alicia**, **Amanda**, and **Anna**, which appear immediately after in the third paragraph.",
+    "B_hit": "Actually, none of them were particularly hard to locate because they all appear in the same specific paragraph, which is relatively early in the document.\n\nThe paragraph containing **Alicia**, **Amanda**, and **Anna** is the one that starts with:\n*\"Our school's girls volleyball team has 14 players, including a set of 3 triplets: Alicia, Amanda, and Anna.\"*\n\nThis paragraph is located roughly **10-15% down** the document, right after the section discussing the coin toss sequences (where **TH** appears) and before the section about the Screamers volleyball team.\n\nIf I had to pick one that might be slightly more \"hidden\" depending on how you define \"proper noun,\" it would be **TH**. While",
+    "B_fresh2": "Actually, none of them were particularly hard to locate, as they all appear in the first few paragraphs of the text.\n\nHowever, **TH** was the most \"tricky\" to identify as a proper noun in the traditional sense (like a person's name or place). It appears in the second paragraph, in the sentence: *\"We denote these by TH, HH, and etc.\"*\n\nIt is an acronym for a specific sequence of coin tosses (Tail followed by Head), which functions as a label or proper noun in the context of that specific problem, but it is less of a standard proper noun than the names **Alicia**, **Amanda**, and **Anna**, which appear immediately after in the third paragraph."
+   },
+   "first_top5": {
+    "A_fresh": {
+     "Based": -0.010906489565968513,
+     "A": -5.68278169631958,
+     "Here": -5.93278169631958,
+     "S": -6.58903169631958,
+     "1": -6.69840669631958
+    },
+    "A_hit": {
+     "Based": -0.02651059255003929,
+     "A": -4.182760715484619,
+     "Here": -5.401510715484619,
+     "1": -6.120260715484619,
+     "S": -6.698385715484619
+    },
+    "A_fresh2": {
+     "Based": -0.010906489565968513,
+     "A": -5.68278169631958,
+     "Here": -5.93278169631958,
+     "S": -6.58903169631958,
+     "1": -6.69840669631958
+    },
+    "B_fresh": {
+     "Actually": -1.0505586862564087,
+     "I": -1.9880586862564087,
+     "The": -2.050558567047119,
+     "None": -2.097433567047119,
+     "Among": -2.441183567047119
+    },
+    "B_hit": {
+     "Actually": -1.0967050790786743,
+     "The": -1.8935800790786743,
+     "Among": -2.0967049598693848,
+     "I": -2.3310799598693848,
+     "None": -2.3467049598693848
+    },
+    "B_fresh2": {
+     "Actually": -1.0505586862564087,
+     "I": -1.9880586862564087,
+     "The": -2.050558567047119,
+     "None": -2.097433567047119,
+     "Among": -2.441183567047119
+    }
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 2,
+   "prompt_tokens": 41463,
+   "A_same": true,
+   "B_same": true,
+   "A_hit_prefix": 78,
+   "A_fresh_fresh_prefix": 78,
+   "B_hit_prefix": 81,
+   "B_fresh_fresh_prefix": 81,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": false,
+   "A_len": [
+    78,
+    78,
+    78
+   ],
+   "B_len": [
+    81,
+    81,
+    81
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    10.7,
+    0.3,
+    0.3,
+    10.7
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.031,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.031,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "What does the biologist calculate for the number of fish in the lake on May 1?",
+    "A_hit": "What does the biologist calculate for the number of fish in the lake on May 1?",
+    "A_fresh2": "What does the biologist calculate for the number of fish in the lake on May 1?",
+    "B_fresh": "1. What does the biologist calculate for the number of fish in the lake on May 1?",
+    "B_hit": "1. What does the biologist calculate for the number of fish in the lake on May 1?",
+    "B_fresh2": "1. What does the biologist calculate for the number of fish in the lake on May 1?"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "What": -0.9032715559005737,
+     "The": -1.4501465559005737,
+     "Of": -2.2782716751098633,
+     "To": -2.4345216751098633,
+     "Since": -2.7626466751098633
+    },
+    "A_hit": {
+     "What": -0.903218150138855,
+     "The": -1.434468150138855,
+     "Of": -2.3094682693481445,
+     "To": -2.4500932693481445,
+     "Since": -2.7469682693481445
+    },
+    "A_fresh2": {
+     "What": -0.9032715559005737,
+     "The": -1.4501465559005737,
+     "Of": -2.2782716751098633,
+     "To": -2.4345216751098633,
+     "Since": -2.7626466751098633
+    },
+    "B_fresh": {
+     "1": -0.003263863269239664,
+     "The": -6.1595139503479,
+     "Here": -7.8313889503479,
+     "I": -8.800138473510742,
+     "Since": -8.925138473510742
+    },
+    "B_hit": {
+     "1": -0.003201955696567893,
+     "The": -6.190701961517334,
+     "Here": -7.815701961517334,
+     "I": -8.815701484680176,
+     "Since": -8.956326484680176
+    },
+    "B_fresh2": {
+     "1": -0.003263863269239664,
+     "The": -6.1595139503479,
+     "Here": -7.8313889503479,
+     "I": -8.800138473510742,
+     "Since": -8.925138473510742
+    }
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 3,
+   "prompt_tokens": 41382,
+   "A_same": true,
+   "B_same": true,
+   "A_hit_prefix": 455,
+   "A_fresh_fresh_prefix": 455,
+   "B_hit_prefix": 626,
+   "B_fresh_fresh_prefix": 626,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": false,
+   "A_len": [
+    455,
+    455,
+    455
+   ],
+   "B_len": [
+    626,
+    626,
+    626
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "length",
+    "length"
+   ],
+   "secs": [
+    12.2,
+    1.8,
+    2.1,
+    12.5
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.041,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.094,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "Based on the document provided, here are three specific factual claims:\n\n1.  The probability that the product of the results from spinning a three-section spinner (labeled 3, 4, 5) and a four-section spinner (labeled 5, 6, 7, 8) is an even number is 2/3.\n2.  The number of non-similar regular 1000-pointed stars is 199.\n3.  The expected number of pairs of adjacent cards that are both black when a standard 52-card deck is dealt out in a circle is 650/51.",
+    "A_hit": "Based on the document provided, here are three specific factual claims:\n\n1.  The probability that the product of the results from spinning a three-section spinner (labeled 3, 4, 5) and a four-section spinner (labeled 5, 6, 7, 8) is an even number is 2/3.\n2.  The number of non-similar regular 1000-pointed stars is 199.\n3.  The expected number of pairs of adjacent cards that are both black when a standard 52-card deck is dealt out in a circle is 650/51.",
+    "A_fresh2": "Based on the document provided, here are three specific factual claims:\n\n1.  The probability that the product of the results from spinning a three-section spinner (labeled 3, 4, 5) and a four-section spinner (labeled 5, 6, 7, 8) is an even number is 2/3.\n2.  The number of non-similar regular 1000-pointed stars is 199.\n3.  The expected number of pairs of adjacent cards that are both black when a standard 52-card deck is dealt out in a circle is 650/51.",
+    "B_fresh": "The most surprising claim is that **the number of non-similar regular 1000-pointed stars is 199**.\n\n**Why it is surprising:**\nIntuitively, one might expect the number of distinct star shapes to grow linearly or exponentially with the number of points, or perhaps to be a much larger, less \"clean\" number. However, the result is derived from a specific number-theoretic constraint: a regular $n$-pointed star is determined by a step size $m$ such that $\\gcd(m, n) = 1$ (to ensure the star is connected and doesn't degenerate into a polygon or line segment), excluding the trivial cases $m=1$ and $m=n-1$ (which form the regular",
+    "B_hit": "The most surprising claim is that **the number of non-similar regular 1000-pointed stars is 199**.\n\n**Why it is surprising:**\nIntuitively, one might expect the number of distinct star shapes to grow linearly or exponentially with the number of points, or perhaps to be a much larger, less \"clean\" number. However, the result is derived from a specific number-theoretic constraint: a regular $n$-pointed star is determined by a step size $m$ such that $\\gcd(m, n) = 1$ (to ensure the star is connected and doesn't degenerate into a polygon or line segment), excluding the trivial cases $m=1$ and $m=n-1$ (which form the regular",
+    "B_fresh2": "The most surprising claim is that **the number of non-similar regular 1000-pointed stars is 199**.\n\n**Why it is surprising:**\nIntuitively, one might expect the number of distinct star shapes to grow linearly or exponentially with the number of points, or perhaps to be a much larger, less \"clean\" number. However, the result is derived from a specific number-theoretic constraint: a regular $n$-pointed star is determined by a step size $m$ such that $\\gcd(m, n) = 1$ (to ensure the star is connected and doesn't degenerate into a polygon or line segment), excluding the trivial cases $m=1$ and $m=n-1$ (which form the regular"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "Based": -0.8792558312416077,
+     "1": -1.035505771636963,
+     "Here": -1.707380771636963,
+     "The": -3.066755771636963,
+     "In": -8.238631248474121
+    },
+    "A_hit": {
+     "Based": -0.88901287317276,
+     "1": -1.0296378135681152,
+     "Here": -1.6858878135681152,
+     "The": -3.1077628135681152,
+     "In": -8.264013290405273
+    },
+    "A_fresh2": {
+     "Based": -0.8792558312416077,
+     "1": -1.035505771636963,
+     "Here": -1.707380771636963,
+     "The": -3.066755771636963,
+     "In": -8.238631248474121
+    },
+    "B_fresh": {
+     "The": -0.009213430806994438,
+     "**": -5.556088447570801,
+     " The": -6.587338447570801,
+     "Based": -7.196713447570801,
+     "One": -7.946713447570801
+    },
+    "B_hit": {
+     "The": -0.009387400932610035,
+     "**": -5.525012493133545,
+     " The": -6.681262493133545,
+     "Based": -7.142199993133545,
+     "One": -7.876574993133545
+    },
+    "B_fresh2": {
+     "The": -0.009213430806994438,
+     "**": -5.556088447570801,
+     " The": -6.587338447570801,
+     "Based": -7.196713447570801,
+     "One": -7.946713447570801
+    }
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 0,
+   "prompt_tokens": 164681,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 485,
+   "A_fresh_fresh_prefix": 485,
+   "B_hit_prefix": 259,
+   "B_fresh_fresh_prefix": 640,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    485,
+    485,
+    485
+   ],
+   "B_len": [
+    640,
+    719,
+    640
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "length",
+    "length"
+   ],
+   "secs": [
+    72.3,
+    1.9,
+    2.6,
+    73.2
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.02,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.109,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "Based on the document provided, here are three specific factual claims:\n\n1.  A standard deck of 52 cards contains 13 ranks and 4 suits, with exactly one card for any given rank and suit combination.\n2.  The probability of a dart randomly landing in a specific region of a circular dartboard is equal to the ratio of that region's central angle to 360 degrees.\n3.  In a single-elimination tournament with 256 players, exactly 255 individual games must be played to determine a champion.",
+    "A_hit": "Based on the document provided, here are three specific factual claims:\n\n1.  A standard deck of 52 cards contains 13 ranks and 4 suits, with exactly one card for any given rank and suit combination.\n2.  The probability of a dart randomly landing in a specific region of a circular dartboard is equal to the ratio of that region's central angle to 360 degrees.\n3.  In a single-elimination tournament with 256 players, exactly 255 individual games must be played to determine a champion.",
+    "A_fresh2": "Based on the document provided, here are three specific factual claims:\n\n1.  A standard deck of 52 cards contains 13 ranks and 4 suits, with exactly one card for any given rank and suit combination.\n2.  The probability of a dart randomly landing in a specific region of a circular dartboard is equal to the ratio of that region's central angle to 360 degrees.\n3.  In a single-elimination tournament with 256 players, exactly 255 individual games must be played to determine a champion.",
+    "B_fresh": "The most surprising claim is that **in a single-elimination tournament with 256 players, exactly 255 individual games must be played to determine a champion.**\n\n**Why it is surprising:**\nWhile it is intuitive that each game eliminates exactly one player, the direct implication that the total number of games is simply the total number of players minus one (256 - 1 = 255) is often counter-intuitive. Many people instinctively try to sum the games round by round (128 + 64 + 32 + 16 + 8 + 4 + 2 + 1), which is more complex. The claim highlights a powerful combinatorial shortcut: since every player except the winner must lose exactly once,",
+    "B_hit": "The most surprising claim is that **in a single-elimination tournament with 256 players, exactly 255 individual games must be played to determine a champion.**\n\n**Why it is surprising:**\nWhile it is intuitive that each game eliminates exactly one player, the specific mathematical necessity that the number of games must equal the number of players minus one (regardless of the tournament bracket structure, byes, or seeding) is a non-obvious combinatorial fact. Many people might expect the number of games to depend on the specific round-by-round breakdown (e.g., 128 + 64 + 32...), but the invariant that every loss removes one player from the competition means you must have exactly $N-1$ losses to leave one winner",
+    "B_fresh2": "The most surprising claim is that **in a single-elimination tournament with 256 players, exactly 255 individual games must be played to determine a champion.**\n\n**Why it is surprising:**\nWhile it is intuitive that each game eliminates exactly one player, the direct implication that the total number of games is simply the total number of players minus one (256 - 1 = 255) is often counter-intuitive. Many people instinctively try to sum the games round by round (128 + 64 + 32 + 16 + 8 + 4 + 2 + 1), which is more complex. The claim highlights a powerful combinatorial shortcut: since every player except the winner must lose exactly once,"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "Based": -0.4669685363769531,
+     "1": -1.5607185363769531,
+     "Here": -2.013843536376953,
+     "The": -3.560718536376953,
+     "*": -8.310718536376953
+    },
+    "A_hit": {
+     "Based": -0.47825920581817627,
+     "1": -1.5407592058181763,
+     "Here": -1.9938842058181763,
+     "The": -3.5563840866088867,
+     "*": -8.306384086608887
+    },
+    "A_fresh2": {
+     "Based": -0.4669685363769531,
+     "1": -1.5607185363769531,
+     "Here": -2.013843536376953,
+     "The": -3.560718536376953,
+     "*": -8.310718536376953
+    },
+    "B_fresh": {
+     "The": -0.00949521642178297,
+     "**": -6.259495258331299,
+     "Actually": -6.306370258331299,
+     "Based": -6.915745258331299,
+     "To": -7.165745258331299
+    },
+    "B_hit": {
+     "The": -0.00896228477358818,
+     "**": -6.274587154388428,
+     "Actually": -6.383962154388428,
+     "Based": -6.993337154388428,
+     "To": -7.274587154388428
+    },
+    "B_fresh2": {
+     "The": -0.00949521642178297,
+     "**": -6.259495258331299,
+     "Actually": -6.306370258331299,
+     "Based": -6.915745258331299,
+     "To": -7.165745258331299
+    }
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 1,
+   "prompt_tokens": 165457,
+   "A_same": true,
+   "B_same": true,
+   "A_hit_prefix": 490,
+   "A_fresh_fresh_prefix": 490,
+   "B_hit_prefix": 380,
+   "B_fresh_fresh_prefix": 380,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": false,
+   "A_len": [
+    490,
+    490,
+    490
+   ],
+   "B_len": [
+    380,
+    380,
+    380
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    74.0,
+    2.2,
+    1.6,
+    73.3
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.092,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.062,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "Based on the document provided, here are five proper nouns in the order they first appear:\n\n1.  **Alicia** (appears in the volleyball team problem: \"including a set of 3 triplets: Alicia, Amanda, and Anna\")\n2.  **Amanda** (appears in the same sentence as Alicia)\n3.  **Anna** (appears in the same sentence as Alicia and Amanda)\n4.  **Bob** (appears in the Screamers basketball problem: \"two of them, Bob and Yogi, refuse to play together\")\n5.  **Yogi** (appears in the same sentence as Bob)",
+    "A_hit": "Based on the document provided, here are five proper nouns in the order they first appear:\n\n1.  **Alicia** (appears in the volleyball team problem: \"including a set of 3 triplets: Alicia, Amanda, and Anna\")\n2.  **Amanda** (appears in the same sentence as Alicia)\n3.  **Anna** (appears in the same sentence as Alicia and Amanda)\n4.  **Bob** (appears in the Screamers basketball problem: \"two of them, Bob and Yogi, refuse to play together\")\n5.  **Yogi** (appears in the same sentence as Bob)",
+    "A_fresh2": "Based on the document provided, here are five proper nouns in the order they first appear:\n\n1.  **Alicia** (appears in the volleyball team problem: \"including a set of 3 triplets: Alicia, Amanda, and Anna\")\n2.  **Amanda** (appears in the same sentence as Alicia)\n3.  **Anna** (appears in the same sentence as Alicia and Amanda)\n4.  **Bob** (appears in the Screamers basketball problem: \"two of them, Bob and Yogi, refuse to play together\")\n5.  **Yogi** (appears in the same sentence as Bob)",
+    "B_fresh": "Actually, none of them were particularly hard to locate because they all appear in the very first few paragraphs of the document.\n\n**Alicia**, **Amanda**, and **Anna** appear in the **first paragraph** (the volleyball problem).\n**Bob** and **Yogi** appear in the **second paragraph** (the Screamers basketball problem).\n\nSo, they are all located at the very beginning of the text.",
+    "B_hit": "Actually, none of them were particularly hard to locate because they all appear in the very first few paragraphs of the document.\n\n**Alicia**, **Amanda**, and **Anna** appear in the **first paragraph** (the volleyball problem).\n**Bob** and **Yogi** appear in the **second paragraph** (the Screamers basketball problem).\n\nSo, they are all located at the very beginning of the text.",
+    "B_fresh2": "Actually, none of them were particularly hard to locate because they all appear in the very first few paragraphs of the document.\n\n**Alicia**, **Amanda**, and **Anna** appear in the **first paragraph** (the volleyball problem).\n**Bob** and **Yogi** appear in the **second paragraph** (the Screamers basketball problem).\n\nSo, they are all located at the very beginning of the text."
+   },
+   "first_top5": {
+    "A_fresh": {
+     "Based": -0.081448495388031,
+     "A": -3.690823554992676,
+     "S": -3.784573554992676,
+     "1": -4.050198554992676,
+     "Here": -5.737698554992676
+    },
+    "A_hit": {
+     "Based": -0.07952520251274109,
+     "A": -3.7045252323150635,
+     "S": -3.7982752323150635,
+     "1": -4.079524993896484,
+     "Here": -5.829524993896484
+    },
+    "A_fresh2": {
+     "Based": -0.081448495388031,
+     "A": -3.690823554992676,
+     "S": -3.784573554992676,
+     "1": -4.050198554992676,
+     "Here": -5.737698554992676
+    },
+    "B_fresh": {
+     "Actually": -1.264266848564148,
+     "Among": -1.592391848564148,
+     "Based": -2.0298919677734375,
+     "The": -2.0923919677734375,
+     "Of": -2.5923919677734375
+    },
+    "B_hit": {
+     "Actually": -1.2645055055618286,
+     "Among": -1.6395055055618286,
+     "The": -2.030130386352539,
+     "Based": -2.077005386352539,
+     "Of": -2.592630386352539
+    },
+    "B_fresh2": {
+     "Actually": -1.264266848564148,
+     "Among": -1.592391848564148,
+     "Based": -2.0298919677734375,
+     "The": -2.0923919677734375,
+     "Of": -2.5923919677734375
+    }
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 2,
+   "prompt_tokens": 166812,
+   "A_same": false,
+   "B_same": true,
+   "A_hit_prefix": 0,
+   "A_fresh_fresh_prefix": 59,
+   "B_hit_prefix": 62,
+   "B_fresh_fresh_prefix": 62,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": false,
+   "A_len": [
+    59,
+    116,
+    59
+   ],
+   "B_len": [
+    62,
+    62,
+    62
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    73.2,
+    0.4,
+    0.6,
+    73.1
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.61,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 1.946,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "So there is a total of $12+5-2=15$ integers from 1 to 150 t",
+    "A_hit": "What is the probability it is neither a perfect square nor a perfect cube? Express your answer as a common fraction.",
+    "A_fresh2": "So there is a total of $12+5-2=15$ integers from 1 to 150 t",
+    "B_fresh": "1. So there is a total of $12+5-2=15$ integers from 1 to 150 t",
+    "B_hit": "1. So there is a total of $12+5-2=15$ integers from 1 to 150 t",
+    "B_fresh2": "1. So there is a total of $12+5-2=15$ integers from 1 to 150 t"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "So": -0.9490653276443481,
+     "What": -1.0740653276443481,
+     "The": -1.5896903276443481,
+     "It": -3.1365652084350586,
+     "There": -4.777190208435059
+    },
+    "A_hit": {
+     "What": -0.7469989061355591,
+     "The": -1.512623906135559,
+     "So": -1.559498906135559,
+     "It": -2.6063737869262695,
+     "There": -4.9188737869262695
+    },
+    "A_fresh2": {
+     "So": -0.9490653276443481,
+     "What": -1.0740653276443481,
+     "The": -1.5896903276443481,
+     "It": -3.1365652084350586,
+     "There": -4.777190208435059
+    },
+    "B_fresh": {
+     "1": -0.0028867737855762243,
+     "The": -6.487261772155762,
+     "Based": -8.002886772155762,
+     "I": -8.315386772155762,
+     "It": -8.518511772155762
+    },
+    "B_hit": {
+     "1": -0.009612465277314186,
+     "The": -5.165862560272217,
+     "It": -6.572112560272217,
+     "Since": -7.197112560272217,
+     "Based": -7.681487560272217
+    },
+    "B_fresh2": {
+     "1": -0.0028867737855762243,
+     "The": -6.487261772155762,
+     "Based": -8.002886772155762,
+     "I": -8.315386772155762,
+     "It": -8.518511772155762
+    }
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 3,
+   "prompt_tokens": 175094,
+   "A_same": false,
+   "B_same": true,
+   "A_hit_prefix": 0,
+   "A_fresh_fresh_prefix": 448,
+   "B_hit_prefix": 619,
+   "B_fresh_fresh_prefix": 619,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": false,
+   "A_len": [
+    448,
+    508,
+    448
+   ],
+   "B_len": [
+    619,
+    619,
+    619
+   ],
+   "finish": [
+    "stop",
+    "length",
+    "length",
+    "length"
+   ],
+   "secs": [
+    81.2,
+    2.6,
+    2.7,
+    81.1
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 1.134,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.917,
+    "B_fresh_vs_fresh": 0.0
+   },
+   "texts": {
+    "A_fresh": "1. The probability that a randomly selected point in the rectangular region defined by vertices (0,0), (2008,0), (2008,2009), and (0,2009) satisfies the condition x > 2y is 502/2009.\n2. The number of non-similar regular 1000-pointed stars is 199.\n3. The expected value of the total number of inches of rain falling from Monday to Friday, given daily probabilities of 40% sun, 25% for 4 inches of rain, and 35% for 10 inches of rain, is 22.5 inches.",
+    "A_hit": "Based on the document provided, here are three specific factual claims:\n\n1.  The probability that a randomly selected point in the rectangular region with vertices at $(0,0)$, $(2008,0)$, $(2008,2009)$, and $(0,2009)$ satisfies the condition $x > 2y$ is $\\frac{502}{2009}$.\n2.  The number of non-similar regular 1000-pointed stars is 199.\n3.  The expected value of the total number of inches of rain falling from Monday to Friday, given a daily probability distribution of 40% sun (0 inches), 25% 4 inches of",
+    "A_fresh2": "1. The probability that a randomly selected point in the rectangular region defined by vertices (0,0), (2008,0), (2008,2009), and (0,2009) satisfies the condition x > 2y is 502/2009.\n2. The number of non-similar regular 1000-pointed stars is 199.\n3. The expected value of the total number of inches of rain falling from Monday to Friday, given daily probabilities of 40% sun, 25% for 4 inches of rain, and 35% for 10 inches of rain, is 22.5 inches.",
+    "B_fresh": "The most surprising claim is that **the number of non-similar regular 1000-pointed stars is 199**.\n\n**Why it is surprising:**\nIntuitively, one might expect the number of distinct star shapes to be much larger, perhaps proportional to the number of vertices (1000) or related to the number of divisors. However, the result is surprisingly small and specific. This is because a \"regular\" star is strictly defined by connecting every $k$-th vertex of a regular 1000-gon, where $k$ is relatively prime to 1000. The count is derived from Euler's totient function $\\phi(1000)$, which calculates how many integers less than 10",
+    "B_hit": "The most surprising claim is that **the number of non-similar regular 1000-pointed stars is 199**.\n\n**Why it is surprising:**\nIntuitively, one might expect the number of distinct star shapes to be much larger, perhaps proportional to the number of vertices (1000) or related to the number of divisors. However, the result is surprisingly small and specific. This is because a \"regular\" star is strictly defined by connecting every $k$-th vertex of a regular 1000-gon, where $k$ is relatively prime to 1000. The count is derived from Euler's totient function $\\phi(1000)$, which calculates how many integers less than 10",
+    "B_fresh2": "The most surprising claim is that **the number of non-similar regular 1000-pointed stars is 199**.\n\n**Why it is surprising:**\nIntuitively, one might expect the number of distinct star shapes to be much larger, perhaps proportional to the number of vertices (1000) or related to the number of divisors. However, the result is surprisingly small and specific. This is because a \"regular\" star is strictly defined by connecting every $k$-th vertex of a regular 1000-gon, where $k$ is relatively prime to 1000. The count is derived from Euler's totient function $\\phi(1000)$, which calculates how many integers less than 10"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "1": -0.8068936467170715,
+     "Based": -1.3537685871124268,
+     "Here": -1.5568935871124268,
+     "The": -2.4943935871124268,
+     "I": -8.353768348693848
+    },
+    "A_hit": {
+     "Based": -0.8005334138870239,
+     "1": -1.050533413887024,
+     "Here": -1.753658413887024,
+     "The": -3.6286582946777344,
+     "In": -8.581783294677734
+    },
+    "A_fresh2": {
+     "1": -0.8068936467170715,
+     "Based": -1.3537685871124268,
+     "Here": -1.5568935871124268,
+     "The": -2.4943935871124268,
+     "I": -8.353768348693848
+    },
+    "B_fresh": {
+     "The": -0.013890382833778858,
+     "None": -6.123265266418457,
+     "That": -6.217015266418457,
+     "Based": -6.310765266418457,
+     "1": -6.810765266418457
+    },
+    "B_hit": {
+     "The": -0.009210241958498955,
+     "1": -6.227960109710693,
+     " The": -6.384210109710693,
+     "**": -6.431085109710693,
+     "Based": -7.227960109710693
+    },
+    "B_fresh2": {
+     "The": -0.013890382833778858,
+     "None": -6.123265266418457,
+     "That": -6.217015266418457,
+     "Based": -6.310765266418457,
+     "1": -6.810765266418457
+    }
+   }
+  }
+ ],
+ "note": "served preset default: chunked_prefill_size=8192 (the arm label said 4096)"
+}
