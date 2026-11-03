@@ -39,3 +39,17 @@ tokenizer); the natural-haystack re-probe of both Flint arms at 32K / 131K / 240
 The 29K multikey flip is a single greedy cell on a thinking model that drifts; chain41 repeats the identical
 task instance (3× at 32K, 2× at 65K) on each arm to read it against run-to-run variance before the Flint
 preset decides (`reason256k-flint-pv-{fp32,bf16}-hayrep-2026-11-02.json`).
+
+**Repeat sample (chain41 + chain42, identical task instances; the first row at each length is a fresh fill, later rows hit the prefix cache — same protocol on both arms):**
+
+| arm | 29K cells | 58K | 119K | 219K | all |
+|---|:--:|:--:|:--:|:--:|:--:|
+| fp32 | 24/30 | 4/6 | 5/12 | 1/3 | **34/51** |
+| bf16 | 21/30 | 3/6 | 9/12 | 1/3 | **34/51** |
+
+The flipping cells (vartrack at 29K / 58K, multikey and aggregate at 119K) flip on the fp32 arm alone across
+identical repeats; neither arm is consistently ahead and the totals are equal. **Verdict: bf16 P·V is at
+parity on Flint → `flint` preset default (`SGLANG_EXTEND_ATTN_FP32_PV=0`, with the 128×128 tile): fresh
+prefill 3.62 → 2.97 s @32K, 32.98 → 23.40 s @131K (−18 % / −29 %), decode unchanged. `gemma4-31b` stays
+fp32 (mixed speed at parity).** Combined-arm receipts: `flint-bf16-128-128-8.json`, `flint-bf16-128-64-8.json`
+(128×64 + bf16 = 3.03 s / 25.9 s). Repeat receipts: `benchmarks/quality/reason256k-flint-pv-{fp32,bf16}-hayrep{,2}-2026-11-02.json`.

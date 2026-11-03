@@ -728,6 +728,12 @@ apply_preset() {
             # @131K; exact, same kernel); 64x64 and 4-warp variants are 12-22 % slower. Preset-scoped:
             # Gemma 4 (head dim 256 / 512) is unaffected. Receipt benchmarks/profiling/flint-d128-tiles-2026-11-02/.
             export SGLANG_EXTEND_ATTN_TILE="${SGLANG_EXTEND_ATTN_TILE:-128:128,128,8}"
+            # 2026-11-02: bf16 softmax.V dot (patch 075 env; patch 011 forces fp32 on every platform, which
+            # on Ampere is the TF32/FMA path). With the tile above: fresh prefill 3.62 -> 2.97 s @32K,
+            # 33.0 -> 23.4 s @131K (-18 % / -29 %); decode identical. Parity: needle 3/3, MMLU 48 -> 51,
+            # natural-haystack reasoning 34/51 cells on both arms over 17 repeated instances (the flipping
+            # cells are Flint's greedy drift, present on fp32 too). 1 restores the fp32 dot.
+            export SGLANG_EXTEND_ATTN_FP32_PV="${SGLANG_EXTEND_ATTN_FP32_PV:-0}"
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Flint-AWQ-INT4-g64-gptq}"
             QUANT="${QUANT:-awq_marlin}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"

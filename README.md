@@ -67,7 +67,9 @@ Cold prefill: W4A8 (patch 071, per-token INT8 activations through the unlocked I
 default on `qwen38` (**8.6 s @32K, 51 s @131K, 145 s @262K**), `qwen36-dense`, `gemma4-31b`,
 `qwen35-moe` and `qwen36`; `devstral` is excluded because its long-prompt reasoning collapses under it.
 The triton presets (Flint, the Gemma 4s) are bound by the extend-attention kernel at 40–50 % of peak
-([issue #12](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/12)).
+([issue #12](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/12)); on `flint` a
+128×128 tile plus the bf16 softmax·V dot (patch 075) take the cold fill to **2.97 s @32K and 23.4 s @131K**
+(−18 % / −29 %) at parity ([receipt](benchmarks/profiling/pv-dtype-2026-11-02/README.md)).
 Receipts: [`benchmarks/profiling/multiturn-cache-2026-11-01/`](benchmarks/profiling/multiturn-cache-2026-11-01/README.md),
 [`benchmarks/fleet-w4a8-2026-11-01/`](benchmarks/fleet-w4a8-2026-11-01/README.md).
 
