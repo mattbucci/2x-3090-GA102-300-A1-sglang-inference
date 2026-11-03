@@ -42,8 +42,10 @@ CHARS_PER_TOKEN = 6.9
 # `--haystack FILE` swaps the repetitive filler for natural text (cycled to length). The
 # stock filler is a repetition attractor for NoPE-layer models (Flint scored 0/3 at 131K on
 # it in its shipped config, 2026-11-02, while retrieving fine from natural text) — the same
-# reason needle_band_probe.py has --haystack. Natural English runs ~4.2 chars/token.
-HAYSTACK_CPT = 4.2
+# reason needle_band_probe.py has --haystack. benchmarks/quality/haystack-platypus.txt tokenizes
+# at 3.1 chars/token on the Flint tokenizer (measured 2026-11-02; 4.2 would overshoot the
+# window at 240K) — always read the printed `actual` column and pass --chars-per-token to fit.
+HAYSTACK_CPT = 3.2
 _HAYSTACK = None
 
 
