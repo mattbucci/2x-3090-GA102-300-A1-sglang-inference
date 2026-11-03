@@ -131,9 +131,9 @@ tool-calling at true 256K at every needle depth; the Coder-30B family does not, 
 `scripts/launch.sh` is the source of truth; every preset defaults to TP=2 and its full context,
 `--max-running 1`, an explicit `--tool-call-parser` matching its chat template (Qwen3-Coder + Qwen3.5/3.6/3.8
 → `qwen3_coder`; Qwen3-VL / Qwen3-30B REAM → `qwen25`; Devstral → `mistral`; Gemma 4 → `gemma4`),
-`--sampling-defaults model` on thinking presets, incremental tokenization, custom allreduce, INT8 `lm_head`
-and the levers above where they gate clean. tok/s = single-user at 32K and at the deepest point.
-Full table with notes, the HuggingFace zoo, MoE coverage and KV limits: [`docs/models.md`](docs/models.md).
+`--sampling-defaults model` on thinking presets, and the levers above where they gate clean. tok/s =
+single-user at 32K and at the deepest point. Full table, HuggingFace zoo, MoE coverage and KV limits:
+[`docs/models.md`](docs/models.md).
 
 | Preset | Model | Type | Ctx | tok/s 32K → deep | HF |
 |---|---|---|:--:|:--:|---|
@@ -155,10 +155,9 @@ Full table with notes, the HuggingFace zoo, MoE coverage and KV limits: [`docs/m
 | `devstral` | Devstral-Small-2-24B AWQ | dense (VL, tools), 339K pool | 262K | 87 → **43** | [link](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ) |
 | `qwen3-vl-32b` | Qwen3-VL-32B AWQ | dense (VL) | 131K | 61 → **41** | [link](https://huggingface.co/mattbucci/Qwen3-VL-32B-AWQ) |
 
-Every `mattbucci/*-AWQ` is built end-to-end from the linked upstream BF16 base (GPTQ → CT → native
-AWQ-Marlin, scales audit, capability probes); no third-party pre-quantized AWQ is used as a base, and the
-three rows calibrated on third-party pre-pruned BF16 are marked in `docs/models.md` with their rebuild
-path. `--max-running 1` is load-bearing on `qwen38` (at 8 the KV pool collapses 652K → 32K). Use
+Every `mattbucci/*-AWQ` is built from the linked upstream BF16 base (GPTQ → CT → native AWQ-Marlin,
+scales audit, capability probes); the three rows calibrated on third-party pre-pruned BF16 are marked in
+`docs/models.md` with their rebuild path. `--max-running 1` is load-bearing on `qwen38` (at 8 the KV pool collapses 652K → 32K). Use
 `temperature >= 0.3` on the Qwen3 family; greedy decode loops.
 
 ## Quick start
