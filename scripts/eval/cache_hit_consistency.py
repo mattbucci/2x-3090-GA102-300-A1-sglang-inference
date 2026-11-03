@@ -39,7 +39,11 @@ def chat(base, model, messages, max_tokens):
     except Exception:
         first = {}
     chat.last_first_top = first
-    return (c["message"].get("content") or ""), c.get("finish_reason"), r.get("usage", {}).get("prompt_tokens"), time.time() - t0
+    # Compare the full generated text: models that think regardless of enable_thinking (Flint) put
+    # every token in reasoning_content and leave content empty, which read as 0/0 "exact" cells.
+    msg = c["message"]
+    text = (msg.get("reasoning_content") or "") + (msg.get("content") or "")
+    return text, c.get("finish_reason"), r.get("usage", {}).get("prompt_tokens"), time.time() - t0
 
 def top_delta(d1, d2):
     """max |logprob delta| over tokens present in both top-5 lists; None when no overlap."""
