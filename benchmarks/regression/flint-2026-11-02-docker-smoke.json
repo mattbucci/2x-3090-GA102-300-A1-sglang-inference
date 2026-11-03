@@ -1,36 +1,42 @@
 {
-  "model": "flint",
-  "engine": "SGLang",
-  "hardware": "2x RTX 3090 TP=2",
-  "benchmark_tool": "sglang.bench_serving",
-  "prompt_source": "random",
-  "timestamp": "2026-11-02 13:56:22",
-  "output_tokens": 100,
-  "max_total_num_tokens": 1195984,
-  "context_sweep": [
-    {
-      "context": 1024,
-      "actual_input_tokens": 1024,
-      "throughput": 160.85,
-      "ttft_ms": 76.33,
-      "tpot_ms": 5.39,
-      "tok_per_sec": 185.5
+  "preset": "flint",
+  "verdict": "PASS",
+  "serve_mode": "docker",
+  "image": "sglang-cuda-3090:local",
+  "image_id": "948c7e096d31e824f6a2c2854fe4bc226fecf1b05a9926350f394efc8eb5f0b4",
+  "date": "2026-11-02T19:20:32",
+  "steps": {
+    "stop": {
+      "status": "PASS",
+      "detail": ""
     },
-    {
-      "context": 32768,
-      "actual_input_tokens": 32768,
-      "throughput": 132.94,
-      "ttft_ms": 159.12,
-      "tpot_ms": 5.87,
-      "tok_per_sec": 170.4
+    "responses_api": {
+      "status": "PASS",
+      "detail": ""
     },
-    {
-      "context": 261916,
-      "actual_input_tokens": 261916,
-      "throughput": 68.85,
-      "ttft_ms": 580.91,
-      "tpot_ms": 8.68,
-      "tok_per_sec": 115.2
+    "bench": {
+      "status": "SKIP",
+      "detail": ""
+    },
+    "rollout": {
+      "status": "PASS",
+      "detail": "rc=0 preds=2 nonempty=2 meta=ok budget_lines=2"
+    },
+    "boot": {
+      "status": "PASS",
+      "detail": "98s to /health; /v1/models=[flint]"
+    },
+    "scaffold_audit": {
+      "status": "PASS",
+      "detail": "api_auth=True opencode:auth=ok dcode:auth=ok"
+    },
+    "leak_audit": {
+      "status": "PASS",
+      "detail": "Using the latest cached version of the dataset since princeton-nlp/SWE-bench_Lite couldn't be found on the Hugging Face Hub (offline mode is enabled)."
+    },
+    "api_auth": {
+      "status": "PASS",
+      "detail": "anon /v1/models -> 401"
     }
-  ]
+  }
 }
