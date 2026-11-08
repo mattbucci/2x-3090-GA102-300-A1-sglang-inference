@@ -80,7 +80,7 @@ Receipts: [`benchmarks/profiling/multiturn-cache-2026-11-01/`](benchmarks/profil
 
 Full 300 instances, one attempt each, single-user, `swebench==4.1.0` scorer, opencode as the one lane per
 preset; every counted cell ran at the served 262K window with template-default thinking, a 32K output
-budget, no network, the task on stdin and `/testbed` re-initialised to a neutral commit, and closed on the
+budget, no network, and closed on the
 leak audit at 0 exposed. **Only full-300 cells are compared.** Mechanics and receipts:
 [`docs/swebench-bakeoff.md`](docs/swebench-bakeoff.md); queue state in
 [issue #11](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/11).
@@ -88,10 +88,11 @@ leak audit at 0 exposed. **Only full-300 cells are compared.** Mechanics and rec
 | Preset | opencode (resolved/300) |
 |--------|:--------:|
 | `qwen38` (Qwen3.8-27B AWQ, thinking) | **196/300 (65.3 %)** |
+| `qwopus38` (Qwopus3.8-27B-Coder-Flash AWQ, thinking) | `omp` **190/300 (63.3 %)**, paired tie with `qwen38` (p = 0.45) |
 | `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **191/300 (63.7 %)** |
-| `flint` (Flint 40B-A2.5B, calibrated AWQ, thinking) | **182/300 (60.7 %)** · `omp` lane **186/300** (McNemar tie, p = 0.57) |
+| `flint` (Flint 40B-A2.5B, calibrated AWQ, thinking) | **182/300 (60.7 %)** · `omp` **186/300** (tie, p = 0.57) |
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **176/300 (58.7 %)** |
-| `qwen36-ream` · `qwen35-moe` · `coder-30b-eval` · `coder-reap-25b` · `coder-30b-ream` · `devstral` · `gemma4` · `nemotron3-omni` · `qwopus38` (opencode + omp, [issue #21](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/21)) | *pending* (queue order) |
+| `qwen36-ream` · `qwen35-moe` · `coder-30b-eval` · `coder-reap-25b` · `coder-30b-ream` · `devstral` · `gemma4` · `nemotron3-omni` · `qwopus38` (opencode, [issue #21](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/21)) | *pending* (queue order) |
 
 The harness pick (plain opencode) comes from a five-scaffold bake-off on `qwen38`: opencode 196 / +DCP 203 /
 little-coder 193 / +RTK 202 / prime 187, every pair a McNemar tie except prime vs the plugin lanes
@@ -109,7 +110,7 @@ tool-use ladder and the 256K reasoning probe with footnotes: [`docs/quality-eval
 | `qwen36-dense` | **98.2 %** | **97.5 %** | ✓ 250K | 1.0 → 258K | 100 % |
 | `qwen36` / `qwen36-ream` | 93.0 / 84.2 % | **97.5 %** | ✓ 250K | 1.0 → 255,889 | 100 % |
 | `qwen38` | **93 %** | **96 %** | ✓ 250K | DSpark cell, 196/300 SWE-bench | — |
-| `qwopus38` | 87.7 % | **100 %** | ✓ 250K | caps 5/5 (tool, image, video) | **100 %** |
+| `qwopus38` | 87.7 % | **100 %** | ✓ 250K | caps 5/5, 190/300 SWE-bench (omp) | **100 %** |
 | `gemma4-31b` | 93.0 % | **97.5 %** | ✓ 250K | 1.0 → 258K | **100 %** |
 | `gemma4` / `gemma4-21b-reap` / `gemma4-12b` | 82.5 / 80.7 / 77.2 % | 97.5 / 0 † / 92.5 % | ✓ 250K | 1.0 → 255,957 / 258K / 258K | 94 / 94 / 61 % |
 | `qwen35-moe` | 69.6 % | 80.0 % | ✓ | 1.0 → 255,889 | 72 % (multikey soft ≥ 131K) |
