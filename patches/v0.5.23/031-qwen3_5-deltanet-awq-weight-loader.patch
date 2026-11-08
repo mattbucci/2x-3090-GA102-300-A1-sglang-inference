@@ -1,0 +1,104 @@
+diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
+index b16fa909bf..fa852a00c4 100644
+--- a/python/sglang/srt/models/qwen3_5.py
++++ b/python/sglang/srt/models/qwen3_5.py
+@@ -404,24 +404,33 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+         # projection of the input hidden states
+         self.in_proj_qkvz = self.create_qkvz_proj(
+             hidden_size=self.hidden_size,
+             key_dim=self.key_dim,
+             value_dim=self.value_dim,
+             quant_config=quant_config,
+             prefix=add_prefix("in_proj_qkvz", prefix),
+             parallel_group=parallel_group,
+         )
+ 
++        # quant_config=None for in_proj_ba: output dim 48 is not divisible
++        # by TP=2 × 16 (hipBLASLt scaled_mm alignment), AND AWQ checkpoints
++        # ship in_proj_a / in_proj_b in full precision (no .qweight/.scales/
++        # .qzeros — only .weight). Forcing quant_config=quant_config on this
++        # layer makes the model expect packed AWQ params that the checkpoint
++        # doesn't provide → "Parameter ...in_proj_ba.weight not found in
++        # params_dict" warnings × num_layers, default-init weights, and
++        # generation outputs literal `!!!!!`. v0.5.10 had this; v0.5.11
++        # dropped the special-case during upstream sync.
+         self.in_proj_ba = self.create_ba_proj(
+             hidden_size=self.hidden_size,
+             num_v_heads=self.num_v_heads,
+-            quant_config=quant_config,
++            quant_config=None,
+             prefix=add_prefix("in_proj_ba", prefix),
+             parallel_group=parallel_group,
+         )
+ 
+         # Override weight loaders for packed checkpoint format.
+         # Important: for FP8, this must cover not only `.weight` but also
+         # `weight_scale_inv` / `weight_scale` / `input_scale` if present.
+         self._bind_packed_weight_loaders(self.in_proj_qkvz)
+         self._bind_packed_weight_loaders(self.in_proj_ba)
+         self._fused_in_proj_weight: Optional[torch.Tensor] = None
+@@ -541,21 +550,27 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+             # Do NOT call set_weight_attrs here, because it asserts when
+             # overwriting an existing attribute.
+             param.weight_loader = loader
+             return
+ 
+         # Fresh attribute on a normal tensor/Parameter
+         set_weight_attrs(param, {"weight_loader": loader})
+ 
+     def _bind_packed_weight_loaders(self, module):
+         """Bind packed-checkpoint-aware loaders to all relevant params of a merged module."""
+-        for attr_name in ("weight", "weight_scale_inv", "weight_scale", "input_scale"):
++        # Include AWQ param names (qweight, scales, qzeros) alongside standard names.
++        # Without this, AWQ-quantized DeltaNet in_proj_qkvz / in_proj_ba never bind
++        # the packed loader, the model loads as if uninitialized, and generation
++        # produces literal `!!!!!` garbage. v0.5.10 had this; v0.5.11 dropped it
++        # during upstream sync.
++        for attr_name in ("weight", "weight_scale_inv", "weight_scale", "input_scale",
++                          "qweight", "scales", "qzeros"):
+             param = getattr(module, attr_name, None)
+             if param is None:
+                 continue
+             original_loader = getattr(param, "weight_loader", None)
+             if original_loader is None:
+                 continue
+             wrapped_loader = self._make_packed_weight_loader(module, original_loader)
+             self._override_weight_loader(param, wrapped_loader)
+ 
+     @staticmethod
+@@ -567,22 +582,33 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+             block_n = 1 if getattr(param, "format_ue8m0", False) else block_n
+             return [
+                 (module.output_sizes[idx] + block_n - 1) // block_n
+                 for idx in loaded_shard_id
+             ]
+ 
+         if isinstance(param, PerTensorScaleParameter):
+             # One logical scale per logical shard.
+             return [1 for _ in loaded_shard_id]
+ 
+-        # Normal weight / non-block quant tensor
+-        return [module.output_sizes[idx] for idx in loaded_shard_id]
++        # For packed params (AWQ qweight/qzeros), divide by pack factor when
++        # the split dimension is the packed dimension. v0.5.10 had this; v0.5.11
++        # dropped it during upstream sync — without it, AWQ Qwen3.5/3.6 DeltaNet
++        # weight loading hits "split_sizes sum != tensor size" RuntimeError.
++        from sglang.srt.layers.parameter import PackedvLLMParameter, PackedColumnParameter
++        pack_factor = 1
++        if isinstance(param, (PackedvLLMParameter, PackedColumnParameter)):
++            split_dim = getattr(param, "output_dim", 0)
++            if getattr(param, "packed_dim", None) == split_dim:
++                pack_factor = getattr(param, "packed_factor",
++                                      getattr(param, "pack_factor", 1))
++
++        return [module.output_sizes[idx] // pack_factor for idx in loaded_shard_id]
+ 
+     @classmethod
+     def _make_packed_weight_loader(cls, module, original_weight_loader):
+         """Wrap the param's original loader so split checkpoints:
+           - in_proj_qkv + in_proj_z -> merged in_proj_qkvz
+           - in_proj_b + in_proj_a   -> merged in_proj_ba
+         can load correctly for both normal and FP8 params.
+         """
+ 
+         def weight_loader(param, loaded_weight, loaded_shard_id=None):

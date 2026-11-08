@@ -1,0 +1,287 @@
+diff --git a/python/sglang/srt/entrypoints/openai/serving_chat.py b/python/sglang/srt/entrypoints/openai/serving_chat.py
+index 6476d52fa6..630bf382bc 100644
+--- a/python/sglang/srt/entrypoints/openai/serving_chat.py
++++ b/python/sglang/srt/entrypoints/openai/serving_chat.py
+@@ -1244,7 +1244,10 @@ class OpenAIServingChat(OpenAIServingBase):
+             and not chat_encoding.spec_renders_prompt_ids(self.chat_encoding_spec)
+             and not prefers_prompt_ids
+         ):
+-            return "text", processed_messages.prompt
++            prompt = processed_messages.prompt
++            if prompt is None and isinstance(processed_messages.prompt_ids, list):
++                prompt = self.tokenizer_manager.tokenizer.decode(processed_messages.prompt_ids)
++            return "text", prompt
+         if isinstance(processed_messages.prompt_ids, str):
+             return "text", processed_messages.prompt_ids
+         return "input_ids", processed_messages.prompt_ids
+@@ -2235,11 +2238,10 @@ class OpenAIServingChat(OpenAIServingBase):
+                 decoded_prompt = None
+ 
+             if is_multimodal:
+-                prompt = (
+-                    decoded_prompt
+-                    if decoded_prompt is not None
+-                    else self.tokenizer_manager.tokenizer.decode(prompt_ids)
+-                )
++                # [3090 072] decode lazily: _engine_prompt decodes only when the engine
++                # actually takes the text form (media attached, or ids not reusable). The
++                # eager decode of a 229K-token prompt was 8 % of a text-only agentic turn.
++                prompt = decoded_prompt
+ 
+         stop = request.stop
+         image_data = image_data if image_data else None
+@@ -2328,14 +2330,23 @@ class OpenAIServingChat(OpenAIServingBase):
+                     return_dict=False,
+                     **template_kwargs,
+                 )
+-                prompt_ids = parallel_prompt_encode(
+-                    self.tokenizer_manager.tokenizer, rendered_prompt, encode_kwargs
+-                )
+-        decoded_prompt = (
+-            self.tokenizer_manager.tokenizer.decode(prompt_ids)
+-            if cache_key is not None
+-            else None
+-        )
++                inc = getattr(self.tokenizer_manager, "incremental_tokenizer", None)
++                if (
++                    inc is not None
++                    and inc.enabled
++                    and not (set(encode_kwargs or {}) - {"add_special_tokens"})
++                ):
++                    # [3090 072] reuse the previous turns' ids up to the last special-token boundary of
++                    # the shared prefix; only the tail is encoded (exact: HF splits on added tokens first).
++                    prompt_ids = inc.encode(
++                        rendered_prompt,
++                        add_special_tokens=(encode_kwargs or {}).get("add_special_tokens", True),
++                    )
++                else:
++                    prompt_ids = parallel_prompt_encode(
++                        self.tokenizer_manager.tokenizer, rendered_prompt, encode_kwargs
++                    )
++        decoded_prompt = None  # [3090 072] decoded on demand by _engine_prompt
+ 
+         if cache_key is not None:
+             self._chat_template_cache[cache_key] = (tuple(prompt_ids), decoded_prompt)
+diff --git a/python/sglang/srt/managers/incremental_tokenizer.py b/python/sglang/srt/managers/incremental_tokenizer.py
+new file mode 100644
+index 0000000000..26e04c348a
+--- /dev/null
++++ b/python/sglang/srt/managers/incremental_tokenizer.py
+@@ -0,0 +1,179 @@
++"""[3090 072] Incremental tokenization for append-only prompts (the agentic follow-up turn at depth).
++
++Every chat turn re-sends the whole conversation and the server re-tokenizes it from scratch: Flint's fast
++tokenizer runs at ~1.7 us/token, so a 253K-token turn pays ~420 ms of the 466 ms it costs after the split-KV
++route (qwen38 ~0.6 us/token). HF tokenizers split the text on added/special tokens *before* pre-tokenization and
++BPE and encode each segment independently, so for two texts that share a prefix the tokens up to the last added
++token inside the common prefix are identical. This cache keeps the last few (text, ids, added-token boundaries)
++and encodes only the tail after that boundary.
++
++Exactness conditions (checked once; the cache stays disabled otherwise): fast tokenizer; no added token with
++lstrip / rstrip / normalized / single_word (any of these lets a match reach outside its segment); for the
++add_special_tokens=True mode the post-processor must add only a prefix (BOS), never a suffix.
++Env: SGLANG_INCREMENTAL_TOKENIZE=1 enables, SGLANG_INCREMENTAL_TOKENIZE_VERIFY=1 also runs the full encode on
++every call and logs + returns it on any mismatch (gate runs).
++"""
++from __future__ import annotations
++
++import bisect
++import logging
++import os
++import threading
++import time
++from typing import List, Optional, Tuple
++
++logger = logging.getLogger(__name__)
++
++ENABLED = os.environ.get("SGLANG_INCREMENTAL_TOKENIZE", "0") not in ("", "0", "false", "False")
++VERIFY = os.environ.get("SGLANG_INCREMENTAL_TOKENIZE_VERIFY", "0") not in ("", "0", "false", "False")
++MAX_ENTRIES = int(os.environ.get("SGLANG_INCREMENTAL_TOKENIZE_ENTRIES", "8") or 8)
++MIN_CHARS = 4096  # below this a full encode is cheaper than the bookkeeping
++
++
++_BLOCK = 1 << 16
++
++
++def _common_prefix_len(a: str, b: str) -> int:
++    """Length of the common prefix: scan 64 K-char blocks forward (one C compare each, no copies of the
++    whole string), then binary-search inside the first differing block. Linear in the shared prefix,
++    not O(n log n) slice copies — this was 5 % of a 229K-token turn as a plain binary search."""
++    n = min(len(a), len(b))
++    if n == 0 or a[0] != b[0]:
++        return 0
++    lo = 0
++    while lo < n:
++        hi = min(lo + _BLOCK, n)
++        if a[lo:hi] != b[lo:hi]:
++            break
++        lo = hi
++    else:
++        return n
++    # a[lo:hi] differs: binary search the first mismatch inside the block
++    while hi - lo > 1:
++        mid = (lo + hi) // 2
++        if a[lo:mid] == b[lo:mid]:
++            lo = mid
++        else:
++            hi = mid
++    return lo
++
++
++class _Entry:
++    __slots__ = ("text", "ids", "ends", "ntoks", "mode")
++
++    def __init__(self, text, ids, ends, ntoks, mode):
++        self.text, self.ids, self.ends, self.ntoks, self.mode = text, ids, ends, ntoks, mode
++
++
++class IncrementalTokenizer:
++    def __init__(self, tokenizer, max_entries: int = MAX_ENTRIES, verify: bool = VERIFY):
++        self.tok = tokenizer
++        self.max_entries = max_entries
++        self.verify = verify
++        self._entries: List[_Entry] = []
++        self._lock = threading.Lock()
++        self.stats = {"calls": 0, "hits": 0, "reused_tokens": 0, "encoded_tokens": 0, "mismatches": 0, "saved_s": 0.0}
++        self.enabled, self.special_prefix_ok, why = self._check(tokenizer)
++        self._added = set(tokenizer.added_tokens_decoder.keys()) if self.enabled else set()
++        self._added_id = {str(t): i for i, t in tokenizer.added_tokens_decoder.items()} if self.enabled else {}
++        self._split_re = None
++        self._special_prefix = ()
++        if self.enabled:
++            import re
++
++            # leftmost-longest match of any added token = the tokenizer's own pre-split (no lstrip/rstrip/normalized)
++            self._split_re = re.compile("(" + "|".join(re.escape(t) for t in sorted(self._added_id, key=len, reverse=True)) + ")")
++            self._special_prefix = tuple(tokenizer("", add_special_tokens=True)["input_ids"])
++        if self.enabled:
++            logger.info("[072] incremental tokenizer on (%d added tokens, add_special_tokens mode %s)",
++                        len(self._added), "ok" if self.special_prefix_ok else "off")
++        else:
++            logger.info("[072] incremental tokenizer disabled: %s", why)
++
++    @staticmethod
++    def _check(tok) -> Tuple[bool, bool, str]:
++        if not getattr(tok, "is_fast", False):
++            return False, False, "not a fast tokenizer"
++        dec = getattr(tok, "added_tokens_decoder", None)
++        if not dec:
++            return False, False, "no added tokens"
++        for t in dec.values():
++            if t.lstrip or t.rstrip or t.normalized or t.single_word:
++                return False, False, f"added token {t.content!r} has lstrip/rstrip/normalized/single_word"
++        try:
++            probe = "a b"
++            with_sp = tok(probe, add_special_tokens=True)["input_ids"]
++            without = tok(probe, add_special_tokens=False)["input_ids"]
++            prefix_ok = len(with_sp) >= len(without) and with_sp[len(with_sp) - len(without):] == without
++        except Exception as e:  # noqa: BLE001
++            return False, False, f"probe failed: {e}"
++        return True, prefix_ok, ""
++
++    def _encode_full(self, text: str, add_special_tokens: bool):
++        """Encode ``text`` the way the tokenizer does — split on added tokens first (leftmost-longest, the
++        tokenizer's own pre-split), encode the plain segments as a batch, splice the added ids back in — and
++        return the added-token boundaries for free. No offset mapping (that made a full encode ~20 % slower)."""
++        parts = self._split_re.split(text) if self._split_re is not None else [text]
++        segs = parts[0::2]  # plain text between added tokens (may be empty)
++        toks = parts[1::2]  # the added tokens themselves, in order
++        if add_special_tokens and self._special_prefix:
++            ids = list(self._special_prefix)
++        else:
++            ids = []
++        enc = self.tok(segs, add_special_tokens=False)["input_ids"] if any(segs) else [[] for _ in segs]
++        ends, ntoks, pos = [], [], 0
++        for i, seg_ids in enumerate(enc):
++            ids.extend(seg_ids)
++            pos += len(segs[i])
++            if i < len(toks):
++                ids.append(self._added_id[toks[i]])
++                pos += len(toks[i])
++                ends.append(pos)
++                ntoks.append(len(ids))
++        return ids, ends, ntoks
++
++    def encode(self, text: str, add_special_tokens: bool = False) -> List[int]:
++        if not self.enabled or (add_special_tokens and not self.special_prefix_ok) or len(text) < MIN_CHARS:
++            return self.tok(text, add_special_tokens=add_special_tokens)["input_ids"]
++        mode = bool(add_special_tokens)
++        t0 = time.perf_counter()
++        best = None  # (char_end, ntok, entry)
++        with self._lock:
++            self.stats["calls"] += 1
++            for e in self._entries:
++                if e.mode != mode or not e.ends:
++                    continue
++                lcp = len(e.text) if text.startswith(e.text) else _common_prefix_len(e.text, text)
++                j = bisect.bisect_right(e.ends, lcp) - 1
++                if j >= 0 and (best is None or e.ends[j] > best[0]):
++                    best = (e.ends[j], e.ntoks[j], e, j)
++        if best is None:
++            ids, ends, ntoks = self._encode_full(text, add_special_tokens)
++            self.stats["encoded_tokens"] += len(ids)
++            self._store(_Entry(text, ids, ends, ntoks, mode))
++            return ids
++        char_end, ntok, e, j = best
++        tail_ids, tail_ends, tail_ntoks = self._encode_full(text[char_end:], False)
++        ids = e.ids[:ntok] + tail_ids
++        ends = e.ends[: j + 1] + [char_end + c for c in tail_ends]
++        ntoks = e.ntoks[: j + 1] + [ntok + n for n in tail_ntoks]
++        self.stats["hits"] += 1
++        self.stats["reused_tokens"] += ntok
++        self.stats["encoded_tokens"] += len(tail_ids)
++        if self.verify:
++            full = self.tok(text, add_special_tokens=add_special_tokens)["input_ids"]
++            if full != ids:
++                self.stats["mismatches"] += 1
++                logger.error("[072] incremental tokenization MISMATCH (reused %d tokens, %d vs %d ids) — full encode returned",
++                             ntok, len(ids), len(full))
++                ids, ends, ntoks = self._encode_full(text, add_special_tokens)
++        self._store(_Entry(text, ids, ends, ntoks, mode))
++        self.stats["saved_s"] += max(0.0, ntok * 1e-6 - (time.perf_counter() - t0))  # rough: ~1 us/token full encode
++        return ids
++
++    def _store(self, entry: _Entry):
++        with self._lock:
++            # drop an older entry this one extends (same mode, prefix of the new text)
++            self._entries = [e for e in self._entries if not (e.mode == entry.mode and entry.text.startswith(e.text))]
++            self._entries.insert(0, entry)
++            del self._entries[self.max_entries:]
+diff --git a/python/sglang/srt/managers/tokenizer_manager.py b/python/sglang/srt/managers/tokenizer_manager.py
+index ca3453f966..389234d989 100644
+--- a/python/sglang/srt/managers/tokenizer_manager.py
++++ b/python/sglang/srt/managers/tokenizer_manager.py
+@@ -659,6 +659,14 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
+             )
+         else:
+             self.async_dynamic_batch_tokenizer = None
++        # [3090 072] exact incremental tokenization for append-only prompts (env-gated).
++        self.incremental_tokenizer = None
++        if self.tokenizer is not None:
++            from sglang.srt.managers.incremental_tokenizer import ENABLED as _INC_ON
++            from sglang.srt.managers.incremental_tokenizer import IncrementalTokenizer
++
++            if _INC_ON:
++                self.incremental_tokenizer = IncrementalTokenizer(self.tokenizer)
+ 
+     def _validate_cuda_vmm_feature_transport_support(self) -> None:
+         if get_mm().mm_feature_transport != "cuda_vmm":
+@@ -1046,7 +1054,17 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
+             and input_format == InputFormat.SINGLE_STRING
+         )
+ 
+-        if use_async_tokenizer:
++        inc = getattr(self, "incremental_tokenizer", None)
++        if (
++            inc is not None
++            and inc.enabled
++            and input_format == InputFormat.SINGLE_STRING
++            and not is_cross_encoder
++        ):
++            # [3090 072] same tokenizer call as the plain path, encoded against the previous prompts
++            input_ids = [inc.encode(tokenizer_input[0], add_special_tokens=True)]
++            token_type_ids = None
++        elif use_async_tokenizer:
+             logger.debug("Using async dynamic batch tokenizer for single text")
+             result = await self.async_dynamic_batch_tokenizer.encode(
+                 tokenizer_input[0], **tokenizer_kwargs

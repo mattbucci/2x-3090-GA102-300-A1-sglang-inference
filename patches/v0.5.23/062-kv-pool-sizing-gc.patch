@@ -1,0 +1,28 @@
+diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
+index 017198c..1036fda 100644
+--- a/python/sglang/srt/model_executor/model_runner.py
++++ b/python/sglang/srt/model_executor/model_runner.py
+@@ -16,6 +16,7 @@
+ from __future__ import annotations
+ 
+ import contextlib
++import gc
+ import inspect
+ import logging
+ import time
+@@ -1144,6 +1145,15 @@ class ModelRunner:
+ 
+         self.dtype = self.model_config.dtype
+ 
++        # Collect load-path garbage BEFORE measuring: the v0.5.18 loader's
++        # nested weights_iterator generators leave reference cycles holding GPU
++        # staging tensors (~5.3 GB/rank on the Llava/Pixtral path). torch's
++        # graph capture would free them later via its internal gc.collect() —
++        # i.e. AFTER the KV pool is sized from live free memory, so the pool
++        # inherits the loss permanently (devstral: 342K -> 199K tokens; the
++        # get_available_gpu_memory(empty_cache=True) below releases the
++        # collected blocks back to the driver).
++        gc.collect()
+         after_avail_memory = get_available_gpu_memory(self.device, self.gpu_id)
+         self.weight_load_mem_usage = before_avail_memory - after_avail_memory
+         self.weight_load_time = time.perf_counter() - tic_total

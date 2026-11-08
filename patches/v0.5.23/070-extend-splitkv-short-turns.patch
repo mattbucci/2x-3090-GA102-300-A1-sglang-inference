@@ -1,0 +1,508 @@
+diff --git a/python/sglang/kernels/ops/attention/verify_splitkv.py b/python/sglang/kernels/ops/attention/verify_splitkv.py
+index 94bb8526f8..921c71dfbf 100644
+--- a/python/sglang/kernels/ops/attention/verify_splitkv.py
++++ b/python/sglang/kernels/ops/attention/verify_splitkv.py
+@@ -46,6 +46,27 @@ _MIN_BLOCK_KV = 32
+ _IS_HIP = is_hip()
+ _AMD_LAUNCH_KWARGS = {"waves_per_eu": 4, "matrix_instr_nonkdim": 16} if _IS_HIP else {}
+ 
++
++def _default_upcast_k() -> bool:
++    """[3090 070] Prefix QK numerics: dot(q, k.to(q.dtype)) instead of dot(q.to(k.dtype), k).
++    On an fp8 cache the original downcasts q to fp8 (e5m2 on Ampere = 2 mantissa bits);
++    Ampere has no fp8 tensor-core dot anyway, so upcasting K costs nothing and keeps q's
++    precision — mirrors extend_attention's gfx1250 branch. SGLANG_SPLITKV_UPCAST_K=0/1 overrides."""
++    import os
++
++    env = os.environ.get("SGLANG_SPLITKV_UPCAST_K")
++    if env is not None:
++        return env == "1"
++    try:
++        if torch.version.cuda and torch.cuda.is_available():
++            return torch.cuda.get_device_capability() < (8, 9)
++    except Exception:
++        pass
++    return False
++
++
++_UPCAST_K = _default_upcast_k()
++
+ # Block-size config keyed on head_dim. The (BLOCK_N, num_warps) tile that best
+ # hides latency depends on head_dim: at head_dim=256 (Qwen3 family) a narrower
+ # BLOCK_N with more warps wins, since the 256-wide QK/PV tiles are register
+@@ -155,6 +176,7 @@ def _verify_prefix_stage1(
+     BLOCK_DV: tl.constexpr,
+     BLOCK_N: tl.constexpr,
+     MIN_BLOCK_KV: tl.constexpr,
++    UPCAST_K: tl.constexpr = False,  # [3090 070] dot(q, k.to(q.dtype)) — see _default_upcast_k
+ ):
+     cur_batch = tl.program_id(0)
+     cur_head = tl.program_id(1)
+@@ -197,7 +219,10 @@ def _verify_prefix_stage1(
+             mask=mask_l[:, None] & (offs_d[None, :] < HEAD_DIM),
+             other=0.0,
+         )
+-        q_k = q.to(K_Buffer.dtype.element_ty)
++        if UPCAST_K:
++            q_k = q
++        else:
++            q_k = q.to(K_Buffer.dtype.element_ty)
+ 
+         base_offs_k = cur_kv_head * stride_buf_kh + offs_d[:, None]
+         base_offs_v = cur_kv_head * stride_buf_vh + offs_dv[None, :]
+@@ -217,7 +242,10 @@ def _verify_prefix_stage1(
+                 mask=(offs_d[:, None] < HEAD_DIM) & n_mask[None, :],
+                 other=0.0,
+             )
+-            qk = tl.dot(q_k, k)  # [L_EXT, BLOCK_N]
++            if UPCAST_K:
++                qk = tl.dot(q_k, k.to(q_k.dtype))  # [L_EXT, BLOCK_N]
++            else:
++                qk = tl.dot(q_k, k)  # [L_EXT, BLOCK_N]
+             qk *= sm_scale * k_scale  # fp8 dequant of prefix K (k_scale==1 if bf16)
+             # NO causal mask: full prefix is visible to all draft tokens.
+             qk = tl.where(n_mask[None, :], qk, float("-inf"))
+@@ -234,7 +262,12 @@ def _verify_prefix_stage1(
+             re_scale = tl.exp(e_max - n_e_max)
+             p = tl.exp(qk - n_e_max[:, None])
+             acc *= re_scale[:, None]
+-            acc += tl.dot(p.to(v.dtype), v)
++            if UPCAST_K:
++                # [3090 070] Ampere has no fp8 dot: p.to(e5m2) would keep 2 mantissa bits of the softmax
++                # weights (6e-2 error vs fp32); dot in q's dtype with V upcast, like the K side above.
++                acc += tl.dot(p.to(q.dtype), v.to(q.dtype))
++            else:
++                acc += tl.dot(p.to(v.dtype), v)
+             e_sum = e_sum * re_scale + tl.sum(p, 1)
+             e_max = n_e_max
+ 
+@@ -286,6 +319,7 @@ def _verify_combine_stage2(
+     O_Out,  # [extend_tokens, H_Q, Dv]  (final, written)
+     sm_scale,
+     qo_indptr,  # [BS+1] int32
++    Sinks,  # [H_Q] learned per-head sink logits (read only when HAS_SINKS)
+     stride_ob,
+     stride_oh,
+     stride_os,
+@@ -308,6 +342,7 @@ def _verify_combine_stage2(
+     V_HEAD_DIM: tl.constexpr,
+     BLOCK_DMODEL: tl.constexpr,
+     BLOCK_DV: tl.constexpr,
++    HAS_SINKS: tl.constexpr = False,  # [3090 070] learned attention sinks (Flint)
+ ):
+     cur_batch = tl.program_id(0)
+     cur_head = tl.program_id(1)
+@@ -339,21 +374,29 @@ def _verify_combine_stage2(
+     w = tl.exp(lse - m_p[None, :])  # [N_SPLITS, L_EXT]; -inf->0
+     denom_p = tl.sum(w, 0)  # [L_EXT]
+ 
+-    # weighted-sum of partial outputs: o_prefix[L_EXT, Dv]
++    # weighted-sum of partial outputs: o_prefix[L_EXT, Dv], one split at a time.
++    # [3090 070] the former single [N_SPLITS, L_EXT, Dv] fp32 register tile spilled
++    # ~3 KB per thread at head_dim 256 and its first launch made the driver reserve
++    # 1.3 GB of local memory (a served gemma4 died on it with 1.9 GB free).
+     # Att_Out[b,h,s,l,dv]
+     offs_ao = (
+         cur_batch * stride_ob
+         + cur_head * stride_oh
+-        + offs_s[:, None, None] * stride_os
+-        + offs_l[None, :, None] * stride_ol
+-        + offs_dv[None, None, :]
++        + offs_l[:, None] * stride_ol
++        + offs_dv[None, :]
+     )
+-    ao = tl.load(
+-        offs_ao + Att_Out,
+-        mask=mask_l[None, :, None] & (offs_dv[None, None, :] < V_HEAD_DIM),
+-        other=0.0,
+-    )  # [N_SPLITS, L_EXT, Dv]
+-    o_prefix = tl.sum(ao * w[:, :, None], 0)  # [L_EXT, Dv]
++    mask_ao = mask_l[:, None] & (offs_dv[None, :] < V_HEAD_DIM)
++    offs_lse_s = cur_batch * stride_lb + cur_head * stride_lh + offs_l
++    o_prefix = tl.zeros([L_EXT, BLOCK_DV], dtype=tl.float32)
++    for s in range(N_SPLITS):
++        lse_s = tl.load(
++            Att_Lse + offs_lse_s + s * stride_ls, mask=mask_l, other=float("-inf")
++        )  # [L_EXT]
++        w_s = tl.exp(lse_s - m_p)  # [L_EXT]; -inf->0
++        ao_s = tl.load(
++            Att_Out + offs_ao + s * stride_os, mask=mask_ao, other=0.0
++        )  # [L_EXT, Dv]
++        o_prefix += ao_s * w_s[:, None]
+     o_prefix = o_prefix / denom_p[:, None]
+     lse_prefix = m_p + tl.log(denom_p)  # [L_EXT]
+ 
+@@ -392,22 +435,38 @@ def _verify_combine_stage2(
+     ).to(tl.float32)
+ 
+     # scores[i,j] = q_i . k_j  (i query, j key)  -> [L_EXT, L_EXT]
+-    qk = tl.sum(q[:, None, :] * ke[None, :, :], 2) * sm_scale
++    # [3090 070] at the 16-row tile use an fp32-exact dot: the [L_EXT, L_EXT, D]
++    # broadcast product is another 256 KB register tile at head_dim 256.
++    if L_EXT >= 16:
++        qk = tl.dot(q, tl.trans(ke), input_precision="ieee") * sm_scale
++    else:
++        qk = tl.sum(q[:, None, :] * ke[None, :, :], 2) * sm_scale
+     # causal among drafts: query i sees key j iff j <= i, and both valid
+     causal = (offs_l[None, :] <= offs_l[:, None]) & mask_l[None, :] & mask_l[:, None]
+     qk = tl.where(causal, qk, float("-inf"))
+     m_d = tl.max(qk, 1)  # [L_EXT]
+     pd = tl.exp(qk - m_d[:, None])  # [L_EXT, L_EXT]
+     denom_d = tl.sum(pd, 1)  # [L_EXT]
+-    o_draft = tl.sum(pd[:, :, None] * ve[None, :, :], 1)  # [L_EXT, Dv]
++    if L_EXT >= 16:
++        o_draft = tl.dot(pd, ve, input_precision="ieee")  # [L_EXT, Dv]
++    else:
++        o_draft = tl.sum(pd[:, :, None] * ve[None, :, :], 1)  # [L_EXT, Dv]
+     o_draft = o_draft / denom_d[:, None]
+     lse_draft = m_d + tl.log(denom_d)  # [L_EXT]
+ 
+     # ---- (c) final LSE merge (prefix vs draft) ----------------------------
+     m = tl.maximum(lse_prefix, lse_draft)
++    # [3090 070] a learned sink is a per-head logit with no value: it joins the softmax
++    # denominator only — extend_attention does ``deno += exp(sink - e_max)``.
++    if HAS_SINKS:
++        cur_sink = tl.load(Sinks + cur_head).to(tl.float32)
++        m = tl.maximum(m, cur_sink)
++        ws = tl.exp(cur_sink - m)
++    else:
++        ws = tl.zeros([L_EXT], dtype=tl.float32)
+     wp = tl.exp(lse_prefix - m)
+     wd = tl.exp(lse_draft - m)
+-    o = (o_prefix * wp[:, None] + o_draft * wd[:, None]) / (wp + wd)[:, None]
++    o = (o_prefix * wp[:, None] + o_draft * wd[:, None]) / (wp + wd + ws)[:, None]
+ 
+     offs_oo = (
+         (cur_q_start + offs_l)[:, None] * stride_oobs
+@@ -441,7 +500,9 @@ class VerifySplitKV:
+         n_splits=DEFAULT_N_SPLITS,
+         block_n=DEFAULT_BLOCK_N,
+         num_warps=DEFAULT_NUM_WARPS,
++        upcast_k=False,
+     ):
++        self.upcast_k = bool(upcast_k)
+         self.h_q = h_q
+         self.h_kv = h_kv
+         self.group = h_q // h_kv
+@@ -521,13 +582,14 @@ class VerifySplitKV:
+             BLOCK_DV=triton.next_power_of_2(self.v_head_dim),
+             BLOCK_N=self.block_n,
+             MIN_BLOCK_KV=_MIN_BLOCK_KV,
++            UPCAST_K=self.upcast_k,
+             num_warps=self.num_warps,
+             num_stages=1,
+             **_AMD_LAUNCH_KWARGS,
+         )
+ 
+     def _run_combine_kernel(
+-        self, bs, q_extend, k_extend, v_extend, o_out, qo_indptr, sm_scale
++        self, bs, q_extend, k_extend, v_extend, o_out, qo_indptr, sm_scale, sinks=None
+     ):
+         grid = (bs, self.h_q)
+         _verify_combine_stage2[grid](
+@@ -539,6 +601,7 @@ class VerifySplitKV:
+             o_out,
+             sm_scale,
+             qo_indptr,
++            sinks if sinks is not None else qo_indptr,  # dummy pointer when HAS_SINKS is False
+             self.att_out.stride(0),
+             self.att_out.stride(1),
+             self.att_out.stride(2),
+@@ -561,7 +624,10 @@ class VerifySplitKV:
+             V_HEAD_DIM=self.v_head_dim,
+             BLOCK_DMODEL=triton.next_power_of_2(self.head_dim),
+             BLOCK_DV=triton.next_power_of_2(self.v_head_dim),
+-            num_warps=1,
++            HAS_SINKS=sinks is not None,
++            # [3090 070] was 1 warp: a 32-thread program over [16, 256] fp32 tiles spilled 3 KB/thread.
++            # 4 warps for the 16-row tile; 8 for the 32-row tile at head_dim 256 (4 warps spill again there).
++            num_warps=8 if self.l_pad * triton.next_power_of_2(self.v_head_dim) > 4096 else 4,
+             num_stages=1,
+         )
+ 
+@@ -579,6 +645,7 @@ class VerifySplitKV:
+         o_out=None,
+         k_scale=1.0,
+         v_scale=1.0,
++        sinks=None,
+     ):
+         if o_out is None:
+             o_out = torch.empty(
+@@ -611,6 +678,7 @@ class VerifySplitKV:
+             o_out,
+             qo_indptr,
+             sm_scale,
++            sinks=sinks,  # [3090 070] was dropped here: HAS_SINKS never fired
+         )
+         return o_out
+ 
+@@ -627,9 +695,9 @@ _VK_CACHE = {}
+ 
+ 
+ def _get_vk(
+-    max_bs, h_q, h_kv, head_dim, v_head_dim, l_ext, device, n_splits=DEFAULT_N_SPLITS
++    max_bs, h_q, h_kv, head_dim, v_head_dim, l_ext, device, n_splits=DEFAULT_N_SPLITS, upcast_k=False
+ ):
+-    key = (h_q, h_kv, head_dim, v_head_dim, l_ext, str(device), n_splits)
++    key = (h_q, h_kv, head_dim, v_head_dim, l_ext, str(device), n_splits, bool(upcast_k))
+     vk = _VK_CACHE.get(key)
+     if vk is None:
+         block_n, num_warps = block_config(head_dim)
+@@ -644,6 +712,7 @@ def _get_vk(
+             n_splits=n_splits,
+             block_n=block_n,
+             num_warps=num_warps,
++            upcast_k=upcast_k,
+         )
+         _VK_CACHE[key] = vk
+     else:
+@@ -680,7 +749,10 @@ def can_handle(
+     (TritonAttnBackend does: ``use_verify_splitkv = ... and self.topk == 1``).
+     At topk > 1 the tree is not causal and this path must stay disabled."""
+     # No exotic features.
+-    if sinks is not None:
++    # learned sinks ARE handled ([3090 070]): a [H_Q] tensor joins the final LSE merge.
++    if sinks is not None and (
++        not torch.is_tensor(sinks) or sinks.dim() != 1 or sinks.shape[0] != q_extend.shape[1]
++    ):
+         return False
+     if sliding_window_size is not None and sliding_window_size > 0:
+         return False
+@@ -764,6 +836,7 @@ def verify_splitkv_fwd(
+     window_kv_offsets=None,
+     xai_temperature_len=-1,
+     max_bs=None,
++    upcast_k=None,
+ ):
+     """Drop-in for extend_attention_fwd on the EAGLE target-verify (topk=1)
+     shape. Returns True if it ran (o_extend written), False if the case is
+@@ -838,6 +911,7 @@ def verify_splitkv_fwd(
+         l_ext,
+         q_extend.device,
+         n_splits=n_splits,
++        upcast_k=_UPCAST_K if upcast_k is None else bool(upcast_k),
+     )
+     vk(
+         q_extend,
+@@ -852,6 +926,7 @@ def verify_splitkv_fwd(
+         o_out=o_extend,
+         k_scale=k_scale,
+         v_scale=v_scale,
++        sinks=sinks,
+     )
+ 
+     return True
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index 60e825906a..68f29d6f1d 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -1,6 +1,9 @@
+ from __future__ import annotations
+ 
+ import contextlib
++import logging
++import os
++
+ from dataclasses import dataclass
+ from typing import TYPE_CHECKING, List, Optional
+ 
+@@ -54,6 +57,30 @@ from sglang.srt.distributed.device_communicators.pynccl_allocator import (
+     use_symmetric_memory,
+ )
+ from sglang.srt.environ import envs
++
++# [3090 070] Short cache-hit extends (the agentic tool-result turn: K new tokens on a long cached
++# prefix) walk the whole prefix serially per (seq, head) in extend_attention_fwd — one query tile
++# per head: ~0.6 s per turn at 250K on Flint. The split-KV verify kernel is the same problem shape
++# (prefix split across programs + a small causal block + LSE merge), so route to it when
++# 0 < K <= SGLANG_EXTEND_SPLITKV_MAX_TOKENS and the prefix is >= SGLANG_EXTEND_SPLITKV_MIN_PREFIX.
++# 0 (default) = off. Port of R9700's patch 107 (c159375) with learned-sink support.
++_EXTEND_SPLITKV_MAX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MAX_TOKENS", "0") or 0)
++_EXTEND_SPLITKV_MIN_PREFIX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MIN_PREFIX", "4096") or 0)
++# Prefix-aware cap: the chunked route's advantage grows with the prefix (the kernel test read a
++# 128-token route at 2.9x per layer at 197K but <= 1.2x at 8K), so a second cap applies once the
++# cached prefix is >= SGLANG_EXTEND_SPLITKV_DEEP_PREFIX tokens. Defaults keep the single cap.
++_EXTEND_SPLITKV_MAX_DEEP = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP", "0") or 0) or _EXTEND_SPLITKV_MAX
++_EXTEND_SPLITKV_DEEP_PREFIX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_DEEP_PREFIX", "32768") or 32768)
++
++
++def _extend_splitkv_cap(prefix_len: int) -> int:
++    return _EXTEND_SPLITKV_MAX_DEEP if prefix_len >= _EXTEND_SPLITKV_DEEP_PREFIX else _EXTEND_SPLITKV_MAX
++# Rows per split-KV call (R9700 patch 110 shape): new tokens beyond one tile are served in consecutive
++# chunks, each attending to the prefix plus the new tokens before it (already in the KV pool) and
++# causally within itself. 32 is the widest tile on sm_86 (the 64-row combine tile overflows shared
++# memory at head_dim 256); 16 is the floor.
++_EXTEND_SPLITKV_TILE = min(32, max(16, int(os.environ.get("SGLANG_EXTEND_SPLITKV_TILE", "32") or 32)))
++logger = logging.getLogger(__name__)
+ from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
+ from sglang.srt.layers.attention.verify_mask import VerifyMask, maybe_create_verify_mask
+ from sglang.srt.layers.dcp import (
+@@ -483,6 +510,65 @@ class TritonAttnBackend(AttentionBackend):
+             self.dllm_attention = DllmFlashAttention(self)
+             self.supports_prefill_cuda_graph_max_context_size = True
+ 
++        # [3090 070] compile the short-turn route kernels at boot: the first routed request
++        # otherwise carries the Triton JIT (tripwire: 32K cache-hit TTFT 134 -> 626 ms on a
++        # fresh server) — the first-turn latency this route exists to remove.
++        if _EXTEND_SPLITKV_MAX > 0 and not self.use_mla and not self.skip_prefill:
++            self._warm_extend_splitkv_route(model_runner)
++
++    def _warm_extend_splitkv_route(self, model_runner):
++        """[3090 070] one dummy routed call per sink variant on a full-attention layer's real KV
++        buffers (reads only; output discarded) so both split-KV kernels are compiled before traffic."""
++        import time
++
++        t0 = time.perf_counter()
++        try:
++            prefix = max(_EXTEND_SPLITKV_MIN_PREFIX, 64)
++            n_layers = getattr(model_runner.model_config, "num_hidden_layers", 1) or 1
++            shapes = {}  # (h_kv, d, dv) -> (kb, vb): Gemma 4 has 256-wide SWA layers and 512-wide global ones
++            for lid in range(n_layers):
++                try:
++                    kb_, vb_ = (
++                        self.token_to_kv_pool.get_key_buffer(lid),
++                        self.token_to_kv_pool.get_value_buffer(lid),
++                    )
++                except Exception:
++                    continue
++                if kb_.dim() == 3 and kb_.shape[0] >= prefix + 32 and kb_.shape[2] == vb_.shape[2]:
++                    shapes.setdefault((kb_.shape[1], kb_.shape[2], vb_.shape[2]), (kb_, vb_))
++            if not shapes:
++                return
++            dt = model_runner.dtype
++            h_q = self.num_head
++            warmed = []
++            for (h_kv, d, dv), (kb, vb) in shapes.items():
++                dev = kb.device
++                kv_indptr = torch.tensor([0, prefix], dtype=torch.int32, device=dev)
++                kv_indices = torch.arange(prefix, dtype=torch.int32, device=dev)
++                tile = _EXTEND_SPLITKV_TILE if triton.next_power_of_2(dv) <= 256 else 16
++                tiles = [16] if min(_EXTEND_SPLITKV_MAX, tile) <= 16 else [16, 32]
++                for n_pad in tiles:
++                    q3 = torch.zeros((n_pad, h_q, d), dtype=dt, device=dev)
++                    k3 = torch.zeros((n_pad, h_kv, d), dtype=dt, device=dev)
++                    v3 = torch.zeros((n_pad, h_kv, dv), dtype=dt, device=dev)
++                    o3 = torch.empty_like(q3)
++                    qo = torch.tensor([0, n_pad], dtype=torch.int32, device=dev)
++                    for sinks in (None, torch.zeros((h_q,), dtype=torch.float32, device=dev)):
++                        self.verify_splitkv_fwd(
++                            q3, k3, v3, o3, kb, vb, qo, kv_indptr, kv_indices, None, True, None, n_pad,
++                            1.0, 1.0, float(d) ** -0.5,
++                            logit_cap=0.0, sliding_window_size=-1, sinks=sinks, window_kv_offsets=None,
++                            xai_temperature_len=-1, max_bs=self.req_to_token_pool.size,
++                        )
++                warmed.append(f"h_kv={h_kv} d={d} kv={kb.dtype} tiles={tiles}")
++            torch.cuda.synchronize()
++            logger.info(
++                "[070] split-KV short-turn route warmed (h_q=%d; %s) in %.2f s",
++                h_q, "; ".join(warmed), time.perf_counter() - t0,
++            )
++        except Exception as e:  # never block the boot on the warm-up
++            logger.warning("[070] split-KV route warm-up skipped: %s", e)
++
+     def get_num_kv_splits(
+         self,
+         num_kv_splits: torch.Tensor,
+@@ -1940,6 +2026,102 @@ class TritonAttnBackend(AttentionBackend):
+         ):
+             return o
+ 
++        # [3090 070] short cache-hit extend -> split-KV kernel (see _EXTEND_SPLITKV_MAX above).
++        # Full-attention layers only (an SWA layer's window read is short anyway); learned sinks
++        # pass through (the kernel merges them); q/k/v zero-padded to a 16-row tile — padded keys
++        # sit after every real query so the causal block never sees them, padded rows dropped.
++        # Lengths come from the CPU copies: no device sync, batch 1 only.
++        if (
++            _EXTEND_SPLITKV_MAX > 0
++            and not self.use_mla
++            and self.dllm_attention is None
++            and forward_batch.forward_mode == ForwardMode.EXTEND
++            and forward_batch.batch_size == 1
++            and score_mod is None
++            and aux_tensors is None
++            and causal
++            and sliding_window_size == -1
++            and logits_soft_cap <= 0
++            and layer.xai_temperature_len <= 0
++            and layer.qk_head_dim == layer.v_head_dim
++            and self.forward_metadata.custom_mask is None
++            and forward_batch.extend_seq_lens_cpu is not None
++            and forward_batch.extend_prefix_lens_cpu is not None
++            and forward_batch.extend_prefix_lens_cpu[0] >= _EXTEND_SPLITKV_MIN_PREFIX
++            and 0
++            < forward_batch.extend_seq_lens_cpu[0]
++            <= _extend_splitkv_cap(int(forward_batch.extend_prefix_lens_cpu[0]))
++            and forward_batch.out_cache_loc is not None
++        ):
++            n_new = int(forward_batch.extend_seq_lens_cpu[0])
++            n_prefix = int(forward_batch.extend_prefix_lens_cpu[0])
++            # 32-row chunks up to head_dim 256; the 32x512 combine tile (Gemma 4 global layers) needs
++            # 192 KB of shared memory on sm_86 (limit 99 KB), the 16x512 tile fits (96 KB)
++            tile = _EXTEND_SPLITKV_TILE if triton.next_power_of_2(layer.v_head_dim) <= 256 else 16
++            q3 = q.view(-1, layer.tp_q_head_num, layer.qk_head_dim)
++            k3 = k.contiguous().view(-1, layer.tp_k_head_num, layer.qk_head_dim)
++            v3 = v.contiguous().view(-1, layer.tp_k_head_num, layer.v_head_dim)
++            o_full = o.view(-1, layer.tp_q_head_num, layer.v_head_dim)
++            k_buf = self.token_to_kv_pool.get_key_buffer(layer.layer_id)
++            v_buf = self.token_to_kv_pool.get_value_buffer(layer.layer_id)
++            cache = getattr(self, "_extend_splitkv_qo_cache", None)
++            if cache is None:
++                cache = self._extend_splitkv_qo_cache = {}
++            # the new tokens' K/V are already in the pool (set_kv_buffer ran above): chunk c
++            # attends to the prefix plus the new tokens before it through kv_indices, and
++            # causally to its own rows through kc/vc.
++            new_slots = None
++            ran = True
++            for start in range(0, n_new, tile):
++                n_c = min(tile, n_new - start)
++                n_pad = max(16, triton.next_power_of_2(n_c))
++                qc, kc, vc = q3[start : start + n_c], k3[start : start + n_c], v3[start : start + n_c]
++                if n_pad != n_c:
++                    pad = n_pad - n_c
++                    qc = torch.cat([qc, qc.new_zeros((pad,) + qc.shape[1:])])
++                    kc = torch.cat([kc, kc.new_zeros((pad,) + kc.shape[1:])])
++                    vc = torch.cat([vc, vc.new_zeros((pad,) + vc.shape[1:])])
++                oc = qc.new_empty((n_pad, layer.tp_q_head_num, layer.v_head_dim))
++                qo_pad = cache.get(n_pad)
++                if qo_pad is None:
++                    qo_pad = cache[n_pad] = torch.tensor([0, n_pad], dtype=torch.int32, device=q.device)
++                if start == 0:
++                    kv_indptr_c, kv_indices_c = kv_indptr, kv_indices
++                else:
++                    if new_slots is None:
++                        new_slots = forward_batch.out_cache_loc.to(kv_indices.dtype)
++                    kv_indices_c = torch.cat([kv_indices[:n_prefix], new_slots[:start]])
++                    kv_indptr_c = torch.tensor([0, n_prefix + start], dtype=kv_indptr.dtype, device=q.device)
++                if not self.verify_splitkv_fwd(
++                    qc,
++                    kc,
++                    vc,
++                    oc,
++                    k_buf,
++                    v_buf,
++                    qo_pad,
++                    kv_indptr_c,
++                    kv_indices_c,
++                    None,
++                    True,
++                    None,
++                    n_pad,
++                    k_descale,
++                    v_descale,
++                    layer.scaling,
++                    logit_cap=0.0,
++                    sliding_window_size=-1,
++                    sinks=sinks,
++                    window_kv_offsets=None,
++                    xai_temperature_len=-1,
++                    max_bs=self.req_to_token_pool.size,
++                ):
++                    ran = False
++                    break
++                o_full[start : start + n_c].copy_(oc[:n_c])
++            if ran:
++                return o
++
+         self._forward_extend_kernel(
+             layer,
+             q.view(-1, layer.tp_q_head_num, layer.qk_head_dim),

@@ -1,0 +1,35 @@
+diff --git a/python/sglang/srt/utils/hf_transformers/common.py b/python/sglang/srt/utils/hf_transformers/common.py
+index a7ba69e..d5df045 100644
+--- a/python/sglang/srt/utils/hf_transformers/common.py
++++ b/python/sglang/srt/utils/hf_transformers/common.py
+@@ -181,12 +181,24 @@ except ImportError:
+ 
+ 
+ try:
+-    from transformers import Gemma4Config as _HFGemma4Config
+-
+-    class _Gemma4UnifiedConfigAlias(_HFGemma4Config):
+-        model_type = "gemma4_unified"
+-
+-    _CONFIG_REGISTRY["gemma4_unified"] = _Gemma4UnifiedConfigAlias
++    import transformers as _hf_transformers_gemma4u
++
++    # [3090 060] Only alias gemma4_unified -> plain Gemma4Config when transformers
++    # lacks the native family (tx < 5.12). On tx >= 5.12 the alias is strictly
++    # harmful: config.py's registry-first reload re-parses the checkpoint through
++    # plain Gemma4Config, whose vision_config becomes plain Gemma4VisionConfig —
++    # missing the model_patch_size property (= patch_size * pooling_kernel_size)
++    # that Gemma4UnifiedVisionEmbedder reads at construction -> AttributeError at
++    # boot for every gemma4_unified checkpoint. Native tx Gemma4UnifiedConfig
++    # (registered with AutoConfig by transformers itself) builds the correct
++    # Gemma4UnifiedVisionConfig. Mirrors upstream's own Mellum fallback pattern.
++    if getattr(_hf_transformers_gemma4u, "Gemma4UnifiedConfig", None) is None:
++        from transformers import Gemma4Config as _HFGemma4Config
++
++        class _Gemma4UnifiedConfigAlias(_HFGemma4Config):
++            model_type = "gemma4_unified"
++
++        _CONFIG_REGISTRY["gemma4_unified"] = _Gemma4UnifiedConfigAlias
+ except ImportError:
+     pass
+ 

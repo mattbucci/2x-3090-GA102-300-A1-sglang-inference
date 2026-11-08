@@ -1,0 +1,63 @@
+diff --git a/python/sglang/srt/function_call/qwen3_coder_detector.py b/python/sglang/srt/function_call/qwen3_coder_detector.py
+index 55bfbce..28ffd96 100644
+--- a/python/sglang/srt/function_call/qwen3_coder_detector.py
++++ b/python/sglang/srt/function_call/qwen3_coder_detector.py
+@@ -297,20 +297,31 @@ class Qwen3CoderDetector(BaseFormatDetector):
+                     self.parsed_pos += end_angle + 1
+                     continue
+                 else:
+                     # Incomplete tag
+                     break
+ 
+             # -------------------------------------------------------
+             # 3. Parameter: <parameter=name>value...
+             # -------------------------------------------------------
+             if current_slice.startswith(self.parameter_prefix):
++                if self.current_func_name is None:
++                    # Orphan tag: no <function=...> is open, so this is prose
++                    # (or a malformed call). The one-shot parser treats it as
++                    # text; do the same instead of emitting an argument delta
++                    # with tool_index=-1 and no id/name, which OpenAI-SDK
++                    # clients reject ("Expected 'id' to be a string.") and
++                    # then drop the whole stream.
++                    if not self.is_inside_tool_call:
++                        normal_text_chunks.append(self.parameter_prefix)
++                    self.parsed_pos += len(self.parameter_prefix)
++                    continue
+                 name_end = current_slice.find(">")
+                 if name_end != -1:
+                     value_start_idx = name_end + 1
+                     rest_of_slice = current_slice[value_start_idx:]
+ 
+                     # A parameter can end in multiple ways:
+                     # 1. [Normal] Encounter </parameter>
+                     # 2. [Abnormal] Encounter next <parameter=
+                     # 3. [Abnormal] Encounter </function>
+                     # So we need to find the smallest one as the parameter end position.
+@@ -381,20 +392,26 @@ class Qwen3CoderDetector(BaseFormatDetector):
+                         self.parsed_pos += total_len
+                         continue
+ 
+                 # Incomplete parameter tag or value
+                 break
+ 
+             # -------------------------------------------------------
+             # 4. Function End: </function>
+             # -------------------------------------------------------
+             if current_slice.startswith(self.function_end_token):
++                if self.current_func_name is None:
++                    # Orphan </function> (see the <parameter= case above).
++                    if not self.is_inside_tool_call:
++                        normal_text_chunks.append(self.function_end_token)
++                    self.parsed_pos += len(self.function_end_token)
++                    continue
+                 if not self.json_started:
+                     calls.append(
+                         ToolCallItem(tool_index=self.current_tool_id, parameters="{")
+                     )
+                     self.json_started = True
+ 
+                 calls.append(
+                     ToolCallItem(tool_index=self.current_tool_id, parameters="}")
+                 )
+                 self.parsed_pos += len(self.function_end_token)

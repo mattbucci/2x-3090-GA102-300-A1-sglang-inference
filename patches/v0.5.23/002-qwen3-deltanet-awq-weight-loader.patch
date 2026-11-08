@@ -1,0 +1,48 @@
+diff --git a/python/sglang/srt/models/qwen3_next.py b/python/sglang/srt/models/qwen3_next.py
+index 432b9fb54..59d8f69e2 100644
+--- a/python/sglang/srt/models/qwen3_next.py
++++ b/python/sglang/srt/models/qwen3_next.py
+@@ -143,12 +143,13 @@ class Qwen3GatedDeltaNet(nn.Module):
+ 
+         # Override weight_loader for packed checkpoint format.
+         # Must capture original_loader BEFORE overwriting.
+-        self._override_weight_loader(
+-            self.in_proj_qkvz, self._make_packed_weight_loader(self.in_proj_qkvz)
+-        )
+-        self._override_weight_loader(
+-            self.in_proj_ba, self._make_packed_weight_loader(self.in_proj_ba)
+-        )
++        # With AWQ quantization, modules have qweight instead of weight — skip.
++        loader_qkvz = self._make_packed_weight_loader(self.in_proj_qkvz)
++        if loader_qkvz is not None:
++            self._override_weight_loader(self.in_proj_qkvz, loader_qkvz)
++        loader_ba = self._make_packed_weight_loader(self.in_proj_ba)
++        if loader_ba is not None:
++            self._override_weight_loader(self.in_proj_ba, loader_ba)
+ 
+         # Conv1d weight loader setup
+         query_key_settings = (self.key_dim, 0, False)
+@@ -230,9 +231,13 @@ class Qwen3GatedDeltaNet(nn.Module):
+ 
+         ModelWeightParameter exposes weight_loader as a read-only property
+         backed by _weight_loader, while plain parameters store it as a
+-        regular attribute.  This helper handles both cases."""
++        regular attribute.  This helper handles both cases.
++        Also covers AWQ (qweight/scales/qzeros) and FP8 (weight_scale*) attrs."""
+         for attr_name in (
+             "weight",
++            "qweight",
++            "scales",
++            "qzeros",
+             "weight_scale_inv",
+             "weight_scale",
+             "input_scale",
+@@ -252,6 +257,8 @@ class Qwen3GatedDeltaNet(nn.Module):
+         (packed-format) checkpoint weights (shard_id=None), and delegates
+         to the standard MergedColumnParallelLinear loader for split checkpoint
+         weights (shard_id=int/tuple)."""
++        if not hasattr(module, "weight"):
++            return None  # AWQ: skip packed weight loader; qweight/scales/qzeros load via MergedColumnParallelLinear's own path
+         original_loader = module.weight.weight_loader
+ 
+         def weight_loader(param, loaded_weight, loaded_shard_id=None):

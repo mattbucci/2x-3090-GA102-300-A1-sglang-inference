@@ -1,0 +1,281 @@
+diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
+index 77b16ef36f..fc9237ec40 100644
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -533,6 +533,17 @@ class Envs:
+     SGLANG_DSPARK_ENABLE_SPS_RECORD = EnvBool(False)
+     SGLANG_DSPARK_FAST_KERNEL = EnvBool(True)
+     SGLANG_DSPARK_FP32_LM_HEAD = EnvBool(False)
++    # [3090 069] Load-time INT8 (per-channel symmetric) lm_head through GPTQ-Marlin
++    # W8A16 for checkpoints that ship a bf16 head (our AWQ ships); skipped for tied heads.
++    SGLANG_LM_HEAD_INT8 = EnvBool(False)
++    # Scale granularity for the INT8 head: -1 = per output channel, or a group size
++    # (32 / 64 / 128) along the hidden dim; Marlin takes either.
++    SGLANG_LM_HEAD_INT8_GROUP = EnvInt(-1)
++    # Bit width of the quantized head: 8 (default) or 4 (uint4b8, group-128 unless set).
++    SGLANG_LM_HEAD_BITS = EnvInt(8)
++    # Keep the tokenizer's added / special-token rows (</think>, <|im_end|>, tool tags)
++    # exact in bf16 on top of the int8 head — they decide stop / think boundaries.
++    SGLANG_LM_HEAD_INT8_EXACT_SPECIALS = EnvBool(True)
+     # Argmax every draft row, sampling requests included, accepted as a one-hot
+     # draft: no step logits kept, lower acceptance at high temperatures.
+     SGLANG_DSPARK_USE_GREEDY_DRAFT = EnvBool(False)
+diff --git a/python/sglang/srt/layers/quantization/lm_head_int8_marlin.py b/python/sglang/srt/layers/quantization/lm_head_int8_marlin.py
+new file mode 100644
+index 0000000000..d314b643ce
+--- /dev/null
++++ b/python/sglang/srt/layers/quantization/lm_head_int8_marlin.py
+@@ -0,0 +1,216 @@
++"""[3090 069] Load-time INT8 lm_head through the GPTQ-Marlin W8A16 kernel.
++
++Our AWQ ships leave ``lm_head`` in bf16 (the checkpoints' ``modules_to_not_convert``
++exclude it), and on the M=1 agentic profile the fp16 ``lm_head`` gemv is ~10 % of
++the decode step at DRAM roofline (benchmarks/qwen38-agentic-workload-profile-2026-09-10.md).
++This method quantizes the loaded bf16/fp16 head to **symmetric per-output-channel
++int8** in ``process_weights_after_loading`` and repacks it with the same
++``gptq_marlin_repack`` the FP8-on-Ampere path uses, so ``LogitsProcessor`` dispatches
++through ``quant_method.apply`` and Marlin reads half the bytes per step. Opt-in via
++``SGLANG_LM_HEAD_INT8=1``; a tied head (``tie_weights``) reverts to the unquantized
++method because the embedding lookup still needs the dense rows.
++"""
++
++from __future__ import annotations
++
++import logging
++from typing import Optional
++
++import torch
++from torch.nn.parameter import Parameter
++
++from sglang.srt.environ import envs
++from sglang.srt.layers.quantization.base_config import QuantizeMethodBase
++from sglang.srt.layers.quantization.marlin_utils import (
++    apply_gptq_marlin_linear,
++    check_marlin_supports_shape,
++    marlin_make_empty_g_idx,
++    marlin_make_workspace,
++    marlin_permute_scales,
++    scalar_types,
++)
++
++logger = logging.getLogger(__name__)
++
++_PACK_COLS = 8192  # columns (vocab rows) per packing chunk: bounds the int32 scratch
++
++
++def _pack_rows_int32_cuda(q_u: torch.Tensor, bits: int = 8) -> torch.Tensor:
++    """GPTQ pack of an unsigned ``bits``-wide [k, n] tensor along k into int32
++    [k // (32 // bits), n] (same bit layout as ``quantization.utils.pack_rows``,
++    done on the device)."""
++    k, n = q_u.shape
++    pf = 32 // bits
++    assert k % pf == 0
++    out = torch.empty((k // pf, n), dtype=torch.int32, device=q_u.device)
++    for c0 in range(0, n, _PACK_COLS):
++        blk = q_u[:, c0 : c0 + _PACK_COLS].to(torch.int32)
++        acc = blk[0::pf].clone()
++        for i in range(1, pf):
++            acc |= blk[i::pf] << (bits * i)
++        out[:, c0 : c0 + _PACK_COLS] = acc
++    return out
++
++
++def _added_token_ids() -> list[int]:
++    """Ids of the tokenizer's added / special tokens (``</think>``, ``<|im_end|>``,
++    tool-call tags, ...), read from tokenizer.json next to the served model. These
++    control tokens decide stop / tool / think boundaries at greedy knife-edges, so
++    their logits are kept exact (bf16) rather than int8."""
++    import json
++    import os
++
++    paths = []
++    try:
++        from sglang.srt.runtime_context import get_server_args  # the operator's raw input
++
++        sa = get_server_args()
++        paths = [getattr(sa, "tokenizer_path", None), getattr(sa, "model_path", None)]
++    except Exception as e:
++        logger.warning("lm_head int8: server args unavailable for the special-token lookup (%s)", e)
++    for base in paths:
++        if not base or not os.path.isdir(base):
++            continue
++        tj = os.path.join(base, "tokenizer.json")
++        if os.path.exists(tj):
++            try:
++                data = json.load(open(tj))
++                ids = sorted({int(x["id"]) for x in data.get("added_tokens", []) if "id" in x})
++                if ids:
++                    return ids
++            except Exception as e:  # pragma: no cover
++                logger.warning("lm_head int8: could not read %s (%s)", tj, e)
++        aj = os.path.join(base, "added_tokens.json")
++        if os.path.exists(aj):
++            try:
++                return sorted(int(v) for v in json.load(open(aj)).values())
++            except Exception:
++                pass
++    return []
++
++
++class Int8MarlinLMHeadMethod(QuantizeMethodBase):
++    """Wraps the layer's original (unquantized) embedding method: weight creation
++    and loading stay bf16; the int8 Marlin repack happens after loading."""
++
++    def __init__(self, base: QuantizeMethodBase):
++        self.base = base
++        self.active = False
++
++    # -- passthroughs so loading / embedding paths are unchanged ----------------
++    def create_weights(self, *args, **kwargs):
++        return self.base.create_weights(*args, **kwargs)
++
++    def embedding(self, layer: torch.nn.Module, input_: torch.Tensor) -> torch.Tensor:
++        return self.base.embedding(layer, input_)
++
++    # -- repack ------------------------------------------------------------------
++    def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
++        if getattr(layer, "_lm_head_tied", False):
++            logger.info("lm_head int8: head is tied to the embedding — left unquantized")
++            return
++        w = layer.weight
++        if w.dim() != 2 or w.dtype not in (torch.bfloat16, torch.float16) or not w.is_cuda:
++            logger.warning("lm_head int8: unsupported weight (%s, %s) — left unquantized", tuple(w.shape), w.dtype)
++            return
++        n, k = w.shape  # [vocab_per_partition, hidden]
++        device = w.device
++        from sglang.kernels.ops.quantization.gptq_marlin_repack import gptq_marlin_repack
++
++        bits = envs.SGLANG_LM_HEAD_BITS.get()  # 8 (default) or 4
++        if bits not in (4, 8):
++            logger.warning("lm_head int8: SGLANG_LM_HEAD_BITS=%d unsupported — using 8", bits)
++            bits = 8
++        group = envs.SGLANG_LM_HEAD_INT8_GROUP.get()  # -1 = per output channel; 32/64/128 = group along k
++        if bits == 4 and group == -1:
++            group = 128  # per-channel 4-bit is too coarse for a 248K-row head; group-128 is the AWQ norm
++        if group != -1 and (group not in (32, 64, 128) or k % group):
++            logger.warning("lm_head int8: group %d unsupported for k=%d — using per-channel", group, k)
++            group = -1
++        qmax = 127.0 if bits == 8 else 7.0
++        qlo, qhi = (-128.0, 127.0) if bits == 8 else (-8.0, 7.0)
++        bias = 128.0 if bits == 8 else 8.0
++        ok, why = check_marlin_supports_shape(n, k, k, group)
++        if not ok:
++            logger.warning("lm_head int8: Marlin rejects shape n=%d k=%d g=%d (%s) — left unquantized", n, k, group, why)
++            return
++        with torch.no_grad():
++            wf = w.data.float()
++            if group == -1:
++                scale = wf.abs().amax(dim=1, keepdim=True).clamp_(min=1e-8) / qmax  # [n, 1]
++                q = torch.round(wf / scale).clamp_(qlo, qhi)
++                scales_kn = scale.t()  # [1, n]
++            else:
++                g = wf.reshape(n, k // group, group)
++                sg = g.abs().amax(dim=2, keepdim=True).clamp_(min=1e-8) / qmax  # [n, k/g, 1]
++                q = torch.round(g / sg).clamp_(qlo, qhi).reshape(n, k)
++                scales_kn = sg.reshape(n, k // group).t()  # [k/g, n]
++            del wf
++            # uint8b128 / uint4b8: unsigned storage with a 2^(bits-1) bias (sym == that zero point)
++            q_u = (q + bias).to(torch.uint8).t().contiguous()  # [k, n]
++            del q
++            packed = _pack_rows_int32_cuda(q_u, bits)  # [k // (32/bits), n] int32, GPTQ layout
++            del q_u
++            marlin_q = gptq_marlin_repack(
++                packed, perm=torch.empty(0, dtype=torch.int, device=device), size_k=k, size_n=n, num_bits=bits
++            )
++            del packed
++            scales = scales_kn.to(w.dtype).contiguous()
++            marlin_s = marlin_permute_scales(scales, size_k=k, size_n=n, group_size=group)
++
++        layer.lm_head_qweight = Parameter(marlin_q, requires_grad=False)
++        layer.lm_head_scales = Parameter(marlin_s, requires_grad=False)
++        layer.lm_head_zp = marlin_make_empty_g_idx(device)
++        layer.lm_head_g_idx = marlin_make_empty_g_idx(device)
++        layer.lm_head_g_idx_sort = marlin_make_empty_g_idx(device)
++        layer.lm_head_workspace = marlin_make_workspace(device)
++        layer.lm_head_n, layer.lm_head_k = n, k
++        layer.lm_head_wtype = scalar_types.uint8b128 if bits == 8 else scalar_types.uint4b8
++        # Exact bf16 rows for the added / special tokens that fall in this partition.
++        layer.lm_head_exact_ids = None
++        if envs.SGLANG_LM_HEAD_INT8_EXACT_SPECIALS.get():
++            start = int(getattr(layer, "shard_indices", None).org_vocab_start_index) if getattr(layer, "shard_indices", None) is not None else 0
++            local = [i - start for i in _added_token_ids() if 0 <= i - start < n]
++            if local:
++                ids = torch.tensor(local, dtype=torch.long, device=device)
++                layer.lm_head_exact_ids = ids
++                layer.lm_head_exact_rows = Parameter(w.data[ids].clone(), requires_grad=False)  # [m, k] bf16
++                logger.info("lm_head int8: %d special-token rows kept exact (bf16)", len(local))
++        # Drop the dense copy; keep a zero-size `weight` so callers that probe
++        # `hasattr(lm_head, "weight")` / `.weight.dtype` still work.
++        layer.weight = Parameter(torch.empty(0, dtype=w.dtype, device=device), requires_grad=False)
++        self.active = True
++        logger.info(
++            "lm_head int8: %d x %d repacked to Marlin W%dA16 (%s symmetric), %.2f GB -> %.2f GB",
++            n, k, bits, "per-channel" if group == -1 else f"group-{group}", n * k * 2 / 1e9, n * k * bits / 8 / 1e9,
++        )
++
++    # -- forward -----------------------------------------------------------------
++    def apply(
++        self, layer: torch.nn.Module, x: torch.Tensor, bias: Optional[torch.Tensor] = None
++    ) -> torch.Tensor:
++        if not self.active:
++            # Not repacked (tied / unsupported): plain dense matmul, same as the
++            # unquantized LM-head path.
++            return torch.nn.functional.linear(x, layer.weight, bias)
++        out = apply_gptq_marlin_linear(
++            input=x,
++            weight=layer.lm_head_qweight,
++            weight_scale=layer.lm_head_scales,
++            weight_zp=layer.lm_head_zp,
++            g_idx=layer.lm_head_g_idx,
++            g_idx_sort_indices=layer.lm_head_g_idx_sort,
++            workspace=layer.lm_head_workspace,
++            wtype=layer.lm_head_wtype,
++            output_size_per_partition=layer.lm_head_n,
++            input_size_per_partition=layer.lm_head_k,
++            is_k_full=True,
++            bias=bias,
++        )
++        ids = getattr(layer, "lm_head_exact_ids", None)
++        if ids is not None:
++            exact = torch.nn.functional.linear(x, layer.lm_head_exact_rows)  # [tokens, m]
++            if bias is not None:
++                exact = exact + bias[ids]
++            out[..., ids] = exact.to(out.dtype)
++        return out
+diff --git a/python/sglang/srt/layers/vocab_parallel_embedding.py b/python/sglang/srt/layers/vocab_parallel_embedding.py
+index 4e7a955451..0d9d671f46 100644
+--- a/python/sglang/srt/layers/vocab_parallel_embedding.py
++++ b/python/sglang/srt/layers/vocab_parallel_embedding.py
+@@ -582,6 +582,19 @@ class ParallelLMHead(VocabParallelEmbedding):
+         )
+         self.quant_config = quant_config
+ 
++        # [3090 069] Opt-in load-time INT8 head (SGLANG_LM_HEAD_INT8=1): only when
++        # the checkpoint left lm_head unquantized; reverted by tie_weights().
++        if (
++            envs.SGLANG_LM_HEAD_INT8.get()
++            and isinstance(self.quant_method, UnquantizedEmbeddingMethod)
++            and torch.cuda.is_available()
++        ):
++            from sglang.srt.layers.quantization.lm_head_int8_marlin import (
++                Int8MarlinLMHeadMethod,
++            )
++
++            self.quant_method = Int8MarlinLMHeadMethod(self.quant_method)
++
+         # We only support pack LMHead if it's not quantized.
+         if _is_cpu and _is_cpu_amx_available:
+             if hasattr(self, "weight") and self.weight.dtype in [
+@@ -611,6 +624,12 @@ class ParallelLMHead(VocabParallelEmbedding):
+             return embed_tokens
+         else:
+             self.weight = embed_tokens.weight
++            # [3090 069] A tied head shares the embedding rows; the int8 repack
++            # would break the lookup, so fall back to the dense method.
++            self._lm_head_tied = True
++            base = getattr(self.quant_method, "base", None)
++            if base is not None and type(self.quant_method).__name__ == "Int8MarlinLMHeadMethod":
++                self.quant_method = base
+             return self
+ 
+     def forward(self, input_):
