@@ -43,6 +43,7 @@ In force, read before touching a checkpoint, the harness or the host: [docs/agen
 ## Optimization Target
 - **Primary:** single-user **256K context** performance (decode tok/s, TPOT). Measure at long context first.
 - **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win batch benchmarks.
+- **Eval harness:** SWE-bench Lite on **one lane per preset, `omp` (oh-my-pi) by default** — the scaffolds tied within noise (user decision); do not spend GPU time on scaffold A/Bs.
 
 ## Optimization Iteration Loop (the standing process)
 This is a **continuous loop**, not a one-shot. Each iteration (a wake-up, a finished background job, or a fresh session) runs these steps. Never stop to ask for confirmation — the user reads the README + everything we report and interjects with course-corrections.

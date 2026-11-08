@@ -78,26 +78,25 @@ Receipts: [`benchmarks/profiling/multiturn-cache-2026-11-01/`](benchmarks/profil
 
 ### SWE-bench Lite (isolated Docker harness)
 
-Full 300 instances, one attempt each, single-user, `swebench==4.1.0` scorer, opencode as the one lane per
-preset; every counted cell ran at the served 262K window with template-default thinking, a 32K output
+Full 300 instances, one attempt each, single-user, `swebench==4.1.0` scorer, one lane per preset (`omp`, oh-my-pi); every counted cell ran at the served 262K window with template-default thinking, a 32K output
 budget, no network, and closed on the
 leak audit at 0 exposed. **Only full-300 cells are compared.** Mechanics and receipts:
 [`docs/swebench-bakeoff.md`](docs/swebench-bakeoff.md); queue state in
 [issue #11](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/11).
 
-| Preset | opencode (resolved/300) |
+| Preset | resolved/300 (opencode unless marked `omp`) |
 |--------|:--------:|
 | `qwen38` (Qwen3.8-27B AWQ, thinking) | **196/300 (65.3 %)** |
 | `qwopus38` (Qwopus3.8-27B-Coder-Flash AWQ) | `omp` **190/300 (63.3 %)** (tie with `qwen38`, p = 0.45) |
 | `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **191/300 (63.7 %)** |
 | `flint` (Flint 40B-A2.5B, calibrated AWQ, thinking) | **182/300 (60.7 %)** · `omp` **186/300** (tie, p = 0.57) |
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **176/300 (58.7 %)** |
-| `qwen36-ream` · `qwen35-moe` · `coder-30b-eval` · `coder-reap-25b` · `coder-30b-ream` · `devstral` · `gemma4` · `nemotron3-omni` · `qwopus38` (opencode, [issue #21](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/21)) | *pending* (queue order) |
+| `qwen36-ream` · `qwen35-moe` · `coder-30b-eval` · `coder-reap-25b` · `coder-30b-ream` · `devstral` · `gemma4` · `nemotron3-omni` · all on `omp` ([issue #23](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/23)) | *pending* (queue order) |
 
-The harness pick (plain opencode) comes from a five-scaffold bake-off on `qwen38`: opencode 196 / +DCP 203 /
-little-coder 193 / +RTK 202 / prime 187, every pair a McNemar tie except prime vs the plugin lanes
-([receipt](benchmarks/quality/qwen38-v4-cycle-close-2026-10-22.md)). `qwen3-ream` is excluded on model
-grounds ([verdict](benchmarks/quality/bakeoff-qwen3-ream-verdict-2026-07-17.md)).
+The lanes are within noise of each other (the `qwen38` five-scaffold bake-off, `flint` opencode 182 vs `omp` 186,
+`qwopus38` `omp` 190 vs `qwen38` opencode 196: all McNemar ties, [detail](docs/swebench-bakeoff.md)); `omp` is
+the default lane as the cheapest. `qwen3-ream` is excluded on model grounds
+([verdict](benchmarks/quality/bakeoff-qwen3-ream-verdict-2026-07-17.md)).
 
 ### Quality
 

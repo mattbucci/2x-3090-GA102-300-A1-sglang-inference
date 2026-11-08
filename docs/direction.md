@@ -3,7 +3,7 @@
 Why this stack optimises for single-user 256K agentic inference on AWQ-int4 ships, and what it deliberately does not chase.
 
 
-**We optimize for 256K-context single-user agentic workloads on AWQ-int4 ships.** SWE-bench Lite is the canonical eval — every preset serves at full 256K (or model-card max) so agentic harnesses with multi-turn tool-call context (median ~41K, p90 ~82K, max 230K per instance) actually fit. Decode tok/s / TPOT at depth is the primary metric; multi-user throughput is secondary and never bought with single-user latency.
+**We optimize for 256K-context single-user agentic workloads on AWQ-int4 ships.** SWE-bench Lite is the canonical eval, run on one agent harness per preset: **oh-my-pi (`omp`) is the default lane** — the five-scaffold `qwen38` bake-off, the `flint` opencode-vs-omp pair and the `qwopus38`-vs-`qwen38` pair all landed within McNemar noise, so the harness is not a variable we spend GPU time on, and omp is the cheapest lane per instance; every preset serves at full 256K (or model-card max) so agentic harnesses with multi-turn tool-call context (median ~41K, p90 ~82K, max 230K per instance) actually fit. Decode tok/s / TPOT at depth is the primary metric; multi-user throughput is secondary and never bought with single-user latency.
 
 This rules out three axes other 3090 stacks chase:
 

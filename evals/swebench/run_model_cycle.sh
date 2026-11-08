@@ -65,7 +65,7 @@ if [ -z "$PRESET" ]; then
   exit 1
 fi
 
-SCAFFOLDS="${SCAFFOLDS:-opencode}"  # pruned to plain opencode 2026-10-22 (qwen38 five-scaffold bake-off = tie; benchmarks/quality/qwen38-v4-cycle-close-2026-10-22.md). Full roster still runs on request: opencode opencode-dcp little-coder little-coder-rtk prime dcode omp (+omp 2026-10-18; claw-code retired 2026-08-30).
+SCAFFOLDS="${SCAFFOLDS:-omp}"  # DEFAULT LANE = omp (oh-my-pi) since 2026-11-08 (user): the scaffolds are within noise of each other — qwen38 five-scaffold bake-off a McNemar tie (opencode 196 / +DCP 203 / little-coder 193 / +RTK 202 / prime 187), flint opencode 182 vs omp 186 (p 0.57), qwopus38 omp 190 vs qwen38 opencode 196 (p 0.45) — and omp is the fastest lane (flint omp median 452 s vs opencode ~800 s class, 6 walls). Earlier default: plain opencode (2026-10-22, benchmarks/quality/qwen38-v4-cycle-close-2026-10-22.md). Full roster still runs on request via SCAFFOLDS=.
 INSTANCES="${INSTANCES:-0}"
 TIMEOUT="${TIMEOUT:-1800}"
 SERVER_TIMEOUT="${SERVER_TIMEOUT:-720}"
