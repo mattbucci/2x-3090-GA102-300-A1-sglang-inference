@@ -55,6 +55,8 @@ FLEET=(
   "qwen36-dense|yes"
   "qwen3-ream|no"
   "qwen38|yes"
+  "qwopus38|yes"
+  "flint|yes"
   "coder-30b|no"
   "coder-reap-25b|no"
   "coder-30b-ream|no"
