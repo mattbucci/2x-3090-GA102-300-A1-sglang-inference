@@ -1,0 +1,47 @@
+Patch 077 — video-gpu-frames-numpy-consumers (v0.5.23 hop, net-new)
+
+Upstream v0.5.23 base_processor loads video with use_gpu=True unless the processor sets
+video_preprocessing_device = "cpu" (muse/glm4v/minimax do; nemotron and gemma4 do not). On a box where
+the torchcodec CUDA backend initialises, VideoDecoderWrapper.get_frames_at returns an NHWC uint8 CUDA tensor
+and the two numpy-only consumers break: nano_nemotron_vl.parse_video -> Image.fromarray(frame) raises
+"'Tensor' object has no attribute '__array_interface__'" (HTTP 500 on every video request, caught by the
+v0.5.23 flip campaign's nemotron3-omni capability probe), gemma4._video_decoder_to_tensor -> torch.from_numpy
+would raise the same way. Fix: move the frames to CPU numpy / CPU tensor at the consumer. Unit test:
+scripts/eval/test_video_gpu_frames.py (synthetic MP4, CUDA decode, both consumers).
+
+diff --git a/python/sglang/srt/multimodal/processors/gemma4.py b/python/sglang/srt/multimodal/processors/gemma4.py
+index a9e1b52631..a9f911021c 100644
+--- a/python/sglang/srt/multimodal/processors/gemma4.py
++++ b/python/sglang/srt/multimodal/processors/gemma4.py
+@@ -97,8 +97,12 @@ class Gemma4SGLangProcessor(SGLangBaseProcessor):
+             indices = list(range(total))
+         else:
+             indices = torch.arange(0, total, total / num_frames).int().tolist()
+-        frames_np = vdw.get_frames_at(indices)  # (N, H, W, C)
+-        return torch.from_numpy(frames_np).permute(0, 3, 1, 2).contiguous()
++        frames = vdw.get_frames_at(indices)  # (N, H, W, C): numpy on CPU, tensor on CUDA
++        # [3090 077] the torchcodec CUDA backend (GPU video load since v0.5.23) hands back
++        # a CUDA tensor; torch.from_numpy would raise on it. Keep the HF video processor's
++        # CPU contract.
++        frames_t = frames.cpu() if isinstance(frames, torch.Tensor) else torch.from_numpy(frames)
++        return frames_t.permute(0, 3, 1, 2).contiguous()
+ 
+     def process_mm_data(
+         self, input_text, images=None, videos=None, audios=None, **kwargs
+diff --git a/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py b/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py
+index 36fcc29141..5c12c7467c 100644
+--- a/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py
++++ b/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py
+@@ -244,6 +244,12 @@ class NanoNemotronVLImageProcessor(BaseMultimodalProcessor):
+             video, desired_fps=DESIRED_FPS, max_frames=MAX_FRAMES
+         )
+         video_array = video.get_frames_at(frames)
++        if isinstance(video_array, torch.Tensor):
++            # [3090 077] base_processor loads video on the GPU since v0.5.23 (torchcodec
++            # CUDA backend); get_frames_at then returns an NHWC uint8 CUDA tensor, and
++            # Image.fromarray below needs a numpy array (500 "'Tensor' object has no
++            # attribute '__array_interface__'" on every nemotron3-omni video request).
++            video_array = video_array.cpu().numpy()
+         avg_fps = video.avg_fps
+         if avg_fps > 0:
+             frame_duration_ms = int(1000 / avg_fps)
