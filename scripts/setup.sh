@@ -142,6 +142,11 @@ if [ "$SKIP_ENV" = false ]; then
     fi
     conda create -n "$ENV_NAME" python=3.12 -y
     conda activate "$ENV_NAME"
+    # pip must not count ~/.local (user-site) as already satisfied: activate_conda
+    # runs the env with PYTHONNOUSERSITE=1, so anything resolved there is missing at
+    # runtime (v0.5.23 env build: threadpoolctl + zstandard -> transformers
+    # `Could not import module 'GenerationMixin'`).
+    export PYTHONNOUSERSITE=1
 
     echo "Installing SGLang from source (CUDA)..."
     cd "$SGLANG_DIR/python"

@@ -124,6 +124,7 @@ def end_to_end_construct_input_messages_multistep():
     # v0.5.22 reads this __init__-set attribute after the merge (False = the
     # single-leading-system coalesce path every stack before it took).
     srv.supports_inline_system = False
+    srv.tool_call_parser = None  # read by _construct_input_messages since v0.5.23
     msgs = srv._construct_input_messages(req)
     a = assistants(msgs)
     assert len(a) == 3, f"expected 3 assistant turns, got {len(a)}"
