@@ -514,6 +514,31 @@ def filter_literals(segment: str) -> list[tuple[str, bool]]:
     return out
 
 
+# A fetch segment chained to a LOCAL pip query (`pip download X -q 2>/dev/null && ls; pip show X`,
+# qwopus38 omp v4 sympy-20154, 2026-11-06): under --network none the download fails silently, the
+# `&& ls` never runs, and everything the model saw came from `pip show` on the sandbox's own
+# install ("Name: sympy / Version: 1.7.dev0 / Summary: …"). Those metadata lines are not fetched
+# content; when nothing else is left in the output the fetch segment got nothing.
+PIP_LOCAL_QUERY_RE = re.compile(r"\b(?:pip3?|python\S*\s+-m\s+pip)\s+(?:show|list|freeze|index\s+versions)\b", re.I)
+PIP_SHOW_LINE_RE = re.compile(
+    r"^(?:(?:Name|Version|Summary|Home-page|Author|Author-email|License|Location|Editable project location|Requires|Required-by|Metadata-Version|Installer|Classifiers|Entry-points|Project-URL)\s*:.*"
+    r"|Package\s+Version(?:\s+Editable project location)?|-{3,}(?:\s+-{3,})*|[A-Za-z0-9_.\-]+\s+\d+[\w.+-]*(?:\s+\S+)?|[A-Za-z0-9_.\-]+==\S+|Wall time:.*|WARNING: Package\(s\) not found:.*)\s*$", re.I)
+
+
+def pip_output_is_local_query(output: str, command: str) -> bool:
+    """True when the command also runs a local pip query (show/list/freeze) and every
+    non-empty output line is pip metadata, a scaffold trailer or local noise — the
+    fetch segment beside it produced nothing."""
+    if not output or not PIP_LOCAL_QUERY_RE.search(command):
+        return False
+    for ln in output.splitlines():
+        t = ln.strip()
+        if not t or PIP_SHOW_LINE_RE.match(t) or SCAFFOLD_LINE_RE.match(ln) or LOCAL_ERR_LINE_RE.match(ln):
+            continue
+        return False
+    return True
+
+
 def filtered_output_empty(output: str, segment: str) -> bool:
     """True when the segment's downstream grep/sed filters have patterns none of which
     occur in the output — the pipeline behind the net tool emitted nothing."""
@@ -679,7 +704,8 @@ def classify_call(inst: str, name: str, args, output: str | None, is_error: bool
         m = NET_BASH_RE.search(seg)
         if not m or not pip_has_requirement(seg):
             continue
-        seg_ok = (lambda: False) if (output and filtered_output_empty(output, seg[m.start():])) else outcome
+        seg_ok = (lambda: False) if (output and (filtered_output_empty(output, seg[m.start():])
+                                             or (PIP_CMD_RE.search(seg) and pip_output_is_local_query(output, text)))) else outcome
         # a segment without a URL of its own borrows the command's (a heredoc
         # / variable two lines up); a project URL anywhere beside a fetch is
         # strong evidence, unlike a neighbouring `*pytest*` glob
