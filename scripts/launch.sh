@@ -764,10 +764,17 @@ apply_preset() {
             if [[ -n "${SPEC_DECODE:-}" ]]; then
                 FLINT_DRAFT="${FLINT_DRAFT:-$MODELS_DIR/drafts/flint-dflash2}"
                 [[ -f "$FLINT_DRAFT/config.json" ]] || { echo "ERROR: flint SPEC_DECODE: DFlash2 draft not found at $FLINT_DRAFT" >&2; exit 1; }
+                # --speculative-attention-mode decode + --disable-overlap-schedule as on the
+                # qwen38 DSpark / qwen36 DFlash arms: the first Flint arm (prefill-mode verify,
+                # 2026-11-09 05:50) held accept 3.5-4.4 but decoded 0.43x/0.13x/0.10x of no-spec
+                # at 32K/131K/262K (+9 % at 1K) -- the 8-token verify went through the extend
+                # path over the whole KV each step.
                 EXTRA_ARGS="$EXTRA_ARGS \
                     --speculative-algorithm DFLASH \
                     --speculative-draft-model-path $FLINT_DRAFT \
-                    --speculative-draft-model-quantization unquant"
+                    --speculative-draft-model-quantization unquant \
+                    --speculative-attention-mode ${FLINT_SPEC_ATTN:-decode} \
+                    --disable-overlap-schedule"
             fi
             ;;
         qwen35-dense)
