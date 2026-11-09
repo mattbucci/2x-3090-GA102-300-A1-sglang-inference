@@ -752,6 +752,23 @@ apply_preset() {
             REASONING="--reasoning-parser flint"
             CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
             EXTRA_ARGS="${EXTRA_ARGS:-} --attention-backend triton --tool-call-parser flint --grammar-backend flint --enable-fp32-lm-head --swa-full-tokens-ratio ${FLINT_SWA_RATIO:-0.05} --triton-attention-num-kv-splits ${FLINT_KV_SPLITS:-64}"
+            # SPEC_DECODE opt-in: DFlash2 block-diffusion drafter (incoai/Flint-DFlash2,
+            # 0.4B bf16, block 8 -> 7 drafts, lossless; target layers 5/15/26/36/46).
+            # Flint inherits the EAGLE3 hidden-state capture from Qwen3MoeForCausalLM,
+            # so no plugin change; the draft must stay unquantized (it would inherit the
+            # target's AWQ method). Flint's pool is 4.5x the window, so the draft fits
+            # at the full 262K unlike the 24 GB-OOM presets. R9700 gate on their FP8
+            # Flint: 1.3-2.4x decode at 14..197K, accept 3.5-3.7, caps 3/3 (2026-11-09).
+            # Gate here: natural-text decode ladder vs no-spec, caps, haystack needle +
+            # reasoning, greedy identity (cache_hit_crossarm) before any default flip.
+            if [[ -n "${SPEC_DECODE:-}" ]]; then
+                FLINT_DRAFT="${FLINT_DRAFT:-$MODELS_DIR/drafts/flint-dflash2}"
+                [[ -f "$FLINT_DRAFT/config.json" ]] || { echo "ERROR: flint SPEC_DECODE: DFlash2 draft not found at $FLINT_DRAFT" >&2; exit 1; }
+                EXTRA_ARGS="$EXTRA_ARGS \
+                    --speculative-algorithm DFLASH \
+                    --speculative-draft-model-path $FLINT_DRAFT \
+                    --speculative-draft-model-quantization unquant"
+            fi
             ;;
         qwen35-dense)
             # Qwen3.5-27B Dense AWQ (R9700 self-cal at hf-mattbucci/Qwen3.5-
