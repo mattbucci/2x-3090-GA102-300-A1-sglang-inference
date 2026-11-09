@@ -3,9 +3,12 @@
     "hardware": "2x RTX 3090 TP=2",
     "instrument": "scripts/bench/bench_long_context.py",
     "output_tokens": 100,
-    "saved": "2026-11-02",
+    "saved": "2026-11-09",
     "schema": 2,
-    "stack": "sglang-v0.5.15"
+    "stack": "sglang-v0.5.15",
+    "notes": [
+      "flint 2026-11-09: baseline = calibrated g32 build on v0.5.23 (from the same-session arm receipt flint-2026-11-09-g32-ab.json; the chain save resumed the g64 campaign run)"
+    ]
   },
   "coder-30b": {
     "1024": {
@@ -52,22 +55,22 @@
   "flint": {
     "1024": {
       "actual_input_tokens": 1024,
-      "tok_per_sec": 185.5,
-      "tpot_ms": 5.39,
-      "ttft_ms": 74.63
+      "tok_per_sec": 182.1,
+      "tpot_ms": 5.49,
+      "ttft_ms": 70.4
     },
     "32768": {
       "actual_input_tokens": 32768,
-      "tok_per_sec": 170.6,
-      "tpot_ms": 5.86,
-      "ttft_ms": 137.39
+      "tok_per_sec": 167.2,
+      "tpot_ms": 5.98,
+      "ttft_ms": 153.08
     },
     "deep": {
       "actual_input_tokens": 261916,
       "label": 261916,
-      "tok_per_sec": 114.9,
-      "tpot_ms": 8.7,
-      "ttft_ms": 569.8
+      "tok_per_sec": 113.6,
+      "tpot_ms": 8.8,
+      "ttft_ms": 541.83
     }
   },
   "gemma4": {
