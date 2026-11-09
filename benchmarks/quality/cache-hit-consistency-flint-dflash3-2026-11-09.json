@@ -1,0 +1,565 @@
+{
+ "tag": "flint-dflash3-2026-11-09",
+ "model": "flint",
+ "mismatches": 3,
+ "results": [
+  {
+   "tokens": 32768,
+   "cell": 0,
+   "prompt_tokens": 29326,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 814,
+   "A_fresh_fresh_prefix": 457,
+   "B_hit_prefix": 470,
+   "B_fresh_fresh_prefix": 136,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": false,
+   "A_len": [
+    814,
+    814,
+    762
+   ],
+   "B_len": [
+    753,
+    812,
+    858
+   ],
+   "finish": [
+    "length",
+    "length",
+    "length",
+    "length"
+   ],
+   "secs": [
+    3.4,
+    0.9,
+    0.9,
+    3.2
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 1.0,
+    "A_fresh_vs_fresh": 0.391,
+    "B_hit_vs_fresh": 1.598,
+    "B_fresh_vs_fresh": 0.301
+   },
+   "texts": {
+    "A_fresh": "We need answer user. Need parse. They provided huge document with many math Q&A. Final instruction: \"Summarise the three most specific factual claims in this document in one sentence each.\"\n\nWe need identify three most specific factual claims? Ambiguous. We need likely from document. Must summarize three most specific factual claims in one sentence each. We need maybe pick notable specific factual claims. Could be any. Need comply. We should not answer math? We need summarize. \"The three most specific factual claims\" maybe in document. We can choose three specific factual claims with numbers. Need one sentence each.\n\nWe need be careful: user asks \"Summarise the three most specific factual claims in this document in one sentence each.\" We should provide three sentences, each a specific factual claim from",
+    "A_hit": "We need answer user. Need parse. They provided huge document with many math Q&A. Final instruction: \"Summarise the three most specific factual claims in this document in one sentence each.\"\n\nWe need identify three most specific factual claims? Ambiguous. We need likely from document. Must summarize three most specific factual claims in one sentence each. We need maybe pick notable specific factual claims. Could be any. Need comply. We should not answer math? We need summarize. \"The three most specific factual claims\" maybe in document. We can choose three specific factual claims with numbers. Need one sentence each.\n\nWe need be careful: user asks \"Summarise the three most specific factual claims in this document in one sentence each.\" We should provide three sentences, each a specific factual claim from",
+    "A_fresh2": "We need answer user. Need parse. They provided huge document with many math Q&A. Final instruction: \"Summarise the three most specific factual claims in this document in one sentence each.\"\n\nWe need identify three most specific factual claims? Ambiguous. We need likely from document. Must summarize three most specific factual claims in one sentence each. We need maybe pick notable specific factual claims. Could be any. Need comply. We should not answer all. Need maybe mention three specific factual claims. Which are most specific? Could be from document: probability etc. \"The probability that she will be able to make an integer between 10 and 20, inclusive is 11/36.\" Specific. \"There are 90 ways to arrange letters of TARTAR.\" Specific. \"The probability",
+    "B_fresh": "We need answer user. We need parse. They asked: \"Summarise the three most specific factual claims in this document in one sentence each.\" Then now: \"Now give the single most surprising claim from your previous answer and say why.\"\n\nWe need respond. We need likely refer to previous answer. We need maybe choose three specific factual claims. Then single most surprising claim from previous answer and why.\n\nWe need craft final. We should probably not overcomplicate. We need maybe identify three specific factual claims from document. Could be any. To satisfy, maybe pick three specific factual claims:\n\n1. Probability spinner C = 1/4.\n2. Number of ways select math club team = 3003.\n3. Probability Melinda can make integer between 10 and 20 inclusive =",
+    "B_hit": "We need answer user. We need parse. They asked: \"Summarise the three most specific factual claims in this document in one sentence each.\" Then now: \"Now give the single most surprising claim from your previous answer and say why.\"\n\nWe need respond. We need likely refer to previous answer. We need maybe choose three specific factual claims. Then single most surprising claim from previous answer and why.\n\nWe need craft final. We should probably not overcomplicate. We can pick three specific factual claims from document. Most specific factual claims could be math answers. Need one sentence each.\n\nThen single most surprising claim from previous answer and why.\n\nWe need maybe mention surprising: probability that Fatima gets fewer heads than tails flipping 10 coins is 193/512? Or maybe \"the probability that",
+    "B_fresh2": "We need answer user. We need parse. They asked: \"Summarise the three most specific factual claims in this document in one sentence each.\n\nNow give the single most surprising claim from your previous answer and say why.\"\n\nWe need likely respond to that meta-instruction. We need maybe identify three most specific factual claims in document. Then single most surprising claim from previous answer and why.\n\nWe need decide what counts. The document is huge with many math problems and solutions. \"Most specific factual claims\" could be specific numerical facts. We can pick three specific factual claims. Then single most surprising claim from previous answer and why.\n\nWe need maybe not overdo. The final answer should probably include three summaries, then most surprising.\n\nLet's inspect document for specific factual claims. Could be:\n- Probability spinner"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "<think>": -0.00012659224739763886,
+     "UMP": -9.297001838684082,
+     "AIN": -10.328251838684082,
+     "ain": -13.578251838684082,
+     "John": -14.453251838684082
+    },
+    "A_hit": {
+     "<think>": -7.450303382938728e-05,
+     "UMP": -9.82819938659668,
+     "AIN": -10.89069938659668,
+     "John": -14.07819938659668,
+     "ain": -14.57819938659668
+    },
+    "A_fresh2": {
+     "<think>": -9.667406266089529e-05,
+     "UMP": -9.687596321105957,
+     "AIN": -10.343846321105957,
+     "ain": -13.406346321105957,
+     "John": -14.218846321105957
+    },
+    "B_fresh": {
+     "<think>": -4.768360213347478e-06,
+     "Before": -12.523442268371582,
+     "UMP": -14.835942268371582,
+     "Since": -14.898442268371582,
+     "</think>": -15.648442268371582
+    },
+    "B_hit": {
+     "<think>": -1.311301275563892e-06,
+     "Before": -14.121094703674316,
+     "</think>": -15.683594703674316,
+     "Since": -16.058595657348633,
+     "UMP": -16.308595657348633
+    },
+    "B_fresh2": {
+     "<think>": -4.410734163684538e-06,
+     "Before": -12.636723518371582,
+     "UMP": -14.636723518371582,
+     "Since": -15.199223518371582,
+     "</think>": -15.699223518371582
+    }
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 1,
+   "prompt_tokens": 29020,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 717,
+   "A_fresh_fresh_prefix": 53,
+   "B_hit_prefix": 41,
+   "B_fresh_fresh_prefix": 41,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": false,
+   "A_len": [
+    717,
+    717,
+    664
+   ],
+   "B_len": [
+    698,
+    744,
+    735
+   ],
+   "finish": [
+    "length",
+    "length",
+    "length",
+    "length"
+   ],
+   "secs": [
+    3.4,
+    1.0,
+    1.0,
+    3.3
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 1.047,
+    "A_fresh_vs_fresh": 0.328,
+    "B_hit_vs_fresh": 0.687,
+    "B_fresh_vs_fresh": 0.609
+   },
+   "texts": {
+    "A_fresh": "We need answer user. Need parse request. They pasted huge document with many math problems and solutions. At top: \"Read this document.\" Then content. At end: \"List five proper nouns that appear in the document, in the order they first appear.\"\n\nWe need comply. Need list five proper nouns appearing in document, in order first appear. Need identify proper nouns. Document includes names: maybe in math problems: Alicia, Amanda, Anna? Coach Yellsalot? Bob, Yogi? Bertha? Sam? Alexio? Screamers? Grunters? etc. Need list five proper nouns that appear, in order first appear.\n\nWe need be careful: \"proper nouns\" capitalized words. The document starts with math text, names. Need first five proper nouns in order of first",
+    "A_hit": "We need answer user. Need parse request. They pasted huge document with many math problems and solutions. At top: \"Read this document.\" Then content. At end: \"List five proper nouns that appear in the document, in the order they first appear.\"\n\nWe need comply. Need list five proper nouns appearing in document, in order first appear. Need identify proper nouns. Document includes names: maybe in math problems: Alicia, Amanda, Anna? Coach Yellsalot? Bob, Yogi? Bertha? Sam? Alexio? Screamers? Grunters? etc. Need list five proper nouns that appear, in order first appear.\n\nWe need be careful: \"proper nouns\" capitalized words. The document starts with math text, names. Need first five proper nouns in order of first",
+    "A_fresh2": "We need answer user. Need parse request. They pasted a huge document with many math problems and solutions. At end: \"List five proper nouns that appear in the document, in the order they first appear.\"\n\nWe need comply. Need identify proper nouns in document, in order first appear. Proper nouns likely names of people, places, etc. Need list five. Must be careful order. Document includes many proper nouns: Alicia, Amanda, Anna? Coach Yellsalot? Bob, Yogi? Alexio? Bertha? Screamers? Grunters? etc. Need first five proper nouns that appear in document. We need scan from beginning.\n\nThe document starts: \"Read this document.\n\n, (-1,1)); label(scale(0.6)*\"2\", (1,1",
+    "B_fresh": "We need answer user. Need parse. They ask: \"Read this document.\n\n[long text]\n\nList five proper nouns that appear in the document, in the order they first appear.\n\n...\n\nWhich of those did you find hardest to locate, and roughly where in the document was it?\"\n\nWe need respond. We need likely list five proper nouns in order first appear. Then answer second part: which of those did I find hardest to locate, and roughly where in document was it? As AI, I should maybe list. Need be accurate.\n\nWe need scan document for proper nouns in order. Proper nouns are capitalized names. Need first five proper nouns that appear. The document starts:\n\n\"Read this document.\n\n, (-1,1));\nlabel(scale(0.6)*\"2\", (1",
+    "B_hit": "We need answer user. Need parse. They asked: \"Read this document.\n\n[long text]\n\nList five proper nouns that appear in the document, in the order they first appear.\n\n...\n\nWhich of those did you find hardest to locate, and roughly where in the document was it?\"\n\nWe need respond. We need likely list five proper nouns in order first appear. Then answer second question: which of those did I find hardest to locate, and roughly where in document was it? As AI, I should maybe list. Need be accurate.\n\nWe need inspect document for proper nouns. Proper nouns are names of people, places, etc. In order first appear? The document starts with math problem about spinners, no proper nouns? Then coin toss. Then math. Then \"Our school's girls volleyball",
+    "B_fresh2": "We need answer user. Need parse. They asked: \"Read this document.\n\n[long text]\n\nList five proper nouns that appear in the document, in the order they first appear.\n\n...\n\nWhich of those did you find hardest to locate, and roughly where in the document was it?\"\n\nWe need respond. We need likely list five proper nouns in order first appear. Then answer second part: which of those did I find hardest to locate, and roughly where in document was it? As AI, I should maybe comply. Need identify proper nouns. Need be careful: proper nouns are names of specific people, places, etc. In document, first proper nouns likely appear in math problems: \"Alicia, Amanda, and Anna\" maybe? Let's scan beginning.\n\nDocument starts: \"Read this document"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "<think>": -2.264974000354414e-06,
+     "UMP": -13.312501907348633,
+     "AIN": -15.250001907348633,
+     "</think>": -16.812501907348633,
+     "John": -16.875001907348633
+    },
+    "A_hit": {
+     "<think>": -1.1920922133867862e-06,
+     "UMP": -13.984375953674316,
+     "AIN": -16.296876907348633,
+     "</think>": -16.796876907348633,
+     "John": -17.484376907348633
+    },
+    "A_fresh2": {
+     "<think>": -2.861018856492592e-06,
+     "UMP": -12.98437786102295,
+     "AIN": -15.10937786102295,
+     "John": -16.796876907348633,
+     "</think>": -16.921876907348633
+    },
+    "B_fresh": {
+     "<think>": -3.6954811548639555e-06,
+     "UMP": -13.218753814697266,
+     "Before": -14.031253814697266,
+     "ELL": -14.843753814697266,
+     "Since": -15.593753814697266
+    },
+    "B_hit": {
+     "<think>": -5.006777428206988e-06,
+     "UMP": -12.968754768371582,
+     "Before": -13.593754768371582,
+     "ELL": -14.156254768371582,
+     "Since": -15.656254768371582
+    },
+    "B_fresh2": {
+     "<think>": -5.245195097813848e-06,
+     "UMP": -12.921879768371582,
+     "Before": -13.421879768371582,
+     "ELL": -14.296879768371582,
+     "Since": -15.484379768371582
+    }
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 2,
+   "prompt_tokens": 30185,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 715,
+   "A_fresh_fresh_prefix": 61,
+   "B_hit_prefix": 99,
+   "B_fresh_fresh_prefix": 238,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    715,
+    715,
+    711
+   ],
+   "B_len": [
+    743,
+    750,
+    738
+   ],
+   "finish": [
+    "length",
+    "length",
+    "length",
+    "length"
+   ],
+   "secs": [
+    3.2,
+    0.7,
+    0.7,
+    3.2
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.703,
+    "A_fresh_vs_fresh": 0.344,
+    "B_hit_vs_fresh": 1.078,
+    "B_fresh_vs_fresh": 0.844
+   },
+   "texts": {
+    "A_fresh": "We need answer user. Need parse. They provided huge document with many Q&A. Final instruction: \"What is the last complete sentence of the document? Quote it exactly.\"\n\nWe need identify last complete sentence in provided text. Need be careful. The document ends with:\n\n\"The Happy Valley Kennel has 4 chickens, 2 dogs, and 5 cats.  (Some people in Happy Valley like to keep chickens as pets!)  In how many ways can the 11 animals be placed in a row of 11 cages, such that all of the animals of each type are in adjacent cages?  (Two animals of the same species are considered distinguishable.)\n\nFirst we o\n\nWhat is the last complete sentence of the document? Quote it exactly.\"\n\nThe last text seems incomplete: \"First",
+    "A_hit": "We need answer user. Need parse. They provided huge document with many Q&A. Final instruction: \"What is the last complete sentence of the document? Quote it exactly.\"\n\nWe need identify last complete sentence in provided text. Need be careful. The document ends with:\n\n\"The Happy Valley Kennel has 4 chickens, 2 dogs, and 5 cats.  (Some people in Happy Valley like to keep chickens as pets!)  In how many ways can the 11 animals be placed in a row of 11 cages, such that all of the animals of each type are in adjacent cages?  (Two animals of the same species are considered distinguishable.)\n\nFirst we o\n\nWhat is the last complete sentence of the document? Quote it exactly.\"\n\nThe last text seems incomplete: \"First",
+    "A_fresh2": "We need answer user. Need parse. They provided huge document and final question: \"What is the last complete sentence of the document? Quote it exactly.\"\n\nWe need determine last complete sentence of the document. The document ends with:\n\n\"The Happy Valley Kennel has 4 chickens, 2 dogs, and 5 cats.  (Some people in Happy Valley like to keep chickens as pets!)  In how many ways can the 11 animals be placed in a row of 11 cages, such that all of the animals of each type are in adjacent cages?  (Two animals of the same species are considered distinguishable.)\n\nFirst we o\n\nWe need last complete sentence. It ends mid-sentence: \"First we o\" likely truncated. Last complete sentence before that is: \"(Two animals",
+    "B_fresh": "We need answer user. Need parse. We need rewrite previous answer as numbered list. Previous answer was: \"The last text seems incomplete: 'First we o\n\nWhat is the last complete sentence of the document? Quote it exactly.'\"\n\nWe need likely comply. We need maybe final answer should be numbered list. We should not overcomplicate. The instruction: \"Rewrite your previous answer as a numbered list.\" So we need take previous answer and format as numbered list.\n\nPrevious answer content: \"The last text seems incomplete: 'First we o\n\nWhat is the last complete sentence of the document? Quote it exactly.\"\n\nWe need rewrite as numbered list. Could be:\n1. The last text seems incomplete.\n2. The quoted phrase is: \"First we o\n\nWhat is the last complete",
+    "B_hit": "We need answer user. Need parse. We need rewrite previous answer as numbered list. Previous answer likely: \"The last complete sentence of the document is: 'First we o'\"? Wait user asked: \"What is the last complete sentence of the document? Quote it exactly.\" Then assistant response? In conversation, assistant final was: \"The last complete sentence of the document is: 'First we o'\"? Actually assistant response in transcript: \n\"What is the last complete sentence of the document? Quote it exactly.\n\nThe last complete sentence of the document is: 'First we o'\"\n\nWait let's scroll: The assistant final answer was:\n\"What is the last complete sentence of the document? Quote it exactly.\n\nThe last complete sentence of the document is: 'First we o'\"\n\nNo",
+    "B_fresh2": "We need answer user. Need parse. We need rewrite previous answer as numbered list. Previous answer was: \"The last text seems incomplete: 'First we o\n\nWhat is the last complete sentence of the document? Quote it exactly.'\"\n\nWe need likely respond with numbered list. Must follow instruction. We need maybe quote last complete sentence. The last complete sentence before incomplete? Let's inspect end of document:\n\n\"The Happy Valley Kennel has 4 chickens, 2 dogs, and 5 cats.  (Some people in Happy Valley like to keep chickens as pets!)  In how many ways can the 11 animals be placed in a row of 11 cages, such that all of the animals of each type are in adjacent cages?  (Two animals of the same species are considered distinguishable.)\n\n"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "<think>": -2.3841855067985307e-07,
+     "</think>": -17.109375,
+     "AIN": -17.484375,
+     "John": -17.609375,
+     "UMP": -17.796875
+    },
+    "A_hit": {
+     "<think>": 0.0,
+     "AIN": -16.78125,
+     "</think>": -17.21875,
+     "UMP": -17.46875,
+     "John": -17.78125
+    },
+    "A_fresh2": {
+     "<think>": 0.0,
+     "AIN": -17.140625,
+     "</think>": -17.203125,
+     "John": -17.515625,
+     "<tool_call>": -17.953125
+    },
+    "B_fresh": {
+     "<think>": -2.0265558760002023e-06,
+     "Before": -13.625001907348633,
+     "1": -15.375001907348633,
+     "</think>": -16.250001907348633,
+     "#": -16.375001907348633
+    },
+    "B_hit": {
+     "<think>": -1.5497195136049413e-06,
+     "Before": -14.203126907348633,
+     "<tool_call>": -16.265626907348633,
+     "</think>": -16.328126907348633,
+     "1": -16.453126907348633
+    },
+    "B_fresh2": {
+     "<think>": -1.311301275563892e-06,
+     "Before": -14.468750953674316,
+     "</think>": -16.218751907348633,
+     "<tool_call>": -16.406251907348633,
+     "John": -16.406251907348633
+    }
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 0,
+   "prompt_tokens": 118463,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 783,
+   "A_fresh_fresh_prefix": 71,
+   "B_hit_prefix": 138,
+   "B_fresh_fresh_prefix": 34,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": false,
+   "A_len": [
+    783,
+    783,
+    773
+   ],
+   "B_len": [
+    802,
+    819,
+    835
+   ],
+   "finish": [
+    "length",
+    "length",
+    "length",
+    "length"
+   ],
+   "secs": [
+    20.8,
+    1.4,
+    1.1,
+    20.5
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.531,
+    "A_fresh_vs_fresh": 0.703,
+    "B_hit_vs_fresh": 0.469,
+    "B_fresh_vs_fresh": 0.687
+   },
+   "texts": {
+    "A_fresh": "We need answer user. Need parse. They provided huge document with many math Q&A. Final instruction: \"Summarise the three most specific factual claims in this document in one sentence each.\"\n\nWe need identify three most specific factual claims? Ambiguous. We need likely from document. We should summarize three specific factual claims in one sentence each. Could pick notable specific numeric claims. Need maybe not all. We need answer concise.\n\nWe need comply. We can choose three specific factual claims from document. Maybe most specific factual claims: e.g., probability spinner C = 1/4? math. Or specific answers. \"The probability that the square root of a randomly selected two-digit whole number is less than eight is 3/5.\" Specific. \"The probability that Melinda will be able",
+    "A_hit": "We need answer user. Need parse. They provided huge document with many math Q&A. Final instruction: \"Summarise the three most specific factual claims in this document in one sentence each.\"\n\nWe need identify three most specific factual claims? Ambiguous. We need likely from document. We should summarize three specific factual claims in one sentence each. Could pick notable specific numeric claims. Need maybe not all. We need answer concise.\n\nWe need comply. We can choose three specific factual claims from document. Maybe most specific factual claims: e.g., probability spinner C = 1/4? math. Or specific answers. \"The probability that the square root of a randomly selected two-digit whole number is less than eight is 3/5.\" Specific. \"The probability that Melinda will be able",
+    "A_fresh2": "We need answer user. Need parse. They provided huge document with many Q&A. Final instruction: \"Summarise the three most specific factual claims in this document in one sentence each.\"\n\nWe need identify three most specific factual claims? Ambiguous. We need likely from document. We should maybe pick notable specific factual claims. Need summarize in one sentence each. Could be any three. We need comply. Maybe choose three specific factual claims from text. Need be careful.\n\nWe need answer final. Could mention three specific factual claims. Which ones? The document contains many factual claims. \"most specific\" maybe last? We can choose three with numbers. Need one sentence each.\n\nMaybe:\n1. The probability that the spinner lands on C is 1/4? Specific.\n2. The number",
+    "B_fresh": "We need answer user. We need parse. They asked: \"Summarise the three most specific factual claims in this document in one sentence each.\n\n[long doc]\n\nNow give the single most surprising claim from your previous answer and say why.\"\n\nWe need respond. We need likely summarize three most specific factual claims in doc, one sentence each. Then give single most surprising claim from previous answer and why.\n\nWe need decide what counts. The document contains many factual claims. \"Most specific factual claims\" maybe specific numbers. We can pick three specific factual claims. Then single most surprising claim from previous answer and why.\n\nWe should probably not overdo. Need final answer. We can choose three specific factual claims from document. Maybe:\n1. Probability spinner landing on C is 1/4.\n2",
+    "B_hit": "We need answer user. We need parse. They asked: \"Summarise the three most specific factual claims in this document in one sentence each.\n\nNow give the single most surprising claim from your previous answer and say why.\"\n\nWe need likely respond. We need maybe identify three most specific factual claims in document. Then single most surprising claim from previous answer and why.\n\nWe need craft final. We should probably not overdo. Need maybe choose three specific factual claims. The document is huge with many math problems and answers. \"Most specific factual claims\" could mean specific numerical facts. We can pick three specific factual claims. Then single most surprising claim from previous answer and why.\n\nWe need maybe answer: \n1. Probability spinner C is 1/4.\n2. Probability square root of randomly selected",
+    "B_fresh2": "We need answer user. We need parse final instruction: \"Summarise the three most specific factual claims in this document in one sentence each.\n\nNow give the single most surprising claim from your previous answer and say why.\"\n\nWe need likely respond to last meta-instruction. We need maybe identify three most specific factual claims in document, summarize each in one sentence. Then give single most surprising claim from previous answer and why.\n\nWe need craft final answer. We should probably not overdo. Need maybe choose three specific factual claims. The document is huge with many math problems and answers. \"Most specific factual claims\" could mean specific numbers. We can pick three specific factual claims. Then single most surprising claim from previous answer and why.\n\nWe need maybe answer: \n1. Probability spinner C is 1"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "<think>": -3.099436753473128e-06,
+     "UMP": -13.50000286102295,
+     "AIN": -13.68750286102295,
+     "ain": -16.125003814697266,
+     "John": -16.500003814697266
+    },
+    "A_hit": {
+     "<think>": -3.6954811548639555e-06,
+     "UMP": -13.156253814697266,
+     "AIN": -13.656253814697266,
+     "John": -16.218753814697266,
+     "ain": -16.656253814697266
+    },
+    "A_fresh2": {
+     "<think>": -4.6491513785440475e-06,
+     "AIN": -12.984379768371582,
+     "UMP": -13.359379768371582,
+     "ain": -15.421879768371582,
+     "John": -16.109378814697266
+    },
+    "B_fresh": {
+     "<think>": -2.861018856492592e-06,
+     "Before": -13.15625286102295,
+     "</think>": -15.59375286102295,
+     "inthe": -16.531251907348633,
+     "Since": -16.531251907348633
+    },
+    "B_hit": {
+     "<think>": -2.0265558760002023e-06,
+     "Before": -13.625001907348633,
+     "</think>": -15.750001907348633,
+     "UMP": -16.375001907348633,
+     "inthe": -16.500001907348633
+    },
+    "B_fresh2": {
+     "<think>": -4.768360213347478e-06,
+     "Before": -12.468754768371582,
+     "</think>": -15.593754768371582,
+     "Since": -16.406253814697266,
+     "UMP": -16.656253814697266
+    }
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 1,
+   "prompt_tokens": 120091,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 639,
+   "A_fresh_fresh_prefix": 248,
+   "B_hit_prefix": 135,
+   "B_fresh_fresh_prefix": 224,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    639,
+    639,
+    636
+   ],
+   "B_len": [
+    757,
+    708,
+    755
+   ],
+   "finish": [
+    "length",
+    "length",
+    "length",
+    "length"
+   ],
+   "secs": [
+    21.3,
+    1.4,
+    1.4,
+    20.9
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 1.406,
+    "A_fresh_vs_fresh": 0.75,
+    "B_hit_vs_fresh": 0.562,
+    "B_fresh_vs_fresh": 0.531
+   },
+   "texts": {
+    "A_fresh": "We need answer user. Need parse. They provided huge document with many math Q&A. Final instruction: \"List five proper nouns that appear in the document, in the order they first appear.\"\n\nWe need comply. Need identify proper nouns in document. Must be careful. The document includes many proper nouns: names, places, brands, etc. Need list five proper nouns that appear, in order first appear.\n\nWe need scan text. First lines: \"Read this document.\" Then math. Proper nouns likely: \"Spinner A\", \"Spinner B\"? \"Alicia, Amanda, and Anna\" (names). \"Coach Yellsalot\" (name). \"Bob and Yogi\" (names). \"April\" (name). \"Bertha\" (name). \"Alexio\" (name",
+    "A_hit": "We need answer user. Need parse. They provided huge document with many math Q&A. Final instruction: \"List five proper nouns that appear in the document, in the order they first appear.\"\n\nWe need comply. Need identify proper nouns in document. Must be careful. The document includes many proper nouns: names, places, brands, etc. Need list five proper nouns that appear, in order first appear.\n\nWe need scan text. First lines: \"Read this document.\" Then math. Proper nouns likely: \"Spinner A\", \"Spinner B\"? \"Alicia, Amanda, and Anna\" (names). \"Coach Yellsalot\" (name). \"Bob and Yogi\" (names). \"April\" (name). \"Bertha\" (name). \"Alexio\" (name",
+    "A_fresh2": "We need answer user. Need parse. They provided huge document with many math Q&A. Final instruction: \"List five proper nouns that appear in the document, in the order they first appear.\"\n\nWe need comply. Need identify proper nouns in document. Must list five proper nouns that appear, in order first appear. Need be careful. Document includes many proper nouns: maybe names? Let's scan.\n\nWe need answer likely from document text. Proper nouns: \"Alicia, Amanda, and Anna\" (names), \"Coach Yellsalot\", \"Bob and Yogi\", \"Bertha\", \"Alexio\", \"Dave\", \"Alex\", \"Reckha\", \"Michael\", \"Max\", \"Liz\", \"Arnold\", \"Keish\", etc. Also places? \"Math City\", \"",
+    "B_fresh": "We need answer user. Need parse. They ask: \"Which of those did you find hardest to locate, and roughly where in the document was it?\" We need answer. We need likely refer to five proper nouns we listed? We need maybe choose hardest to locate and location. We need be accurate. We should maybe list five proper nouns in order first appear, then answer which hardest and roughly where.\n\nWe need inspect document for proper nouns. The final user asks: \"List five proper nouns that appear in the document, in the order they first appear.\n\n...\n\nWhich of those did you find hardest to locate, and roughly where in the document was it?\"\n\nWe need respond. We can choose five proper nouns. Need order first appear. Let's scan from start.\n\nDocument starts:\n\"Read this",
+    "B_hit": "We need answer user. Need parse. They ask: \"Which of those did you find hardest to locate, and roughly where in the document was it?\" Wait previous assistant response listed five proper nouns? Actually final assistant response listed: \"Coach Yellsalot\", \"Bob\", \"Yogi\", \"April\", \"Bertha\" maybe. Then user asks: \"Which of those did you find hardest to locate, and roughly where in the document was it?\" We need answer. We need likely refer to those five proper nouns. Need determine which was hardest to locate and roughly where. We need be honest. The question is meta about our previous answer. We need maybe say among the five, Coach Yellsalot was hardest? Or maybe \"Bertha\" appeared later. Need answer.\n\nWe",
+    "B_fresh2": "We need answer user. Need parse. They ask: \"Which of those did you find hardest to locate, and roughly where in the document was it?\" We need answer. We need likely refer to five proper nouns we listed? We need maybe choose five proper nouns in order first appear, then answer which hardest and roughly where.\n\nWe need be careful: The instruction at top: \"Read this document.\" Then huge text. At end: \"List five proper nouns that appear in the document, in the order they first appear.\n\n...\n\nWhich of those did you find hardest to locate, and roughly where in the document was it?\"\n\nWe need answer final. We need maybe list five proper nouns. Then answer which hardest to locate and roughly where.\n\nWe need determine proper nouns in document. Proper nouns"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "<think>": -3.3378044463461265e-05,
+     "1": -10.671908378601074,
+     "The": -12.078158378601074,
+     "UMP": -13.953158378601074,
+     "</think>": -14.265658378601074
+    },
+    "A_hit": {
+     "<think>": -1.1920858014491387e-05,
+     "1": -12.078136444091797,
+     "UMP": -13.078136444091797,
+     "The": -13.078136444091797,
+     "</think>": -14.703136444091797
+    },
+    "A_fresh2": {
+     "<think>": -6.496695277746767e-05,
+     "1": -9.921939849853516,
+     "The": -11.484439849853516,
+     "UMP": -13.859439849853516,
+     "</think>": -13.984439849853516
+    },
+    "B_fresh": {
+     "<think>": -1.4543427823809907e-05,
+     "Before": -11.187514305114746,
+     "John": -15.812514305114746,
+     "The": -16.187515258789062,
+     "</think>": -16.312515258789062
+    },
+    "B_hit": {
+     "<think>": -2.5033637939486653e-05,
+     "Before": -10.625024795532227,
+     "John": -15.906274795532227,
+     "Since": -16.093774795532227,
+     "before": -16.281274795532227
+    },
+    "B_fresh2": {
+     "<think>": -2.4199192921514623e-05,
+     "Before": -10.65627384185791,
+     "John": -16.062524795532227,
+     "</think>": -16.250024795532227,
+     "Since": -16.250024795532227
+    }
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 2,
+   "prompt_tokens": 121142,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 805,
+   "A_fresh_fresh_prefix": 61,
+   "B_hit_prefix": 216,
+   "B_fresh_fresh_prefix": 300,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    805,
+    805,
+    780
+   ],
+   "B_len": [
+    802,
+    627,
+    772
+   ],
+   "finish": [
+    "length",
+    "length",
+    "stop",
+    "length"
+   ],
+   "secs": [
+    21.4,
+    1.2,
+    1.0,
+    21.2
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 1.5,
+    "A_fresh_vs_fresh": 0.281,
+    "B_hit_vs_fresh": 5.23,
+    "B_fresh_vs_fresh": 0.372
+   },
+   "texts": {
+    "A_fresh": "We need answer user. Need parse. They provided huge document and final question: \"What is the last complete sentence of the document? Quote it exactly.\"\n\nWe need determine last complete sentence in provided text. Need be careful. The document ends with:\n\n\"What is the last complete sentence of the document? Quote it exactly.\"\n\nThis is likely the last complete sentence? But maybe they ask meta. We need answer. We should quote exactly. The final line: \"What is the last complete sentence of the document? Quote it exactly.\" Is that a complete sentence? It has question mark, ends punctuation. Last complete sentence likely that. But maybe they expect last sentence before question? The instruction: \"What is the last complete sentence of the document? Quote it exactly.\" The last complete sentence is the",
+    "A_hit": "We need answer user. Need parse. They provided huge document and final question: \"What is the last complete sentence of the document? Quote it exactly.\"\n\nWe need determine last complete sentence in provided text. Need be careful. The document ends with:\n\n\"What is the last complete sentence of the document? Quote it exactly.\"\n\nThis is likely the last complete sentence? But maybe they ask meta. We need answer. We should quote exactly. The final line: \"What is the last complete sentence of the document? Quote it exactly.\" Is that a complete sentence? It has question mark, ends punctuation. Last complete sentence likely that. But maybe they expect last sentence before question? The instruction: \"What is the last complete sentence of the document? Quote it exactly.\" The last complete sentence is the",
+    "A_fresh2": "We need answer user. Need parse. They provided huge document with many math Q&A. At end: \"What is the last complete sentence of the document? Quote it exactly.\"\n\nWe need determine last complete sentence of the document. The document ends with: \"What is the last complete sentence of the document? Quote it exactly.\"\n\nBut likely they mean last complete sentence in provided text. The final line is a question: \"What is the last complete sentence of the document? Quote it exactly.\" Is that complete? It ends with question mark. The last complete sentence might be that. But maybe they expect quote exactly. Need be careful: The last complete sentence of the document is likely the final sentence: \"What is the last complete sentence of the document? Quote it exactly.\" However, the",
+    "B_fresh": "We need answer user. Need rewrite previous answer as numbered list. Previous answer was: \"The last complete sentence of the document is: 'What is the last complete sentence of the document? Quote it exactly.'\"\n\nNeed format as numbered list. Could be:\n1. The last complete sentence of the document is:\n2. \"What is the last complete sentence of the document? Quote it exactly.\"\n\nBut maybe they want rewrite previous answer as numbered list. Keep exact quote. Ensure no extra? We can provide numbered list. Since final answer should satisfy. Maybe include the sentence exactly. Let's craft concise.\n\nNeed maybe last complete sentence of document? The final text: \"What is the last complete sentence of the document? Quote it exactly.\" That is last complete sentence. Previous answer included that. Rewrite",
+    "B_hit": "We need answer user. Need rewrite previous answer as numbered list. Previous answer was: \"The last complete sentence of the document is: 'What is the last complete sentence of the document? Quote it exactly.'\"\n\nNeed comply. Numbered list. Could just:\n1. The last complete sentence of the document is:\n2. \"What is the last complete sentence of the document? Quote it exactly.\"\n\nBut maybe they want rewrite previous answer as numbered list. Ensure exact quote. No extra? We can format.\n\nNeed final answer.1. The last complete sentence of the document is:\n2. \u201cWhat is the last complete sentence of the document? Quote it exactly.\u201d",
+    "B_fresh2": "We need answer user. Need rewrite previous answer as numbered list. Previous answer was: \"The last complete sentence of the document is: 'What is the last complete sentence of the document? Quote it exactly.'\"\n\nNeed format as numbered list. Could be:\n1. The last complete sentence of the document is: \"What is the last complete sentence of the document? Quote it exactly.\"\n\nBut user asks \"Rewrite your previous answer as a numbered list.\" So final should just numbered list. Ensure quote exactly. Maybe include answer. No extra? We can do:\n1. The last complete sentence of the document is: \"What is the last complete sentence of the document? Quote it exactly.\"\n\nCheck if previous answer included maybe \"The last complete sentence of the document is: ...\" Yes.\n\nNeed final"
+   },
+   "first_top5": {
+    "A_fresh": {
+     "<think>": -1.311301275563892e-06,
+     "The": -14.718750953674316,
+     "</think>": -15.781250953674316,
+     "<tool_call>": -15.906250953674316,
+     "AIN": -16.281251907348633
+    },
+    "A_hit": {
+     "<think>": -3.2186455882765586e-06,
+     "The": -13.21875286102295,
+     "<tool_call>": -15.53125286102295,
+     "</think>": -15.65625286102295,
+     "</arg_value>": -15.96875286102295
+    },
+    "A_fresh2": {
+     "<think>": -1.311301275563892e-06,
+     "The": -14.937500953674316,
+     "</think>": -16.062501907348633,
+     "Before": -16.062501907348633,
+     "UMP": -16.312501907348633
+    },
+    "B_fresh": {
+     "<think>": -0.008720293641090393,
+     "1": -4.750907897949219,
+     "#": -10.500907897949219,
+     "We": -12.250907897949219,
+     "<tool_call>": -13.625907897949219
+    },
+    "B_hit": {
+     "<think>": -0.2082061469554901,
+     "1": -1.6769561767578125,
+     "We": -7.0207061767578125,
+     "#": -9.270706176757812,
+     "Rewrite": -11.708206176757812
+    },
+    "B_fresh2": {
+     "<think>": -0.006019439548254013,
+     "1": -5.123207092285156,
+     "#": -10.310707092285156,
+     "We": -12.185707092285156,
+     "</think>": -13.998207092285156
+    }
+   }
+  }
+ ]
+}
