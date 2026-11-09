@@ -170,6 +170,15 @@ class FlintSparseMoeBlock(Qwen3MoeSparseMoeBlock):
             layer_id=layer_id,
             custom_routing_function=sigmoid_routing,
         )
+        # SGLang >= v0.5.23 derives the TopK output format from the owning experts'
+        # runner backend (upstream #44993) and raises at the first forward when the
+        # router was never bound; older trees have no bind method, so guard it.
+        _bind = getattr(self.topk, "bind_runner_backend", None)
+        if _bind is not None and getattr(self, "experts", None) is not None:
+            _bind(
+                getattr(self.experts, "runner_backend", None),
+                routing_method_type=getattr(self.experts, "routing_method_type", None),
+            )
 
         shared_size = getattr(config, "shared_expert_intermediate_size", 0)
         self.shared_expert = (
