@@ -1,0 +1,33 @@
+Patch 078 — splitkv-verify-cuda (net-new 2026-11-09, found by the Flint DFlash2 arm)
+
+Upstream's Triton backend has a split-KV flash-decode kernel for EAGLE/DFlash target-verify
+(verify_splitkv.py, PR #27382) but dispatches it only when is_gfx95_supported(); on CUDA the
+verify of num_draft_tokens rows falls through to extend_attention_fwd over the whole prefix, so a
+spec step at 254K costs ~380 ms on Flint (accept 3.5-4.4 but 0.43x/0.13x/0.10x of no-spec at
+32K/131K/262K; --speculative-attention-mode decode did not change it). The kernel is written
+NV-safe (its AMD launch hints are gated on is_hip). Allow CUDA in the gate; the existing
+SGLANG_ENABLE_SPLITKV_VERIFY=0 restores the fallback. Gate: flint SPEC_DECODE natural ladder +
+greedy identity vs no-spec (cache_hit_crossarm).
+
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index 68f29d6f1d..fae5ef05ce 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -315,10 +315,14 @@ class TritonAttnBackend(AttentionBackend):
+         self.target_verify_num_tokens_per_req = model_runner.decode_num_tokens_per_req()
+         self.speculative_num_steps = get_spec().speculative_num_steps
+         self.topk = get_spec().speculative_eagle_topk or 0
+-        # Split-KV verify is bit-equivalent only for a pure-causal chain (topk==1)
+-        # and is gfx95-only; else fall back to extend_attention_fwd.
++        # Split-KV verify is bit-equivalent only for a pure-causal chain (topk==1);
++        # upstream dispatches it on gfx95 only, else falls back to extend_attention_fwd.
++        # [3090 078] also on CUDA: the kernel is NV-safe (verify_splitkv.py gates its
++        # AMD launch hints on is_hip) and without it an 8-token target-verify over a
++        # 254K prefix runs the full extend kernel every step (Flint DFlash2: 0.10x of
++        # no-spec at 262K, 2026-11-09). SGLANG_ENABLE_SPLITKV_VERIFY=0 restores the fallback.
+         self.use_verify_splitkv = (
+-            is_gfx95_supported()
++            (is_gfx95_supported() or _is_cuda)
+             and envs.SGLANG_ENABLE_SPLITKV_VERIFY.get()
+             and self.topk == 1
+         )
