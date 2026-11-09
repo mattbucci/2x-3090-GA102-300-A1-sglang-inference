@@ -65,13 +65,13 @@ build_sglang() {
         SGLANG_TAG="${SGLANG_TAG:?SGLANG_TAG is required}" \
         SGLANG_COMMIT="${SGLANG_COMMIT:?SGLANG_COMMIT is required}" \
         ./scripts/setup.sh
-    # Compile-check every file the 27-patch chain touches on the serving hot
+    # Compile-check every file the patch chain touches on the serving hot
     # path — a mis-applied hunk that still passed `git apply` dies here, not at
     # first boot.
     "${CONDA_BASE}/bin/conda" run -n "${ENV_NAME}" python -m py_compile \
         "${SGLANG_DIR}/python/sglang/kernels/ops/mamba/causal_conv1d_triton.py" \
         "${SGLANG_DIR}/python/sglang/kernels/ops/attention/fla/fused_recurrent.py" \
-        "${SGLANG_DIR}/python/sglang/kernels/ops/attention/fla/fused_sigmoid_gating_recurrent.py" \
+        "${SGLANG_DIR}/python/sglang/kernels/ops/attention/linear/fused_sigmoid_gating_recurrent.py" \
         "${SGLANG_DIR}/python/sglang/kernels/ops/attention/decode_attention.py" \
         "${SGLANG_DIR}/python/sglang/kernels/ops/attention/extend_attention.py" \
         "${SGLANG_DIR}/python/sglang/srt/batch_invariant_ops/batch_invariant_ops.py" \
@@ -83,7 +83,9 @@ build_sglang() {
         "${SGLANG_DIR}/python/sglang/srt/utils/hf_transformers/common.py" \
         "${SGLANG_DIR}/python/sglang/srt/function_call/mistral_detector.py" \
         "${SGLANG_DIR}/python/sglang/srt/layers/attention/triton_backend.py" \
-        "${SGLANG_DIR}/python/sglang/srt/server_args.py"
+        "${SGLANG_DIR}/python/sglang/srt/server_args.py" \
+        "${SGLANG_DIR}/python/sglang/srt/multimodal/processors/nano_nemotron_vl.py" \
+        "${SGLANG_DIR}/python/sglang/srt/multimodal/processors/gemma4.py"
     # Patch-060 marker: the gemma4_unified config alias must be guarded on the
     # native transformers class or every gemma4_unified checkpoint crashes at
     # boot (v0.5.16-net-new).
