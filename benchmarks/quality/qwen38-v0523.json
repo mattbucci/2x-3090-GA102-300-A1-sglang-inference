@@ -1,0 +1,290 @@
+{
+  "tag": "qwen38-v0523",
+  "timestamp": "2026-11-08 19:51",
+  "max_context": 262144,
+  "thinking": {
+    "results": [
+      {
+        "name": "simple_mc",
+        "tokens": 26,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "reasoning",
+        "tokens": 294,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "knowledge",
+        "tokens": 47,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "code",
+        "tokens": 33,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "hard_mc",
+        "tokens": 115,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      }
+    ],
+    "think_tags_rate": 0.0,
+    "clean_answer_rate": 1.0,
+    "truncation_rate": 0.0,
+    "avg_tokens": 103.0
+  },
+  "mmlu": {
+    "correct": 30,
+    "total": 30,
+    "accuracy": 1.0
+  },
+  "humaneval": {
+    "passed": 24,
+    "total": 25,
+    "pass_rate": 0.96
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 4,
+      "total": 8,
+      "accuracy": 0.5
+    },
+    "DbQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "SuppQA": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "TableQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "ProtocolQA": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "SeqQA": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "CloningScenarios": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "_overall": {
+      "correct": 13,
+      "total": 56,
+      "accuracy": 0.23214285714285715
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 1101,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 67,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": " embedded \"The secret password is: BANANA42.\" Then asks What is the secret password? Answer with just the password. Need output BANANA42 only. Ensure no extra.\n"
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 1101,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 67,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": " embedded \"The secret password is: BANANA42.\" Then asks What is the secret password? Answer with just the password. Need output BANANA42 only. Ensure no extra.\n"
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 1102,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 65,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "d embedded \"The secret password is: BANANA42.\" They ask What is the secret password? Answer with just the password. Need output BANANA42 only. Ensure no extra.\n"
+      },
+      {
+        "context": 16384,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 16462,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 46,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "The user asks for the secret password and wants just the password. In the text, it says \"The secret password is: BANANA42.\" So answer: BANANA42.\n"
+      },
+      {
+        "context": 16384,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 16461,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 81,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "rown fox jumps over the lazy dog.\" repeated many times, but there's a line that says:\n\n\"The secret password is: BANANA42.\"\n\nSo the secret password is BANANA42.\n"
+      },
+      {
+        "context": 16384,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 16461,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 53,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "d from the text. Looking through the text, I can see \"The secret password is: BANANA42.\" embedded in the repeated text. The answer should be just the password.\n"
+      },
+      {
+        "context": 65536,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 65613,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 56,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": " to scan the repeated text for the line \"The secret password is: BANANA42.\" The instruction says answer with just the password. Therefore output only BANANA42.\n"
+      },
+      {
+        "context": 65536,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 65614,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 78,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "e quick brown fox jumps over the lazy dog.\" repeated many times, but there's a line that says \"The secret password is: BANANA42.\"\n\nSo the password is BANANA42.\n"
+      },
+      {
+        "context": 65536,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 65613,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 80,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "rown fox jumps over the lazy dog.\" repeated many times, but there's a line that says:\n\n\"The secret password is: BANANA42.\"\n\nSo the secret password is BANANA42.\n"
+      },
+      {
+        "context": 131072,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 131150,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 74,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "entioned.\n\nLooking through the text, I can see: \"The secret password is: BANANA42.\"\n\nThis appears in the middle of the repeated text. The password is BANANA42.\n"
+      },
+      {
+        "context": 131072,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 131150,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 75,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "s mostly repeated \"The quick brown fox jumps over the lazy dog.\" but there's a line that says \"The secret password is: BANANA42.\"\n\nSo the password is BANANA42.\n"
+      },
+      {
+        "context": 131072,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 131150,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 78,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "e quick brown fox jumps over the lazy dog.\" repeated many times, but there's a line that says \"The secret password is: BANANA42.\"\n\nSo the password is BANANA42.\n"
+      },
+      {
+        "context": 250000,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 250077,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 81,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "he lazy dog.\" and one line states: \"The secret password is: BANANA42.\"\n\nThe instruction says answer with just the password. So final output should be BANANA42.\n"
+      },
+      {
+        "context": 250000,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 250077,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 56,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "from the text. Looking through the massive repeated text, there's one line that stands out: \"The secret password is: BANANA42.\"\n\nThe answer is simply BANANA42.\n"
+      },
+      {
+        "context": 250000,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 250077,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 68,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "the password. The text contains a line: \"The secret password is: BANANA42.\" The user wants just the password.\n\nI should answer with just the password: BANANA42\n"
+      }
+    ],
+    "score": 1.0
+  }
+}

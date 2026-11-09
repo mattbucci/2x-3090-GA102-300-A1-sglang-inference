@@ -1,0 +1,34 @@
+{
+  "flint-v0523": {
+    "tag": "flint-v0523",
+    "model": "flint",
+    "timestamp": "2026-11-09 02:46",
+    "elapsed_sec": 3.6,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (468 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "request failed: <HTTPError 400: 'Bad Request: {\"object\":\"error\",\"message\":\"Model only supports text input; received unsupported content type \\'image_url\\'.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}'>"
+      },
+      "video": {
+        "passed": false,
+        "message": "request failed: <HTTPError 400: 'Bad Request: {\"object\":\"error\",\"message\":\"Model only supports text input; received unsupported content type \\'video_url\\'.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}'>"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 5
+    }
+  }
+}

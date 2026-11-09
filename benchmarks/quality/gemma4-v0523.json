@@ -1,0 +1,290 @@
+{
+  "tag": "gemma4-v0523",
+  "timestamp": "2026-11-08 15:50",
+  "max_context": 262144,
+  "thinking": {
+    "results": [
+      {
+        "name": "simple_mc",
+        "tokens": 105,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "reasoning",
+        "tokens": 362,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "knowledge",
+        "tokens": 126,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "code",
+        "tokens": 138,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "hard_mc",
+        "tokens": 620,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      }
+    ],
+    "think_tags_rate": 0.0,
+    "clean_answer_rate": 1.0,
+    "truncation_rate": 0.0,
+    "avg_tokens": 270.2
+  },
+  "mmlu": {
+    "correct": 23,
+    "total": 30,
+    "accuracy": 0.7666666666666667
+  },
+  "humaneval": {
+    "passed": 25,
+    "total": 25,
+    "pass_rate": 1.0
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "DbQA": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "SuppQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "TableQA": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "ProtocolQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "SeqQA": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "CloningScenarios": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "_overall": {
+      "correct": 7,
+      "total": 56,
+      "accuracy": 0.125
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 1066,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 121,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "text contains the phrase: \"The secret password is: BANANA42.\"\n\n    *   The user wants *just* the password.\n    *   The password is `BANANA42`.\n\n    *   BANANA42"
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 1065,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 120,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "text contains the phrase: \"The secret password is: BANANA42.\"\n\n    *   The user wants \"just the password.\"\n    *   The password is \"BANANA42\".\n\n    *   BANANA42"
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 1066,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 119,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "ontains: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\".\n\n    *   The user requested \"Answer with just the password.\"\n\n    *   BANANA42"
+      },
+      {
+        "context": 16384,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 16426,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 121,
+        "content_tail": "BANANA42",
+        "reasoning_tail": " text contains the phrase \"The secret password is: BANANA42.\"\n\n    *   The user wants *just* the password.\n    *   The password is `BANANA42`.\n\n    *   BANANA42"
+      },
+      {
+        "context": 16384,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 16425,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 122,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "text contains the phrase: \"The secret password is: BANANA42.\"\n\n    *   The user wants *just* the password.\n    *   The password is `BANANA42`.\n\n    *   BANANA42"
+      },
+      {
+        "context": 16384,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 16425,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 122,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "text contains the phrase: \"The secret password is: BANANA42.\"\n\n    *   The user wants *just* the password.\n    *   The password is `BANANA42`.\n\n    *   BANANA42"
+      },
+      {
+        "context": 65536,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 65578,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 148,
+        "content_tail": "BANANA42",
+        "reasoning_tail": " is a specific line: \"The secret password is: BANANA42.\"\n\n    *   The password is `BANANA42`.\n\n    *   The user requested \"just the password\".\n\n    *   BANANA42"
+      },
+      {
+        "context": 65536,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 65578,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 158,
+        "content_tail": "BANANA42",
+        "reasoning_tail": " is a specific line: \"The secret password is: BANANA42.\"\n\n    *   The password is `BANANA42`.\n\n    *   The user requested \"just the password\".\n\n    *   BANANA42"
+      },
+      {
+        "context": 65536,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 65578,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 147,
+        "content_tail": "BANANA42",
+        "reasoning_tail": " is a specific line: \"The secret password is: BANANA42.\"\n\n    *   The password is `BANANA42`.\n\n    *   The user requested \"just the password\".\n\n    *   BANANA42"
+      },
+      {
+        "context": 131072,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 131114,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 155,
+        "content_tail": "BANANA42",
+        "reasoning_tail": " is a specific line: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\".\n\n    *   The user requested \"just the password\".\n\n    *   BANANA42"
+      },
+      {
+        "context": 131072,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 131114,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 152,
+        "content_tail": "BANANA42",
+        "reasoning_tail": " text is the phrase: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\".\n\n    *   The user requested \"just the password\".\n\n    *   BANANA42"
+      },
+      {
+        "context": 131072,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 131114,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 154,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "he user asks for the secret password.\n\n    *   The secret password is `BANANA42`.\n\n    *   The user requested \"Answer with just the password.\"\n\n    *   BANANA42"
+      },
+      {
+        "context": 250000,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 250043,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 150,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "xt, there is a line: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\".\n\n    *   The user requested \"just the password\".\n\n    *   BANANA42"
+      },
+      {
+        "context": 250000,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 250043,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 161,
+        "content_tail": "BANANA42",
+        "reasoning_tail": " is a specific line: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\".\n\n    *   The user requested \"just the password\".\n\n    *   BANANA42"
+      },
+      {
+        "context": 250000,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 250043,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 161,
+        "content_tail": "BANANA42",
+        "reasoning_tail": " is a specific line: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\".\n\n    *   The user requested \"just the password\".\n\n    *   BANANA42"
+      }
+    ],
+    "score": 1.0
+  }
+}

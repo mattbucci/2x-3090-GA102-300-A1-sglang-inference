@@ -1,0 +1,290 @@
+{
+  "tag": "qwopus38-v0523",
+  "timestamp": "2026-11-08 20:33",
+  "max_context": 262144,
+  "thinking": {
+    "results": [
+      {
+        "name": "simple_mc",
+        "tokens": 22,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "reasoning",
+        "tokens": 2560,
+        "finish": "length",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": true
+      },
+      {
+        "name": "knowledge",
+        "tokens": 22,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "code",
+        "tokens": 34,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "hard_mc",
+        "tokens": 84,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      }
+    ],
+    "think_tags_rate": 0.0,
+    "clean_answer_rate": 1.0,
+    "truncation_rate": 0.2,
+    "avg_tokens": 544.4
+  },
+  "mmlu": {
+    "correct": 30,
+    "total": 30,
+    "accuracy": 1.0
+  },
+  "humaneval": {
+    "passed": 25,
+    "total": 25,
+    "pass_rate": 1.0
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "DbQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "SuppQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "TableQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "ProtocolQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "SeqQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "CloningScenarios": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "_overall": {
+      "correct": 8,
+      "total": 56,
+      "accuracy": 0.14285714285714285
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 1101,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 61,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "xt with repeated sentence and secret password is: BANANA42. What is secret password? Answer with just the password. Need output BANANA42 only. Ensure no extra.\n"
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 1101,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 62,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "ext with repeated pangram and secret password is: BANANA42. What is secret password? Answer with just the password. Need output BANANA42 only. Ensure no extra.\n"
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 1102,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 65,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "d embedded \"The secret password is: BANANA42.\" They ask What is the secret password? Answer with just the password. Need output BANANA42 only. Ensure no extra.\n"
+      },
+      {
+        "context": 16384,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 16462,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 66,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "ord is: BANANA42.\" Then asks: What is the secret password? Answer with just the password. Need output just password. Need final only BANANA42. Ensure no extra.\n"
+      },
+      {
+        "context": 16384,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 16461,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 95,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "ret password? Answer with just the password.\"\n\nI need to output just the password. The password is BANANA42.\n\nNeed ensure final answer only password. No extra.\n"
+      },
+      {
+        "context": 16384,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 16461,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 87,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "e user asks: \"What is the secret password? Answer with just the password.\"\n\nI need to output just the password. The password is BANANA42. Ensure no extra text.\n"
+      },
+      {
+        "context": 65536,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 65613,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 66,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "ord is: BANANA42.\" Then asks: What is the secret password? Answer with just the password. Need output just password. Need final only BANANA42. Ensure no extra.\n"
+      },
+      {
+        "context": 65536,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 65614,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 66,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "ord is: BANANA42.\" Then asks: What is the secret password? Answer with just the password. Need output just password. Need final only BANANA42. Ensure no extra.\n"
+      },
+      {
+        "context": 65536,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 65613,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 66,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "ord is: BANANA42.\" Then asks: What is the secret password? Answer with just the password. Need output just password. Need final only BANANA42. Ensure no extra.\n"
+      },
+      {
+        "context": 131072,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 131150,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 66,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "ord is: BANANA42.\" Then asks: What is the secret password? Answer with just the password. Need output just password. Need final only BANANA42. Ensure no extra.\n"
+      },
+      {
+        "context": 131072,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 131150,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 66,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "ord is: BANANA42.\" Then asks: What is the secret password? Answer with just the password. Need output just password. Need final only BANANA42. Ensure no extra.\n"
+      },
+      {
+        "context": 131072,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 131150,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 66,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "ord is: BANANA42.\" Then asks: What is the secret password? Answer with just the password. Need output just password. Need final only BANANA42. Ensure no extra.\n"
+      },
+      {
+        "context": 250000,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 250077,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 67,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "ord is: BANANA42.\" Then asks: What is the secret password? Answer with just the password. Need output just password. Need final only BANANA42. Ensure no extra.\n"
+      },
+      {
+        "context": 250000,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 250077,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 111,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "assword from the text. The password is explicitly stated as \"BANANA42\". The instruction is to answer with just the password.\n\nI need to output only \"BANANA42\".\n"
+      },
+      {
+        "context": 250000,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 250077,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 102,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "sword? Answer with just the password.\"\n\nI need to answer with just the password. The password is BANANA42.\n\nI should output only \"BANANA42\" without extra text.\n"
+      }
+    ],
+    "score": 1.0
+  }
+}

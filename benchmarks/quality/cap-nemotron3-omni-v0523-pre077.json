@@ -1,0 +1,38 @@
+{
+  "nemotron3-omni-v0523": {
+    "tag": "nemotron3-omni-v0523",
+    "model": "nemotron3-omni",
+    "timestamp": "2026-11-08 14:20",
+    "elapsed_sec": 18.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='\\nparis'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (135 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=\"(reasoning)the user wants a short description of the image.\\n1.  **identify the main subject:** it's a red circle.\\n2.  **describe th\""
+      },
+      "video": {
+        "passed": false,
+        "message": "request failed: <HTTPError 500: 'Internal Server Error: {\"object\":\"error\",\"message\":\"Internal server error: \\'Tensor\\' object has no attribute \\'__array_interface__\\'\",\"type\":\"InternalServerError\",\"param\":null,\"code\":500}'>"
+      },
+      "audio": {
+        "passed": true,
+        "message": "saw=['tone', 'sound', 'audio', 'music']  response='\\nthe sound of tapping on a keyboard.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 6
+    }
+  }
+}

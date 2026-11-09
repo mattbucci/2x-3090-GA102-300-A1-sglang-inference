@@ -1,0 +1,290 @@
+{
+  "tag": "gemma4-31b-v0523",
+  "timestamp": "2026-11-08 14:25",
+  "max_context": 262144,
+  "thinking": {
+    "results": [
+      {
+        "name": "simple_mc",
+        "tokens": 71,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "reasoning",
+        "tokens": 303,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "knowledge",
+        "tokens": 78,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "code",
+        "tokens": 147,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "hard_mc",
+        "tokens": 257,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      }
+    ],
+    "think_tags_rate": 0.0,
+    "clean_answer_rate": 1.0,
+    "truncation_rate": 0.0,
+    "avg_tokens": 171.2
+  },
+  "mmlu": {
+    "correct": 30,
+    "total": 30,
+    "accuracy": 1.0
+  },
+  "humaneval": {
+    "passed": 25,
+    "total": 25,
+    "pass_rate": 1.0
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 4,
+      "total": 8,
+      "accuracy": 0.5
+    },
+    "DbQA": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "SuppQA": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "TableQA": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "ProtocolQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "SeqQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "CloningScenarios": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "_overall": {
+      "correct": 15,
+      "total": 56,
+      "accuracy": 0.26785714285714285
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 1066,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 140,
+        "content_tail": "BANANA42",
+        "reasoning_tail": ". ...\" (repeated)\n    *   \"The secret password is: BANANA42.\"\n    *   \"... brown fox jumps over the lazy dog. ...\" (repeated)\n\n    *   The password is BANANA42."
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 1065,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 118,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "\"\n\n    *   Scanning the text...\n    *   Found: \"The secret password is: BANANA42.\"\n\n    *   The user requested \"just the password\".\n    *   Password = BANANA42."
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 1066,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 149,
+        "content_tail": "BANANA42",
+        "reasoning_tail": " password is: BANANA42.\"\n    *   \"ck brown fox jumps over the lazy dog. ...\"\n\n    *   The password is BANANA42.\n\n    *   The user requested \"just the password\"."
+      },
+      {
+        "context": 16384,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 16426,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 171,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "wed by \"The secret password is: BANANA42.\" followed by \"zy dog.\"\n\n    *   The text says: \"The secret password is: BANANA42.\"\n    *   The password is `BANANA42`."
+      },
+      {
+        "context": 16384,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 16425,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 135,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "brown fox jumps over the lazy dog.\"\n    *   Scanning through the text...\n    *   Found: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\"."
+      },
+      {
+        "context": 16384,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 16425,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 135,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "brown fox jumps over the lazy dog.\"\n    *   Scanning through the text...\n    *   Found: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\"."
+      },
+      {
+        "context": 65536,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 65578,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 132,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "brown fox jumps over the lazy dog.\"\n    *   Scanning through the text...\n    *   Found: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\"."
+      },
+      {
+        "context": 65536,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 65578,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 135,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "brown fox jumps over the lazy dog.\"\n    *   Scanning through the text...\n    *   Found: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\"."
+      },
+      {
+        "context": 65536,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 65578,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 135,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "brown fox jumps over the lazy dog.\"\n    *   Scanning through the text...\n    *   Found: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\"."
+      },
+      {
+        "context": 131072,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 131114,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 188,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "he lazy dog...\"\n\n    *   The text says: \"The secret password is: BANANA42.\"\n    *   The password is \"BANANA42\".\n\n    *   The user requested \"just the password\"."
+      },
+      {
+        "context": 131072,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 131114,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 161,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "*   Found: \"The secret password is: BANANA42.\"\n    *   The password is \"BANANA42\".\n\n    *   The user requested \"just the password\".\n    *   Password = BANANA42."
+      },
+      {
+        "context": 131072,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 131114,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 201,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "he lazy dog...\"\n\n    *   The text says: \"The secret password is: BANANA42.\"\n    *   The password is \"BANANA42\".\n\n    *   The user requested \"just the password\"."
+      },
+      {
+        "context": 250000,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 250043,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 182,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "swer with just the password.\"\n    *   The password found in the text is \"BANANA42\".\n\n    *   The user requested \"just the password\".\n    *   Password: BANANA42."
+      },
+      {
+        "context": 250000,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 250043,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 145,
+        "content_tail": "BANANA42",
+        "reasoning_tail": " Scanning through the text, I look for anything that breaks the pattern.\n    *   Found: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\"."
+      },
+      {
+        "context": 250000,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 250043,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 151,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "re is a sentence: \"The secret password is: BANANA42.\"\n    *   The text then continues with more repetitions of the pangram.\n\n    *   The password is \"BANANA42\"."
+      }
+    ],
+    "score": 1.0
+  }
+}

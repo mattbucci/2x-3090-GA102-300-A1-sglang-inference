@@ -1,0 +1,218 @@
+{
+  "tag": "qwen35-dense-v0523",
+  "timestamp": "2026-11-09 00:54",
+  "max_context": 32768,
+  "thinking": {
+    "results": [
+      {
+        "name": "simple_mc",
+        "tokens": 193,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "reasoning",
+        "tokens": 2560,
+        "finish": "length",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": true
+      },
+      {
+        "name": "knowledge",
+        "tokens": 173,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "code",
+        "tokens": 309,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "hard_mc",
+        "tokens": 1270,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      }
+    ],
+    "think_tags_rate": 0.0,
+    "clean_answer_rate": 1.0,
+    "truncation_rate": 0.2,
+    "avg_tokens": 901.0
+  },
+  "mmlu": {
+    "correct": 29,
+    "total": 30,
+    "accuracy": 0.9666666666666667
+  },
+  "humaneval": {
+    "passed": 25,
+    "total": 25,
+    "pass_rate": 1.0
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "DbQA": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "SuppQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "TableQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "ProtocolQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "SeqQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "CloningScenarios": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "_overall": {
+      "correct": 11,
+      "total": 56,
+      "accuracy": 0.19642857142857142
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 1059,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 397,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "ntended secret? Yes, it's explicitly labeled.\n    *   Did I follow the constraint \"just the password\"? Yes.\n\n6.  **Construct Final Response:**\n    *   BANANA42\n"
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 1059,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 362,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "  *   Does the output contain anything else? No.\n    *   Is it the correct password found in the text? Yes.\n\n6.  **Construct Final Response:**\n    *   BANANA42\n"
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 1060,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 392,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "  *   Does the output contain anything else? No.\n    *   Is it the correct password found in the text? Yes.\n\n6.  **Construct Final Response:**\n    *   BANANA42\n"
+      },
+      {
+        "context": 16384,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 16420,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 315,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "al Verification:**\n    *   Password found: BANANA42\n    *   Constraint: Just the password.\n    *   Output: BANANA42\n\n6.  **Construct Final Response:** BANANA42\n"
+      },
+      {
+        "context": 16384,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 16419,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 349,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "er passwords? No, it's mostly filler text with one clear insertion. Is the format correct? Yes, just the string.\n\n6.  **Construct Final Response:** BANANA42.cw\n"
+      },
+      {
+        "context": 16384,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 16419,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 317,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "* Does \"BANANA42\" match the text found? Yes. Is there any other password mentioned? No. Is the format correct? Yes.\n\n6.  **Construct Final Response:** BANANA42\n"
+      },
+      {
+        "context": 30000,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 30035,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 288,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "sword?\n    *   Constraint: Answer with just the password.\n    *   Found Password: BANANA42\n    *   Output: BANANA42\n\n6.  **Construct Final Response:** BANANA42\n"
+      },
+      {
+        "context": 30000,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 30035,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 288,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": "sword?\n    *   Constraint: Answer with just the password.\n    *   Found Password: BANANA42\n    *   Output: BANANA42\n\n6.  **Construct Final Response:** BANANA42\n"
+      },
+      {
+        "context": 30000,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 30035,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 346,
+        "content_tail": "\n\nBANANA42",
+        "reasoning_tail": ":**\n    *   Password found: BANANA42\n    *   Constraint: Just the password.\n    *   No extra text, no explanations.\n\n7.  **Construct Final Response:** BANANA42\n"
+      }
+    ],
+    "score": 1.0
+  }
+}
