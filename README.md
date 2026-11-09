@@ -1,7 +1,7 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
 Single-user, **256K-context** LLM inference on 2× NVIDIA RTX 3090 (GA102, Ampere, 48 GB total): SGLang
-**v0.5.22** + 32 local patches, CUDA 13.2 / PyTorch cu130, every model an **AWQ-int4 ship calibrated
+**v0.5.23** + 41 local patches, CUDA 13.2 / PyTorch cu130, every model an **AWQ-int4 ship calibrated
 in-house** from the upstream BF16 base. This rig owns all evals and the AWQ/INT4 calibrations; FP8 work
 lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
@@ -89,7 +89,7 @@ leak audit at 0 exposed. **Only full-300 cells are compared.** Mechanics and rec
 | `qwen38` (Qwen3.8-27B AWQ, thinking) | **196/300 (65.3 %)** |
 | `qwopus38` (Qwopus3.8-27B-Coder-Flash AWQ) | `omp` **190/300 (63.3 %)** (tie with `qwen38`, p = 0.45) |
 | `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **191/300 (63.7 %)** |
-| `flint` (Flint 40B-A2.5B, calibrated AWQ, thinking) | **182/300 (60.7 %)** · `omp` **186/300** (tie, p = 0.57) |
+| `flint` (Flint 40B-A2.5B, calibrated AWQ, thinking) | **182/300 (60.7 %)** · `omp` **186/300** (tie) |
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **176/300 (58.7 %)** |
 | `qwen36-ream` · `qwen35-moe` · `coder-30b-eval` · `coder-reap-25b` · `coder-30b-ream` · `devstral` · `gemma4` · `nemotron3-omni` · all on `omp` ([issue #23](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/23)) | *pending* (queue order) |
 
@@ -113,7 +113,7 @@ tool-use ladder and the 256K reasoning probe with footnotes: [`docs/quality-eval
 | `gemma4-31b` | 93.0 % | **97.5 %** | ✓ 250K | 1.0 → 258K | **100 %** |
 | `gemma4` / `gemma4-21b-reap` / `gemma4-12b` | 82.5 / 80.7 / 77.2 % | 97.5 / 0 † / 92.5 % | ✓ 250K | 1.0 → 255,957 / 258K / 258K | 94 / 94 / 61 % |
 | `qwen35-moe` | 69.6 % | 80.0 % | ✓ | 1.0 → 255,889 | 72 % (multikey soft ≥ 131K) |
-| `flint` | 86–88 % | 73–80 % | ✓ 244K at depth ≥ 0.5, natural ◆◆ | 1.0 → 234,430 on a natural haystack | see ◆◆ |
+| `flint` | 86–88 % | 73–80 % | ✓ 244K @ ≥ 0.5 natural ◆◆ | 1.0 → 234,430 on a natural haystack | see ◆◆ |
 | `devstral` | 77.2 % | 80.0 % | ✓ 131K | 1.0 → 132K firm | ~80 % at 178K |
 | `coder-30b-eval` / `coder-reap-25b` | 91.2 / 77.2 % | **96.7 %** | 100 % | 0.4 (~64K agentic ceiling) | — |
 | `nemotron3-omni` | — | — | — | 0.6 → 131K at an 8K budget | — |
@@ -163,7 +163,7 @@ scales audit, capability probes); the three rows calibrated on third-party pre-p
 ## Quick start
 
 ```bash
-./scripts/setup.sh                          # clone SGLang v0.5.22, apply patches/, create the conda env
+./scripts/setup.sh                          # clone SGLang v0.5.23, apply patches/, create the conda env
 
 ./scripts/launch.sh qwen36                  # Qwen3.6-35B-A3B MoE AWQ-Marlin — 256K, thinking+vision   (eval port :23334)
 ./scripts/launch.sh qwen38                  # Qwen3.8-27B AWQ — thinking+image+video (SPEC_DECODE=1 for DSpark)
@@ -187,7 +187,7 @@ live under [`evals/swebench/`](evals/swebench/).
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.22 + 32 local patches (serving tree under `/data`, env `sglang-v0522`; the v0.5.20 tree + env kept as the one-revert rollback) |
+| SGLang | v0.5.23 + 41 local patches (serving tree under `/data`, env `sglang-v0523`; the v0.5.22 tree + env kept as the one-revert rollback) |
 | PyTorch | 2.14.1 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
 | transformers | 5.19.0 (ships gemma4_unified natively; routes Mistral ckpts to MistralCommonBackend, countered by patch 057) |
@@ -201,7 +201,7 @@ serving robustness. Each rebase is gated by the 3-gate pristine replay (`scripts
 per-tokenizer-family A/B encode (`scripts/eval/tokenizer_ab_encode.py`) and a detached fleet validation
 campaign (`scripts/eval/flip_campaign.sh`). Narratives and per-flip receipts: [`patches/README.md`](patches/README.md).
 
-**OCI image**: `Dockerfile` builds the CUDA/v0.5.22 stack without a GPU (pinned wheels, driver injected by
+**OCI image**: `Dockerfile` builds the CUDA/v0.5.23 stack without a GPU (pinned wheels, driver injected by
 the NVIDIA container toolkit) and runs unprivileged with `SGLANG_SECURE_LAUNCH=1` (API keys from files,
 protected server options refused, NCCL on loopback). The SWE-bench cycle serves from it with a per-cycle
 API key. Build, run and the security caveats: [`docs/oci-image.md`](docs/oci-image.md).
@@ -244,11 +244,11 @@ repo cross-checks chat-template and multimodal plumbing and hosts the shared doc
 | Path | Purpose |
 |---|---|
 | [docs/](docs/) | direction, decode-lever ledger, models and KV limits, SWE-bench harness, quality evals, Flint, calibration plan, host setup, OCI image, agent operations |
-| [patches/](patches/README.md) | SGLang v0.5.22 patch series (32), narratives and rebase receipts |
+| [patches/](patches/README.md) | SGLang v0.5.23 patch series (41), narratives and rebase receipts |
 | [benchmarks/](benchmarks/) | charts, per-model `results.json`, lever and profile receipts; `quality/` = eval and bake-off receipts |
 | [evals/swebench/](evals/swebench/) | SWE-bench Lite Docker harness: cycle driver, scaffolds, serving backend, audits, scorer, aggregation |
 | [scripts/](scripts/) | `launch.sh`, `serve_production.sh`, `setup.sh`, `common.sh`; `bench/`, `eval/`, `quantize/`, `specforge/`, `maint/`, `host-setup/` |
 | [docker/](docker/) | OCI image entrypoint and secure launcher |
 | [systemd/](systemd/) | cooling profile and bake-off auto-resume units |
-| [plugins/flint_sglang](plugins/) | Flint model code (vendor 0.1.4 ported to v0.5.22) |
+| [plugins/flint_sglang](plugins/) | Flint model code (vendor 0.1.4 ported to v0.5.23) |
 | [CLAUDE.md](CLAUDE.md) · [rules-for-agents.md](rules-for-agents.md) | agent working instructions and operational invariants |

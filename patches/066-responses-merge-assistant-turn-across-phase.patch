@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/entrypoints/openai/serving_responses.py b/python/sglang/srt/entrypoints/openai/serving_responses.py
-index 9fdcbe3935..83b625bde0 100644
+index 18c495a3dc..29bba86815 100644
 --- a/python/sglang/srt/entrypoints/openai/serving_responses.py
 +++ b/python/sglang/srt/entrypoints/openai/serving_responses.py
-@@ -1376,7 +1376,17 @@ class OpenAIServingResponses(OpenAIServingChat):
+@@ -1663,7 +1663,17 @@ class OpenAIServingResponses(OpenAIServingChat):
      ) -> list:
          """Collapse runs of consecutive ``assistant`` dicts into one entry,
          joining ``content`` and concatenating ``tool_calls`` and
@@ -21,18 +21,21 @@ index 9fdcbe3935..83b625bde0 100644
          merged: list = []
          for msg in messages:
              if (
-@@ -1385,9 +1395,15 @@ class OpenAIServingResponses(OpenAIServingChat):
-                 and merged
+@@ -1673,13 +1683,16 @@ class OpenAIServingResponses(OpenAIServingChat):
                  and isinstance(merged[-1], dict)
                  and merged[-1].get("role") == "assistant"
--                and merged[-1].get("phase") == msg.get("phase")
-+                and (
+                 and (
+-                    merged[-1].get("phase") == msg.get("phase")
 +                    merged[-1].get("phase") is None
 +                    or msg.get("phase") is None
 +                    or merged[-1].get("phase") == msg.get("phase")
-+                )
++                    # upstream v0.5.23: a reasoning-only item merges regardless
+                     or set(merged[-1]) == {"role", "reasoning_content"}
+                 )
              ):
                  prev = merged[-1] = dict(merged[-1])
+-                if msg.get("phase") is not None:
+-                    prev["phase"] = msg["phase"]
 +                if prev.get("phase") is None and msg.get("phase") is not None:
 +                    prev["phase"] = msg.get("phase")
                  # Lift mixed str/list content to list parts so non-text parts

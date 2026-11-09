@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/model_executor/runner/prefill_cuda_graph_runner.py b/python/sglang/srt/model_executor/runner/prefill_cuda_graph_runner.py
-index b4c1fccd91..04c5b685b3 100644
+index 5587d0d08e..211ef598b7 100644
 --- a/python/sglang/srt/model_executor/runner/prefill_cuda_graph_runner.py
 +++ b/python/sglang/srt/model_executor/runner/prefill_cuda_graph_runner.py
-@@ -239,6 +239,35 @@ def _slice_output_rows(output: Any, num_tokens: int) -> Any:
+@@ -237,6 +237,35 @@ def _slice_output_rows(output: Any, num_tokens: int) -> Any:
      raise TypeError(f"Unsupported full prefill CUDA graph output: {type(output)}")
  
  
@@ -38,12 +38,12 @@ index b4c1fccd91..04c5b685b3 100644
  @dataclass(frozen=True)
  class _ChunkedPrefixCaptureBuffers:
      """Runner-owned tensors shared by every prefix and token-bucket variant.
-@@ -322,7 +351,7 @@ class PrefillCudaGraphRunner(BaseCudaGraphRunner):
+@@ -333,7 +362,7 @@ class PrefillCudaGraphRunner(BaseCudaGraphRunner):
          )
          self._fa4_prefill = getattr(prefill_attn_backend, "fa_impl_ver", None) == 4
          # --- model flags ----------------------------------------------
 -        self.quant_config = getattr(model_runner.model, "quant_config", None)
 +        self.quant_config = _resolve_model_quant_config(model_runner.model)
          self.is_multimodal = model_runner.model_config.is_multimodal
-         self.enable_lora = model_runner.lora_manager is not None
-         # Classification/reward forwards branch on return_pooled_hidden_states;
+         self.is_dsv41_model = (
+             model_runner.model_config.hf_config.model_type == "deepseek_v41"

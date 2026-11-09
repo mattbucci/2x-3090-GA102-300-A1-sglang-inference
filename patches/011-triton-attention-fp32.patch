@@ -1,15 +1,8 @@
 diff --git a/python/sglang/kernels/ops/attention/decode_attention.py b/python/sglang/kernels/ops/attention/decode_attention.py
-index 8bd69df94e..9bf9c2682a 100644
+index 4c14429f2e..30bc564f0d 100644
 --- a/python/sglang/kernels/ops/attention/decode_attention.py
 +++ b/python/sglang/kernels/ops/attention/decode_attention.py
-@@ -32,20 +32,26 @@ from sglang.kernels.ops.attention.score_mod import unpack_aux_tensors
- from sglang.srt.environ import envs
- from sglang.srt.utils import (
-     get_device_core_count,
-     is_gfx95_supported,
-     is_gfx1250_supported,
-     is_hip,
- )
+@@ -39,6 +39,12 @@ from sglang.srt.utils import (
  
  _is_hip = is_hip()
  _is_gfx1250 = _is_hip and is_gfx1250_supported()
@@ -22,21 +15,7 @@ index 8bd69df94e..9bf9c2682a 100644
  
  logger = logging.getLogger(__name__)
  
- 
- _MIN_BLOCK_KV = 32
- 
- # heads per stage-1 tile, shared so the budget's head_tiles cannot drift from the launch
- _GROUPED_BLOCK_H = 16
- 
- 
-@@ -325,23 +331,24 @@ def _fwd_kernel_stage1(
-                     page_id[:, None] * stride_buf_kpage
-                     + tok_in_p[:, None] * stride_buf_ktok
-                     + cur_kv_head * stride_buf_kh
-                     + offs_d[None, :]
-                 )
-             k = tl.load(
-                 K_Buffer + offs_buf_k,
+@@ -347,9 +353,10 @@ def _fwd_kernel_stage1(
                  mask=(offs_n[:, None] < split_kv_end) & (mask_d[None, :]),
                  other=0.0,
              )
@@ -50,21 +29,7 @@ index 8bd69df94e..9bf9c2682a 100644
              qk *= sm_scale_withk
  
              if logit_cap > 0:
-                 qk = logit_cap * tanh(qk / logit_cap)
- 
-             if xai_temperature_len > 0:
-                 qk *= xai_temperature_reg
- 
-             if SCORE_MOD is not None:
-                 qk = SCORE_MOD(
-@@ -371,25 +378,26 @@ def _fwd_kernel_stage1(
-                     + tok_in_p[:, None] * stride_buf_vtok
-                     + cur_kv_head * stride_buf_vh
-                     + offs_dv[None, :]
-                 )
-             v = tl.load(
-                 V_Buffer + offs_buf_v,
-                 mask=(offs_n[:, None] < split_kv_end) & (mask_dv[None, :]),
+@@ -393,11 +400,12 @@ def _fwd_kernel_stage1(
                  other=0.0,
              )
  
@@ -78,21 +43,7 @@ index 8bd69df94e..9bf9c2682a 100644
  
              e_sum = e_sum * re_scale + tl.sum(p, 0)
              e_max = n_e_max
- 
-         offs_mid_o = (
-             cur_batch * stride_mid_ob
-             + cur_head * stride_mid_oh
-             + split_kv_id * stride_mid_os
-             + offs_dv
-         )
-@@ -882,21 +890,21 @@ def _decode_grouped_att_m_fwd(
-         BLOCK_H=BLOCK_H,
-         MIN_BLOCK_KV=_MIN_BLOCK_KV,
-         logit_cap=logit_cap,
-         xai_temperature_len=xai_temperature_len,
-         num_warps=num_warps,
-         num_stages=num_stages,
-         Lk=Lk,
+@@ -916,7 +924,7 @@ def _decode_grouped_att_m_fwd(
          Lv=Lv,
          HAS_MLA=has_mla,
          USE_PDL=use_pdl,
@@ -101,21 +52,7 @@ index 8bd69df94e..9bf9c2682a 100644
          PAGE_SIZE=page_size,
          SCORE_MOD=score_mod,
          Aux0=aux0,
-         aux0_stride_t=aux0_stride_t,
-         aux0_stride_h=aux0_stride_h,
-         aux0_len=aux0_len,
-         forced_kv_splits=forced_kv_splits,
-         USE_FORCED=forced_kv_splits > 0,
-         **extra_kargs,
-     )
-@@ -959,22 +967,22 @@ def _fwd_kernel_stage2(
-         tl.cdiv(tl.cdiv(cur_batch_seq_len, kv_splits), MIN_BLOCK_KV) * MIN_BLOCK_KV
-     )
- 
-     for split_kv_id in tl.range(0, SPLIT_END, num_stages=2):
-         split_kv_start = kv_len_per_split * split_kv_id
-         split_kv_end = tl.minimum(split_kv_start + kv_len_per_split, cur_batch_seq_len)
- 
+@@ -995,8 +1003,8 @@ def _fwd_kernel_stage2(
          if split_kv_end > split_kv_start:
              tv = tl.load(
                  Mid_O + offs_v + split_kv_id * stride_mid_os, mask=mask_d, other=0.0
@@ -126,25 +63,11 @@ index 8bd69df94e..9bf9c2682a 100644
              n_e_max = tl.maximum(tlogic, e_max)
  
              old_scale = tl.exp(e_max - n_e_max)
-             acc *= old_scale
-             exp_logic = tl.exp(tlogic - n_e_max)
-             acc += exp_logic * tv
- 
-             e_sum = e_sum * old_scale + exp_logic
-             e_max = n_e_max
- 
 diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
-index dd37f56111..f72ff2bfa2 100644
+index 2c09ea450d..fd8a74d9e5 100644
 --- a/python/sglang/kernels/ops/attention/extend_attention.py
 +++ b/python/sglang/kernels/ops/attention/extend_attention.py
-@@ -29,20 +29,26 @@ from sglang.kernels.ops.attention.score_mod import unpack_aux_tensors
- from sglang.srt.environ import envs
- from sglang.srt.utils import is_cuda, is_gfx95_supported, is_gfx1250_supported, is_hip
- 
- _is_cuda = is_cuda()
- if _is_cuda:
-     CUDA_CAPABILITY = torch.cuda.get_device_capability()
- 
+@@ -35,6 +35,12 @@ if _is_cuda:
  _is_hip = is_hip()
  _is_gfx95 = _is_hip and is_gfx95_supported()
  _is_gfx1250 = _is_hip and is_gfx1250_supported()
@@ -157,21 +80,7 @@ index dd37f56111..f72ff2bfa2 100644
  
  try:
      _triton_version_parts = tuple(
-         int(part) for part in triton.__version__.split(".")[:2]
-     )
- except (AttributeError, ValueError):
-     _triton_version_parts = (0, 0)
- _is_triton_ge_37 = _triton_version_parts >= (3, 7)
- 
- 
-@@ -1140,21 +1146,21 @@ def extend_attention_fwd(
-         BLOCK_N_PREFIX=BLOCK_N_PREFIX,
-         Lq=Lq,
-         Lv=Lv,
-         USE_CUSTOM_MASK=USE_CUSTOM_MASK,
-         IS_CAUSAL=is_causal,
-         SKIP_PREFIX_CUSTOM_MASK=SKIP_PREFIX_CUSTOM_MASK,
-         STORE_LSE=STORE_LSE,
+@@ -1148,7 +1154,7 @@ def extend_attention_fwd(
          SKIP_PREFIX=skip_prefix,
          SKIP_EXTEND=skip_extend,
          HAS_SINK=HAS_SINK,
@@ -180,21 +89,7 @@ index dd37f56111..f72ff2bfa2 100644
          STORE_TRANSPOSE=_is_hip,
          USE_COMPACT_TILE_GRID=use_compact_tile_grid,
          USE_EXP2=USE_EXP2,
-         USE_FP8_PREFIX=USE_FP8_PREFIX,
-         USE_FP8_EXTEND=USE_FP8_EXTEND,
-         FP8_MAX=FP8_MAX,
-         PAGE_SIZE=page_size,
-         IDENTITY_KV_INDICES=identity_kv_indices,
-         SCORE_MOD=score_mod,
-         Aux0=aux0,
-@@ -1663,21 +1669,21 @@ def extend_attention_fwd_unified(
-         BLOCK_DMODEL=BLOCK_DMODEL,
-         BLOCK_DPE=BLOCK_DPE,
-         BLOCK_DV=BLOCK_DV,
-         BLOCK_M=BLOCK_M,
-         BLOCK_N=BLOCK_N,
-         Lq=Lq,
-         Lv=Lv,
+@@ -1641,7 +1647,7 @@ def extend_attention_fwd_unified(
          IS_CAUSAL=is_causal,
          USE_CUSTOM_MASK=USE_CUSTOM_MASK,
          HAS_SINK=HAS_SINK,
@@ -203,10 +98,3 @@ index dd37f56111..f72ff2bfa2 100644
          PAGE_SIZE=page_size,
          SCORE_MOD=score_mod,
          Aux0=aux0,
-         aux0_stride_t=aux0_stride_t,
-         aux0_stride_h=aux0_stride_h,
-         aux0_len=aux0_len,
-         num_warps=num_warps,
-         num_stages=num_stages,
-         **extra_kargs,
-     )

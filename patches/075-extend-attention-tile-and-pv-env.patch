@@ -1,5 +1,5 @@
 diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
-index f72ff2bfa2..136543566b 100644
+index fd8a74d9e5..1b4a419f9a 100644
 --- a/python/sglang/kernels/ops/attention/extend_attention.py
 +++ b/python/sglang/kernels/ops/attention/extend_attention.py
 @@ -19,6 +19,7 @@ It supports page size = 1 and prefill with KV cache (i.e. extend).
@@ -10,7 +10,7 @@ index f72ff2bfa2..136543566b 100644
  import torch
  import triton
  import triton.language as tl
-@@ -41,7 +42,10 @@ _is_gfx1250 = _is_hip and is_gfx1250_supported()
+@@ -40,7 +41,10 @@ _is_gfx1250 = _is_hip and is_gfx1250_supported()
  # dot (upstream's own comment records the bf16 downcast of p as the accuracy loss).
  # That is the fp32-accumulation path this stack has carried for Ampere/RDNA4 since
  # v0.5.11 (256K needle / long-context quality), so take it on every platform.
@@ -22,7 +22,7 @@ index f72ff2bfa2..136543566b 100644
  
  try:
      _triton_version_parts = tuple(
-@@ -147,6 +151,18 @@ def _get_block_sizes_for_extend_attention(Lq: int, Lv: int):
+@@ -145,6 +149,18 @@ def _get_block_sizes_for_extend_attention(Lq: int, Lv: int):
  
          num_warps = 4 if Lq <= 64 else 8
  

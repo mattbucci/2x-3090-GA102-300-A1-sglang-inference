@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/entrypoints/openai/serving_chat.py b/python/sglang/srt/entrypoints/openai/serving_chat.py
-index 4b361f28f7..bb94bafdd8 100644
+index 6476d52fa6..630bf382bc 100644
 --- a/python/sglang/srt/entrypoints/openai/serving_chat.py
 +++ b/python/sglang/srt/entrypoints/openai/serving_chat.py
-@@ -1169,7 +1169,10 @@ class OpenAIServingChat(OpenAIServingBase):
+@@ -1244,7 +1244,10 @@ class OpenAIServingChat(OpenAIServingBase):
              and not chat_encoding.spec_renders_prompt_ids(self.chat_encoding_spec)
              and not prefers_prompt_ids
          ):
@@ -14,7 +14,7 @@ index 4b361f28f7..bb94bafdd8 100644
          if isinstance(processed_messages.prompt_ids, str):
              return "text", processed_messages.prompt_ids
          return "input_ids", processed_messages.prompt_ids
-@@ -1776,11 +1779,10 @@ class OpenAIServingChat(OpenAIServingBase):
+@@ -2235,11 +2238,10 @@ class OpenAIServingChat(OpenAIServingBase):
                  decoded_prompt = None
  
              if is_multimodal:
@@ -30,34 +30,34 @@ index 4b361f28f7..bb94bafdd8 100644
  
          stop = request.stop
          image_data = image_data if image_data else None
-@@ -1852,14 +1854,23 @@ class OpenAIServingChat(OpenAIServingBase):
-                 return_dict=False,
-                 **template_kwargs,
-             )
--            prompt_ids = parallel_prompt_encode(
--                self.tokenizer_manager.tokenizer, rendered_prompt, encode_kwargs
--            )
+@@ -2328,14 +2330,23 @@ class OpenAIServingChat(OpenAIServingBase):
+                     return_dict=False,
+                     **template_kwargs,
+                 )
+-                prompt_ids = parallel_prompt_encode(
+-                    self.tokenizer_manager.tokenizer, rendered_prompt, encode_kwargs
+-                )
 -        decoded_prompt = (
 -            self.tokenizer_manager.tokenizer.decode(prompt_ids)
 -            if cache_key is not None
 -            else None
 -        )
-+            inc = getattr(self.tokenizer_manager, "incremental_tokenizer", None)
-+            if (
-+                inc is not None
-+                and inc.enabled
-+                and not (set(encode_kwargs or {}) - {"add_special_tokens"})
-+            ):
-+                # [3090 072] reuse the previous turns' ids up to the last special-token boundary of
-+                # the shared prefix; only the tail is encoded (exact: HF splits on added tokens first).
-+                prompt_ids = inc.encode(
-+                    rendered_prompt,
-+                    add_special_tokens=(encode_kwargs or {}).get("add_special_tokens", True),
-+                )
-+            else:
-+                prompt_ids = parallel_prompt_encode(
-+                    self.tokenizer_manager.tokenizer, rendered_prompt, encode_kwargs
-+                )
++                inc = getattr(self.tokenizer_manager, "incremental_tokenizer", None)
++                if (
++                    inc is not None
++                    and inc.enabled
++                    and not (set(encode_kwargs or {}) - {"add_special_tokens"})
++                ):
++                    # [3090 072] reuse the previous turns' ids up to the last special-token boundary of
++                    # the shared prefix; only the tail is encoded (exact: HF splits on added tokens first).
++                    prompt_ids = inc.encode(
++                        rendered_prompt,
++                        add_special_tokens=(encode_kwargs or {}).get("add_special_tokens", True),
++                    )
++                else:
++                    prompt_ids = parallel_prompt_encode(
++                        self.tokenizer_manager.tokenizer, rendered_prompt, encode_kwargs
++                    )
 +        decoded_prompt = None  # [3090 072] decoded on demand by _engine_prompt
  
          if cache_key is not None:
@@ -248,10 +248,10 @@ index 0000000000..26e04c348a
 +            self._entries.insert(0, entry)
 +            del self._entries[self.max_entries:]
 diff --git a/python/sglang/srt/managers/tokenizer_manager.py b/python/sglang/srt/managers/tokenizer_manager.py
-index 3dd350f411..259b05a03a 100644
+index ca3453f966..389234d989 100644
 --- a/python/sglang/srt/managers/tokenizer_manager.py
 +++ b/python/sglang/srt/managers/tokenizer_manager.py
-@@ -644,6 +644,14 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
+@@ -659,6 +659,14 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
              )
          else:
              self.async_dynamic_batch_tokenizer = None
@@ -266,7 +266,7 @@ index 3dd350f411..259b05a03a 100644
  
      def _validate_cuda_vmm_feature_transport_support(self) -> None:
          if get_mm().mm_feature_transport != "cuda_vmm":
-@@ -1047,7 +1055,17 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
+@@ -1046,7 +1054,17 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
              and input_format == InputFormat.SINGLE_STRING
          )
  

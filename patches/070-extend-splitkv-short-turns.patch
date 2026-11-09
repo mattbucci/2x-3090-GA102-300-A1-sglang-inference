@@ -293,19 +293,20 @@ index 94bb8526f8..921c71dfbf 100644
  
      return True
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 64920d56b5..bbcef35fc8 100644
+index 60e825906a..68f29d6f1d 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -1,5 +1,8 @@
+@@ -1,6 +1,9 @@
  from __future__ import annotations
  
+ import contextlib
 +import logging
 +import os
 +
  from dataclasses import dataclass
  from typing import TYPE_CHECKING, List, Optional
  
-@@ -53,6 +56,30 @@ from sglang.srt.distributed.device_communicators.pynccl_allocator import (
+@@ -54,6 +57,30 @@ from sglang.srt.distributed.device_communicators.pynccl_allocator import (
      use_symmetric_memory,
  )
  from sglang.srt.environ import envs
@@ -336,7 +337,7 @@ index 64920d56b5..bbcef35fc8 100644
  from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
  from sglang.srt.layers.attention.verify_mask import VerifyMask, maybe_create_verify_mask
  from sglang.srt.layers.dcp import (
-@@ -478,6 +505,65 @@ class TritonAttnBackend(AttentionBackend):
+@@ -483,6 +510,65 @@ class TritonAttnBackend(AttentionBackend):
              self.dllm_attention = DllmFlashAttention(self)
              self.supports_prefill_cuda_graph_max_context_size = True
  
@@ -402,7 +403,7 @@ index 64920d56b5..bbcef35fc8 100644
      def get_num_kv_splits(
          self,
          num_kv_splits: torch.Tensor,
-@@ -1864,6 +1950,102 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1940,6 +2026,102 @@ class TritonAttnBackend(AttentionBackend):
          ):
              return o
  
