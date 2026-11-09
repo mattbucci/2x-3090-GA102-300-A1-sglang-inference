@@ -36,3 +36,23 @@ next to the fleet's `found` (needle anywhere in reasoning + content) — a hayst
 `found` without answering.
 
 Serving image rebuilt on the new default the same day (`sglang-cuda-3090:local` = `a64ac6ea24ed`, kept as `v0522-e5m2` once the INT8-head image `6c9ede80f03a` replaced it later that day; `713a79eec75a` stays as `v0522-keyorder`): parity smoke PASS — docker decode 159.5 / 148.4 / 104.6 tok/s vs the bare-metal baseline 159.0 / 147.7 / 104.7, scaffold audit, Responses-API probe, 2/2 isolated rollouts non-empty, leak audit clean ([receipt](../benchmarks/quality/flint/docker-serving-smoke-2026-10-31.json)).
+
+## Calibrated g32 ships (2026-11-09)
+
+Same calibrator and 139K-token cache as the g64 ship, group size 32 (`Flint-AWQ-INT4-g32-gptq`, 23 GB, 9 min on
+one 3090). Same-session A/B on the live stack, three runs per cell where it mattered:
+
+| probe | g64 (previous ship) | g32 |
+|---|---|---|
+| MMLU-57 (thinking budget 2560) | 51 / 50 / 49 | 46 / 50 / 50 |
+| HumanEval-30 | 26 / 23 / 27 | 25 / 22 / 24 |
+| natural-haystack needle 131K | 3/3 every run | 3/3 every run |
+| natural-haystack needle 244K, depths 0.1 / 0.5 / 0.9 | miss / miss / found ×4 | miss / **found** / found ×3 (+ 0.1 found once) |
+| 256K haystack reasoning (3 lengths × 3 cells) | 56 / 44 / 56 % | 78 / 67 / 67 % |
+| decode 1K / 32K / 262K | 185.9 / 170.6 / 114.9 tok/s | 185.9 / 167.2 / 113.6 tok/s |
+
+Short-task probes are at parity (the first-run 46 vs 51 was noise), deep retrieval and deep reasoning are repeatably
+better, decode is within 2 % (the October "g32 is 11–20 % slower" predates the kernel, all-reduce and INT8-head
+levers). `launch.sh flint` now defaults to the g32 build; the g64 build stays on disk and on HF for A/Bs. Receipts:
+`benchmarks/quality/flint-g{64,32}-ab-*`, `reason256k-flint-g{64,32}-ab-hay-*`, `flint-g{64,32}-needle-rep*`,
+`benchmarks/regression/flint-2026-11-09-g{64,32}-ab.json`.

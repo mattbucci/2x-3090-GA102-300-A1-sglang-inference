@@ -1,0 +1,93 @@
+{
+  "tag": "flint-g64-ab-hay-rep3-2026-11-09",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 29413,
+        "correct": true,
+        "s": 5.9,
+        "finish_reason": "stop",
+        "completion_tokens": 582,
+        "answer_tail": "tly as 'ANSWER: <value>'.\"\n\nWe can say: Cobalt is 3286, tundra is 7912, verbena is 2424. Then final line.\n\nFinal answer should end with that line.\nThe access codes are: cobalt = 3286, tundra = 7912, verbena = 2424.\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 29373,
+        "correct": true,
+        "s": 8.0,
+        "finish_reason": "stop",
+        "completion_tokens": 947,
+        "answer_tail": "id end your reply with a line formatted exactly as 'ANSWER: <value>'. So final response can be concise, end with that.\n\n\nVAR_C equals VAR_B times 2, and VAR_B equals VAR_A plus 5. Since VAR_A is 37, VAR_B is 42, and VAR_C is 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 29399,
+        "correct": true,
+        "s": 4.8,
+        "finish_reason": "stop",
+        "completion_tokens": 392,
+        "answer_tail": "ANSWER: <value>'. So final response should include reasoning and final line.\nThe five items mentioned have costs: onyx $85$, falcon $45$, tundra $10$, cobalt $30$, and verbena $99$.\n\nTotal cost = $85 + 45 + 10 + 30 + 99 = 269$.\n\nANSWER: 269"
+      },
+      "actual_tokens": 29413,
+      "score": 1.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 118547,
+        "correct": false,
+        "s": 39.1,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "rbena is 2424. <<<\" Then the final user question: \"What are the access codes for cobalt, tundra, verbena? Think step by step, then end your reply with a line formatted exactly as 'ANSWER: <value>'.\"\n\nMaybe the user is asking a new question,"
+      },
+      "vartrack": {
+        "actual_tokens": 118511,
+        "correct": true,
+        "s": 22.4,
+        "finish_reason": "stop",
+        "completion_tokens": 610,
+        "answer_tail": " careful: VAR_C equals VAR_B times 2, VAR_B equals VAR_A plus 5, VAR_A set to 37. So VAR_C = (37+5)*2 = 84.\n\nFinal answer line exactly 'ANSWER: 84'.\nVAR_C = VAR_B \u00d7 2, and VAR_B = VAR_A + 5 = 37 + 5 = 42, so VAR_C = 42 \u00d7 2 = 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 118533,
+        "correct": false,
+        "s": 39.1,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "a set of $n-1$ items, and the number of ways to choose $k-1$ items from a set of $n-1$ items. This makes sense, because we can either include or exclude the $n$-th item in our subset, and then choose the remaining items from the first $n-1\n"
+      },
+      "actual_tokens": 118547,
+      "score": 0.3333333333333333
+    },
+    {
+      "approx": 240000,
+      "multikey": {
+        "actual_tokens": 218994,
+        "correct": true,
+        "s": 57.0,
+        "finish_reason": "stop",
+        "completion_tokens": 489,
+        "answer_tail": "es. Let's do that.\n\nFinal response: The access codes are: cobalt: 3286, tundra: 7912, verbena: 2424.\n\nANSWER: 3286, 7912, 2424\n\nEnsure no text after.\nThe access codes are: cobalt: 3286, tundra: 7912, verbena: 2424.\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 218958,
+        "correct": false,
+        "s": 77.8,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "s the final numeric value of VAR_C? Think step by step, then end your reply with a line formatted exactly as 'ANSWER: <value>'.\"\n\nThe final user is asking a new question, not part of the assistant response. The final user asks: \"What is the"
+      },
+      "aggregate": {
+        "actual_tokens": 218980,
+        "correct": false,
+        "s": 77.8,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "r final question: \"What is the total cost in credits of all five items mentioned? Think step by step, then end your reply with a line formatted exactly as 'ANSWER: <value>'.\"\n\nI will provide a final answer with a value. To comply, I should\n"
+      },
+      "actual_tokens": 218994,
+      "score": 0.3333333333333333
+    }
+  ],
+  "overall": 0.556
+}

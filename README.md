@@ -113,7 +113,7 @@ tool-use ladder and the 256K reasoning probe with footnotes: [`docs/quality-eval
 | `gemma4-31b` | 93.0 % | **97.5 %** | ✓ 250K | 1.0 → 258K | **100 %** |
 | `gemma4` / `gemma4-21b-reap` / `gemma4-12b` | 82.5 / 80.7 / 77.2 % | 97.5 / 0 † / 92.5 % | ✓ 250K | 1.0 → 255,957 / 258K / 258K | 94 / 94 / 61 % |
 | `qwen35-moe` | 69.6 % | 80.0 % | ✓ | 1.0 → 255,889 | 72 % (multikey soft ≥ 131K) |
-| `flint` | 68.4 % ◆ | 70.0 % | ✓ 195K natural ◆◆ | 1.0 → 234,430 on a natural haystack | see ◆◆ |
+| `flint` | 86–88 % | 73–80 % | ✓ 244K at depth ≥ 0.5, natural ◆◆ | 1.0 → 234,430 on a natural haystack | see ◆◆ |
 | `devstral` | 77.2 % | 80.0 % | ✓ 131K | 1.0 → 132K firm | ~80 % at 178K |
 | `coder-30b-eval` / `coder-reap-25b` | 91.2 / 77.2 % | **96.7 %** | 100 % | 0.4 (~64K agentic ceiling) | — |
 | `nemotron3-omni` | — | — | — | 0.6 → 131K at an 8K budget | — |
@@ -140,7 +140,7 @@ single-user at 32K and at the deepest point. Full table, HuggingFace zoo, MoE co
 | `qwen36-ream` | Qwen3.6-REAM-A3B AWQ | DeltaNet+MoE A3B (192 exp, VL) | 262K | 260 → **187** | [link](https://huggingface.co/mattbucci/Qwen3.6-REAM-A3B-AWQ) |
 | `qwen35-moe` | Qwen3.5-28B-A3B-REAP AWQ | DeltaNet+MoE A3B (205 exp, VL) | 262K | 258 → **186** | [link](https://huggingface.co/mattbucci/Qwen3.5-28B-A3B-REAP-AWQ) |
 | `qwen36` | Qwen3.6-35B-A3B AWQ-Marlin | DeltaNet+MoE A3B (256 exp, VL) | 262K | 248 → **148** | [link](https://huggingface.co/mattbucci/Qwen3.6-35B-A3B-AWQ) |
-| `flint` | Flint 40B-A2.5B AWQ (calibrated g64) | MoE A2.5B, 35 SWA + 14 NoPE layers, learned sinks, thinking + tools | 262K | 170 → **115** | [link](https://huggingface.co/mattbucci/Flint-AWQ) |
+| `flint` | Flint 40B-A2.5B AWQ (calibrated g32) | MoE A2.5B, 35 SWA + 14 NoPE layers, learned sinks, thinking + tools | 262K | 170 → **115** | [link](https://huggingface.co/mattbucci/Flint-AWQ-g32) |
 | `nemotron3-omni` | Nemotron-3-Nano-Omni-30B-A3B AWQ | Mamba2-hybrid MoE A3B (AVLM, 6/6 caps, `moe_wna16`) | 262K | 100 → **95** | [link](https://huggingface.co/mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ) |
 | `coder-30b` / `coder-30b-eval` | Qwen3-Coder-30B-A3B AWQ (CT) | MoE A3B (128 exp) | 262K | 191 → **79** | [link](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-AWQ) |
 | `coder-reap-25b` | Qwen3-Coder-30B-A3B-REAP AWQ | MoE A3B (96 exp) | 262K | 189 → **78** | [link](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) |

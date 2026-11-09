@@ -1,0 +1,93 @@
+{
+  "tag": "flint-g32-ab-hay-rep3-2026-11-09",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 29413,
+        "correct": true,
+        "s": 7.3,
+        "finish_reason": "stop",
+        "completion_tokens": 802,
+        "answer_tail": "nal line should be \"ANSWER: 3286\" if asking code? But plural.\n\nI'll end with \"ANSWER: 3286, 7912, 2424\" and no text after. Ensure final line only.\nThe access codes are: cobalt = 3286, tundra = 7912, verbena = 2424.\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 29373,
+        "correct": true,
+        "s": 18.0,
+        "finish_reason": "stop",
+        "completion_tokens": 2590,
+        "answer_tail": " as 'ANSWER: <value>'.\" So we can provide brief reasoning and end with line.\n\nNeed final numeric value. So final response should end with \"ANSWER: 84\". Ensure no extra after.\nVAR_A = 37, VAR_B = 37 + 5 = 42, VAR_C = 42 \u00d7 2 = 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 29399,
+        "correct": true,
+        "s": 4.2,
+        "finish_reason": "stop",
+        "completion_tokens": 295,
+        "answer_tail": " final response can include step by step then final line. Need maybe not overcomplicate.\nThe five items mentioned have costs: onyx 85, falcon 45, tundra 10, verbena 99, and cobalt 30.\n\nTotal cost = 85 + 45 + 10 + 99 + 30 = 269.\n\nANSWER: 269"
+      },
+      "actual_tokens": 29413,
+      "score": 1.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 118547,
+        "correct": true,
+        "s": 22.3,
+        "finish_reason": "stop",
+        "completion_tokens": 377,
+        "answer_tail": "2424. But \"exactly as 'ANSWER: <value>'\" means no extra after. We can end with that.\n\nNeed maybe not overcomplicate. Final answer concise.</think>The access codes are:\n\n- Cobalt: 3286\n- Tundra: 7912\n- Verbena: 2424\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 118511,
+        "correct": false,
+        "s": 23.4,
+        "finish_reason": "stop",
+        "completion_tokens": 717,
+        "answer_tail": ". Final numeric value 0.646.\n\nBut maybe they expect integer? \"final numeric value\" maybe 0.646. The line format 'ANSWER: <value>'. Use 'ANSWER: 0.646'.\n\nLet's final.\nVAR_B is approximately 0.323, so VAR_C = 2 \u00d7 0.323 = 0.646.\n\nANSWER: 0.646"
+      },
+      "aggregate": {
+        "actual_tokens": 118533,
+        "correct": false,
+        "s": 39.7,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "mbers $1$ through $6$, there are five other spots to put them, so we get $6 \\cdot 5 = 30$. However, we overcount some cases. Take the example of $132456$. We overcount this case because we can remove the $3$ or the $2$. Therefore, any cases"
+      },
+      "actual_tokens": 118547,
+      "score": 0.3333333333333333
+    },
+    {
+      "approx": 240000,
+      "multikey": {
+        "actual_tokens": 218994,
+        "correct": true,
+        "s": 55.4,
+        "finish_reason": "stop",
+        "completion_tokens": 290,
+        "answer_tail": "ude step by step then final line.\n\nLet's craft concise. Ensure final line exactly.</think>The access code for Cobalt is **3286**, the access code for Tundra is **7912**, and the access code for Verbena is **2424**.\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 218958,
+        "correct": true,
+        "s": 56.6,
+        "finish_reason": "stop",
+        "completion_tokens": 425,
+        "answer_tail": "a line formatted exactly as 'ANSWER: <value>'. So final response should include reasoning maybe, then final line. We can just final with line. But to be safe, end with \"ANSWER: 84\".</think>The final numeric value of VAR_C is 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 218980,
+        "correct": false,
+        "s": 78.2,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": ", but the final line format is required. The actual question might be from a set of five items? The last five assistant responses might be the \"items\" and their values. The total cost in credits of all five items mentioned: perhaps the five"
+      },
+      "actual_tokens": 218994,
+      "score": 0.6666666666666666
+    }
+  ],
+  "overall": 0.667
+}
