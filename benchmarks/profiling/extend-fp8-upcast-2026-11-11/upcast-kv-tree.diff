@@ -1,0 +1,104 @@
+diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
+index 1b4a419f9a..567feb42b5 100644
+--- a/python/sglang/kernels/ops/attention/extend_attention.py
++++ b/python/sglang/kernels/ops/attention/extend_attention.py
+@@ -45,6 +45,13 @@ _is_gfx1250 = _is_hip and is_gfx1250_supported()
+ # TF32/FMA path there, not the bf16 tensor-core path. SGLANG_EXTEND_ATTN_FP32_PV=0 restores upstream's
+ # bf16 p downcast for the P.V dot (fp32 accumulation either way). Default unchanged.
+ _FP32_SOFTMAX_PV = os.environ.get("SGLANG_EXTEND_ATTN_FP32_PV", "1") == "1"
++# [3090 2026-11-11] with an fp8 pool and the bf16 P.V dot above (FP32_PV=0), upstream's non-gfx1250
++# branches cast q AND the softmax weights p to the pool dtype for the prefix dots — on e5m2 that keeps
++# 2 mantissa bits of each (R9700 R97-S confirmed the same cast on e4m3, 0.35-2.6 % of a cached turn's
++# attention output). UPCAST_KV dots in q's dtype with K/V upcast instead (the split-KV route's 070
++# choice). SGLANG_EXTEND_ATTN_FP8_UPCAST=0 restores the cast.
++_FP8_KV_UPCAST = os.environ.get("SGLANG_EXTEND_ATTN_FP8_UPCAST", "1") == "1"
++_FP8_POOL_DTYPES = (torch.float8_e5m2, torch.float8_e4m3fn)
+ 
+ try:
+     _triton_version_parts = tuple(
+@@ -458,6 +465,7 @@ def _fwd_kernel(
+     USE_FP8_EXTEND: tl.constexpr,
+     FP8_MAX: tl.constexpr,
+     IS_GFX1250: tl.constexpr = False,
++    UPCAST_KV: tl.constexpr = False,
+     PAGE_SIZE: tl.constexpr = 1,
+     IDENTITY_KV_INDICES: tl.constexpr = False,
+     SCORE_MOD: tl.constexpr = None,
+@@ -635,7 +643,7 @@ def _fwd_kernel(
+             # downcasting q to fp8. No-op for a bf16 cache. (Do NOT revert to q.to(fp8).)
+             # On all other platforms keep the original q.to(k.dtype) downcast.
+             # TODO: remove this branch once the gfx1250 fp8 tl.dot issue is resolved.
+-            if IS_GFX1250:
++            if IS_GFX1250 or UPCAST_KV:
+                 qk = tl.dot(q, k.to(q.dtype))
+             else:
+                 qk = tl.dot(q.to(k.dtype), k)
+@@ -658,7 +666,7 @@ def _fwd_kernel(
+                     mask=mask_n[None, :],
+                     other=0.0,
+                 )
+-                if IS_GFX1250:
++                if IS_GFX1250 or UPCAST_KV:
+                     qk += tl.dot(qpe, kpe.to(qpe.dtype))
+                 else:
+                     qk += tl.dot(qpe.to(kpe.dtype), kpe)
+@@ -730,6 +738,8 @@ def _fwd_kernel(
+                 # TODO: remove this branch once the gfx1250 bf16 P·V issue is resolved.
+                 if IS_GFX1250:
+                     dot = tl.dot(p, v.to(tl.float32), out_dtype=tl.float32)
++                elif UPCAST_KV:
++                    dot = tl.dot(p.to(q.dtype), v.to(q.dtype))
+                 else:
+                     dot = tl.dot(p.to(v.dtype), v)
+                 acc = acc * re_scale[:, None] + dot * v_scale
+@@ -1171,6 +1181,7 @@ def extend_attention_fwd(
+         SKIP_EXTEND=skip_extend,
+         HAS_SINK=HAS_SINK,
+         IS_GFX1250=_is_gfx1250 or _FP32_SOFTMAX_PV,
++        UPCAST_KV=_FP8_KV_UPCAST and k_buffer.dtype in _FP8_POOL_DTYPES and not USE_FP8_PREFIX,
+         STORE_TRANSPOSE=_is_hip,
+         USE_COMPACT_TILE_GRID=use_compact_tile_grid,
+         USE_EXP2=USE_EXP2,
+@@ -1234,6 +1245,7 @@ def _fwd_kernel_unified(
+     USE_CUSTOM_MASK: tl.constexpr,
+     HAS_SINK: tl.constexpr,
+     IS_GFX1250: tl.constexpr = False,
++    UPCAST_KV: tl.constexpr = False,
+     PAGE_SIZE: tl.constexpr = 1,
+     SCORE_MOD: tl.constexpr = None,
+     Aux0=None,
+@@ -1418,7 +1430,7 @@ def _fwd_kernel_unified(
+             # downcasting q to fp8. No-op for a bf16 cache. (Do NOT revert to q.to(fp8).)
+             # On all other platforms keep the original q.to(k.dtype) downcast.
+             # TODO: remove this branch once the gfx1250 fp8 tl.dot issue is resolved.
+-            if IS_GFX1250:
++            if IS_GFX1250 or UPCAST_KV:
+                 qk = tl.dot(q, k.to(q.dtype))
+             else:
+                 qk = tl.dot(q.to(k.dtype), k)
+@@ -1441,7 +1453,7 @@ def _fwd_kernel_unified(
+                     mask=mask_n[None, :],
+                     other=0.0,
+                 )
+-                if IS_GFX1250:
++                if IS_GFX1250 or UPCAST_KV:
+                     qk += tl.dot(qpe, kpe.to(qpe.dtype))
+                 else:
+                     qk += tl.dot(qpe.to(kpe.dtype), kpe)
+@@ -1503,6 +1515,8 @@ def _fwd_kernel_unified(
+             # TODO: remove this branch once the gfx1250 bf16 P·V issue is resolved.
+             if IS_GFX1250:
+                 dot = tl.dot(p, v.to(tl.float32), out_dtype=tl.float32)
++            elif UPCAST_KV:
++                dot = tl.dot(p.to(q.dtype), v.to(q.dtype))
+             else:
+                 dot = tl.dot(p.to(v.dtype), v)
+             acc = acc * re_scale[:, None] + dot
+@@ -1664,6 +1678,7 @@ def extend_attention_fwd_unified(
+         USE_CUSTOM_MASK=USE_CUSTOM_MASK,
+         HAS_SINK=HAS_SINK,
+         IS_GFX1250=_is_gfx1250 or _FP32_SOFTMAX_PV,
++        UPCAST_KV=_FP8_KV_UPCAST and k_buffer.dtype in _FP8_POOL_DTYPES,
+         PAGE_SIZE=page_size,
+         SCORE_MOD=score_mod,
+         Aux0=aux0,
