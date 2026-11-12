@@ -20,20 +20,17 @@ Per-patch narratives: [`patches/README.md`](patches/README.md).
 
 ## Results
 
-![Per-model single-user decode tok/s, peak (short context) vs 256K or the model's real KV cap, at the 300 W ship cap with gpu-unlock, custom allreduce, INT8 lm_head and GDN conv state as shipped](benchmarks/all_models_decode.png)
+- **Decode at a true 256K window:** `qwen36-ream` **187 tok/s**, `qwen35-moe` 186, `qwen36` 148, `flint` 115.
+- **Cold prefill at 131K:** `qwen36` 15.9 s, `flint` 18.3 s; a cached 1-token turn at 197K: 70–85 ms.
+- **SWE-bench Lite:** `qwen38` 65.3 %, `qwopus38` 63.3 %, `flint` 60.7 %; scaffolds tie within noise.
 
-![Single-user decode tok/s vs context length, all AWQ presets, unified 256K x-axis](benchmarks/all_models_context.png)
+### Single-user decode across the fleet
 
-![Fresh-prefill TTFT per preset at 32K and 128K natural-text prompts, cache flushed, server-verified token counts, shipped presets](benchmarks/all_models_ttft_natural.png)
+![Per-model single-user decode tok/s — short input vs 256K (hatched: the model's own cap below 256K)](benchmarks/all_models_decode.png)
 
-![SWE-bench Lite resolve rate per preset under the isolated harness; landed full-300 cells as bars, queued cells marked pending](benchmarks/bakeoff_swebench_lite.png)
+![Single-user decode tok/s vs context length, one panel per class (filled marker: MoE, hollow: dense)](benchmarks/all_models_context.png)
 
-![Speculative decoding: Qwen3.8-27B DSpark on the shipped config (fp8 KV, true 256K) vs the plain arm on natural text at 1K / 32K / 131K / 262K](benchmarks/specdec_comparison.png)
-
-![Power cap 300 W vs 400 W per card, same boot: decode at 1K / 32K / deepest point for every preset](benchmarks/all_models_power_300v400.png)
-
-### Single-user decode at depth
-
+Charts: `scripts/bench/generate_charts.py` (fleet style shared with R9700).
 Every deep point is server-verified at its labeled depth (`actual_input_tokens`; the deepest honest point is
 255K = 262144 − output − margin), single-user, fresh prefill, at each model's real KV pool. Receipts:
 `benchmarks/<preset>/results.json`, the lever ledger in [`docs/decode-levers.md`](docs/decode-levers.md).
@@ -45,13 +42,22 @@ Every deep point is server-verified at its labeled depth (`actual_input_tokens`;
 - **Expert pruning or merging does not speed M=1 decode**; REAP/REAM win on KV headroom and footprint.
 - **The dense DeltaNet presets sit at the GA102 memory roofline**; the A3B MoEs carry a 14 % idle gap that
   is kernel count, not bandwidth ([issue #13](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/13)).
-- **Speculative decoding:** DSpark on `qwen38` holds **1.21× at 250K actual** with the true 256K window
-  (fp8 KV; 1.95× / 1.34× / 1.21× / 1.11× at 1K / 32K / 131K / 262K) and serves its bake-off cycle
-  (`SPEC_DECODE=1`). Other drafts collapse at depth ([ledger](docs/decode-levers.md#speculative-decoding)).
 - **Power:** the 300 W cap costs 0–5 % against 400 W; weight-streaming decode saturates near 320 W
   ([sweep](benchmarks/power-sweep-2026-10-24/)).
 
+![Decode at 1K / 32K / 256K per model under a 300 W vs 400 W cap (pale: 300 W)](benchmarks/all_models_power_300v400.png)
+
+#### Speculative decoding
+
+![Single-user decode, plain AWQ vs + draft, per model and depth (green: with draft)](benchmarks/specdec_comparison.png)
+
+DSpark on `qwen38` holds **1.21× at 250K actual** with the true 256K window (fp8 KV; 1.95× / 1.34× /
+1.21× / 1.11× at 1K / 32K / 131K / 262K) and serves its bake-off cycle (`SPEC_DECODE=1`). Other drafts
+collapse at depth ([ledger](docs/decode-levers.md#speculative-decoding)); data `benchmarks/specdec-comparison.json`.
+
 ### Agentic follow-up turns and prefill
+
+![Cold-prefill time to first token per model, natural text, cache flushed (pale: 32K, solid: 128K)](benchmarks/all_models_ttft_natural.png)
 
 A chat-API follow-up turn re-sends the whole conversation; the server now re-encodes only the tail
 (patch 072), routes short cache-hit extends through a split-KV kernel on the triton presets (patch 070,
@@ -79,10 +85,12 @@ Receipts: [`benchmarks/profiling/multiturn-cache-2026-11-01/`](benchmarks/profil
 
 ### SWE-bench Lite (isolated Docker harness)
 
+![SWE-bench Lite resolve rate per preset × scaffold under the isolated harness (full-300 cells; hatched: partial)](benchmarks/bakeoff_swebench_lite.png)
+
 Full 300 instances, one attempt each, single-user, `swebench==4.1.0` scorer, one lane per preset (`omp`, oh-my-pi); every counted cell ran at the served 262K window with template-default thinking, a 32K output
 budget, no network, and closed on the
 leak audit at 0 exposed. **Only full-300 cells are compared.** Mechanics and receipts:
-[`docs/swebench-bakeoff.md`](docs/swebench-bakeoff.md); queue state in
+[`docs/swebench-bakeoff.md`](docs/swebench-bakeoff.md); queue (remaining presets on `omp`) in
 [issue #11](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/11).
 
 | Preset | resolved/300 (opencode unless marked `omp`) |
@@ -92,7 +100,6 @@ leak audit at 0 exposed. **Only full-300 cells are compared.** Mechanics and rec
 | `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **191/300 (63.7 %)** |
 | `flint` (Flint 40B-A2.5B, calibrated AWQ, thinking) | **182/300 (60.7 %)** · `omp` **186** · v5 176 (ties) |
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **176/300 (58.7 %)** |
-| `qwen36-ream` · `qwen35-moe` · `coder-30b-eval` · `coder-reap-25b` · `coder-30b-ream` · `devstral` · `gemma4` · `nemotron3-omni` · all on `omp` ([issue #23](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/23)) | *pending* (queue order) |
 
 The lanes are within noise of each other (the `qwen38` five-scaffold bake-off, `flint` opencode 182 vs `omp` 186,
 `qwopus38` `omp` 190 vs `qwen38` opencode 196: all McNemar ties, [detail](docs/swebench-bakeoff.md)); `omp` is

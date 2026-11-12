@@ -11,6 +11,7 @@ import os
 import glob
 import json
 import re
+import textwrap
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -35,28 +36,48 @@ plt.rcParams.update({
     "font.size": 11,
 })
 
+# --- Fleet styling (shared with the R9700 stack's generate_charts.py) ---
+# A fleet panel holds up to ten curves, so a model is identified by two channels that are both
+# unique inside its class: a FLEET_PALETTE colour and a marker shape. Marker fill carries the
+# class (filled = MoE, hollow = dense) and the dash carries the quantization (solid = FP8,
+# dashed = 4-bit; every preset here is AWQ int4, so every curve is dashed and reads the same as
+# the 4-bit curves on the R9700 charts). A model both stacks serve keeps the same colour + marker.
+FLEET_PALETTE = {
+    "blue": "#4ea1ff", "orange": "#ff9a3c", "green": "#3ddc84", "red": "#ff5c5c",
+    "violet": "#b48cff", "yellow": "#ffe45e", "cyan": "#3fd6e0", "pink": "#ff79c6",
+    "white": "#f0f6fc", "tan": "#b89b7a",
+}
+MODEL_CLASSES = {"moe": "MoE", "dense": "Dense"}
+INK = "#c9d1d9"
+
+
+def _model(preset, label, cls, color, marker, quant="4bit"):
+    return {"preset": preset, "label": label, "cls": cls, "quant": quant,
+            "color": FLEET_PALETTE[color], "marker": marker}
+
+
 MODELS = {
     # slug = benchmarks/<slug>/results.json (context sweep, bench_long_context.py);
     # preset = the launch.sh name, which is also how the throughput tripwire files
     # its runs (benchmarks/regression/<preset>-<date>.json) — the decode bar chart
     # takes whichever of the two is newer. Keep in sync with launch.sh presets.
-    "qwen3.6-35b-a3b":     {"preset": "qwen36",          "label": "Qwen3.6-35B-A3B AWQ (MoE, think)", "color": "#58a6ff"},
-    "qwen3.6-ream":        {"preset": "qwen36-ream",     "label": "Qwen3.6-REAM-A3B AWQ (MoE, think)", "color": "#79c0ff"},
-    "qwen3.6-27b":         {"preset": "qwen36-dense",    "label": "Qwen3.6-27B AWQ (dense, think)",    "color": "#1f6feb"},
-    "qwen38":              {"preset": "qwen38",          "label": "Qwen3.8-27B AWQ (dense, think)",    "color": "#388bfd"},
-    "flint":               {"preset": "flint",           "label": "Flint 40B-A2.5B AWQ (MoE, SWA+NoPE, think)", "color": "#f778ba"},
-    "qwen3.5-28b-moe":     {"preset": "qwen35-moe",      "label": "Qwen3.5-28B REAP AWQ (MoE, think)", "color": "#a5d6ff"},
-    "qwen3-30b-ream":      {"preset": "qwen3-ream",      "label": "Qwen3-30B-REAM AWQ (MoE)",          "color": "#3fb950"},
-    "nemotron3-omni":      {"preset": "nemotron3-omni",  "label": "Nemotron-3-Nano-Omni AWQ (Mamba2-hybrid AVLM, int4)", "color": "#39c5cf"},
-    "devstral-24b-awq":    {"preset": "devstral",        "label": "Devstral-24B AWQ (dense)",          "color": "#56d364"},
-    "gemma4-31b":          {"preset": "gemma4-31b",      "label": "Gemma 4 31B AWQ (dense, think)",    "color": "#d2a8ff"},
-    "gemma4-26b-awq":      {"preset": "gemma4",          "label": "Gemma 4 26B AWQ (MoE, think)",      "color": "#bc8cff"},
-    "gemma4-21b-reap":     {"preset": "gemma4-21b-reap", "label": "Gemma 4 21B REAP AWQ (MoE, think)", "color": "#a371f7"},
-    "gemma4-12b":          {"preset": "gemma4-12b",      "label": "Gemma 4 12B AWQ (omni, think)",     "color": "#8957e5"},
-    "coder-30b-awq":       {"preset": "coder-30b",       "label": "Coder-30B AWQ (MoE)",              "color": "#f0883e"},
-    "coder-reap-25b":      {"preset": "coder-reap-25b",  "label": "Coder-30B REAP AWQ (MoE)",         "color": "#ffa657"},
-    "qwen3-vl-32b":        {"preset": "qwen3-vl-32b",    "label": "Qwen3-VL-32B AWQ (dense, VL)",     "color": "#d29922"},
-    "qwen35-27b-awq":      {"preset": "qwen35-dense",    "label": "Qwen3.5-27B AWQ",                  "color": "#e3b341"},
+    "qwen3.6-35b-a3b":  _model("qwen36",          "Qwen3.6-35B-A3B AWQ (MoE+DeltaNet)",        "moe",   "white",  "X"),
+    "qwen3.6-ream":     _model("qwen36-ream",     "Qwen3.6-REAM-A3B AWQ (MoE+DeltaNet)",       "moe",   "blue",   "<"),
+    "qwen3.5-28b-moe":  _model("qwen35-moe",      "Qwen3.5-28B-A3B REAP AWQ (MoE+DeltaNet)",   "moe",   "violet", "P"),
+    "coder-30b-awq":    _model("coder-30b",       "Coder-30B AWQ (MoE)",                       "moe",   "green",  "^"),
+    "coder-reap-25b":   _model("coder-reap-25b",  "Coder-REAP-25B AWQ (MoE)",                  "moe",   "pink",   "s"),
+    "qwen3-30b-ream":   _model("qwen3-ream",      "Qwen3-30B-REAM AWQ (MoE)",                  "moe",   "orange", "*"),
+    "flint":            _model("flint",           "Flint 40B-A2.5B AWQ (MoE + hybrid SWA + sinks)", "moe", "tan", ">"),
+    "nemotron3-omni":   _model("nemotron3-omni",  "Nemotron-3-Nano-Omni AWQ (Mamba2 hybrid MoE)", "moe", "cyan",  "o"),
+    "gemma4-26b-awq":   _model("gemma4",          "Gemma 4 26B AWQ (MoE)",                     "moe",   "yellow", "D"),
+    "gemma4-21b-reap":  _model("gemma4-21b-reap", "Gemma 4 21B REAP AWQ (MoE)",                "moe",   "red",    "v"),
+    "qwen38":           _model("qwen38",          "Qwen3.8-27B AWQ (Dense DeltaNet VL)",       "dense", "blue",   "o"),
+    "qwen3.6-27b":      _model("qwen36-dense",    "Qwen3.6-27B AWQ (Dense)",                   "dense", "orange", "P"),
+    "qwen35-27b-awq":   _model("qwen35-dense",    "Qwen3.5-27B AWQ (DeltaNet)",                "dense", "white",  "<"),
+    "devstral-24b-awq": _model("devstral",        "Devstral-24B AWQ",                          "dense", "yellow", "^"),
+    "gemma4-31b":       _model("gemma4-31b",      "Gemma 4 31B AWQ (Dense)",                   "dense", "tan",    "X"),
+    "gemma4-12b":       _model("gemma4-12b",      "Gemma 4 12B AWQ (omni)",                    "dense", "cyan",   "D"),
+    "qwen3-vl-32b":     _model("qwen3-vl-32b",    "Qwen3-VL-32B AWQ (Dense VL)",               "dense", "violet", "*"),
 }
 
 
@@ -97,7 +118,7 @@ def newest_decode_sweep(key, meta):
 
 # Unified x-axis: 128 to 256K (matches R9700's chart format for cross-stack comparison).
 # Our presets serve at 256K natively; benchmark data sweeps will be re-run at this range.
-UNIFIED_XLIM = (1024, 300_000)
+UNIFIED_XLIM = (800, 300_000)
 UNIFIED_XTICKS = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144]
 
 # Standard concurrency levels for bar charts
@@ -294,36 +315,91 @@ def make_concurrency_chart(model_key, meta, results, out_dir):
     print(f"  {path}")
 
 
-def make_combined_context_chart(all_data):
-    """All models on one context chart (sweeps from the current instrument only —
-    pre-2026-05 results.json files are the old 16-32K-capped runs)."""
-    fig, ax = plt.subplots(figsize=(11, 5.5))
+def fleet_groups(members):
+    """[(title, [member, ...])] in MODEL_CLASSES order, empty groups dropped; a member is any
+    tuple or dict-row whose meta carries `cls`."""
+    meta_of = lambda m: m["meta"] if isinstance(m, dict) else m[1]
+    groups = [(title, [m for m in members if meta_of(m)["cls"] == value])
+              for value, title in MODEL_CLASSES.items()]
+    return [(title, group) for title, group in groups if group]
 
+
+def fleet_line_style(meta):
+    """ax.plot keywords of one fleet curve (see the fleet styling note above MODELS)."""
+    panel = plt.rcParams["axes.facecolor"]
+    dense = meta["cls"] == "dense"
+    return {
+        "color": meta["color"],
+        "linewidth": 2.0,
+        "linestyle": "-" if meta["quant"] == "fp8" else (0, (5, 2)),
+        "marker": meta["marker"],
+        "markersize": 9.5 if meta["marker"] in ("*", "P", "X") else 7.5,
+        "markerfacecolor": panel if dense else meta["color"],
+        "markeredgecolor": meta["color"] if dense else panel,
+        "markeredgewidth": 1.6 if dense else 0.7,
+        "zorder": 5,
+    }
+
+
+def _fleet_style_key(fig, quants):
+    """Figure legend for the channels that are not a model's identity (only the ones drawn)."""
+    from matplotlib.lines import Line2D
+    panel = plt.rcParams["axes.facecolor"]
+    handles = [
+        Line2D([], [], linestyle="none", marker="o", markersize=7.5, markerfacecolor=INK,
+               markeredgecolor=panel, label="filled marker: MoE"),
+        Line2D([], [], linestyle="none", marker="o", markersize=7.5, markerfacecolor=panel,
+               markeredgecolor=INK, markeredgewidth=1.6, label="hollow marker: dense"),
+    ]
+    if "fp8" in quants:
+        handles.append(Line2D([], [], color=INK, linewidth=2.0, linestyle="-", label="solid line: FP8"))
+    if "4bit" in quants:
+        handles.append(Line2D([], [], color=INK, linewidth=2.0, linestyle=(0, (5, 2)),
+                              label="dashed line: 4-bit (AWQ int4)"))
+    fig.legend(handles=handles, loc="outside lower center", ncol=len(handles), fontsize=9.5,
+               frameon=False, handlelength=3.2)
+
+
+def make_combined_context_chart(all_data):
+    """All models on one context chart, unified 256K x-axis, one panel per class (MoE / Dense)
+    on shared axes — the R9700 fleet layout. A panel's legend lists its curves in the order they
+    leave the left edge. Sweeps from the current instrument only (pre-2026-05 results.json files
+    are the old 16-32K-capped runs), filtered to points the real KV pool holds."""
+    members = []
     for key, (meta, results) in all_data.items():
         if str(results.get("timestamp", "")) < "2026-05":
             continue
         sweep = honest_sweep(key, results)
-        if not sweep:
-            continue
-        ctx = [p["context"] for p in sweep]
-        toks = [p["tok_per_sec"] for p in sweep]
-        ax.plot(ctx, toks, "o-", color=meta["color"], linewidth=2, markersize=5,
-                label=meta["label"], zorder=5)
-
-    ax.set_xscale("log", base=2)
-    ax.set_xlim(*UNIFIED_XLIM)
-    ax.xaxis.set_major_formatter(ticker.FuncFormatter(fmt_ctx))
-    ax.xaxis.set_major_locator(ticker.FixedLocator(UNIFIED_XTICKS))
-    ax.tick_params(axis="x", rotation=45)
-    ax.set_xlabel("Context Length")
-    ax.set_ylabel("tok/s (single user)")
-    ax.set_title("All Models — Context Length vs Decode Speed", fontsize=13, fontweight="bold", pad=10)
-    ax.grid(True, axis="both", linestyle="--")
-    ax.set_ylim(bottom=0)
-    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=8.5, framealpha=0.5,
-              edgecolor="#30363d", facecolor="#161b22", borderaxespad=0)
-
-    fig.tight_layout()
+        if sweep:
+            members.append((key, meta, [p["context"] for p in sweep], [p["tok_per_sec"] for p in sweep]))
+    panels = [(title, sorted(group, key=lambda m: m[3][0], reverse=True))
+              for title, group in fleet_groups(members)]
+    if not panels:
+        print("  SKIP all_models_context.png (no fleet data)")
+        return
+    tallest = max(len(curves) for _, curves in panels)
+    fig, axes = plt.subplots(
+        len(panels), 1, sharex=True, sharey=True, squeeze=False, layout="constrained",
+        figsize=(12, max(3.8, 0.27 * tallest + 1.1) * len(panels) + 1.0))
+    for ax, (title, curves) in zip(axes[:, 0], panels):
+        for _, meta, xs, ys in curves:
+            ax.plot(xs, ys, label=meta["label"], **fleet_line_style(meta))
+        ax.set_xscale("log", base=2)
+        ax.set_xlim(*UNIFIED_XLIM)
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(fmt_ctx))
+        ax.xaxis.set_major_locator(ticker.FixedLocator(UNIFIED_XTICKS))
+        ax.set_ylabel("tok/s (single user)")
+        ax.grid(True, axis="both", linestyle="--")
+        ax.set_ylim(bottom=0)
+        ax.set_title(f"{title} · {len(curves)} models", loc="left", fontsize=11.5, fontweight="bold")
+        legend = ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), borderaxespad=0, fontsize=9,
+                           handlelength=3.4, title="fastest at the left edge first", title_fontsize=8,
+                           framealpha=0.5, edgecolor="#30363d", facecolor="#161b22")
+        legend.get_title().set_color("#8b949e")
+    axes[-1, 0].set_xlabel("Context Length")
+    fig.suptitle("All Models — Context Length vs Decode Speed (single user, TP=2)",
+                 fontsize=13, fontweight="bold")
+    _fleet_style_key(fig, {m[1]["quant"] for m in members})
     path = os.path.join(BENCH_DIR, "all_models_context.png")
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -365,13 +441,11 @@ def make_combined_concurrency_chart(all_data):
 
 
 def make_specdec_comparison_chart():
-    """AWQ baseline vs AWQ + spec-decode (single-user decode tok/s) across the
-    spec-validated fleet. Data from benchmarks/specdec-comparison.json.
-
-    Adapted from R9700's `make_fp8_comparison_chart` (commit a668c39, "+draft"
-    series) but stripped to the AWQ + spec-decode bars only — FP8 doesn't
-    accelerate on Ampere sm_86 and the relevant models don't fit at FP8 on 24GB.
-    """
+    """Plain AWQ vs AWQ + draft (single-user decode tok/s) for every spec-validated
+    (model, depth) row of benchmarks/specdec-comparison.json, as horizontal paired
+    bars in the fleet layout. The speed-up is the label; the provenance sentence
+    (stack, date, prompt source) is the wrapped footnote, not a title."""
+    from matplotlib.patches import Patch
     path_in = os.path.join(BENCH_DIR, "specdec-comparison.json")
     if not os.path.exists(path_in):
         print(f"  (no {path_in} — skipping spec-decode chart)")
@@ -381,75 +455,37 @@ def make_specdec_comparison_chart():
     models = data["models"]
     if not models:
         return
-    x = np.arange(len(models))
-    w = 0.27  # three bars per model: AWQ int4 | FP8 | +draft
-    AWQC, FP8C, SPECC = "#58a6ff", "#d29922", "#3fb950"
-    # One group per (model, depth). `ctx_label` overrides the "ctx NK" text
-    # (the DSpark depth ladder has a 60-token row); `measured` = stack + date.
-    xlabels = []
-    for m in models:
+    PLAIN, SPEC = FLEET_PALETTE["blue"], FLEET_PALETTE["green"]
+    fig, ax = plt.subplots(figsize=(11, 0.62 * len(models) + 2.4))
+    top = max(max(m["spec_toks"], m["awq_toks"]) for m in models)
+    h, pad, labels = 0.37, top * 0.008, []
+    for y, m in enumerate(models):
+        ax.barh(y - h / 2, m["awq_toks"], h, color=PLAIN, alpha=0.95, zorder=5)
+        ax.text(m["awq_toks"] + pad, y - h / 2, f'{m["awq_toks"]:.0f}', va="center", fontsize=9, color=INK)
+        ax.barh(y + h / 2, m["spec_toks"], h, color=SPEC, alpha=0.95, zorder=5)
+        ax.text(m["spec_toks"] + pad, y + h / 2,
+                f'{m["spec_toks"]:.0f}  ·  {m["speedup_x"]:.2f}×  ·  {m["spec_draft"]}',
+                va="center", fontsize=9, color=INK, fontweight="bold")
         ctx = m.get("ctx_label") or f'ctx {m["ctx_k"]}K'
-        lbl = f'{m["name"]}\n{m["kind"]}\n{ctx}'
-        if m.get("measured"):
-            lbl += f'\n{m["measured"]}'
-        xlabels.append(lbl)
-
-    fig, ax = plt.subplots(1, 1, figsize=(max(11, 2.4 * len(models) + 1.5), 6.5))
-    y_top = max(m["spec_toks"] for m in models) * 1.30
-
-    seen = set()
-    def _lbl(key, text):
-        if key in seen:
-            return None
-        seen.add(key); return text
-
-    for i, m in enumerate(models):
-        awq = m["awq_toks"]; spec = m["spec_toks"]
-        # AWQ int4 (left)
-        ax.bar(x[i] - w, awq, w, color=AWQC, zorder=5,
-               label=_lbl("awq", "AWQ int4 (no spec)"))
-        ax.text(x[i] - w, awq + 2.0, f'{awq:.0f}',
-                ha="center", fontsize=9, color=AWQC, fontweight="bold")
-        # FP8 (middle). fp8_toks is null on sm_86 — the FP8 W8A8 MoE kernel won't
-        # compile (Triton rejects e4m3/fp8e4nv), so draw a hatched stub + "✗" label
-        # rather than a misleading number.
-        fp8 = m.get("fp8_toks")
-        if fp8 is not None:
-            ax.bar(x[i], fp8, w, color=FP8C, zorder=5,
-                   label=_lbl("fp8", "FP8 W8A8 (no spec)"))
-            ax.text(x[i], fp8 + 2.0, f'{fp8:.0f}', ha="center", fontsize=9,
-                    color=FP8C, fontweight="bold")
-        else:
-            stub = y_top * 0.06
-            ax.bar(x[i], stub, w, color=FP8C, alpha=0.35, hatch="xxx",
-                   edgecolor=FP8C, zorder=5,
-                   label=_lbl("fp8", "FP8 W8A8 — ✗ not on this lane (see note)"))
-            ax.text(x[i], stub + 2.0, f'✗ FP8\n{m.get("fp8_note", "sm_86")}',
-                    ha="center", va="bottom", fontsize=7.5, color=FP8C,
-                    fontweight="bold")
-        # +draft spec-decode (right)
-        ax.bar(x[i] + w, spec, w, color=SPECC, zorder=5,
-               label=_lbl("spec", "+ draft (spec-decode)"))
-        ax.text(x[i] + w, spec + 2.0,
-                f'{spec:.0f}\n{m["spec_draft"]}\n{m["speedup_x"]:.2f}×',
-                ha="center", fontsize=8, color=SPECC, fontweight="bold")
-
-    ax.set_xticks(x); ax.set_xticklabels(xlabels, fontsize=8.5)
-    ax.set_ylabel("tok/s (single user)")
-    ax.set_title("Single-user decode — AWQ int4 vs FP8 vs +draft (spec-decode), 2×3090 sm_86",
-                 fontsize=12.5, fontweight="bold", pad=10)
-    ax.legend(loc="upper left", framealpha=0.5, edgecolor="#30363d",
-              facecolor="#161b22", fontsize=9)
-    ax.grid(True, axis="y", linestyle="--")
-    ax.set_ylim(bottom=0, top=y_top)
-
-    import textwrap
-    sub = "\n".join(textwrap.wrap(data["subtitle"], width=int(fig.get_figwidth() * 9)))
-    fig.suptitle(f'{data["title"]}\n{sub}', fontsize=12, fontweight="bold", y=1.04)
-    if data.get("footnote"):
-        note = "\n".join(textwrap.wrap(data["footnote"], width=int(fig.get_figwidth() * 15)))
-        fig.text(0.5, -0.02, note, ha="center", va="top", fontsize=8,
-                 color="#8b949e", style="italic")
+        labels.append(f'{m["name"]} ({m["kind"]})\n{ctx}' + (f' · {m["measured"]}' if m.get("measured") else ""))
+    ax.set_yticks(range(len(models)))
+    ax.set_yticklabels(labels, fontsize=9.5, color=INK)
+    ax.set_ylim(len(models) - 0.4, -0.6)
+    ax.set_xlim(0, top * 1.3)
+    ax.tick_params(axis="y", length=0)
+    ax.tick_params(axis="x", top=True, labeltop=True)
+    ax.set_xlabel("tok/s (single user, M=1)")
+    ax.set_title("Speculative decoding — plain AWQ vs + draft, single-user decode (TP=2)",
+                 fontsize=13, fontweight="bold", pad=10)
+    ax.legend(handles=[Patch(facecolor=PLAIN, label="AWQ int4, no draft"),
+                       Patch(facecolor=SPEC, label="+ draft (speculative decoding)")],
+              loc="lower right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22", fontsize=9)
+    ax.grid(True, axis="x", linestyle="--")
+    note = data.get("chart_note") or ("natural-text prompts, greedy, cache flushed per point, plain arm on the same "
+                                      "boot; each row is labelled with the stack and date it was measured on — "
+                                      "provenance and receipts in benchmarks/specdec-comparison.json")
+    ax.annotate(textwrap.fill(note, 150), xy=(0, 0), xycoords="axes fraction", xytext=(0, -40),
+                textcoords="offset points", va="top", fontsize=7.5, color="#8b949e")
     fig.tight_layout()
     out = os.path.join(BENCH_DIR, "specdec_comparison.png")
     fig.savefig(out, dpi=150, bbox_inches="tight")
@@ -459,10 +495,11 @@ def make_specdec_comparison_chart():
 
 def make_decode_bar_chart(all_data):
     """Per-model single-user decode tok/s — peak (short ctx) vs deep (256K where
-    the KV pool reaches it, else the model's real max ctx). The deep bar is
-    hatched for models whose KV pool caps below 256K, so gemma/devstral show
-    their honest sub-256K limit instead of the over-cap bench artifacts. Fleet
-    counterpart to R9700's per-model decode bar chart."""
+    the KV pool reaches it, else the model's real max ctx), in the R9700 fleet
+    layout: horizontal bars, one section per class (MoE / Dense), fastest first
+    inside each. The deep bar is hatched for models whose KV pool or served
+    window caps below 256K, so they show their honest limit instead of being
+    read as 256K-depth throughput."""
     from matplotlib.patches import Patch
     rows = []
     for key, meta in MODELS.items():
@@ -480,43 +517,59 @@ def make_decode_bar_chart(all_data):
     if not rows:
         print("  SKIP decode bar chart (no fresh fleet data)")
         return
-    rows.sort(key=lambda r: r["peak"], reverse=True)
+    sections = [(title, sorted(group, key=lambda r: r["peak"], reverse=True))
+                for title, group in fleet_groups(rows)]
 
-    x = np.arange(len(rows)); w = 0.38
-    fig, ax = plt.subplots(figsize=(max(11, 1.05 * len(rows)), 6))
-    for i, r in enumerate(rows):
-        c = r["meta"]["color"]
-        ax.bar(x[i] - w / 2, r["peak"], w, color=c, alpha=0.42, zorder=5)
-        ax.text(x[i] - w / 2, r["peak"] + 1.5, f'{r["peak"]:.0f}', ha="center",
-                fontsize=9, color=c, fontweight="bold")
-        hatch = None if r["reaches"] else "////"
-        ax.bar(x[i] + w / 2, r["deep"], w, color=c, alpha=0.95, zorder=5,
-               hatch=hatch, edgecolor="#0d1117", linewidth=0.6)
-        ctx_lbl = "256K" if r["reaches"] else f'{r["deep_ctx"] // 1024}K'
-        ax.text(x[i] + w / 2, r["deep"] + 1.5, f'{r["deep"]:.0f}\n@{ctx_lbl}',
-                ha="center", fontsize=8, color=c, fontweight="bold")
-    labels = [r["meta"]["label"].replace(" AWQ ", "\n").replace(" AWQ", "") for r in rows]
-    ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=7.5, rotation=28, ha="right")
-    ax.set_ylabel("tok/s (single user, M=1)")
-    ax.set_title("Single-user decode — peak vs 256K (or real KV cap)",
+    panel = plt.rcParams["axes.facecolor"]
+    fig, ax = plt.subplots(figsize=(11, 0.46 * len(rows) + 0.45 * len(sections) + 2.0))
+    top = max(max(r["peak"], r["deep"]) for r in rows)
+    h, pad, y, ticks, labels = 0.37, top * 0.008, 0.0, [], []
+    for title, section in sections:
+        ax.axhline(y, color="#484f58", linewidth=1.0, zorder=1)
+        ax.text(-0.012, y, f"{title} ({len(section)})", transform=ax.get_yaxis_transform(),
+                ha="right", va="center", fontsize=11.5, fontweight="bold", color="#f0f6fc")
+        y += 0.85
+        for r in section:
+            c = r["meta"]["color"]
+            ax.barh(y - h / 2, r["peak"], h, color=c, alpha=0.45, zorder=5)
+            ax.text(r["peak"] + pad, y - h / 2, f'{r["peak"]:.0f}', va="center",
+                    fontsize=9, color=INK, fontweight="bold")
+            ax.barh(y + h / 2, r["deep"], h, color=c, alpha=0.95, zorder=5,
+                    hatch=None if r["reaches"] else "////", edgecolor=panel, linewidth=0.6)
+            ctx_lbl = "256K" if r["reaches"] else f'{r["deep_ctx"] // 1024}K'
+            ax.text(r["deep"] + pad, y + h / 2, f'{r["deep"]:.0f} @{ctx_lbl}',
+                    va="center", fontsize=9, color=INK)
+            ticks.append(y)
+            labels.append(r["meta"]["label"])
+            y += 1.0
+    ax.set_yticks(ticks)
+    ax.set_yticklabels(labels, fontsize=9.5, color=INK)
+    ax.set_ylim(y - 0.35, -0.75)   # inverted: the first row is on top
+    ax.set_xlim(0, top * 1.16)
+    ax.tick_params(axis="y", length=0)
+    ax.tick_params(axis="x", top=True, labeltop=True)
+    ax.set_xlabel("tok/s (single user, M=1)")
+    ax.set_title("Single-user decode — short input vs 256K or the model's own cap (TP=2)",
                  fontsize=13, fontweight="bold", pad=10)
     ax.legend(handles=[
-        Patch(facecolor="#8b949e", alpha=0.42, label="peak (short ctx)"),
-        Patch(facecolor="#8b949e", alpha=0.95, label="at true 256K KV pool"),
+        Patch(facecolor="#8b949e", alpha=0.42, label="fastest point of the sweep (short input)"),
+        Patch(facecolor="#8b949e", alpha=0.95, label="deep: true 256K window, server-verified depth"),
         Patch(facecolor="#8b949e", alpha=0.95, hatch="////", edgecolor="#0d1117",
-              label="at KV cap (< 256K)"),
-    ], loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22", fontsize=9)
-    ax.grid(True, axis="y", linestyle="--")
-    ax.set_ylim(bottom=0, top=max(r["peak"] for r in rows) * 1.18)
+              label="at the model's own cap (< 256K)"),
+    ], loc="lower right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22", fontsize=9)
+    ax.grid(True, axis="x", linestyle="--")
     dates = sorted({r["date"] for r in rows})
-    ax.text(0.0, -0.36, f"newest depth-verified sweep per model (server-verified actual tokens), "
-            f"measured {dates[0]}" + (f" .. {dates[-1]}" if len(dates) > 1 else ""),
-            transform=ax.transAxes, fontsize=7.5, color="#8b949e")
+    note = ("newest depth-verified sweep per model (results.json or a later tripwire run; streaming "
+            "TPOT, decode-only, server-verified actual tokens), every preset as shipped at the 300 W cap; "
+            f"measured {dates[0]}" + (f" .. {dates[-1]}" if len(dates) > 1 else ""))
+    ax.annotate(textwrap.fill(note, 150), xy=(0, 0), xycoords="axes fraction", xytext=(0, -40),
+                textcoords="offset points", va="top", fontsize=7.5, color="#8b949e")
     fig.tight_layout()
     out = os.path.join(BENCH_DIR, "all_models_decode.png")
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  {out}")
+
 
 
 # Scaffold display order for the bake-off chart. The harness was pruned to
@@ -525,7 +578,6 @@ def make_decode_bar_chart(all_data):
 # of every scaffold still plot (the qwen38 bake-off row), but only the ACTIVE
 # lane gets "pending" placeholders on the presets still in the queue.
 # claw-code (retired 2026-08-31) is not plotted — its cell JSONs stay as receipts.
-BAKEOFF_ACTIVE_SCAFFOLDS = {"opencode"}
 BAKEOFF_SCAFFOLDS = [
     ("opencode",         "#58a6ff", "opencode"),
     ("opencode-dcp",     "#1f6feb", "opencode + DCP"),
@@ -533,34 +585,17 @@ BAKEOFF_SCAFFOLDS = [
     ("little-coder-rtk", "#2ea043", "little-coder + RTK"),
     ("prime",            "#d2a8ff", "prime"),
     ("dcode",            "#f0883e", "dcode"),
-    ("omp",              "#f778ba", "omp"),
+    ("omp",              "#56d4dd", "oh-my-pi"),
 ]
-BAKEOFF_QUEUE_FALLBACK = ["qwen38", "coder-30b-eval", "qwen36", "coder-reap-25b", "qwen36-ream",
-                          "qwen35-moe", "coder-30b-ream", "qwen36-dense", "devstral", "gemma4",
-                          "nemotron3-omni"]
-
-
-def bakeoff_queue():
-    """Presets in the bake-off queue, read from run_all_cycles.sh's default QUEUE
-    so the chart's pending cells track the campaign, not a second list."""
-    path = os.path.join(REPO, "evals", "swebench", "run_all_cycles.sh")
-    try:
-        m = re.search(r'^QUEUE="\$\{QUEUE:-([^}]+)\}"', open(path).read(), re.M)
-        if m:
-            return m.group(1).split()
-    except OSError:
-        pass
-    return BAKEOFF_QUEUE_FALLBACK
 
 
 def make_bakeoff_chart():
     """SWE-bench Lite resolve rate per preset × scaffold, from the per-cell
     JSONs `benchmarks/quality/bakeoff-<preset>-<scaffold>.json` that
-    `evals/swebench/aggregate_bakeoff.py` writes. The grid is the campaign
-    queue × the live scaffold roster: a landed cell is a solid bar (hatched
-    when under 300 predictions — the full-300 rule), a cell the queue has not
-    scored yet is a dashed "pending" placeholder. Superseded cells (`"superseded"`
-    set; the pre-2026-09-13 scaffold-budget / network=host receipts) and retired
+    `evals/swebench/aggregate_bakeoff.py` writes — the R9700 layout: only cells
+    with data are drawn, bars of a preset sit side by side in the fixed scaffold
+    colours, a cell under 300 predictions is hatched with its (n) under the value.
+    Superseded cells (`"superseded"` set; the pre-isolation receipts) and retired
     scaffolds are not plotted."""
     from matplotlib.patches import Patch
     roster = [sc for sc, _, _ in BAKEOFF_SCAFFOLDS]
@@ -575,60 +610,49 @@ def make_bakeoff_chart():
         if d.get("superseded") or d["scaffold"] not in roster:
             continue
         cells[(d["preset"], d["scaffold"])] = d
-    queue = bakeoff_queue()
-    landed = {p for p, _ in cells}
-    presets = sorted(landed, key=lambda p: -max(c["resolve_rate_pct"] for (pp, _), c in cells.items() if pp == p))
-    presets += [p for p in queue if p not in landed]
-    if not presets:
-        print("  SKIP bake-off chart (no cells, no queue)")
+    if not cells:
+        print("  SKIP bake-off chart (no cells)")
         return
-    x = np.arange(len(presets)); n = len(BAKEOFF_SCAFFOLDS); w = min(0.8 / n, 0.26)
-    top = max([c["resolve_rate_pct"] for c in cells.values()] + [56.0]) * 1.25
-    ph = top * 0.12    # placeholder height for pending cells
+    best = lambda p: max(c["resolve_rate_pct"] for (pp, _), c in cells.items() if pp == p)
+    presets = sorted({p for p, _ in cells}, key=best, reverse=True)
+    used = [t for t in BAKEOFF_SCAFFOLDS if any(sc == t[0] for _, sc in cells)]
+    w = 0.17
     fig, ax = plt.subplots(figsize=(max(11, 1.6 * len(presets)), 6))
-    partial = pending = False
-    for j, (sc, color, label) in enumerate(BAKEOFF_SCAFFOLDS):
-        off = (j - (n - 1) / 2) * w
-        for i, p in enumerate(presets):
-            c = cells.get((p, sc))
-            if not c:
-                if sc not in BAKEOFF_ACTIVE_SCAFFOLDS:
-                    continue            # pruned lane: no placeholder, nothing owed
-                pending = True
-                ax.bar(x[i] + off, ph, w, fill=False, edgecolor=color, linewidth=0.9,
-                       linestyle=(0, (2, 1.5)), alpha=0.75, zorder=4)
-                ax.text(x[i] + off, ph / 2, "pending", ha="center", va="center", rotation=90,
-                        fontsize=7, color=color, alpha=0.9)
-                continue
-            full = c.get("total_predictions", 0) >= 300
+    top = max(c["resolve_rate_pct"] for c in cells.values()) * 1.32
+    partial = False
+    for i, p in enumerate(presets):
+        mine = [(sc, color) for sc, color, _ in used if (p, sc) in cells]
+        for j, (sc, color) in enumerate(mine):
+            c = cells[(p, sc)]
+            xx = i + (j - (len(mine) - 1) / 2) * w
+            n = c.get("total_predictions", 0)
+            full = n >= 300
             partial |= not full
             rate = c["resolve_rate_pct"]
-            ax.bar(x[i] + off, rate, w, color=color, alpha=0.95 if full else 0.55,
+            ax.bar(xx, rate, w * 0.92, color=color, alpha=0.95 if full else 0.55,
                    hatch=None if full else "////", edgecolor="#0d1117", linewidth=0.6, zorder=5)
-            ax.text(x[i] + off, rate + 0.8, f"{rate:.1f}", ha="center", fontsize=7.5,
-                    color=color, fontweight="bold")
-    hl = [(Patch(facecolor=color), label) for _, color, label in BAKEOFF_SCAFFOLDS]
+            ax.text(xx, rate + top * 0.012, f"{rate:.1f}" + ("" if full else f"\n({n})"),
+                    ha="center", va="bottom", fontsize=7.5, color=INK, fontweight="bold")
+    handles = [Patch(facecolor=color, label=label) for _, color, label in used]
     if partial:
-        hl.append((Patch(facecolor="#8b949e", alpha=0.55, hatch="////", edgecolor="#0d1117"),
-                   "partial cell (< 300) — not comparable"))
-    if pending:
-        hl.append((Patch(fill=False, edgecolor="#8b949e", linestyle=(0, (2, 1.5))),
-                   "pending — in the re-roll queue, scored at its cycle's close"))
-    ax.legend([h for h, _ in hl], [l for _, l in hl], loc="upper right", framealpha=0.5,
-              edgecolor="#30363d", facecolor="#161b22", fontsize=8.5, ncol=2)
-    ax.set_xticks(x); ax.set_xticklabels(presets, fontsize=9, rotation=20, ha="right")
+        handles.append(Patch(facecolor="#8b949e", alpha=0.55, hatch="////", edgecolor="#0d1117",
+                             label="partial cell (< 300 instances)"))
+    ax.legend(handles=handles, loc="upper right", framealpha=0.5, edgecolor="#30363d",
+              facecolor="#161b22", fontsize=9)
+    ax.set_xticks(range(len(presets)))
+    ax.set_xticklabels(presets, fontsize=10, color=INK)
+    ax.set_xlim(-0.6, len(presets) - 0.4)
     ax.set_ylabel("SWE-bench Lite resolved (%)")
     ax.set_ylim(0, top)
     ax.set_title("SWE-bench Lite (300 instances) — resolve rate per preset × scaffold, 256K single-user",
-                 fontsize=12.5, fontweight="bold", pad=10)
+                 fontsize=13, fontweight="bold", pad=10)
     ax.grid(True, axis="y", linestyle="--")
-    dates = sorted(str(c.get("timestamp", ""))[:10] for c in cells.values() if c.get("timestamp"))
-    ax.text(0.0, -0.22, "isolated Docker harness (network=none, served 262K window, 32K output budget, "
-            "template-default thinking), swebench scorer 4.1.0, one attempt per instance (resolved / 300); "
-            + (f"landed cells {dates[0]} .. {dates[-1]}; " if dates else "no cell scored under it yet; ")
-            + "harness pruned to opencode 2026-10-22 (other scaffolds: qwen38 bake-off cells only); "
-            "superseded pre-2026-09-13 receipts and the retired claw-code column are not plotted",
-            transform=ax.transAxes, fontsize=7.5, color="#8b949e")
+    notes = ["isolated Docker harness: network=none, served 262K window, 32K output budget, template-default "
+             "thinking; official swebench scorer, one attempt per instance (resolved / 300)",
+             "oh-my-pi is the default lane; the other scaffolds were rolled on qwen38 only and tied within noise"]
+    width = int(fig.get_figwidth() * 17)
+    ax.text(0.0, -0.1, "\n".join(textwrap.fill("• " + t, width, subsequent_indent="  ") for t in notes),
+            transform=ax.transAxes, va="top", fontsize=7.5, color="#8b949e")
     fig.tight_layout()
     out = os.path.join(BENCH_DIR, "bakeoff_swebench_lite.png")
     fig.savefig(out, dpi=150, bbox_inches="tight")
@@ -739,38 +763,44 @@ def make_power_cap_chart(all_data):
     if not rows:
         print("  SKIP power-cap chart (no results-400w.json)")
         return
-    rows.sort(key=lambda r: r["d1k"][0], reverse=True)
-    x = np.arange(len(rows)); w = 0.38
-    fig, axes = plt.subplots(3, 1, figsize=(max(11, 1.05 * len(rows)), 10.5), sharex=True)
-    panels = [
-        (axes[0], "d1k", "tok/s", "Decode at 1K context", lambda v: f"{v:.0f}"),
-        (axes[1], "dmid", "tok/s", "Decode at 32K context", lambda v: f"{v:.0f}"),
-        (axes[2], "ddeep", "tok/s", "Decode at the deepest honest point (256K, or the KV cap)", lambda v: f"{v:.0f}"),
-    ]
-    for ax, k, ylabel, title, fmt in panels:
-        for i, r in enumerate(rows):
-            c = r["meta"]["color"]; a, b = r[k]
-            ax.bar(x[i] - w / 2, a, w, color=c, alpha=0.45, zorder=5)
-            ax.bar(x[i] + w / 2, b, w, color=c, alpha=0.95, zorder=5)
-            top = max(a, b)
-            delta = (b / a - 1) * 100 if a else 0
-            ax.text(x[i], top * 1.02, f"{fmt(a)}→{fmt(b)}\n{delta:+.0f} %", ha="center", va="bottom",
-                    fontsize=7.5, color=c, fontweight="bold")
-        ax.set_ylabel(ylabel)
-        ax.set_title(title, fontsize=11, fontweight="bold", loc="left", pad=6)
-        ax.grid(True, axis="y", linestyle="--")
-        ax.set_ylim(bottom=0, top=max(max(r[k]) for r in rows) * 1.28)
-    axes[2].text(0.0, -0.62, "same boot per model; 300 W = the ship cap (cooling profile), 400 W = card maximum; "
-                 "gpu-unlock on, CPU boost off. Decode is weight-streaming-bound, so the cap barely moves it; the "
-                 "compute-bound prefill gain (fresh 128K TTFT -10 %) is in the power-sweep receipt",
-                 transform=axes[2].transAxes, fontsize=7.5, color="#8b949e")
-    labels = [r["meta"]["label"].replace(" AWQ ", "\n").replace(" AWQ", "") for r in rows]
-    axes[2].set_xticks(x); axes[2].set_xticklabels(labels, fontsize=7.5, rotation=28, ha="right")
-    axes[0].legend(handles=[Patch(facecolor="#8b949e", alpha=0.45, label="300 W per card (ship)"),
-                            Patch(facecolor="#8b949e", alpha=0.95, label="400 W per card")],
-                   loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22", fontsize=9)
-    fig.suptitle("Power cap 300 W vs 400 W — single-user, M=1, per model", fontsize=13, fontweight="bold", x=0.02, ha="left")
-    fig.tight_layout()
+    sections = [(title, sorted(group, key=lambda r: r["d1k"][0], reverse=True))
+                for title, group in fleet_groups(rows)]
+    panels = [("d1k", "Decode at 1K"), ("dmid", "Decode at 32K"),
+              ("ddeep", "Decode at 256K (or the KV cap)")]
+    fig, axes = plt.subplots(1, 3, sharey=True, layout="constrained",
+                             figsize=(14, 0.5 * len(rows) + 0.45 * len(sections) + 2.2))
+    h = 0.37
+    for ax, (k, title) in zip(axes, panels):
+        top = max(max(r[k]) for r in rows)
+        y, ticks, labels = 0.0, [], []
+        for sec_title, section in sections:
+            ax.axhline(y, color="#484f58", linewidth=1.0, zorder=1)
+            if ax is axes[0]:
+                ax.text(-0.02, y, f"{sec_title} ({len(section)})", transform=ax.get_yaxis_transform(),
+                        ha="right", va="center", fontsize=11.5, fontweight="bold", color="#f0f6fc")
+            y += 0.85
+            for r in section:
+                c = r["meta"]["color"]; lo, hi = r[k]
+                ax.barh(y - h / 2, lo, h, color=c, alpha=0.45, zorder=5)
+                ax.barh(y + h / 2, hi, h, color=c, alpha=0.95, zorder=5)
+                delta = (hi / lo - 1) * 100 if lo else 0
+                ax.text(max(lo, hi) + top * 0.015, y, f"{lo:.0f} → {hi:.0f}  {delta:+.0f} %",
+                        va="center", fontsize=8.5, color=INK)
+                ticks.append(y); labels.append(r["meta"]["label"])
+                y += 1.0
+        ax.set_yticks(ticks)
+        ax.set_yticklabels(labels, fontsize=9.5, color=INK)
+        ax.set_ylim(y - 0.35, -0.75)
+        ax.set_xlim(0, top * 1.6)
+        ax.tick_params(axis="y", length=0)
+        ax.set_xlabel("tok/s (single user, M=1)")
+        ax.set_title(title, fontsize=11.5, fontweight="bold", loc="left")
+        ax.grid(True, axis="x", linestyle="--")
+    fig.legend(handles=[Patch(facecolor="#8b949e", alpha=0.45, label="300 W per card (shipped cap)"),
+                        Patch(facecolor="#8b949e", alpha=0.95, label="400 W per card (card maximum)")],
+               loc="outside lower center", ncol=2, frameon=False, fontsize=9.5)
+    fig.suptitle("Power cap 300 W vs 400 W — single-user decode per model (TP=2, same boot per model)",
+                 fontsize=13, fontweight="bold")
     out = os.path.join(BENCH_DIR, "all_models_power_300v400.png")
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
