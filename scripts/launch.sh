@@ -318,6 +318,12 @@ apply_preset() {
             # 382 -> 254 ms, flint 136 -> 105 / 194 -> 121 ms; 64/96-token turns and <32K unchanged;
             # needle outputs identical. 0 keeps the single cap.
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP:-128}"
+            # One-pass prefill route (patch 080): extends of >= 257 rows on the 512-wide global-attention
+            # layers run flashinfer's paged prefill over the bf16 pool (SWA layers stay on Triton). Cold TTFT
+            # 7.3 -> 6.1 s at 32K, 55.2 -> 35.6 s at 131K, 173.0 -> 99.1 s at 250K, TPOT unchanged; two-pass
+            # gate: MMLU 288 vs 286 of 342, HumanEval 308 vs 305 of 328, needle band 10/10 vs 9/10, caps
+            # 5/5. The first routed request per JIT cache pays a one-time flashinfer compile. 0 disables.
+            export SGLANG_EXTEND_FLASHINFER_MIN_ROWS="${SGLANG_EXTEND_FLASHINFER_MIN_ROWS:-257}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
             ;;
         gemma4-21b-reap)
