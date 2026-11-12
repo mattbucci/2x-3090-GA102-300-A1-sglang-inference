@@ -72,7 +72,7 @@ Full 300-instance SWE-bench Lite, isolated Docker harness, one attempt per insta
 |--------|:--------:|
 | `qwen38` (Qwen3.8-27B AWQ, thinking) | **196/300 (65.3 %)** |
 | `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **191/300 (63.7 %)** |
-| `flint` ([Flint](https://huggingface.co/RecursiveSI/flint) 40B-A2.5B, calibrated AWQ, thinking) | **182/300 (60.7 %)** · `omp` **186/300 (62.0 %)** (McNemar tie, p = 0.57; opencode 4 empty / 9 walls, omp 5 empty / 3 walls, 0 errors; the omp cell ran under the strict-ordered tool grammar — a floor, see the Flint item) |
+| `flint` ([Flint](https://huggingface.co/RecursiveSI/flint) 40B-A2.5B, calibrated AWQ, thinking) | **182/300 (60.7 %)** · `omp` **186/300 (62.0 %)** (McNemar tie, p = 0.57; opencode 4 empty / 9 walls, omp 5 empty / 3 walls, 0 errors; the omp cell ran under the strict-ordered tool grammar — a floor, see the Flint item); `omp` v5 under the key-order fix + v0.5.23 + fp8_e5m2 KV **176/300** (tie with v4, p = 0.14; 17 empty / 10 walls; the fix moved the filler-argument defect from `bash` to `edit`, 45.7 % of edit calls — [receipt](../benchmarks/quality/omp-lane-close-flint-v5-2026-11-11/README.md)) |
 | `qwopus38` (Qwopus3.8-27B-Coder-Flash AWQ, in-house INT4, thinking) | `omp` **190/300 (63.3 %)** (2 empty, 0 errors; paired vs `qwen38` opencode p = 0.45, vs `flint` omp p = 0.66 — ties; psf/requests 1/6 vs 6/6 is the one systematic gap, sympy 48 vs 41 the lead; [receipt](../benchmarks/quality/omp-lane-close-qwopus38-v4-2026-11-08/README.md)) |
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **176/300 (58.7 %)** (0 empty / 0 walls / 0 errors, median 299 s; the recall audit finds 0/300 sessions mentioning the benchmark) |
 | `qwen36-ream` (Qwen3.6-REAM-A3B-AWQ, thinking) | *pending* |

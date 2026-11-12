@@ -89,7 +89,7 @@ leak audit at 0 exposed. **Only full-300 cells are compared.** Mechanics and rec
 | `qwen38` (Qwen3.8-27B AWQ, thinking) | **196/300 (65.3 %)** |
 | `qwopus38` (Qwopus3.8-27B-Coder-Flash AWQ) | `omp` **190/300 (63.3 %)** (tie with `qwen38`, p = 0.45) |
 | `qwen36-dense` (Qwen3.6-27B Dense AWQ, thinking) | **191/300 (63.7 %)** |
-| `flint` (Flint 40B-A2.5B, calibrated AWQ, thinking) | **182/300 (60.7 %)** · `omp` **186/300** (tie) |
+| `flint` (Flint 40B-A2.5B, calibrated AWQ, thinking) | **182/300 (60.7 %)** · `omp` **186** · v5 176 (ties) |
 | `qwen36` (Qwen3.6-35B-A3B AWQ-Marlin, thinking) | **176/300 (58.7 %)** |
 | `qwen36-ream` · `qwen35-moe` · `coder-30b-eval` · `coder-reap-25b` · `coder-30b-ream` · `devstral` · `gemma4` · `nemotron3-omni` · all on `omp` ([issue #23](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/23)) | *pending* (queue order) |
 
