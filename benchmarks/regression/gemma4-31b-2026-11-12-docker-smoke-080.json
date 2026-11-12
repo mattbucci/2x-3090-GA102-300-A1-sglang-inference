@@ -1,0 +1,42 @@
+{
+  "preset": "gemma4-31b",
+  "verdict": "PASS",
+  "serve_mode": "docker",
+  "image": "sglang-cuda-3090:local",
+  "image_id": "3bb7fb5686d0ae8409e7d7431e8669c5f484eabf67eebdc3d428669824e2b5e2",
+  "date": "2026-11-12T09:25:25",
+  "steps": {
+    "stop": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "responses_api": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "bench": {
+      "status": "PASS",
+      "detail": "gemma4-31b/1024: 61.6 -> 61.7 tok/s (+0.2%) [ok]|gemma4-31b/32768: 55.2 -> 55.4 tok/s (+0.4%) [ok]|gemma4-31b/deep(261916): 33.3 -> 33.5 tok/s (+0.6%) [ok]|RESULT: PASS|"
+    },
+    "rollout": {
+      "status": "PASS",
+      "detail": "rc=0 preds=2 nonempty=2 meta=ok budget_lines=2"
+    },
+    "boot": {
+      "status": "PASS",
+      "detail": "87s to /health; /v1/models=[gemma4-31b]"
+    },
+    "scaffold_audit": {
+      "status": "PASS",
+      "detail": "api_auth=True opencode:auth=ok dcode:auth=ok"
+    },
+    "leak_audit": {
+      "status": "PASS",
+      "detail": "Using the latest cached version of the dataset since princeton-nlp/SWE-bench_Lite couldn't be found on the Hugging Face Hub (offline mode is enabled)."
+    },
+    "api_auth": {
+      "status": "PASS",
+      "detail": "anon /v1/models -> 401"
+    }
+  }
+}
