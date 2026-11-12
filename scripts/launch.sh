@@ -383,6 +383,12 @@ apply_preset() {
             # 382 -> 254 ms, flint 136 -> 105 / 194 -> 121 ms; 64/96-token turns and <32K unchanged;
             # needle outputs identical. 0 keeps the single cap.
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP:-128}"
+            # One-pass prefill route (patch 080): extends of >= 257 rows on the 512-wide global-attention
+            # layers run flashinfer's paged prefill over the e5m2 pool (SWA layers stay on Triton). Cold TTFT
+            # 17.8 -> 13.7 s at 32K, 146.5 -> 95.8 s at 131K, 477 -> 295 s at 250K, TPOT unchanged; two-pass
+            # gate: MMLU 328 vs 326 of 342, HumanEval 312 vs 312 of 328, needle band 10/10 both arms, caps
+            # 5/5. The first routed request per JIT cache pays a one-time flashinfer compile. 0 disables.
+            export SGLANG_EXTEND_FLASHINFER_MIN_ROWS="${SGLANG_EXTEND_FLASHINFER_MIN_ROWS:-257}"
             #  * patch 071 (2026-11-01): W4A8 prefill on the dense AWQ-Marlin linears —
             #    fresh-prefill TTFT 169 -> 147 s @131K (-13 %; the 512-wide global-layer
             #    attention is the larger share here), decode identical, MMLU 55/57, HE 30/30,

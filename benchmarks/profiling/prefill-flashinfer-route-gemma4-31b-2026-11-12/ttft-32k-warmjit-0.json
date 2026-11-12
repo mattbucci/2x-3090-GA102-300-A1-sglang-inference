@@ -1,0 +1,21 @@
+{
+  "model": "gemma4-31b-fi0-warm",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "bench_long_context natural-text (chat stream, cache flushed per point)",
+  "prompt_source": "natural",
+  "timestamp": "2026-11-12 04:33:01",
+  "output_tokens": 100,
+  "max_total_num_tokens": 330994,
+  "context_sweep": [
+    {
+      "context": 32768,
+      "actual_input_tokens": 33955,
+      "ttft_ms": 17784.23,
+      "tpot_ms": 18.15,
+      "throughput": 5.11,
+      "tok_per_sec": 55.1,
+      "completion_tokens": 100
+    }
+  ]
+}
