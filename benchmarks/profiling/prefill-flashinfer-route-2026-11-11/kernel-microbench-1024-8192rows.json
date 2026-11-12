@@ -1,0 +1,76 @@
+{
+ "env": {
+  "SGLANG_EXTEND_ATTN_FP32_PV": "0",
+  "SGLANG_EXTEND_ATTN_TILE": "128:128,128,8"
+ },
+ "flashinfer": "0.7.2",
+ "gpu": "NVIDIA GeForce RTX 3090",
+ "rows": [
+  {
+   "preset": "flint",
+   "prefix": 32768,
+   "rows": 1024,
+   "kv": "e5m2",
+   "triton_ms": 5.51,
+   "flashinfer_ms": 3.26,
+   "ratio": 0.592,
+   "cosine": 0.998469,
+   "max_abs_over_max": 0.0723
+  },
+  {
+   "preset": "flint",
+   "prefix": 32768,
+   "rows": 8192,
+   "kv": "e5m2",
+   "triton_ms": 37.7,
+   "flashinfer_ms": 26.41,
+   "ratio": 0.7,
+   "cosine": 0.998574,
+   "max_abs_over_max": 0.0639
+  },
+  {
+   "preset": "flint",
+   "prefix": 131072,
+   "rows": 1024,
+   "kv": "e5m2",
+   "triton_ms": 20.38,
+   "flashinfer_ms": 13.18,
+   "ratio": 0.647,
+   "cosine": 0.998428,
+   "max_abs_over_max": 0.0552
+  },
+  {
+   "preset": "flint",
+   "prefix": 131072,
+   "rows": 8192,
+   "kv": "e5m2",
+   "triton_ms": 140.74,
+   "flashinfer_ms": 97.1,
+   "ratio": 0.69,
+   "cosine": 0.998431,
+   "max_abs_over_max": 0.0584
+  },
+  {
+   "preset": "flint",
+   "prefix": 237568,
+   "rows": 1024,
+   "kv": "e5m2",
+   "triton_ms": 36.91,
+   "flashinfer_ms": 23.33,
+   "ratio": 0.632,
+   "cosine": 0.998436,
+   "max_abs_over_max": 0.0711
+  },
+  {
+   "preset": "flint",
+   "prefix": 237568,
+   "rows": 8192,
+   "kv": "e5m2",
+   "triton_ms": 252.95,
+   "flashinfer_ms": 173.04,
+   "ratio": 0.684,
+   "cosine": 0.998208,
+   "max_abs_over_max": 0.0695
+  }
+ ]
+}
