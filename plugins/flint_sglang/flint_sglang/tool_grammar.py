@@ -73,9 +73,16 @@ def strict_tools_enabled() -> bool:
 # first) had neither in 14,758 calls. Moving these keys to the end keeps them required and keeps
 # ``any_order=False`` (``any_order=True`` would stop enforcing required keys — the reason strict mode exists).
 TRAILING_KEYS = ("i", "description", "intent", "explanation", "reason", "summary")
+# Tools Flint writes intent-first, which keep the schema's declared order. flint:omp v5 (2026-11-11, every tool
+# with ``i`` last): the filler-argument defect left ``bash`` (7.9 % -> 0.3 % of calls) and moved to omp's hashline
+# ``edit`` (1.9 % -> 45.7 %: ``input`` forced first, Flint writes ``x``/``true`` there, the edit fails and is
+# retried) — receipt ``benchmarks/quality/omp-lane-close-flint-v5-2026-11-11/README.md``.
+DECLARED_ORDER_TOOLS = ("edit",)
 
 
-def _trailing_keys_last(parameters: Any) -> Any:
+def _trailing_keys_last(parameters: Any, name: str | None = None) -> Any:
+    if name in DECLARED_ORDER_TOOLS:
+        return parameters
     if not isinstance(parameters, dict) or not isinstance(parameters.get("properties"), dict):
         return parameters
     props = parameters["properties"]
@@ -89,8 +96,9 @@ def _trailing_keys_last(parameters: Any) -> Any:
 def _as_strict(tool: dict[str, Any]) -> dict[str, Any]:
     fn = tool.get("function")
     if isinstance(fn, dict):
-        return {**tool, "function": {**fn, "strict": True, "parameters": _trailing_keys_last(fn.get("parameters"))}}
-    return {**tool, "strict": True, "parameters": _trailing_keys_last(tool.get("parameters"))}
+        params = _trailing_keys_last(fn.get("parameters"), fn.get("name"))
+        return {**tool, "function": {**fn, "strict": True, "parameters": params}}
+    return {**tool, "strict": True, "parameters": _trailing_keys_last(tool.get("parameters"), tool.get("name"))}
 
 
 def build_flint_tool_grammar(

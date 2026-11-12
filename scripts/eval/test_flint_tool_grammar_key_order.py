@@ -35,7 +35,9 @@ OMP_BASH = tool("bash", {"i": {"type": "string"}, "command": {"type": "string"},
 OPENCODE_BASH = tool("bash", {"command": {"type": "string"}, "timeout": {"type": "number"},
                               "workdir": {"type": "string"}, "description": {"type": "string"}},
                      ["command", "description"])
+OMP_EDIT = tool("edit", {"i": {"type": "string"}, "input": {"type": "string"}}, ["i", "input"])
 CALL = "<tool_call>bash{}</tool_call>"
+ECALL = "<tool_call>edit{}</tool_call>"
 ARG = "<arg_key>{}</arg_key><arg_value>{}</arg_value>"
 
 
@@ -55,6 +57,8 @@ def main():
     oc = _as_strict(OPENCODE_BASH)["function"]["parameters"]
     assert list(oc["properties"]) == ["command", "timeout", "workdir", "description"]
     assert _as_strict({"type": "function", "function": {"name": "x"}})["function"]["strict"] is True
+    # omp's hashline edit keeps the declared order (Flint writes it intent-first, flint:omp v5)
+    assert list(_as_strict(OMP_EDIT)["function"]["parameters"]["properties"]) == ["i", "input"]
     if not os.path.isdir(CKPT):
         print(f"schema checks ok; grammar checks skipped (no checkpoint at {CKPT})")
         return 0
@@ -64,6 +68,8 @@ def main():
     stop = info.stop_token_ids
     g_omp = comp.compile_structural_tag(build_flint_tool_grammar([OMP_BASH], "auto", True))
     g_oc = comp.compile_structural_tag(build_flint_tool_grammar([OPENCODE_BASH], "auto", True))
+    g_both = comp.compile_structural_tag(build_flint_tool_grammar([OMP_BASH, OMP_EDIT], "auto", True))
+    body = "[a.py#1A2B]\nPUT 3.=3:\n+    x = 1"
     cmd_then_i = CALL.format(ARG.format("command", "ls") + ARG.format("i", "list files"))
     cmd_timeout_i = CALL.format(ARG.format("command", "ls") + ARG.format("timeout", "30") + ARG.format("i", "list"))
     i_then_cmd = CALL.format(ARG.format("i", "list files") + ARG.format("command", "ls"))
@@ -75,6 +81,9 @@ def main():
         ("omp: command only (i still required)", accepts(g_omp, cmd_only, stop), False),
         ("opencode: command then description", accepts(g_oc, CALL.format(ARG.format("command", "ls") + ARG.format("description", "list")), stop), True),
         ("opencode: command only (description required)", accepts(g_oc, cmd_only, stop), False),
+        ("omp: edit i then input", accepts(g_both, ECALL.format(ARG.format("i", "fix") + ARG.format("input", body)), stop), True),
+        ("omp: edit input then i (v5 forced order)", accepts(g_both, ECALL.format(ARG.format("input", body) + ARG.format("i", "fix")), stop), False),
+        ("omp: bash still command first next to edit", accepts(g_both, cmd_then_i, stop), True),
     ]
     bad = 0
     for name, got, want in checks:
