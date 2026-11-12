@@ -20,7 +20,10 @@ import argparse, glob, json, os, sys, time
 import requests
 
 # Real, diverse Python from the sglang tree (non-repetitive) for context padding.
-SRC_GLOB = "/data/sglang-rebase-v0512/python/sglang/srt/**/*.py"
+# SRC_GLOB overrides the whole glob; SGLANG_DIR points at a serving tree.
+SRC_GLOB = os.environ.get("SRC_GLOB") or os.path.join(
+    os.environ.get("SGLANG_DIR", "/data/sglang-rebase-v0523"), "python/sglang/srt/**/*.py")
+REQUEST_TIMEOUT_S = int(os.environ.get("BENCH_TIMEOUT_S", "3600"))  # cold 256K prefill can pass 40 min
 CHARS_PER_TOK = 3.6  # rough code estimate, used only to hit a target depth
 
 
@@ -90,7 +93,7 @@ def main():
     print(f"[bench] target_prompt_tokens≈{args.target_prompt_tokens} output_tokens={args.output_tokens}", flush=True)
     print(f"[bench] >>>MARKER_START {time.strftime('%H:%M:%S')}", flush=True)
     t0 = time.time()
-    r = requests.post(f"{base}/v1/chat/completions", json=payload, timeout=2400)
+    r = requests.post(f"{base}/v1/chat/completions", json=payload, timeout=REQUEST_TIMEOUT_S)
     dt = time.time() - t0
     print(f"[bench] >>>MARKER_END {time.strftime('%H:%M:%S')}", flush=True)
     r.raise_for_status()

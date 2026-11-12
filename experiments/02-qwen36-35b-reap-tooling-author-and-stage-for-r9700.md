@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Type** | task |
-| **Status** | ready |
+| **Status** | done — Gate A green, handoff staged in `scripts/quantize/handoff-r9700-reap/` |
 | **Execution host** | 3090-calib-box |
 | **Wall clock** | 2-3 h, 3090-side only: file authoring + the two composite-config fixes refactored into testable pure helpers + Gate A on the 3090 quant env + stage the R9700 files as a handoff artifact. Gates B/C/D and the R9700 commit belong to the R9700 acceptance task (R97-F step-0 preflight), NOT this task. No detached jobs. |
 | **GPU time** | none — Gate A is a CPU miniature test plus a synthetic-composite-config helper test; no meta build of the 67 GB model happens on the 3090 side (the real-config Gate C runs in the R9700 acceptance task, where the model lives). The actual 67 GB prune is R97-F, not this task. |

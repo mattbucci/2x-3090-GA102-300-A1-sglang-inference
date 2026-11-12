@@ -15,8 +15,15 @@ Algorithm (per-layer):
   5. Re-pack the model: ModuleList[Qwen3MoeMLP] is filtered to surviving
      experts; router gate weight rows are sliced to the same surviving set.
      `config.num_experts` and `num_local_experts` are updated to the new size.
-  6. Save the pruned BF16 + tokenizer + a `reap_report.json` describing
-     which experts survived per layer and the saliency distribution.
+  6. Write `reap_report.json` (survivors + saliency) to the save dir BEFORE any
+     reload or save, so a failed save never re-runs the observation pass
+     (`--survivors-from <report>` resumes from it).
+  7. Save the pruned BF16 + tokenizer + processor. Two save stages:
+       * `reload` — reload the model on the CPU, prune in place, save_pretrained
+         (needs host RAM > the BF16 checkpoint);
+       * `stream` — slice the safetensors shards directly (router rows + expert
+         rows per layer), never instantiating the model: peak RAM = one shard.
+     `--save-mode auto` picks `stream` when the checkpoint would not fit in RAM.
 
 Compared to Cerebras's REAP tool (github.com/CerebrasResearch/reap), this
 implementation:
@@ -29,16 +36,23 @@ implementation:
 Arch coverage:
   * Qwen3Moe (Coder-30B-A3B etc.) — shipped Coder-30B-A3B-REAP path. ✅
   * Qwen3_5Moe (Qwen3.5/3.6, incl. Qwen3.6-35B-A3B) — ✅ via the companion
-    `patches/qwen3_5moe_unfused_experts.py` (fused-3-D experts) + the custom
+    `qwen3_5moe_unfused_experts.py` (fused-3-D experts) + the custom
     `Qwen3_5MoeTopKRouter` tuple-output handling in the saliency hook below.
+    Composite (vision) checkpoints load through `pick_model_class` so the
+    vision tower survives, and expert counts are read/written on the text
+    config (`read_expert_counts` / `set_expert_counts`).
     Miniature-validated by `test_qwen3_5moe_unfuse.py`; on-box run pending.
   * Gemma4Moe / Nemotron-3 — NOT yet: their experts/router layouts still need
     an unfuse patch + (Nemotron-H) Mamba2-hybrid layer skipping.
 The saliency hook selectors require `.mlp.gate` (any router type) and per-expert
 `.mlp.experts.<i>.down_proj` Linears — the unfuse patches create the latter.
 
+This file, `test_qwen3_5moe_unfuse.py` and `qwen3_5moe_unfused_experts.py` are
+kept byte-identical across the 3090 and R9700 repos: the helper directory is
+resolved by file presence (`ream-patches/` first, then `patches/`).
+
 Usage (text-only):
-    conda activate vllm   # (or any env with transformers + accelerate + datasets)
+    conda activate quant  # (any env with transformers + accelerate + datasets)
     CUDA_VISIBLE_DEVICES=0,1 python scripts/quantize/run_reap.py \\
         --model ~/AI/models/Qwen3-Coder-30B-A3B-BF16 \\
         --save-path ~/AI/models/Qwen3-Coder-30B-A3B-REAP-BF16 \\
@@ -52,21 +66,39 @@ import argparse
 import gc
 import json
 import os
+import re
+import shutil
 import sys
 import time
-from collections import defaultdict
 
 import torch
-from datasets import load_dataset
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoConfig, AutoModelForCausalLM, AutoModelForImageTextToText, AutoTokenizer
 
 
-# Apply Qwen3MoeExperts unfused-experts monkey-patch BEFORE from_pretrained.
+# Apply the unfused-experts monkey-patches BEFORE from_pretrained.
 # Required so per-expert nn.Modules survive — the fused 3D Parameter form
 # can't be hook-instrumented per-expert.
 _REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_PATCH_DIR = os.path.join(_REPO_DIR, "patches")
-if os.path.isdir(_PATCH_DIR):
+_HELPER_DIRS = ("ream-patches", "patches")
+_HELPER_MARKERS = ("qwen3_5moe_unfused_experts.py", "qwen3moe_unfused_experts.py")
+
+
+def resolve_patch_dir(repo_dir=_REPO_DIR):
+    """First helper dir that CONTAINS an unfuse helper file, or None.
+
+    Keyed on the file, not the directory: both repos have a `ream-patches/`
+    dir, but the 3090 repo keeps the helpers in `patches/` and the R9700 repo
+    in `ream-patches/`. The Qwen3_5Moe helper wins over the Qwen3Moe one so a
+    repo carrying them in different dirs still resolves the newer layout."""
+    for marker in _HELPER_MARKERS:
+        for d in _HELPER_DIRS:
+            if os.path.isfile(os.path.join(repo_dir, d, marker)):
+                return os.path.join(repo_dir, d)
+    return None
+
+
+_PATCH_DIR = resolve_patch_dir()
+if _PATCH_DIR is not None:
     sys.path.insert(0, _PATCH_DIR)
     # Qwen3Moe (Coder-30B etc.) — ships unfused per-expert weights on disk.
     try:
@@ -81,6 +113,225 @@ if os.path.isdir(_PATCH_DIR):
         print("[run_reap] Qwen3_5MoeExperts → unfused per-expert ModuleList (fused-ckpt bridged)")
     except ImportError as e:
         print(f"[run_reap] note: qwen3_5moe unfuse patch not applied: {e}")
+else:
+    print(f"[run_reap] note: no unfuse helper found under {_HELPER_DIRS} — fused-expert archs will hook 0 experts")
+
+
+def _text_config(config):
+    """The config level that owns the MoE fields: `text_config` on composite
+    (vision) configs, the config itself otherwise."""
+    get = getattr(config, "get_text_config", None)
+    tc = get() if callable(get) else getattr(config, "text_config", None)
+    return tc if tc is not None else config
+
+
+def pick_model_class(config):
+    """Loader for `config`: composite configs (a `vision_config` sub-config) go
+    through AutoModelForImageTextToText so the vision tower is loaded and
+    saved; AutoModelForCausalLM would extract `text_config` and silently drop
+    it from the pruned checkpoint."""
+    if getattr(config, "vision_config", None) is not None:
+        return AutoModelForImageTextToText
+    return AutoModelForCausalLM
+
+
+def read_expert_counts(config):
+    """(num_experts, num_experts_per_tok) from the level that owns them. On the
+    Qwen3.6-35B composite the top level carries neither (text_config: 256 / 8)."""
+    tc = _text_config(config)
+    num_experts = None
+    for level in (tc, config):
+        num_experts = getattr(level, "num_experts", None) or getattr(level, "num_local_experts", None)
+        if num_experts:
+            break
+    top_k = getattr(tc, "num_experts_per_tok", None) or getattr(config, "num_experts_per_tok", None)
+    if not num_experts or not top_k:
+        raise ValueError(
+            f"{type(config).__name__}: no num_experts / num_experts_per_tok at the text or top "
+            f"config level (got {num_experts} / {top_k}) — not an MoE config this tool knows")
+    return int(num_experts), int(top_k)
+
+
+_COUNT_KEYS = ("num_experts", "num_local_experts")
+
+
+def set_expert_counts(config, keep):
+    """Write the pruned expert count at every config level that carries it
+    (text_config always when it owns the field; the top level too when it
+    mirrors it). Returns the (level, key) pairs written; raises if none."""
+    written = []
+    tc = _text_config(config)
+    levels = [("text", tc)] if tc is not config else []
+    levels.append(("top", config))
+    for label, level in levels:
+        for key in _COUNT_KEYS:
+            if getattr(level, key, None) is not None:
+                setattr(level, key, int(keep))
+                written.append((label, key))
+    if not written:
+        raise ValueError(f"{type(config).__name__}: no expert-count field to update")
+    return written
+
+
+def write_report(save_path, report):
+    """Atomic reap_report.json write (tmp + rename)."""
+    os.makedirs(save_path, exist_ok=True)
+    path = os.path.join(save_path, "reap_report.json")
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(report, f, indent=2)
+    os.replace(tmp, path)
+    return path
+
+
+def load_survivors(report_path):
+    """survivors_per_layer ({int layer: [expert idx]}) from a reap_report.json."""
+    with open(report_path) as f:
+        report = json.load(f)
+    return {int(L): sorted(int(e) for e in keep) for L, keep in report["survivors_per_layer"].items()}, report
+
+
+_MLP_KEY = re.compile(
+    r"^(?P<prefix>.*\.layers\.(?P<layer>\d+)\.mlp)\."
+    r"(?P<kind>gate\.weight|gate\.bias|experts\.gate_up_proj|experts\.down_proj|experts\.(?P<expert>\d+)\.(?P<rest>.+))$")
+
+
+def stream_prune_checkpoint(src, dst, survivors, num_experts, max_shard_bytes=2 * 1024**3):
+    """Prune a safetensors checkpoint shard by shard without building the model.
+
+    Per MoE layer in `survivors`: router rows (`mlp.gate.weight` / `.bias`) and
+    the fused expert stacks (`mlp.experts.gate_up_proj` / `.down_proj`,
+    first dim = experts) are `index_select`ed to the survivors; per-expert keys
+    (`mlp.experts.<i>.*`, the unfused on-disk layout) are dropped or renumbered.
+    Every other tensor is copied. config.json gets the new count at each level
+    that carries one; all non-weight files (tokenizer, chat template,
+    preprocessor configs) are copied verbatim — the tokenizer is not re-saved,
+    so the chat template ships byte-identical. Peak RAM ≈ one shard.
+
+    Raises if any surviving layer ends up without a sliced router AND sliced
+    experts — the silent failure mode is an unpruned save under a pruned config.
+    """
+    from safetensors import safe_open
+    from safetensors.torch import save_file
+
+    src, dst = os.path.abspath(src), os.path.abspath(dst)
+    if src == dst:
+        raise ValueError("stream prune needs a save path different from the source")
+    shards = sorted(f for f in os.listdir(src) if f.endswith(".safetensors"))
+    if not shards:
+        raise FileNotFoundError(f"no .safetensors shards under {src}")
+    os.makedirs(dst, exist_ok=True)
+    keep_t = {L: torch.tensor(keep, dtype=torch.long) for L, keep in survivors.items()}
+    renumber = {L: {old: new for new, old in enumerate(keep)} for L, keep in survivors.items()}
+    sliced = {L: {"gate": 0, "experts": 0} for L in survivors}
+
+    out, out_bytes, out_files, weight_map, total = {}, 0, [], {}, 0
+
+    def flush():
+        nonlocal out, out_bytes
+        if not out:
+            return
+        name = f"model-{len(out_files) + 1:05d}.safetensors.part"
+        save_file(out, os.path.join(dst, name), metadata={"format": "pt"})
+        out_files.append((name, list(out)))
+        out, out_bytes = {}, 0
+
+    for shard in shards:
+        with safe_open(os.path.join(src, shard), framework="pt") as f:
+            for key in f.keys():
+                t = f.get_tensor(key)
+                m = _MLP_KEY.match(key)
+                L = int(m.group("layer")) if m else None
+                if m and L in survivors:
+                    kind = m.group("kind")
+                    if m.group("expert") is not None:
+                        old = int(m.group("expert"))
+                        if old not in renumber[L]:
+                            continue
+                        key = f"{m.group('prefix')}.experts.{renumber[L][old]}.{m.group('rest')}"
+                        sliced[L]["experts"] += 1
+                    else:
+                        if t.shape[0] != num_experts:
+                            raise RuntimeError(f"{key}: first dim {t.shape[0]} != num_experts {num_experts}")
+                        t = t.index_select(0, keep_t[L]).contiguous()
+                        sliced[L]["gate" if kind.startswith("gate.") else "experts"] += 1
+                nbytes = t.numel() * t.element_size()
+                if out and out_bytes + nbytes > max_shard_bytes:
+                    flush()
+                out[key] = t
+                out_bytes += nbytes
+                total += nbytes
+    flush()
+
+    bad = sorted(L for L, c in sliced.items() if not (c["gate"] and c["experts"]))
+    if bad:
+        raise RuntimeError(f"stream prune sliced no router and/or experts for layers {bad[:8]} — "
+                           f"key layout not recognised; refusing to write a pruned config")
+
+    n = len(out_files)
+    for i, (part, keys) in enumerate(out_files, 1):
+        final = "model.safetensors" if n == 1 else f"model-{i:05d}-of-{n:05d}.safetensors"
+        os.replace(os.path.join(dst, part), os.path.join(dst, final))
+        for k in keys:
+            weight_map[k] = final
+    if n > 1:
+        with open(os.path.join(dst, "model.safetensors.index.json"), "w") as f:
+            json.dump({"metadata": {"total_size": total}, "weight_map": weight_map}, f, indent=2)
+
+    with open(os.path.join(src, "config.json")) as f:
+        cfg = json.load(f)
+    keep_n = len(next(iter(survivors.values())))
+    written = []
+    for label, level in (("text", cfg.get("text_config")), ("top", cfg)):
+        if not isinstance(level, dict):
+            continue
+        for key in _COUNT_KEYS:
+            if level.get(key) is not None:
+                level[key] = keep_n
+                written.append((label, key))
+    if not written:
+        raise RuntimeError("config.json carries no num_experts / num_local_experts at either level")
+    with open(os.path.join(dst, "config.json"), "w") as f:
+        json.dump(cfg, f, indent=2)
+
+    skip = {"config.json", "model.safetensors.index.json", "reap_report.json"}
+    copied = []
+    for name in sorted(os.listdir(src)):
+        path = os.path.join(src, name)
+        if name in skip or name.endswith(".safetensors") or name.startswith(".") or not os.path.isfile(path):
+            continue
+        shutil.copy2(path, os.path.join(dst, name))
+        copied.append(name)
+    return {"shards": n, "tensors": len(weight_map), "total_bytes": total,
+            "config_levels_written": written, "files_copied": copied}
+
+
+def scan_checkpoint_layout(src, num_experts):
+    """Header-only scan (no tensor data read) of the MoE keys the stream stage
+    will slice. Returns {layer: {"gate": n, "experts": n}}; raises on a fused
+    stack / router whose first dim is not `num_experts`."""
+    from safetensors import safe_open
+
+    layers = {}
+    for shard in sorted(f for f in os.listdir(src) if f.endswith(".safetensors")):
+        with safe_open(os.path.join(src, shard), framework="pt") as f:
+            for key in f.keys():
+                m = _MLP_KEY.match(key)
+                if not m:
+                    continue
+                c = layers.setdefault(int(m.group("layer")), {"gate": 0, "experts": 0})
+                if m.group("expert") is None:
+                    shape = f.get_slice(key).get_shape()
+                    if shape[0] != num_experts:
+                        raise RuntimeError(f"{key}: first dim {shape[0]} != num_experts {num_experts}")
+                c["gate" if m.group("kind").startswith("gate.") else "experts"] += 1
+    return layers
+
+
+def _checkpoint_bytes(path):
+    if not os.path.isdir(path):
+        return None
+    return sum(os.path.getsize(os.path.join(path, f)) for f in os.listdir(path) if f.endswith(".safetensors"))
 
 
 def _gate_num_experts(mod):
@@ -307,10 +558,20 @@ def main():
     p.add_argument("--max-length", type=int, default=512)
     p.add_argument("--max-memory-per-gpu", default="20GiB",
                    help="Per-GPU max memory for accelerate device_map (24GB 3090s: ~20GiB; "
-                        "32GB R9700s: ~28GiB)")
+                        "32GB R9700s: pass 28GiB)")
     p.add_argument("--max-memory-cpu", default="auto",
                    help="CPU offload cap for accelerate device_map. 'auto' = host RAM minus a "
                         "14 GiB headroom (this 62 GB box → ~48GiB). A fixed >RAM value OOMs the box.")
+    p.add_argument("--save-mode", choices=("auto", "reload", "stream"), default="auto",
+                   help="reload = CPU reload + save_pretrained (needs RAM > checkpoint); "
+                        "stream = slice the safetensors shards directly (RAM ≈ one shard); "
+                        "auto = stream when the checkpoint exceeds host RAM minus 14 GiB.")
+    p.add_argument("--survivors-from", default=None,
+                   help="reap_report.json from an earlier run: skip the observation pass and "
+                        "go straight to the save stage with its survivors.")
+    p.add_argument("--preflight", action="store_true",
+                   help="CPU-only check, no weights loaded: config → loader class + expert counts, "
+                        "helper import, shard key layout for the stream stage. Exit 0 = ready.")
     args = p.parse_args()
 
     ram_gb = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / (1024**3)
@@ -320,133 +581,193 @@ def main():
     print(f"Dataset:  {args.dataset} ({args.num_samples} samples × {args.max_length} tokens)")
     print(f"RAM:      {ram_gb:.1f} GB")
 
-    # Build max_memory dict for accelerate. CPU cap must stay under host RAM —
-    # the original R9700 hardcode of 100GiB OOMs this 62 GB box (and any host
-    # where the BF16 base + activations exceed RAM during offload).
-    cpu_cap = args.max_memory_cpu
-    if cpu_cap == "auto":
-        cpu_cap = f"{max(8, int(ram_gb) - 14)}GiB"
-    n_visible = torch.cuda.device_count()
-    max_memory = {i: args.max_memory_per_gpu for i in range(n_visible)}
-    max_memory["cpu"] = cpu_cap
-    print(f"max_memory: {max_memory} (n_visible_gpus={n_visible})")
-
-    print("\n[1/4] Loading tokenizer + model on multi-GPU...")
-    t0 = time.time()
-    tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model,
-        device_map="auto",
-        torch_dtype=torch.bfloat16,
-        max_memory=max_memory,
-        trust_remote_code=True,
-    )
-    model.eval()
-    print(f"  loaded in {time.time()-t0:.0f}s ({type(model).__name__})")
-
-    top_k = getattr(model.config, "num_experts_per_tok", 8)
-    num_experts = getattr(model.config, "num_experts", None) or getattr(model.config, "num_local_experts", None)
-    print(f"  num_experts={num_experts}, top_k={top_k}")
+    # Config-only preflight: fail before the multi-ten-GB load, not after it.
+    config = AutoConfig.from_pretrained(args.model, trust_remote_code=True)
+    model_cls = pick_model_class(config)
+    num_experts, top_k = read_expert_counts(config)
+    print(f"Config:   {type(config).__name__} → {model_cls.__name__}; num_experts={num_experts}, top_k={top_k}")
     if args.keep_experts >= num_experts:
         raise ValueError(f"--keep-experts {args.keep_experts} ≥ num_experts {num_experts}; nothing to prune")
 
-    print("\n[2/4] Installing REAPSaliencyTracker hooks...")
-    tracker = REAPSaliencyTracker(model, top_k=top_k)
+    save_mode = args.save_mode
+    ckpt_bytes = _checkpoint_bytes(args.model)
+    if save_mode == "auto":
+        fits = ckpt_bytes is None or ckpt_bytes / 1024**3 < ram_gb - 14
+        save_mode = "reload" if fits else "stream"
+    if save_mode == "stream" and ckpt_bytes is None:
+        raise ValueError("--save-mode stream needs a local checkpoint directory")
+    ckpt_gb = "n/a" if ckpt_bytes is None else f"{ckpt_bytes / 1024**3:.1f} GiB"
+    print(f"Save mode: {save_mode} (checkpoint {ckpt_gb})")
 
-    print(f"\n[3/4] Loading {args.dataset} + running observation pass...")
-    ds = load_dataset(args.dataset, split=f"train[:{args.num_samples}]")
-    print(f"  loaded {len(ds)} samples; columns: {ds.column_names[:6]}")
+    if args.preflight:
+        if ckpt_bytes is None:
+            raise ValueError("--preflight needs a local checkpoint directory")
+        layers = scan_checkpoint_layout(args.model, num_experts)
+        bad = sorted(L for L, c in layers.items() if not (c["gate"] and c["experts"]))
+        print(f"Layout:   {len(layers)} MoE layers with router + expert keys"
+              + (f"; INCOMPLETE layers {bad[:8]}" if bad else ""))
+        n_cfg = getattr(_text_config(config), "num_hidden_layers", None)
+        ok = bool(layers) and not bad and (n_cfg is None or len(layers) == n_cfg)
+        print(f"Preflight: {'OK' if ok else 'FAIL'} (config num_hidden_layers={n_cfg})")
+        sys.exit(0 if ok else 1)
 
-    # Auto-detect text field
-    text_field = args.text_field
-    if text_field is None:
-        for cand in ("text", "instruction", "prompt", "content", "input", "messages"):
-            if cand in ds.column_names:
-                text_field = cand
-                break
-    if text_field is None:
-        text_field = ds.column_names[0]
-    print(f"  using text-field: {text_field!r}")
-
-    t0 = time.time()
-    n_processed = 0
-    for i, sample in enumerate(ds):
-        text = sample.get(text_field) or ""
-        # Some datasets pair instruction+output; concatenate if available
-        if "output" in sample and sample.get("output"):
-            text = f"{text}\n{sample['output']}"
-        if not isinstance(text, str) or not text.strip():
-            continue
-        ids = tokenizer(text, return_tensors="pt", max_length=args.max_length,
-                        truncation=True).input_ids.to(next(model.parameters()).device)
-        try:
-            with torch.no_grad():
-                model(ids)
-            n_processed += 1
-        except Exception as e:
-            print(f"  WARN: sample {i} failed ({type(e).__name__}: {e})")
-            continue
-        if (i + 1) % 50 == 0:
-            elapsed = time.time() - t0
-            rate = (i + 1) / elapsed
-            eta = (len(ds) - i - 1) / rate
-            print(f"  {i+1}/{len(ds)}  ({rate:.1f} sample/s, ETA {eta/60:.1f}min)")
-    elapsed = time.time() - t0
-    print(f"  observation done: {n_processed}/{len(ds)} samples in {elapsed/60:.1f}min")
-
-    tracker.remove()
-
-    print(f"\n[4/4] Computing per-layer survivors (keep top-{args.keep_experts})...")
-    survivors = tracker.survivors_per_layer(args.keep_experts)
-    n_layers = len(survivors)
-    saliency_snapshot = {L: tracker.saliency[L].clone().cpu() for L in tracker.saliency}
-    print(f"  {n_layers} MoE layers; example survivors layer 0: {survivors[0][:10]}...")
-
-    # Stage 2: reload the model to CPU only, then prune and save.
-    # device_map="auto" with CPU offload leaves params as meta tensors after
-    # dispatch, which crashes save_pretrained at safetensors._tobytes
-    # (NotImplementedError: Cannot copy out of meta tensor). Loading to CPU
-    # avoids the meta path entirely so save_pretrained gets real tensors.
-    print("\n[reload] Dropping GPU model and reloading on CPU for save...")
-    del model
-    gc.collect()
-    torch.cuda.empty_cache()
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model,
-        device_map=None,
-        dtype=torch.bfloat16,
-        low_cpu_mem_usage=False,
-        trust_remote_code=True,
-    )
-    model.eval()
-
-    print(f"\nPruning experts + slicing router weights in-place...")
-    prune_model(model, survivors)
-
-    # Update config
-    model.config.num_experts = args.keep_experts
-    if hasattr(model.config, "num_local_experts"):
-        model.config.num_local_experts = args.keep_experts
-
-    os.makedirs(args.save_path, exist_ok=True)
-    print(f"\nSaving pruned BF16 to {args.save_path}...")
-    model.save_pretrained(args.save_path, max_shard_size="2GB")
-    tokenizer.save_pretrained(args.save_path)
-
-    # Persist REAP report alongside the model
     report = {
         "args": vars(args),
-        "num_layers_pruned": n_layers,
-        "kept_experts_per_layer": args.keep_experts,
         "original_num_experts": num_experts,
-        "saliency_per_layer": {
-            str(L): saliency_snapshot[L].tolist() for L in saliency_snapshot
-        },
-        "survivors_per_layer": {str(L): survivors[L] for L in survivors},
+        "kept_experts_per_layer": args.keep_experts,
+        "save_mode": save_mode,
     }
-    with open(os.path.join(args.save_path, "reap_report.json"), "w") as f:
-        json.dump(report, f, indent=2)
-    print("  reap_report.json written")
+
+    if args.survivors_from:
+        survivors, prior = load_survivors(args.survivors_from)
+        report["saliency_per_layer"] = prior.get("saliency_per_layer", {})
+        report["survivors_from"] = os.path.abspath(args.survivors_from)
+        bad = sorted(L for L, keep in survivors.items() if len(keep) != args.keep_experts)
+        if bad:
+            raise ValueError(f"{args.survivors_from}: layers {bad[:5]} keep ≠ --keep-experts {args.keep_experts}")
+        if save_mode == "reload":
+            tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
+        print(f"\n[1-4/4] Survivors for {len(survivors)} layers read from {args.survivors_from}; observation skipped")
+    else:
+        # Build max_memory dict for accelerate. CPU cap must stay under host RAM —
+        # the original R9700 hardcode of 100GiB OOMs this 62 GB box (and any host
+        # where the BF16 base + activations exceed RAM during offload).
+        cpu_cap = args.max_memory_cpu
+        if cpu_cap == "auto":
+            cpu_cap = f"{max(8, int(ram_gb) - 14)}GiB"
+        n_visible = torch.cuda.device_count()
+        max_memory = {i: args.max_memory_per_gpu for i in range(n_visible)}
+        max_memory["cpu"] = cpu_cap
+        print(f"max_memory: {max_memory} (n_visible_gpus={n_visible})")
+
+        print("\n[1/4] Loading tokenizer + model on multi-GPU...")
+        t0 = time.time()
+        tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
+        model = model_cls.from_pretrained(
+            args.model,
+            device_map="auto",
+            torch_dtype=torch.bfloat16,
+            max_memory=max_memory,
+            trust_remote_code=True,
+        )
+        model.eval()
+        print(f"  loaded in {time.time()-t0:.0f}s ({type(model).__name__})")
+
+        print("\n[2/4] Installing REAPSaliencyTracker hooks...")
+        tracker = REAPSaliencyTracker(model, top_k=top_k)
+        if not tracker.saliency:
+            raise RuntimeError("no MoE router hooked (.mlp.gate) — nothing to observe; "
+                               "an unfuse helper is probably missing for this arch")
+
+        print(f"\n[3/4] Loading {args.dataset} + running observation pass...")
+        from datasets import load_dataset
+        ds = load_dataset(args.dataset, split=f"train[:{args.num_samples}]")
+        print(f"  loaded {len(ds)} samples; columns: {ds.column_names[:6]}")
+
+        # Auto-detect text field
+        text_field = args.text_field
+        if text_field is None:
+            for cand in ("text", "instruction", "prompt", "content", "input", "messages"):
+                if cand in ds.column_names:
+                    text_field = cand
+                    break
+        if text_field is None:
+            text_field = ds.column_names[0]
+        print(f"  using text-field: {text_field!r}")
+
+        t0 = time.time()
+        n_processed = 0
+        for i, sample in enumerate(ds):
+            text = sample.get(text_field) or ""
+            # Some datasets pair instruction+output; concatenate if available
+            if "output" in sample and sample.get("output"):
+                text = f"{text}\n{sample['output']}"
+            if not isinstance(text, str) or not text.strip():
+                continue
+            ids = tokenizer(text, return_tensors="pt", max_length=args.max_length,
+                            truncation=True).input_ids.to(next(model.parameters()).device)
+            try:
+                with torch.no_grad():
+                    model(input_ids=ids, use_cache=False)
+                n_processed += 1
+            except Exception as e:
+                print(f"  WARN: sample {i} failed ({type(e).__name__}: {e})")
+                continue
+            if (i + 1) % 50 == 0:
+                elapsed = time.time() - t0
+                rate = (i + 1) / elapsed
+                eta = (len(ds) - i - 1) / rate
+                print(f"  {i+1}/{len(ds)}  ({rate:.1f} sample/s, ETA {eta/60:.1f}min)")
+        elapsed = time.time() - t0
+        print(f"  observation done: {n_processed}/{len(ds)} samples in {elapsed/60:.1f}min")
+        if n_processed == 0:
+            raise RuntimeError("every calibration sample failed — refusing to prune on zero saliency")
+
+        tracker.remove()
+
+        print(f"\n[4/4] Computing per-layer survivors (keep top-{args.keep_experts})...")
+        survivors = tracker.survivors_per_layer(args.keep_experts)
+        report["saliency_per_layer"] = {str(L): tracker.saliency[L].tolist() for L in tracker.saliency}
+        report["samples_observed"] = n_processed
+        del model, tracker
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    n_layers = len(survivors)
+    first = min(survivors)
+    print(f"  {n_layers} MoE layers; example survivors layer {first}: {survivors[first][:10]}...")
+    report["num_layers_pruned"] = n_layers
+    report["survivors_per_layer"] = {str(L): survivors[L] for L in survivors}
+
+    # Crash-safe: the survivors are on disk before any reload / slicing, so a
+    # failed save resumes with --survivors-from instead of re-observing.
+    report["stage"] = "survivors"
+    path = write_report(args.save_path, report)
+    print(f"  {path} written (stage=survivors; resume a failed save with --survivors-from)")
+
+    if save_mode == "stream":
+        print(f"\n[save/stream] Slicing safetensors shards {args.model} → {args.save_path} ...")
+        report["stream"] = stream_prune_checkpoint(args.model, args.save_path, survivors, num_experts)
+        print(f"  {report['stream']['shards']} shards, {report['stream']['tensors']} tensors, "
+              f"config levels {report['stream']['config_levels_written']}")
+    else:
+        # Reload the model to CPU only, then prune and save.
+        # device_map="auto" with CPU offload leaves params as meta tensors after
+        # dispatch, which crashes save_pretrained at safetensors._tobytes
+        # (NotImplementedError: Cannot copy out of meta tensor). Loading to CPU
+        # avoids the meta path entirely so save_pretrained gets real tensors.
+        print("\n[save/reload] Reloading on CPU for prune + save...")
+        model = model_cls.from_pretrained(
+            args.model,
+            device_map=None,
+            dtype=torch.bfloat16,
+            low_cpu_mem_usage=False,
+            trust_remote_code=True,
+        )
+        model.eval()
+
+        print("\nPruning experts + slicing router weights in-place...")
+        prune_model(model, survivors)
+        report["config_levels_written"] = set_expert_counts(model.config, args.keep_experts)
+
+        print(f"\nSaving pruned BF16 to {args.save_path}...")
+        model.save_pretrained(args.save_path, max_shard_size="2GB")
+        # Processor (preprocessor_config.json / video_preprocessor_config.json):
+        # best effort — text-only checkpoints have none.
+        try:
+            from transformers import AutoProcessor
+            AutoProcessor.from_pretrained(args.model, trust_remote_code=True).save_pretrained(args.save_path)
+            report["processor_saved"] = True
+        except Exception as e:
+            report["processor_saved"] = False
+            print(f"  note: no processor saved ({type(e).__name__})")
+
+        tokenizer.save_pretrained(args.save_path)
+
+    report["stage"] = "saved"
+    write_report(args.save_path, report)
+    print("  reap_report.json updated (stage=saved)")
     print("\nDone.")
 
 

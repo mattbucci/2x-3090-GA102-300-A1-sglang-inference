@@ -33,11 +33,18 @@ Apply BEFORE any `from_pretrained` of a Qwen3_5Moe checkpoint:
     from transformers import AutoModelForCausalLM
     m = AutoModelForCausalLM.from_pretrained(..., trust_remote_code=True)
 
-NOTE (run_reap.py): the Qwen3_5Moe router (`mlp.gate`) is a custom module that
-returns `(router_logits, routing_weights, selected_experts)`, NOT a plain
-`nn.Linear` emitting logits. run_reap.py's saliency router-hook must be taught
-to read that tuple before REAP works end-to-end on this family — tracked in the
-README MoE backlog.
+  3. a **fused attribute bridge** for transformers >= 5, whose
+     `from_pretrained` never calls `load_state_dict` (hook 1 does not fire):
+     it takes the expected keys from `state_dict()` (fused, via hook 2) and
+     sets `experts.gate_up_proj` / `experts.down_proj` by attribute — without
+     the bridge that dies with `AttributeError: 'Qwen3_5MoeExpertsUnfused'
+     object has no attribute 'down_proj'`. `__getattr__` answers with a
+     shape-only stand-in, `__setattr__` splits the stack into the per-expert
+     Linears.
+
+The Qwen3_5Moe router (`mlp.gate`) returns `(router_logits, routing_weights,
+selected_experts)`, not plain logits — run_reap.py's saliency hook reads the
+tuple.
 """
 from __future__ import annotations
 
@@ -68,6 +75,31 @@ class Qwen3_5MoeMLPUnfused(nn.Module):
 class Qwen3_5MoeExpertsUnfused(nn.ModuleList):
     """`nn.ModuleList` of per-expert `Qwen3_5MoeMLPUnfused`, with fused-3-D
     checkpoint <-> per-expert load/save bridging hooks."""
+
+    # ---- from_pretrained (transformers >= 5): fused params set by attribute --
+    # That loader never calls load_state_dict: it reads the expected keys from
+    # state_dict() (fused, via the hook below) and then does
+    # getattr(experts, "down_proj").shape / setattr(experts, "down_proj", param).
+    # Present the fused stack as a shape-only attribute and split on assignment.
+    _FUSED = ("gate_up_proj", "down_proj")
+
+    def __getattr__(self, name):
+        if name in Qwen3_5MoeExpertsUnfused._FUSED and len(self):
+            w = getattr(self[0], name).weight
+            return torch.empty((len(self), *w.shape), dtype=w.dtype, device="meta")
+        return super().__getattr__(name)
+
+    def __setattr__(self, name, value):
+        if name in Qwen3_5MoeExpertsUnfused._FUSED and isinstance(value, torch.Tensor):
+            if value.shape[0] != len(self):
+                raise ValueError(f"fused {name}: {value.shape[0]} experts for a {len(self)}-expert module")
+            for e, expert in enumerate(self):
+                w = nn.Parameter(value[e].detach().clone(), requires_grad=False)
+                w._is_hf_initialized = True
+                getattr(expert, name).weight = w
+                getattr(expert, name)._is_hf_initialized = True
+            return
+        super().__setattr__(name, value)
 
     def __init__(self, config):
         super().__init__([Qwen3_5MoeMLPUnfused(config) for _ in range(config.num_experts)])
@@ -146,3 +178,4 @@ if hasattr(_M, "Qwen3_5MoePreTrainedModel"):
         return _orig_init(self, module)
 
     _M.Qwen3_5MoePreTrainedModel._init_weights = _patched_init_weights
+
