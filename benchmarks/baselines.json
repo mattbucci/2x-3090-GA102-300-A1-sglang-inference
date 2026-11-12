@@ -2,13 +2,13 @@
   "_meta": {
     "hardware": "2x RTX 3090 TP=2",
     "instrument": "scripts/bench/bench_long_context.py",
-    "output_tokens": 100,
-    "saved": "2026-11-09",
-    "schema": 2,
-    "stack": "sglang-v0.5.15",
     "notes": [
       "flint 2026-11-09: baseline = calibrated g32 build on v0.5.23 (from the same-session arm receipt flint-2026-11-09-g32-ab.json; the chain save resumed the g64 campaign run)"
-    ]
+    ],
+    "output_tokens": 100,
+    "saved": "2026-11-12",
+    "schema": 2,
+    "stack": "sglang-v0.5.15"
   },
   "coder-30b": {
     "1024": {
@@ -92,6 +92,27 @@
       "tok_per_sec": 64.4,
       "tpot_ms": 15.52,
       "ttft_ms": 810.28
+    }
+  },
+  "gemma4-31b": {
+    "1024": {
+      "actual_input_tokens": 1024,
+      "tok_per_sec": 61.6,
+      "tpot_ms": 16.24,
+      "ttft_ms": 48.87
+    },
+    "32768": {
+      "actual_input_tokens": 32768,
+      "tok_per_sec": 55.2,
+      "tpot_ms": 18.11,
+      "ttft_ms": 106.72
+    },
+    "deep": {
+      "actual_input_tokens": 261916,
+      "label": 261916,
+      "tok_per_sec": 33.3,
+      "tpot_ms": 29.99,
+      "ttft_ms": 571.48
     }
   },
   "nemotron3-omni": {

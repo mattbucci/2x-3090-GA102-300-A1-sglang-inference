@@ -1,0 +1,36 @@
+{
+  "model": "gemma4-31b",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "prompt_source": "random",
+  "timestamp": "2026-11-12 07:36:04",
+  "output_tokens": 100,
+  "max_total_num_tokens": 330994,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1024,
+      "throughput": 59.97,
+      "ttft_ms": 48.26,
+      "tpot_ms": 16.24,
+      "tok_per_sec": 61.6
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32768,
+      "throughput": 51.77,
+      "ttft_ms": 127.2,
+      "tpot_ms": 18.11,
+      "tok_per_sec": 55.2
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261916,
+      "throughput": 28.39,
+      "ttft_ms": 542.91,
+      "tpot_ms": 29.98,
+      "tok_per_sec": 33.4
+    }
+  ]
+}
