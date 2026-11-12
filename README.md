@@ -1,7 +1,7 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
 Single-user, **256K-context** LLM inference on 2× NVIDIA RTX 3090 (GA102, Ampere, 48 GB total): SGLang
-**v0.5.23** + 41 local patches, CUDA 13.2 / PyTorch cu130, every model an **AWQ-int4 ship calibrated
+**v0.5.23** + 42 local patches, CUDA 13.2 / PyTorch cu130, every model an **AWQ-int4 ship calibrated
 in-house** from the upstream BF16 base. This rig owns all evals and the AWQ/INT4 calibrations; FP8 work
 lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
@@ -69,10 +69,11 @@ default on `qwen38` (**8.6 s @32K, 51 s @131K, 145 s @262K**), `qwen36-dense`, `
 Its INT8 path moves greedy outputs in about half of the cache-hit cells (up to 2.8 nats; fp16 stays within
 0.1), invisible to the single-turn gates; agentic cost is [issue #20](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/20),
 off switch `SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS=1000000000` ([receipt](benchmarks/quality/cache-hit-w4a8-2026-11-02.md)).
-The triton presets (Flint, the Gemma 4s) are bound by the extend-attention kernel at 40–50 % of peak
-([issue #12](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/12)); on `flint` a
-128×128 tile plus the bf16 softmax·V dot (patch 075) take the cold fill to **2.97 s @32K and 23.4 s @131K**
-(−18 % / −29 %) at parity ([receipt](benchmarks/profiling/pv-dtype-2026-11-02/README.md)).
+The triton presets are bound by the extend-attention kernel
+([issue #12](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/12)); `flint` ships a
+128×128 tile, the bf16 softmax·V dot (patch 075) and flashinfer paged prefill on
+full-attention layers (080): cold fill **2.7 s @32K, 18.3 s @131K, 50 s @250K**
+([receipt](benchmarks/profiling/prefill-flashinfer-route-2026-11-11/README.md)).
 Receipts: [`benchmarks/profiling/multiturn-cache-2026-11-01/`](benchmarks/profiling/multiturn-cache-2026-11-01/README.md),
 [`benchmarks/fleet-w4a8-2026-11-01/`](benchmarks/fleet-w4a8-2026-11-01/README.md).
 
@@ -187,7 +188,7 @@ live under [`evals/swebench/`](evals/swebench/).
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.23 + 41 local patches (serving tree under `/data`, env `sglang-v0523`; the v0.5.22 tree + env kept as the one-revert rollback) |
+| SGLang | v0.5.23 + 42 local patches (serving tree under `/data`, env `sglang-v0523`; the v0.5.22 tree + env kept as the one-revert rollback) |
 | PyTorch | 2.14.1 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
 | transformers | 5.19.0 (ships gemma4_unified natively; routes Mistral ckpts to MistralCommonBackend, countered by patch 057) |

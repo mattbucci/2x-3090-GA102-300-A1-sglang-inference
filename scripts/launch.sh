@@ -741,6 +741,11 @@ apply_preset() {
             # natural-haystack reasoning 34/51 cells on both arms over 17 repeated instances (the flipping
             # cells are Flint's greedy drift, present on fp32 too). 1 restores the fp32 dot.
             export SGLANG_EXTEND_ATTN_FP32_PV="${SGLANG_EXTEND_ATTN_FP32_PV:-0}"
+            # One-pass prefill route (patch 080): extends of >= 257 rows on the 14 full-attention layers run
+            # flashinfer's paged prefill over the e5m2 pool (SWA layers stay on Triton). Cold TTFT 2.94 / 23.2 /
+            # 67.0 s -> 2.69 / 18.3 / 50.0 s at 32K / 131K / 250K, TPOT unchanged; two-pass gate ties (MMLU
+            # 292 vs 290 of 342, HumanEval 272 vs 272 of 328, haystack needle 25 vs 25 of 30). 0 disables.
+            export SGLANG_EXTEND_FLASHINFER_MIN_ROWS="${SGLANG_EXTEND_FLASHINFER_MIN_ROWS:-257}"
             # Calibrated g32 (same calibrator/cache as the g64 ship): 244K needle at depth 0.5
             # 4/4 vs 0/4, 256K haystack reasoning 71 % vs 52 % (3 runs each), MMLU-57 / HE-30 at
             # parity, decode within 2 %. g64 stays at Flint-AWQ-INT4-g64-gptq for A/Bs.

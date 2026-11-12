@@ -1,0 +1,145 @@
+Patch 080 — extend-flashinfer-prefill-route (net-new 2026-11-12, the CUDA form of R9700 RAD-10c / patch 131)
+
+On the Triton backend a cold prefill chunk is bound by extend_attention_fwd (Flint: 14 full-attention
+layers per rank read the whole prefix for every 8192-row chunk; the 35 SWA layers are ~4 % of that).
+flashinfer's paged prefill kernel does the same attention at x0.68-0.73 of the Triton launch on sm_86
+and reads the fp8_e5m2 pool directly. Route a single-sequence causal EXTEND of
+>= SGLANG_EXTEND_FLASHINFER_MIN_ROWS rows (0 = off, the default) on a full-attention layer through
+BatchPrefillWithPagedKVCacheWrapper over the pool: prefix kv_indices + out_cache_loc as one slot table
+(page size 1; the chunk's K/V are already in the pool), learned sinks merged through the returned LSE
+(o *= sigmoid(lse*ln2 - sink)), planned once per forward batch. SWA layers, MLA, dLLM, custom masks,
+soft-cap and score-mod stay on Triton; any exception declines the route for the process.
+
+The slot table MUST be int32: an int64 table runs the same kernel at x1.76 (156 vs 89 ms at 123K
+prefix x 8192 rows), which alone made the first served arm lose to Triton.
+
+Flint served cold TTFT 2.94 / 23.2 / 67.0 s -> 2.69 / 18.3 / 50.0 s at 32K / 131K / 250K; TPOT
+unchanged. Gate (two interleaved passes per arm): MMLU 292 vs 290 of 342, HumanEval 272 vs 272 of
+328, haystack needle 196K-254K 25 vs 25 of 30. Receipts
+benchmarks/profiling/prefill-flashinfer-route-2026-11-11/.
+
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -79,6 +79,14 @@
+ # chunks, each attending to the prefix plus the new tokens before it (already in the KV pool) and
+ # causally within itself. 32 is the widest tile on sm_86 (the 64-row combine tile overflows shared
+ # memory at head_dim 256); 16 is the floor.
++# [3090 080] one-pass prefill route: a single-sequence causal extend of >= SGLANG_EXTEND_FLASHINFER_MIN_ROWS
++# rows on a full-attention layer runs flashinfer's paged prefill kernel over the pool (prefix and the new
++# rows through one slot table; the new rows' K/V are in the pool by then) instead of the two-stage Triton
++# extend kernel: x0.53 per launch at Flint's shape at 32K-246K prefix (bench_prefill_attn_kernel.py; sized
++# by R9700's RAD-10c). Learned sinks merge through the returned LSE. 0 (default) keeps Triton.
++_EXTEND_FI_MIN_ROWS = int(os.environ.get("SGLANG_EXTEND_FLASHINFER_MIN_ROWS", "0") or 0)
++_LN2 = 0.6931471805599453
++
+ _EXTEND_SPLITKV_TILE = min(32, max(16, int(os.environ.get("SGLANG_EXTEND_SPLITKV_TILE", "32") or 32)))
+ logger = logging.getLogger(__name__)
+ from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
+@@ -2126,6 +2134,37 @@
+             if ran:
+                 return o
+ 
++        if (
++            _EXTEND_FI_MIN_ROWS > 0
++            and not self.use_mla
++            and self.dllm_attention is None
++            and forward_batch.forward_mode == ForwardMode.EXTEND
++            and forward_batch.batch_size == 1
++            and score_mod is None
++            and aux_tensors is None
++            and causal
++            and sliding_window_size == -1
++            and logits_soft_cap <= 0
++            and layer.xai_temperature_len <= 0
++            and layer.qk_head_dim == layer.v_head_dim
++            and self.forward_metadata.custom_mask is None
++            and forward_batch.extend_seq_lens_cpu is not None
++            and forward_batch.extend_prefix_lens_cpu is not None
++            and forward_batch.extend_seq_lens_cpu[0] >= _EXTEND_FI_MIN_ROWS
++            and forward_batch.out_cache_loc is not None
++            and self._extend_flashinfer_prefill(
++                q.view(-1, layer.tp_q_head_num, layer.qk_head_dim),
++                o.view(-1, layer.tp_q_head_num, layer.v_head_dim),
++                layer,
++                forward_batch,
++                kv_indices,
++                k_descale,
++                v_descale,
++                sinks,
++            )
++        ):
++            return o
++
+         self._forward_extend_kernel(
+             layer,
+             q.view(-1, layer.tp_q_head_num, layer.qk_head_dim),
+@@ -2156,6 +2195,68 @@
+         )
+         return o
+ 
++    def _extend_flashinfer_prefill(
++        self, q3, o3, layer, forward_batch, kv_indices, k_descale, v_descale, sinks
++    ) -> bool:
++        """[3090 080] flashinfer paged prefill for one causal extend; False = declined (Triton runs)."""
++        st = getattr(self, "_extend_fi_state", None)
++        if st is None:
++            st = self._extend_fi_state = {"ok": True, "wrappers": {}}
++            try:
++                import flashinfer
++
++                st["cls"] = flashinfer.BatchPrefillWithPagedKVCacheWrapper
++                st["ws"] = torch.empty(128 * 1024 * 1024, dtype=torch.uint8, device=q3.device)
++                st["ones"] = torch.ones(1, dtype=torch.int32, device=q3.device)
++            except Exception as e:  # noqa: BLE001
++                st["ok"] = False
++                logger.warning("[3090 080] flashinfer prefill route unavailable: %r", e)
++        if not st["ok"]:
++            return False
++        k_buf = self.token_to_kv_pool.get_key_buffer(layer.layer_id)
++        v_buf = self.token_to_kv_pool.get_value_buffer(layer.layer_id)
++        if k_buf.dim() != 3 or v_buf.dim() != 3 or k_buf.dtype != v_buf.dtype:
++            return False
++        n_new = int(forward_batch.extend_seq_lens_cpu[0])
++        n_prefix = int(forward_batch.extend_prefix_lens_cpu[0])
++        h_q, h_kv, d = layer.tp_q_head_num, layer.tp_k_head_num, layer.qk_head_dim
++        shape = (h_q, h_kv, d, q3.dtype, k_buf.dtype)
++        try:
++            w = st["wrappers"].get(shape)
++            if w is None:
++                w = st["wrappers"][shape] = st["cls"](st["ws"], "NHD")
++                logger.info("[3090 080] flashinfer prefill route active: heads %d/%d dim %d kv %s, from %d rows",
++                            h_q, h_kv, d, k_buf.dtype, _EXTEND_FI_MIN_ROWS)
++            # one plan per forward batch and shape: every full-attention layer shares the slot table
++            # (the marker lives on the batch object: an id() can be reused by a later batch)
++            planned = getattr(forward_batch, "_extend_fi_planned", None)
++            if planned is None:
++                planned = forward_batch._extend_fi_planned = set()
++            if shape not in planned:
++                # int32 slot table: an int64 one runs the same kernel at x1.76 (156 vs 89 ms at 123K prefix x 8192 rows)
++                idx = torch.cat([kv_indices[:n_prefix].to(torch.int32), forward_batch.out_cache_loc.to(torch.int32)])
++                st.setdefault("idx", {})[shape] = idx  # keep alive: the plan holds the pointer
++                w.plan(
++                    torch.tensor([0, n_new], dtype=torch.int32, device=q3.device),
++                    torch.tensor([0, n_prefix + n_new], dtype=torch.int32, device=q3.device),
++                    idx, st["ones"], h_q, h_kv, d, 1,
++                    causal=True, sm_scale=layer.scaling, q_data_type=q3.dtype, kv_data_type=k_buf.dtype,
++                )
++                planned.add(shape)
++            kw = {}
++            if layer.k_scale is not None and layer.v_scale is not None:
++                kw = dict(k_scale=k_descale, v_scale=v_descale)
++            out, lse = w.run(q3.contiguous(), (k_buf.unsqueeze(1), v_buf.unsqueeze(1)), return_lse=True, **kw)
++        except Exception as e:  # noqa: BLE001
++            st["ok"] = False
++            logger.warning("[3090 080] flashinfer prefill route declined, Triton extend from here: %r", e)
++            return False
++        if sinks is not None:
++            # the sink joins the softmax denominator only: o *= Z / (Z + exp(sink)); flashinfer's LSE is log2
++            out = out * torch.sigmoid(lse * _LN2 - sinks.view(1, -1).to(lse.dtype)).unsqueeze(-1).to(out.dtype)
++        o3.copy_(out)
++        return True
++
+     def _forward_extend_kernel(self, layer, *args, **kwargs):
+         if self.dllm_attention is not None:
+             return self.dllm_attention.forward_extend(layer, *args, **kwargs)
