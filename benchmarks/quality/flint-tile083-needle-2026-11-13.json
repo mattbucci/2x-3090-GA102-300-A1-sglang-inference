@@ -1,0 +1,91 @@
+{
+ "tag": "flint-tile083-needle-2026-11-13",
+ "timestamp": "2026-11-13 13:40",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 129784,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 130,
+    "content_tail": "BANANA42",
+    "reasoning_tail": ": BANANA42.\" Then later \"What is the secret password? Answer with just the password.\" So likely answer is BANANA42. We should output just that. Ensure no extra.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 129787,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 61,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "kely asks \"What is the secret password? Answer with just the password.\" At top: \"The secret password is: BANANA42.\" So answer just password. Need comply. final.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 129787,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 71,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "password.\" At top: \"The secret password is: BANANA42.\" likely secret password. They ask answer with just the password. So final should be BANANA42. Need comply.",
+    "answered": true
+   },
+   {
+    "context": 195000,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 195404,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 93,
+    "content_tail": " = 13\" likely answer is BANANA42. Need final answer just password. Ensure no extra? They said Answer with just the password. So final: BANANA42.</think>BANANA42",
+    "reasoning_tail": "",
+    "answered": true
+   },
+   {
+    "context": 195000,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 195405,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 109,
+    "content_tail": " \"What is the secret password? Answer with just the password.\" So likely answer should be BANANA42. Must not include extra. final just BANANA42.</think>BANANA42",
+    "reasoning_tail": "",
+    "answered": true
+   },
+   {
+    "context": 195000,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 195404,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 59,
+    "content_tail": " secret password? Answer with just the password.\" Then at top: \"The secret password is: BANANA42.\" Need likely final just BANANA42. Must comply.</think>BANANA42",
+    "reasoning_tail": "",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}

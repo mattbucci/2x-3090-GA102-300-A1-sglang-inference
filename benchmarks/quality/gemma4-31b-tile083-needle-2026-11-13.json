@@ -1,0 +1,91 @@
+{
+ "tag": "gemma4-31b-tile083-needle-2026-11-13",
+ "timestamp": "2026-11-13 13:27",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 140281,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 100,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "d text for the phrase \"The secret password is:\".\n    Found: \"The secret password is: BANANA42.\"\n\n    The user wants the secret password.\n    Password: BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 124,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "hrase \"secret password\".\n    *   Found: \"The secret password is: BANANA42.\"\n\n    *   The user requested *just* the password.\n    *   The password is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 114,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "\"\n\n1.  Scan the provided text for the phrase \"secret password\".\n2.  Locate the sentence \"The secret password is: BANANA42.\"\n3.  Extract the password \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 240000,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 231280,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 145,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "et password is: BANANA42.\"\n- It's located after a problem about counting three-digit numbers that are multiples of neither 5 nor 7.\n\nThe password is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 240000,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 231280,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 129,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "nned the text and found the phrase \"The secret password is: BANANA42.\"\n\n    *   The user asks for the secret password.\n    *   The password found is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 240000,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 231280,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 97,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " password?\" and specifies \"Answer with just the password.\"\n\nThe text says: \"The secret password is: BANANA42.\"\nThe requested answer should be just the password.",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}

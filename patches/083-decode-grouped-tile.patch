@@ -1,0 +1,243 @@
+083 decode-grouped-tile: wider KV tile for the grouped Triton decode kernel
+
+Stage 1 of the grouped decode kernel walks the KV 32 keys per loop step on 4 warps.
+Under the fp32 softmax.V dot (patch 011) that tile is compute-bound: a deep KV reads at
+about half of the GA102 bandwidth ceiling (459 GB/s of 889 on Gemma 4 31B's 512-wide
+global layers at 223K). SGLANG_TRITON_DECODE_GROUPED_BLOCK_N / _NUM_WARPS set the tile
+and warp count (0 / unset = upstream). Arithmetic is unchanged; only the fp32
+accumulation order moves (rel-L2 4e-4 vs the 32-key tile). A shape whose tile overflows
+shared memory at compile time is remembered and keeps the upstream 32 x 4 tile.
+gemma4-31b 64 x 8: 35.6 -> 41.8 tok/s at 223K, 54.4 -> 55.4 at 37K.
+flint 128 x 4: 115.0 -> 123.9 tok/s at 241K, flat at 34K.
+---
+diff --git a/python/sglang/kernels/ops/attention/decode_attention.py b/python/sglang/kernels/ops/attention/decode_attention.py
+index 30bc564f0d..8b949551c2 100644
+--- a/python/sglang/kernels/ops/attention/decode_attention.py
++++ b/python/sglang/kernels/ops/attention/decode_attention.py
+@@ -21,11 +21,13 @@ It supports page size = 1.
+ # https://github.com/ModelTC/lightllm/blob/96353e868a840db4d103138caf15ed9dbea8c186/lightllm/models/deepseek2/triton_kernel/gqa_flash_decoding_stage2.py
+ 
+ import logging
++import os
+ import math
+ from typing import NamedTuple, Optional, Tuple
+ 
+ import torch
+ import triton
++from triton.runtime.errors import OutOfResources
+ import triton.language as tl
+ 
+ from sglang.kernels.ops.attention.score_mod import unpack_aux_tensors
+@@ -51,6 +53,18 @@ logger = logging.getLogger(__name__)
+ 
+ _MIN_BLOCK_KV = 32
+ 
++# 3090 patch 083 (decode-grouped-tile): KV tile (keys per loop step) and warps of the
++# grouped decode stage 1. Upstream's 32 keys x 4 warps reads a deep KV at about half of
++# the GA102 memory-bandwidth ceiling under the fp32 P.V dot (the dot has no tensor-core
++# path, so a 32-key tile leaves the warps compute-bound); 64 keys reads 30 % faster at
++# identical arithmetic (fp32 accumulation order changes only). 128 keys overflows shared
++# memory at a 512-wide head. 0 / unset keeps upstream's geometry.
++_GROUPED_BLOCK_N = int(os.environ.get("SGLANG_TRITON_DECODE_GROUPED_BLOCK_N", "0") or 0)
++_GROUPED_NUM_WARPS = int(
++    os.environ.get("SGLANG_TRITON_DECODE_GROUPED_NUM_WARPS", "0") or 0
++)
++_GROUPED_TILE_REFUSED = set()
++
+ 
+ def _rotate_batch(batch: int, uneven_batch: Optional[torch.Tensor]) -> bool:
+     # HIP hands workgroups to XCDs round-robin. With batch as the fastest grid axis,
+@@ -861,6 +875,18 @@ def _decode_grouped_att_m_fwd(
+         extra_kargs = {"waves_per_eu": 1, "matrix_instr_nonkdim": 16, "kpack": 2}
+         num_stages = 1
+ 
++    # 3090 patch 083: wider KV tile; a shape whose tile overflows shared memory at
++    # compile time (e.g. a bf16 KV at a 512-wide head) is remembered and keeps upstream's.
++    tile_key = None
++    if not _is_hip and not has_mla and _GROUPED_BLOCK_N > 0:
++        tile_key = (BLOCK_DMODEL, BLOCK_DV, BLOCK_H, k_buffer.dtype, q.dtype)
++        if tile_key not in _GROUPED_TILE_REFUSED:
++            BLOCK = _GROUPED_BLOCK_N
++            if _GROUPED_NUM_WARPS > 0:
++                num_warps = _GROUPED_NUM_WARPS
++        else:
++            tile_key = None
++
+     if tune_mla:
+         # num_warps reorders the fp32 accumulation, so whoever declined the batch-wide
+         # count gets a batch-independent geometry too
+@@ -885,58 +911,122 @@ def _decode_grouped_att_m_fwd(
+         score_mod, aux_tensors
+     )
+ 
+-    _fwd_grouped_kernel_stage1[grid](
+-        q,
+-        k_buffer,
+-        v_buffer,
+-        sm_scale_withk,
+-        kv_indptr,
+-        kv_indices,
+-        att_out,
+-        att_lse,
+-        num_kv_splits,
+-        q.stride(0),
+-        q.stride(1),
+-        k_slot_stride,
+-        k_head_stride,
+-        v_slot_stride,
+-        v_head_stride,
+-        k_page_stride,
+-        k_tok_stride,
+-        v_page_stride,
+-        v_tok_stride,
+-        att_out.stride(0),
+-        att_out.stride(1),
+-        att_out.stride(2),
+-        kv_group_num=kv_group_num,
+-        q_head_num=head_num,
+-        BLOCK_DMODEL=BLOCK_DMODEL,
+-        BLOCK_DPE=BLOCK_DPE,
+-        BLOCK_DV=BLOCK_DV,
+-        BLOCK_N=BLOCK,
+-        BLOCK_H=BLOCK_H,
+-        MIN_BLOCK_KV=_MIN_BLOCK_KV,
+-        logit_cap=logit_cap,
+-        xai_temperature_len=xai_temperature_len,
+-        num_warps=num_warps,
+-        num_stages=num_stages,
+-        Lk=Lk,
+-        Lv=Lv,
+-        HAS_MLA=has_mla,
+-        USE_PDL=use_pdl,
+-        IS_GFX1250=_is_gfx1250 or _FP32_SOFTMAX_PV,
+-        PAGE_SIZE=page_size,
+-        SCORE_MOD=score_mod,
+-        Aux0=aux0,
+-        aux0_stride_t=aux0_stride_t,
+-        aux0_stride_h=aux0_stride_h,
+-        aux0_len=aux0_len,
+-        forced_kv_splits=forced_kv_splits,
+-        USE_FORCED=forced_kv_splits > 0,
+-        uneven_batch=uneven_batch,
+-        ROTATE_BATCH=_rotate_batch(batch, uneven_batch),
+-        **extra_kargs,
+-    )
++    try:
++        _fwd_grouped_kernel_stage1[grid](
++            q,
++            k_buffer,
++            v_buffer,
++            sm_scale_withk,
++            kv_indptr,
++            kv_indices,
++            att_out,
++            att_lse,
++            num_kv_splits,
++            q.stride(0),
++            q.stride(1),
++            k_slot_stride,
++            k_head_stride,
++            v_slot_stride,
++            v_head_stride,
++            k_page_stride,
++            k_tok_stride,
++            v_page_stride,
++            v_tok_stride,
++            att_out.stride(0),
++            att_out.stride(1),
++            att_out.stride(2),
++            kv_group_num=kv_group_num,
++            q_head_num=head_num,
++            BLOCK_DMODEL=BLOCK_DMODEL,
++            BLOCK_DPE=BLOCK_DPE,
++            BLOCK_DV=BLOCK_DV,
++            BLOCK_N=BLOCK,
++            BLOCK_H=BLOCK_H,
++            MIN_BLOCK_KV=_MIN_BLOCK_KV,
++            logit_cap=logit_cap,
++            xai_temperature_len=xai_temperature_len,
++            num_warps=num_warps,
++            num_stages=num_stages,
++            Lk=Lk,
++            Lv=Lv,
++            HAS_MLA=has_mla,
++            USE_PDL=use_pdl,
++            IS_GFX1250=_is_gfx1250 or _FP32_SOFTMAX_PV,
++            PAGE_SIZE=page_size,
++            SCORE_MOD=score_mod,
++            Aux0=aux0,
++            aux0_stride_t=aux0_stride_t,
++            aux0_stride_h=aux0_stride_h,
++            aux0_len=aux0_len,
++            forced_kv_splits=forced_kv_splits,
++            USE_FORCED=forced_kv_splits > 0,
++            uneven_batch=uneven_batch,
++            ROTATE_BATCH=_rotate_batch(batch, uneven_batch),
++            **extra_kargs,
++        )
++    except OutOfResources:
++        if tile_key is None:
++            raise
++        _GROUPED_TILE_REFUSED.add(tile_key)
++        logger.warning(
++            "grouped decode tile %d x %d warps does not fit shared memory for %s; "
++            "keeping the upstream 32 x 4 tile for this shape",
++            BLOCK,
++            num_warps,
++            tile_key,
++        )
++        _fwd_grouped_kernel_stage1[grid](
++            q,
++            k_buffer,
++            v_buffer,
++            sm_scale_withk,
++            kv_indptr,
++            kv_indices,
++            att_out,
++            att_lse,
++            num_kv_splits,
++            q.stride(0),
++            q.stride(1),
++            k_slot_stride,
++            k_head_stride,
++            v_slot_stride,
++            v_head_stride,
++            k_page_stride,
++            k_tok_stride,
++            v_page_stride,
++            v_tok_stride,
++            att_out.stride(0),
++            att_out.stride(1),
++            att_out.stride(2),
++            kv_group_num=kv_group_num,
++            q_head_num=head_num,
++            BLOCK_DMODEL=BLOCK_DMODEL,
++            BLOCK_DPE=BLOCK_DPE,
++            BLOCK_DV=BLOCK_DV,
++            BLOCK_N=32,
++            BLOCK_H=BLOCK_H,
++            MIN_BLOCK_KV=_MIN_BLOCK_KV,
++            logit_cap=logit_cap,
++            xai_temperature_len=xai_temperature_len,
++            num_warps=4,
++            num_stages=num_stages,
++            Lk=Lk,
++            Lv=Lv,
++            HAS_MLA=has_mla,
++            USE_PDL=use_pdl,
++            IS_GFX1250=_is_gfx1250 or _FP32_SOFTMAX_PV,
++            PAGE_SIZE=page_size,
++            SCORE_MOD=score_mod,
++            Aux0=aux0,
++            aux0_stride_t=aux0_stride_t,
++            aux0_stride_h=aux0_stride_h,
++            aux0_len=aux0_len,
++            forced_kv_splits=forced_kv_splits,
++            USE_FORCED=forced_kv_splits > 0,
++            uneven_batch=uneven_batch,
++            ROTATE_BATCH=_rotate_batch(batch, uneven_batch),
++            **extra_kargs,
++        )
+ 
+ 
+ @triton.jit

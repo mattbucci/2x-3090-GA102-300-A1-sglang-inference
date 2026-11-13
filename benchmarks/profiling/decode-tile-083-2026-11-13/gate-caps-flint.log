@@ -1,0 +1,8 @@
+FAILED: ['vision', 'video']
+=== Capability validator — http://127.0.0.1:23334  model=flint ===
+  [PASS] basic     finish=stop answer='paris'
+  [PASS] tool_call finish=tool_calls name='get_weather' args='{"location": "Paris"}'
+  [PASS] thinking  reasoning_seen terminated answer_ok (481 tok, finish=stop)
+  [FAIL] vision    request failed: <HTTPError 400: 'Bad Request: {"object":"error","message":"Model only supports text input; received unsupported content type \'image_url\'.","type":"BadRequestError","param":null,"code":400}'>
+  [FAIL] video     request failed: <HTTPError 400: 'Bad Request: {"object":"error","message":"Model only supports text input; received unsupported content type \'video_url\'.","type":"BadRequestError","param":null,"code":400}'>
+--- 3/5 passed in 3.8s ---

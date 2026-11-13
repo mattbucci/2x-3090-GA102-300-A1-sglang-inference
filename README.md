@@ -20,7 +20,7 @@ Per-patch narratives: [`patches/README.md`](patches/README.md).
 
 ## Results
 
-- **Decode at a true 256K window:** `qwen36-ream` **187 tok/s**, `qwen35-moe` 186, `qwen36` 148, `flint` 115.
+- **Decode at a true 256K window:** `qwen36-ream` **187 tok/s**, `qwen35-moe` 186, `qwen36` 148, `flint` 122.
 - **Cold prefill at 131K:** `qwen36` 15.9 s, `flint` 18.3 s; a cached 1-token turn at 197K: 70–85 ms.
 - **SWE-bench Lite:** `qwen38` 65.3 %, `qwopus38` 63.3 %, `flint` 60.7 %; scaffolds tie within noise.
 
@@ -38,7 +38,7 @@ Every deep point is server-verified at its labeled depth (`actual_input_tokens`;
 - **True-256K decoders:** the A3B DeltaNet MoEs lead (`qwen36-ream` **187 tok/s @255K**, `qwen35-moe` 186,
   `qwen36` 148; ~286 short); the Mamba2-hybrid `nemotron3-omni` is near-flat (101 → 95); the 30B-A3B coder
   trio sits at ~78 @255K; the dense DeltaNet 27Bs (`qwen36-dense`, `qwen38`) at 58; on the triton backend
-  `flint` **115**, the Gemma 4 MoEs 64–65, `gemma4-31b` 33.
+  `flint` **122**, the Gemma 4 MoEs 64–65, `gemma4-31b` 40.
 - **Expert pruning or merging does not speed M=1 decode**; REAP/REAM win on KV headroom and footprint.
 - **The dense DeltaNet presets sit at the GA102 memory roofline**; the A3B MoEs carry a 14 % idle gap that
   is kernel count, not bandwidth ([issue #13](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/13)).
@@ -53,7 +53,7 @@ Every deep point is server-verified at its labeled depth (`actual_input_tokens`;
 
 DSpark on `qwen38` holds **1.21× at 250K actual** with the true 256K window (fp8 KV; 1.95× / 1.34× /
 1.21× / 1.11× at 1K / 32K / 131K / 262K) and serves its bake-off cycle (`SPEC_DECODE=1`); `flint` with
-DFlash2 (`SPEC_DECODE=1`) decodes 115 → **162 tok/s at 262K** ([ledger](docs/decode-levers.md#speculative-decoding)).
+DFlash2 (`SPEC_DECODE=1`) decodes 122 → **162 tok/s at 262K** ([ledger](docs/decode-levers.md#speculative-decoding)).
 
 ### Agentic follow-up turns and prefill
 
@@ -148,7 +148,7 @@ single-user at 32K and at the deepest point. Full table, HuggingFace zoo, MoE co
 | `qwen36-ream` | Qwen3.6-REAM-A3B AWQ | DeltaNet+MoE A3B (192 exp, VL) | 262K | 260 → **187** | [link](https://huggingface.co/mattbucci/Qwen3.6-REAM-A3B-AWQ) |
 | `qwen35-moe` | Qwen3.5-28B-A3B-REAP AWQ | DeltaNet+MoE A3B (205 exp, VL) | 262K | 258 → **186** | [link](https://huggingface.co/mattbucci/Qwen3.5-28B-A3B-REAP-AWQ) |
 | `qwen36` | Qwen3.6-35B-A3B AWQ-Marlin | DeltaNet+MoE A3B (256 exp, VL) | 262K | 248 → **148** | [link](https://huggingface.co/mattbucci/Qwen3.6-35B-A3B-AWQ) |
-| `flint` | Flint 40B-A2.5B AWQ (calibrated g32) | MoE A2.5B, 35 SWA + 14 NoPE layers, learned sinks, thinking + tools | 262K | 170 → **115** | [link](https://huggingface.co/mattbucci/Flint-AWQ-g32) |
+| `flint` | Flint 40B-A2.5B AWQ (calibrated g32) | MoE A2.5B, 35 SWA + 14 NoPE layers, learned sinks, thinking + tools | 262K | 170 → **122** | [link](https://huggingface.co/mattbucci/Flint-AWQ-g32) |
 | `nemotron3-omni` | Nemotron-3-Nano-Omni-30B-A3B AWQ | Mamba2-hybrid MoE A3B (AVLM, 6/6 caps, `moe_wna16`) | 262K | 100 → **95** | [link](https://huggingface.co/mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ) |
 | `coder-30b` / `coder-30b-eval` | Qwen3-Coder-30B-A3B AWQ (CT) | MoE A3B (128 exp) | 262K | 191 → **79** | [link](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-AWQ) |
 | `coder-reap-25b` | Qwen3-Coder-30B-A3B-REAP AWQ | MoE A3B (96 exp) | 262K | 189 → **78** | [link](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) |
@@ -156,7 +156,7 @@ single-user at 32K and at the deepest point. Full table, HuggingFace zoo, MoE co
 | `gemma4` | Gemma 4 26B A4B MoE AWQ | MoE A4B (103 exp, VL + video + audio) | 262K | 86 → **64** | [link](https://huggingface.co/mattbucci/gemma-4-26B-AWQ) |
 | `gemma4-21b-reap` | Gemma 4 21B REAP AWQ | MoE (VL; HumanEval 0, vision/chat ship) | 262K | 86 → **65** | [link](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ) |
 | `gemma4-12b` | Gemma 4 12B Unified AWQ | omni, encoder-free (5/5) | 262K | 106 → **65** | [link](https://huggingface.co/mattbucci/gemma-4-12B-AWQ) |
-| `gemma4-31b` | Gemma 4 31B Dense AWQ | dense (VL), fp8_e5m2 KV, triton | 262K | 55 → **33** | [link](https://huggingface.co/mattbucci/gemma-4-31B-AWQ) |
+| `gemma4-31b` | Gemma 4 31B Dense AWQ | dense (VL), fp8_e5m2 KV, triton | 262K | 55 → **40** | [link](https://huggingface.co/mattbucci/gemma-4-31B-AWQ) |
 | `qwen38` | Qwen3.8-27B AWQ | dense + DeltaNet (VL + video); `SPEC_DECODE=1` = DSpark | 262K | 81 → **58** (spec 125 → 58 @250K) | [link](https://huggingface.co/mattbucci/Qwen3.8-27B-AWQ) |
 | `qwopus38` | Qwopus3.8-27B-Coder-Flash AWQ (coding / agentic SFT of Qwen3.8) | dense + DeltaNet (VL + video), same stack as `qwen38` | 262K | 80 → **58** | [link](https://huggingface.co/mattbucci/Qwopus3.8-27B-Coder-Flash-AWQ) |
 | `qwen36-dense` | Qwen3.6-27B Dense AWQ | dense + DeltaNet (VL) | 262K | 81 → **58** | [link](https://huggingface.co/mattbucci/Qwen3.6-27B-AWQ) |

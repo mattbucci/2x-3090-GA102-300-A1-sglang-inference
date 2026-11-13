@@ -1,0 +1,56 @@
+============================================
+Regression tripwire — ARM mode (mode: compare, threshold 10%)
+============================================
+
+=== arm: launching gemma4-31b ===
+=== gemma4-31b (tokenizer: /home/letsrtfm/AI/models/hf-mattbucci/gemma-4-31B-AWQ, prompts: random) ===
+NOTE: KV pool max_total_num_tokens=330994; capping input sweep at 261916 usable tokens. Dropping over-cap contexts [262144] (they can't fit the pool and would log artifact tok/s).
+=== gemma4-31b (gemma4-31b) ===
+Contexts: [1024, 32768, 261916]  (output tokens: 100, KV pool: 330994)
+
+Warmup (3x 128-in 10-out)...
+  ctx=  1024: TPOT=16.6ms  TTFT=49ms  60.2 tok/s
+  ctx= 32768: TPOT=17.9ms  TTFT=115ms  55.9 tok/s
+  ctx=261916: TPOT=25.1ms  TTFT=571ms  39.8 tok/s
+
+Results saved to /home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference/benchmarks/regression/gemma4-31b-2026-11-13-tile083ship.json
+  gemma4-31b/1024: 61.6 -> 60.2 tok/s (-2.3%) [ok]
+  gemma4-31b/32768: 55.2 -> 55.9 tok/s (+1.3%) [ok]
+  gemma4-31b/deep(261916): 33.3 -> 39.8 tok/s (+19.5%) [ok]
+  gemma4-31b: within threshold.
+
+=== arm: launching flint ===
+=== flint (tokenizer: /home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g32-gptq, prompts: random) ===
+NOTE: KV pool max_total_num_tokens=1097420; capping input sweep at 261916 usable tokens. Dropping over-cap contexts [262144] (they can't fit the pool and would log artifact tok/s).
+=== flint (flint) ===
+Contexts: [1024, 32768, 261916]  (output tokens: 100, KV pool: 1097420)
+
+Warmup (3x 128-in 10-out)...
+  ctx=  1024: TPOT=5.6ms  TTFT=66ms  179.5 tok/s
+  ctx= 32768: TPOT=6.0ms  TTFT=144ms  166.7 tok/s
+  ctx=261916: TPOT=8.2ms  TTFT=545ms  122.0 tok/s
+
+Results saved to /home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference/benchmarks/regression/flint-2026-11-13-tile083ship.json
+  flint/1024: 182.1 -> 179.5 tok/s (-1.4%) [ok]
+  flint/32768: 167.2 -> 166.7 tok/s (-0.3%) [ok]
+  flint/deep(261916): 113.6 -> 122.0 tok/s (+7.4%) [ok]
+  flint: within threshold.
+
+=== arm: launching flint-spec ===
+=== flint-spec (tokenizer: /home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g32-gptq, prompts: natural) ===
+NOTE: KV pool max_total_num_tokens=620336; capping input sweep at 261916 usable tokens. Dropping over-cap contexts [262144] (they can't fit the pool and would log artifact tok/s).
+=== flint-spec (flint) ===
+Contexts: [1024, 32768, 261916]  (output tokens: 100, KV pool: 620336)
+
+Warmup (3x 128-in 10-out)...
+  ctx=  1024: TPOT=3.6ms  TTFT=177ms  273.7 tok/s
+  ctx= 32768: TPOT=4.0ms  TTFT=2468ms  251.8 tok/s
+  ctx=261916: TPOT=6.5ms  TTFT=53852ms  152.7 tok/s
+
+Results saved to /home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference/benchmarks/regression/flint-spec-2026-11-13-tile083ship.json
+  flint-spec/1024: 298.4 -> 273.7 tok/s (-8.3%) [ok]
+  flint-spec/32768: 238.1 -> 251.8 tok/s (+5.8%) [ok]
+  flint-spec/deep(261916): 162.2 -> 152.7 tok/s (-5.9%) [ok]
+  flint-spec: within threshold.
+
+RESULT: PASS

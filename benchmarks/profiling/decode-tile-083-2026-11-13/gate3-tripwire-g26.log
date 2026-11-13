@@ -1,0 +1,20 @@
+============================================
+Regression tripwire — gemma4 (mode: compare, threshold 10%)
+============================================
+=== gemma4 (tokenizer: /home/letsrtfm/AI/models/hf-mattbucci/gemma-4-26B-AWQ, prompts: random) ===
+NOTE: KV pool max_total_num_tokens=645254; capping input sweep at 261916 usable tokens. Dropping over-cap contexts [262144] (they can't fit the pool and would log artifact tok/s).
+=== gemma4 (gemma4) ===
+Contexts: [1024, 32768, 261916]  (output tokens: 100, KV pool: 645254)
+
+Warmup (3x 128-in 10-out)...
+  ctx=  1024: TPOT=11.2ms  TTFT=45ms  89.4 tok/s
+  ctx= 32768: TPOT=11.8ms  TTFT=116ms  84.8 tok/s
+  ctx=261916: TPOT=15.7ms  TTFT=508ms  63.8 tok/s
+
+Results saved to /home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference/benchmarks/regression/gemma4-2026-11-13-tile083.json
+  gemma4/1024: 90.4 -> 89.4 tok/s (-1.1%) [ok]
+  gemma4/32768: 85.9 -> 84.8 tok/s (-1.3%) [ok]
+  gemma4/deep(261916): 64.4 -> 63.8 tok/s (-0.9%) [ok]
+  gemma4: within threshold.
+
+RESULT: PASS

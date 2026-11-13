@@ -1,0 +1,20 @@
+============================================
+Regression tripwire — flint (mode: compare, threshold 10%)
+============================================
+=== flint (tokenizer: /home/letsrtfm/AI/models/hf-mattbucci/Flint-AWQ-INT4-g32-gptq, prompts: random) ===
+NOTE: KV pool max_total_num_tokens=1097420; capping input sweep at 261916 usable tokens. Dropping over-cap contexts [262144] (they can't fit the pool and would log artifact tok/s).
+=== flint (flint) ===
+Contexts: [1024, 32768, 261916]  (output tokens: 100, KV pool: 1097420)
+
+Warmup (3x 128-in 10-out)...
+  ctx=  1024: TPOT=5.6ms  TTFT=71ms  178.9 tok/s
+  ctx= 32768: TPOT=6.0ms  TTFT=161ms  166.7 tok/s
+  ctx=261916: TPOT=8.2ms  TTFT=553ms  121.7 tok/s
+
+Results saved to /home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference/benchmarks/regression/flint-2026-11-13-tile083.json
+  flint/1024: 182.1 -> 178.9 tok/s (-1.8%) [ok]
+  flint/32768: 167.2 -> 166.7 tok/s (-0.3%) [ok]
+  flint/deep(261916): 113.6 -> 121.7 tok/s (+7.1%) [ok]
+  flint: within threshold.
+
+RESULT: PASS

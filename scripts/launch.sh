@@ -395,6 +395,12 @@ apply_preset() {
             # 382 -> 254 ms, flint 136 -> 105 / 194 -> 121 ms; 64/96-token turns and <32K unchanged;
             # needle outputs identical. 0 keeps the single cap.
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP:-128}"
+            # Decode KV tile (patch 083): the grouped decode kernel walks the global layers' KV 64 keys x 8 warps
+            # (upstream 32 x 4 is compute-bound under the fp32 P.V dot). 35.6 -> 41.8 tok/s at 223K, 54.4 -> 55.4 at
+            # 37K; caps 5/5, needle 6/6 at 131K + 240K, MMLU 54/57, HE 30/30. 0 = upstream tile.
+            # Receipts benchmarks/profiling/decode-tile-083-2026-11-13/.
+            export SGLANG_TRITON_DECODE_GROUPED_BLOCK_N="${SGLANG_TRITON_DECODE_GROUPED_BLOCK_N:-64}"
+            export SGLANG_TRITON_DECODE_GROUPED_NUM_WARPS="${SGLANG_TRITON_DECODE_GROUPED_NUM_WARPS:-8}"
             # One-pass prefill route (patch 080): extends of >= 257 rows on the 512-wide global-attention
             # layers run flashinfer's paged prefill over the e5m2 pool (SWA layers stay on Triton). Cold TTFT
             # 17.8 -> 13.7 s at 32K, 146.5 -> 95.8 s at 131K, 477 -> 295 s at 250K, TPOT unchanged; two-pass
@@ -754,6 +760,11 @@ apply_preset() {
             # 382 -> 254 ms, flint 136 -> 105 / 194 -> 121 ms; 64/96-token turns and <32K unchanged;
             # needle outputs identical. 0 keeps the single cap.
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP="${SGLANG_EXTEND_SPLITKV_MAX_TOKENS_DEEP:-128}"
+            # Decode KV tile (patch 083): 128 keys x 4 warps on the 14 full-attention layers (upstream 32 x 4).
+            # Plain decode 115.0 -> 123.9 tok/s at 241K, flat at 34K; needle 6/6 at 131K + 195K, MMLU / HE within one
+            # item of the same-session upstream arm (46 vs 47 of 57, 22 vs 23 of 30). 0 = upstream tile.
+            export SGLANG_TRITON_DECODE_GROUPED_BLOCK_N="${SGLANG_TRITON_DECODE_GROUPED_BLOCK_N:-128}"
+            export SGLANG_TRITON_DECODE_GROUPED_NUM_WARPS="${SGLANG_TRITON_DECODE_GROUPED_NUM_WARPS:-4}"
             # 2026-11-02: triton extend-attention tile for head dim 128 on sm_86 — the kernel's default
             # 64x128 / 8 warps is beaten by 128x128 / 8 (fresh prefill 3.60 -> 3.38 s @32K, 32.7 -> 30.6 s
             # @131K; exact, same kernel); 64x64 and 4-warp variants are 12-22 % slower. Preset-scoped:
