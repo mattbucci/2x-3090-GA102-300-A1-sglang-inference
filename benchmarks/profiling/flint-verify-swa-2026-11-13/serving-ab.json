@@ -1,0 +1,59 @@
+{
+ "instrument": "cycle ms = accept len / gen throughput x1000 from server Decode batch lines, median per depth; arms SGLANG_VERIFY_SHARED_KV_SWA=0/1, SPEC_DECODE=1 flint",
+ "cycle_ms": {
+  "off-a": {
+   "34K": 14.94,
+   "241K": 21.16
+  },
+  "on-a": {
+   "34K": 11.56,
+   "241K": 18.07
+  },
+  "off-b": {
+   "34K": 14.98,
+   "241K": 21.33
+  },
+  "on-b": {
+   "34K": 11.59,
+   "241K": 18.14
+  }
+ },
+ "needle_ab_of_15": {
+  "0-c": 11,
+  "0-d": 11,
+  "0-e": 11,
+  "1-c": 14,
+  "1-d": 12,
+  "1-e": 12
+ },
+ "gate": {
+  "082 pass a/b": {
+   "mmlu_171": [
+    145,
+    151
+   ],
+   "humaneval_164": [
+    137,
+    136
+   ],
+   "needle_15": [
+    13,
+    12
+   ]
+  },
+  "baseline flint-specoverlap pass a/b": {
+   "mmlu_171": [
+    148,
+    150
+   ],
+   "humaneval_164": [
+    135,
+    140
+   ],
+   "needle_15": [
+    14,
+    14
+   ]
+  }
+ }
+}

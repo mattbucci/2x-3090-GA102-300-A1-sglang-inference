@@ -816,6 +816,9 @@ apply_preset() {
                 # decode 105 -> 126 tok/s at 131K, 82 -> 116 at 262K vs the per-head verify;
                 # MMLU / HumanEval / haystack needle tie over two interleaved passes. 0 = per-head.
                 export SGLANG_VERIFY_SHARED_KV_CUDA="${SGLANG_VERIFY_SHARED_KV_CUDA:-1}"
+                # Patch 082: the 35 sliding-window layers take the grouped verify too (default
+                # on; SGLANG_VERIFY_SHARED_KV_SWA=0 = extend-kernel fallback). Spec cycle
+                # 15.0 -> 11.6 ms at 34K, 21.2 -> 18.1 ms at 241K; MMLU / HumanEval / needle tie.
             fi
             ;;
         qwen35-dense)

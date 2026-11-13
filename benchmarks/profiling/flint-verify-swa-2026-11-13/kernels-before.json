@@ -1,0 +1,470 @@
+{
+ "nospec-120000": {
+  "span_ms_per_step": 6.304525732421874,
+  "kernel_ms_per_step": 6.106233933333294,
+  "n_per_step": 1702.15,
+  "top": [
+   [
+    "void sglang::device::marlin::Marlin",
+    197.0,
+    1.796
+   ],
+   [
+    "void sglang::device::marlin_moe::Marlin",
+    94.0,
+    0.975
+   ],
+   [
+    "_fwd_grouped_kernel_stage1",
+    49.0,
+    0.602
+   ],
+   [
+    "void at::native::vectorized_elementwise_kernel",
+    436.0,
+    0.548
+   ],
+   [
+    "_fwd_kernel_stage2",
+    49.0,
+    0.351
+   ],
+   [
+    "void sglang::all_reduce_1shot_push_kernel",
+    99.0,
+    0.28
+   ],
+   [
+    "void at::native::sbtopk::gatherTopK",
+    47.0,
+    0.237
+   ],
+   [
+    "void flashinfer::norm::FusedAddRMSNormKernel",
+    98.0,
+    0.211
+   ],
+   [
+    "std::enable_if",
+    47.0,
+    0.166
+   ],
+   [
+    "void at::native::unrolled_elementwise_kernel",
+    97.0,
+    0.158
+   ],
+   [
+    "void sglang::act_and_mul_kernel",
+    96.0,
+    0.122
+   ],
+   [
+    "void at::native::reduce_kernel",
+    48.0,
+    0.096
+   ],
+   [
+    "void moe_sum_reduce_kernel_general",
+    47.0,
+    0.09
+   ],
+   [
+    "void at::native::_scatter_gather_elementwise_kernel",
+    47.0,
+    0.068
+   ],
+   [
+    "void sglang::fused_qknorm_half_warp",
+    49.0,
+    0.067
+   ],
+   [
+    "void sglang::align_single_token_kernel",
+    47.0,
+    0.066
+   ],
+   [
+    "void sglang::store_kvcache_kernel",
+    49.0,
+    0.063
+   ],
+   [
+    "void at::native::elementwise_kernel",
+    47.0,
+    0.058
+   ],
+   [
+    "void sglang::fused_rope_kernel",
+    35.0,
+    0.053
+   ],
+   [
+    "create_flashinfer_kv_indices_triton",
+    2.0,
+    0.027
+   ],
+   [
+    "ncclDevKernel_AllGather_RING_LL",
+    1.0,
+    0.025
+   ],
+   [
+    "void at::native::index_elementwise_kernel",
+    6.0,
+    0.023
+   ]
+  ]
+ },
+ "nospec-800000": {
+  "span_ms_per_step": 8.805167635091145,
+  "kernel_ms_per_step": 8.587591333333295,
+  "n_per_step": 1702.1,
+  "top": [
+   [
+    "_fwd_grouped_kernel_stage1",
+    49.0,
+    2.89
+   ],
+   [
+    "void sglang::device::marlin::Marlin",
+    197.0,
+    1.804
+   ],
+   [
+    "void sglang::device::marlin_moe::Marlin",
+    94.0,
+    0.978
+   ],
+   [
+    "void at::native::vectorized_elementwise_kernel",
+    436.0,
+    0.551
+   ],
+   [
+    "_fwd_kernel_stage2",
+    49.0,
+    0.398
+   ],
+   [
+    "void sglang::all_reduce_1shot_push_kernel",
+    99.0,
+    0.272
+   ],
+   [
+    "void at::native::sbtopk::gatherTopK",
+    47.0,
+    0.24
+   ],
+   [
+    "void flashinfer::norm::FusedAddRMSNormKernel",
+    98.0,
+    0.213
+   ],
+   [
+    "std::enable_if",
+    47.0,
+    0.167
+   ],
+   [
+    "create_flashinfer_kv_indices_triton",
+    2.0,
+    0.16
+   ],
+   [
+    "void at::native::unrolled_elementwise_kernel",
+    97.0,
+    0.158
+   ],
+   [
+    "void sglang::act_and_mul_kernel",
+    96.0,
+    0.122
+   ],
+   [
+    "void at::native::reduce_kernel",
+    48.0,
+    0.097
+   ],
+   [
+    "void moe_sum_reduce_kernel_general",
+    47.0,
+    0.09
+   ],
+   [
+    "void at::native::_scatter_gather_elementwise_kernel",
+    47.0,
+    0.068
+   ],
+   [
+    "void sglang::fused_qknorm_half_warp",
+    49.0,
+    0.068
+   ],
+   [
+    "void sglang::align_single_token_kernel",
+    47.0,
+    0.066
+   ],
+   [
+    "void sglang::store_kvcache_kernel",
+    49.0,
+    0.063
+   ],
+   [
+    "void at::native::elementwise_kernel",
+    47.0,
+    0.058
+   ],
+   [
+    "void sglang::fused_rope_kernel",
+    35.0,
+    0.054
+   ],
+   [
+    "ncclDevKernel_AllGather_RING_LL",
+    1.0,
+    0.025
+   ],
+   [
+    "void at::native::index_elementwise_kernel",
+    6.0,
+    0.022
+   ]
+  ]
+ },
+ "spec-120000": {
+  "span_ms_per_step": 15.278792708333333,
+  "kernel_ms_per_step": 15.01485469999997,
+  "n_per_step": 2108.116666666667,
+  "top": [
+   [
+    "_fwd_kernel",
+    40.0,
+    5.2
+   ],
+   [
+    "void sglang::device::marlin_moe::Marlin",
+    94.0,
+    2.327
+   ],
+   [
+    "void sglang::device::marlin::Marlin",
+    198.0,
+    1.984
+   ],
+   [
+    "_verify_mla_prefix_stage1",
+    14.0,
+    1.017
+   ],
+   [
+    "void at::native::elementwise_kernel",
+    491.0,
+    0.901
+   ],
+   [
+    "void cutlass::Kernel2",
+    70.0,
+    0.526
+   ],
+   [
+    "void sglang::all_reduce_1shot_push_kernel",
+    110.0,
+    0.378
+   ],
+   [
+    "void at::native::sbtopk::gatherTopK",
+    48.0,
+    0.305
+   ],
+   [
+    "void at::native::vectorized_elementwise_kernel",
+    211.0,
+    0.263
+   ],
+   [
+    "void flashinfer::norm::FusedAddRMSNormKernel",
+    108.0,
+    0.233
+   ],
+   [
+    "_moe_align_small_numel_kernel",
+    47.0,
+    0.214
+   ],
+   [
+    "void at::native::unrolled_elementwise_kernel",
+    104.0,
+    0.193
+   ],
+   [
+    "_verify_mla_combine_stage2",
+    14.0,
+    0.178
+   ],
+   [
+    "void sglang::act_and_mul_kernel",
+    101.0,
+    0.143
+   ],
+   [
+    "void moe_sum_reduce_kernel_general",
+    47.0,
+    0.11
+   ],
+   [
+    "void at::native::reduce_kernel",
+    48.0,
+    0.104
+   ],
+   [
+    "void cublasLt::splitKreduce_kernel",
+    64.0,
+    0.099
+   ],
+   [
+    "ampere_bf16_s16816gemm_bf16_64x64_ldg8_f2f_stages_64x5_tn",
+    5.0,
+    0.094
+   ],
+   [
+    "ampere_s16816gemm_bf16_64x64_ldg8_stages_64x5_tn",
+    5.0,
+    0.09
+   ],
+   [
+    "ncclDevKernel_AllGather_RING_LL",
+    3.0,
+    0.085
+   ],
+   [
+    "void at::native::_scatter_gather_elementwise_kernel",
+    48.0,
+    0.075
+   ],
+   [
+    "void sglang::store_kvcache_kernel",
+    54.0,
+    0.069
+   ]
+  ]
+ },
+ "spec-800000": {
+  "span_ms_per_step": 21.809840551757812,
+  "kernel_ms_per_step": 21.307155333333352,
+  "n_per_step": 2108.116666666667,
+  "top": [
+   [
+    "_verify_mla_prefix_stage1",
+    14.0,
+    6.64
+   ],
+   [
+    "_fwd_kernel",
+    40.0,
+    5.334
+   ],
+   [
+    "void sglang::device::marlin_moe::Marlin",
+    94.0,
+    2.34
+   ],
+   [
+    "void sglang::device::marlin::Marlin",
+    198.0,
+    2.017
+   ],
+   [
+    "void at::native::elementwise_kernel",
+    491.0,
+    0.928
+   ],
+   [
+    "void cutlass::Kernel2",
+    70.0,
+    0.53
+   ],
+   [
+    "void sglang::all_reduce_1shot_push_kernel",
+    110.0,
+    0.453
+   ],
+   [
+    "create_flashinfer_kv_indices_triton",
+    4.0,
+    0.322
+   ],
+   [
+    "void at::native::sbtopk::gatherTopK",
+    48.0,
+    0.309
+   ],
+   [
+    "void at::native::vectorized_elementwise_kernel",
+    211.0,
+    0.27
+   ],
+   [
+    "void flashinfer::norm::FusedAddRMSNormKernel",
+    108.0,
+    0.239
+   ],
+   [
+    "_verify_mla_combine_stage2",
+    14.0,
+    0.232
+   ],
+   [
+    "_moe_align_small_numel_kernel",
+    47.0,
+    0.221
+   ],
+   [
+    "void at::native::unrolled_elementwise_kernel",
+    104.0,
+    0.198
+   ],
+   [
+    "void sglang::act_and_mul_kernel",
+    101.0,
+    0.148
+   ],
+   [
+    "void moe_sum_reduce_kernel_general",
+    47.0,
+    0.113
+   ],
+   [
+    "void at::native::reduce_kernel",
+    48.0,
+    0.107
+   ],
+   [
+    "void cublasLt::splitKreduce_kernel",
+    64.0,
+    0.102
+   ],
+   [
+    "ampere_bf16_s16816gemm_bf16_64x64_ldg8_f2f_stages_64x5_tn",
+    5.0,
+    0.095
+   ],
+   [
+    "ampere_s16816gemm_bf16_64x64_ldg8_stages_64x5_tn",
+    5.0,
+    0.091
+   ],
+   [
+    "ncclDevKernel_AllGather_RING_LL",
+    3.0,
+    0.087
+   ],
+   [
+    "void at::native::_scatter_gather_elementwise_kernel",
+    48.0,
+    0.076
+   ]
+  ]
+ }
+}
