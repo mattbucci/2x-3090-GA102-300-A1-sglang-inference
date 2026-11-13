@@ -1,0 +1,21 @@
+{
+  "model": "gemma4-21b-reap-fi257-warm",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "bench_long_context natural-text (chat stream, cache flushed per point)",
+  "prompt_source": "natural",
+  "timestamp": "2026-11-12 14:07:59",
+  "output_tokens": 100,
+  "max_total_num_tokens": 645254,
+  "context_sweep": [
+    {
+      "context": 32768,
+      "actual_input_tokens": 33955,
+      "ttft_ms": 6244.88,
+      "tpot_ms": 11.77,
+      "throughput": 13.49,
+      "tok_per_sec": 84.9,
+      "completion_tokens": 100
+    }
+  ]
+}

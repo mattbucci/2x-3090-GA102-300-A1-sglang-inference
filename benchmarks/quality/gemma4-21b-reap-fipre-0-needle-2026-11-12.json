@@ -1,0 +1,155 @@
+{
+ "tag": "gemma4-21b-reap-fipre-0-needle-2026-11-12",
+ "timestamp": "2026-11-12 16:06",
+ "temperature": 0.0,
+ "haystack": "filler",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 131113,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 129,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " clearly stated.\n\n    *   \"The secret password is: BANANA42.\"\n\n    *   The user requested: \"Answer with just the password.\"\n\n    *   The password is `BANANA42`.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.3,
+    "found": true,
+    "actual_prompt_tokens": 131113,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 134,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " password.\"\n\n1.  Identify the target string: \"The secret password is: BANANA42.\"\n2.  Extract the password: \"BANANA42\".\n3.  Format the output: Just the password.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 131113,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 150,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "h *just* the password.\n\nThe password is explicitly stated in the input: \"BANANA42\".\n\nPlan:\n1. Identify the password from the input.\n2. Output only the password.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.7,
+    "found": true,
+    "actual_prompt_tokens": 131113,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 184,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " \"BANANA42\".\n\nThe user wants the answer with *just* the password.\n\nPlan:\n1. Identify the password in the text.\n2. Output only the password.\n\nPassword: BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 131113,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 145,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "stated: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\".\n\n    *   The user requested: \"Answer with just the password.\"\n\n    *   BANANA42",
+    "answered": true
+   },
+   {
+    "context": 229376,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 229416,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 171,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "tion says: \"The secret password is: BANANA42.\"\n    *   The target value is `BANANA42`.\n\n    *   The user wants *just* the password.\n\n    *   Password: BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 229376,
+    "depth": 0.3,
+    "found": false,
+    "actual_prompt_tokens": 229417,
+    "finish_reason": "length",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 256,
+    "content_tail": "",
+    "reasoning_tail": "wn fox jumps over the lazy dog. The quick brown fox jumps over the own fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown",
+    "miss": {
+     "content": "",
+     "reasoning": "The user wants to find a \"secret password\" within a long, repetitive text.\n\n    *   The text consists of the sentence \"The quick brown fox jumps over the lazy dog.\" repeated many times.\n    *   At the very beginning, there's a line: \"The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. ... (lots of repetitions) ... The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the own fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown"
+    },
+    "answered": false
+   },
+   {
+    "context": 229376,
+    "depth": 0.5,
+    "found": false,
+    "actual_prompt_tokens": 229417,
+    "finish_reason": "length",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 256,
+    "content_tail": "",
+    "reasoning_tail": "lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown",
+    "miss": {
+     "content": "",
+     "reasoning": "*   Input: A long string of repeated text (\"The quick brown fox jumps over the lazy dog.\") followed by a specific instruction (\"What is the secret password? Answer with just the password.\").\n    *   Target: Find the \"secret password\" within the provided text.\n\n    *   The text consists of many repetitions of \"The quick brown fox jumps over the lazy dog.\"\n    *   Looking closely at the beginning of the input:\n        \"The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. ... [many repetitions] ... The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown"
+    },
+    "answered": false
+   },
+   {
+    "context": 229376,
+    "depth": 0.7,
+    "found": false,
+    "actual_prompt_tokens": 229417,
+    "finish_reason": "length",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 256,
+    "content_tail": "",
+    "reasoning_tail": "ox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the own fox",
+    "miss": {
+     "content": "",
+     "reasoning": "The user wants to find a \"secret password\" hidden within a long string of text.\n\n    *   The text consists of the sentence \"The quick brown fox jumps over the lazy dog.\" repeated many times.\n    *   At the very beginning, there's a line: \"The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. ... (repeated) ... The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the own fox"
+    },
+    "answered": false
+   },
+   {
+    "context": 229376,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 229417,
+    "finish_reason": "stop",
+    "haystack": "filler",
+    "flushed": true,
+    "completion_tokens": 217,
+    "content_tail": "BANANA42",
+    "reasoning_tail": ".\n\n    *   Does the input contain any other passwords? No.\n    *   Is the instruction clear? Yes.\n    *   Is the answer format correct? Yes (just the password).",
+    "answered": true
+   }
+  ],
+  "score": 0.7,
+  "answered_score": 0.7
+ }
+}
