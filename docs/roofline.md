@@ -20,10 +20,11 @@ headers. Step times are GPU-side (client tok/s is a few percent lower).
 | `qwen38` | 244K | 16.87 ms (59 tok/s) | KV read at ~900 GB/s | at roofline | memory bandwidth |
 | `qwen36` (35B-A3B MoE) | short | 4.48 ms (223 tok/s) | — | 14 % idle gap | ~1,000 kernels/step |
 | `qwen36` | 244K | 6.78 ms (148 tok/s) | attention at roofline | attention 45 % of step | KV read |
+| `gemma4-31b` (dense 31B, 10 global + 50 SWA layers) | 37K | 18.56 ms (50 tok/s) | ~12.7 ms | ~68 % | weights + bf16 tied head, at bandwidth |
+| `gemma4-31b` | 223K | 28.02 ms (33 tok/s) | ~16.9 ms | ~60 % | global-layer KV read at ~45 % of bandwidth |
 
 `qwen38` / `qwen36` rows: [`decode-profile-2026-10-31.md`](../benchmarks/profiling/decode-profile-2026-10-31.md).
-Not yet broken down this way: `gemma4-31b` decode, a measured (not spec-sheet) bandwidth ceiling at
-the 300 W cap, and prefill (compute-bound: a tensor-rate roofline, not this one).
+`gemma4-31b` ([`gemma4-31b-groups.json`](../benchmarks/profiling/roofline-2026-11-13/gemma4-31b-groups.json)): 1,246 kernels per step with 0.14 ms idle, so launch count is not the bound. Per rank and step: INT4 linears 9.92 ms for ~7.65 GB of weights (87 % of the 889 GB/s ceiling); the tied bf16 `lm_head` is one 3.17 ms gemv over 2.82 GB (at the ceiling — 17 % of the step at 37K, and patch 069's INT8 head skips tied heads); attention is 3.55 ms at 37K and 12.97 ms at 223K, of which the 10 global layers (512-wide heads, e5m2 KV, 2,048 B per token per rank) take 1.13 ms each for 0.46 GB — ~400 GB/s, under half the ceiling — while the 50 sliding-window layers cost 12 µs each. Not yet broken down this way: prefill (compute-bound: a tensor-rate roofline, not this one).
 
 ## Flint, plain decode at 241K
 

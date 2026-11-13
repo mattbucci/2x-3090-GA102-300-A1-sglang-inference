@@ -1,0 +1,74 @@
+{
+ "trace-120000": {
+  "step_ms": 18.55690839029948,
+  "busy_ms": 18.411940551757812,
+  "idle_ms": 0.14496783854166667,
+  "kernels": 1246.1,
+  "groups": {
+   "elementwise glue": {
+    "n": 271.1,
+    "ms": 0.4238623499999832
+   },
+   "other": {
+    "n": 10.0,
+    "ms": 0.018967483333333365
+   },
+   "attention over KV": {
+    "n": 242.0,
+    "ms": 3.5503435833333543
+   },
+   "norms + activations": {
+    "n": 241.0,
+    "ms": 0.6041534666667127
+   },
+   "dense INT4 GEMM (attn proj + shared expert)": {
+    "n": 240.0,
+    "ms": 9.944971299999901
+   },
+   "lm_head / sampling / other GEMM": {
+    "n": 121.0,
+    "ms": 3.461027483333304
+   },
+   "TP all-reduce / NCCL": {
+    "n": 121.0,
+    "ms": 0.47043551666666794
+   }
+  }
+ },
+ "trace-700000": {
+  "step_ms": 28.024782763671876,
+  "busy_ms": 27.885200504557293,
+  "idle_ms": 0.13958225911458333,
+  "kernels": 1246.1,
+  "groups": {
+   "elementwise glue": {
+    "n": 271.1,
+    "ms": 0.41595236666665386
+   },
+   "other": {
+    "n": 10.0,
+    "ms": 0.018573850000000013
+   },
+   "attention over KV": {
+    "n": 242.0,
+    "ms": 12.968842633333532
+   },
+   "norms + activations": {
+    "n": 241.0,
+    "ms": 0.5928481333333444
+   },
+   "dense INT4 GEMM (attn proj + shared expert)": {
+    "n": 240.0,
+    "ms": 9.922282116666562
+   },
+   "lm_head / sampling / other GEMM": {
+    "n": 121.0,
+    "ms": 3.450708449999911
+   },
+   "TP all-reduce / NCCL": {
+    "n": 121.0,
+    "ms": 0.5776892666666659
+   }
+  }
+ }
+}
