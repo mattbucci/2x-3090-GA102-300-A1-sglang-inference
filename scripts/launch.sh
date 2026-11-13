@@ -805,8 +805,10 @@ apply_preset() {
                     --speculative-algorithm DFLASH \
                     --speculative-draft-model-path $FLINT_DRAFT \
                     --speculative-draft-model-quantization unquant \
-                    --speculative-attention-mode ${FLINT_SPEC_ATTN:-decode} \
-                    --disable-overlap-schedule"
+                    --speculative-attention-mode ${FLINT_SPEC_ATTN:-decode}"
+                # FLINT_SPEC_OVERLAP=1 keeps the overlap schedule (A/B switch; Flint is not
+                # a DeltaNet hybrid, so the flag is not a boot requirement here).
+                [[ "${FLINT_SPEC_OVERLAP:-0}" == "1" ]] || EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
                 # Patch 081: grouped (GQA) target verify -- one pass over each KV head
                 # serves all of its query heads (16 Q / 2 KV per rank). DFlash2 natural-text
                 # decode 105 -> 126 tok/s at 131K, 82 -> 116 at 262K vs the per-head verify;
