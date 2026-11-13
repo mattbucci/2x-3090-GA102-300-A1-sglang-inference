@@ -1,0 +1,403 @@
+081 verify-shared-kv-cuda-sinks: grouped (GQA) target verify for DFlash on CUDA
+
+Opt-in via SGLANG_VERIFY_SHARED_KV_CUDA=1. The speculative target verify (topk 1,
+decode attention mode) runs upstream's shared-KV grouped kernel on CUDA instead of
+the per-head split-KV kernel on global-attention layers: one pass over each KV
+head serves all of its query heads. Adds what the upstream kernel lacked for
+Flint: learned attention sinks in the stage-2 LSE merge and a compute-dtype
+upcast for fp8 KV. SWA layers and MLA keep the per-head path.
+Flint DFlash2 natural-text decode 105 -> 126 tok/s at 131K, 82 -> 116 at 262K.
+---
+diff --git a/python/sglang/kernels/ops/attention/verify_mla.py b/python/sglang/kernels/ops/attention/verify_mla.py
+index 1889c96afe..5323feb3f3 100644
+--- a/python/sglang/kernels/ops/attention/verify_mla.py
++++ b/python/sglang/kernels/ops/attention/verify_mla.py
+@@ -10,20 +10,22 @@ Correctness matches ``extend_attention_fwd`` for the topk==1 causal verify case.
+ 
+ score(h,i,t) = q_nope[i,h] · c_KV[t]  +  q_pe[i,h] · k_pe[t]      # 512 dot + 64 dot
+ out(h,i)     = Σ_t softmax_t · c_KV[t]                            # V = c_KV
+ """
+ 
+ import torch
+ import triton
+ import triton.language as tl
+ 
+ from sglang.kernels.ops.attention.verify_splitkv import _AMD_LAUNCH_KWARGS
++# [3090 081] Ampere has no fp8 tensor-core dot: keep q/p in the model dtype and upcast K/V.
++from sglang.kernels.ops.attention.verify_splitkv import _UPCAST_K
+ 
+ MAX_N_SPLITS = 32  # Grid split dim upper bound
+ TARGET_PROGRAMS = 512  # Target total stage-1 programs
+ 
+ DEFAULT_BLOCK_H = (
+     4  # BLOCK_H must be a power of 2 (tl.arange); heads beyond H_Q are masked.
+ )
+ DEFAULT_BLOCK_N = 64
+ DEFAULT_NUM_WARPS = 8
+ _BLOCK_CONFIG = {
+@@ -85,23 +87,26 @@ def _verify_mla_prefix_stage1(
+     BLOCK_H: tl.constexpr,
+     KV_GROUP_NUM: tl.constexpr,
+     HAS_KV_HEADS: tl.constexpr,
+     NOPE_DIM: tl.constexpr,
+     PE_DIM: tl.constexpr,
+     V_HEAD_DIM: tl.constexpr,
+     BLOCK_DNOPE: tl.constexpr,
+     BLOCK_DPE: tl.constexpr,
+     BLOCK_DV: tl.constexpr,
+     BLOCK_N: tl.constexpr,
++    UPCAST_K: tl.constexpr = False,
+ ):
+     cur_batch = tl.program_id(0)
+     head_block = tl.program_id(1)
++    # [3090 081] compute dtype: the model dtype when upcasting an fp8 cache, else the cache dtype.
++    CDT: tl.constexpr = Q.dtype.element_ty if UPCAST_K else K_Buffer.dtype.element_ty
+     split_kv_id = tl.program_id(2)
+ 
+     # row tile size for each workgroup
+     R: tl.constexpr = BLOCK_H * L_EXT
+ 
+     cur_batch_kv_start_idx = tl.load(kv_indptr + cur_batch)
+     cur_batch_seq_len = tl.load(kv_indptr + cur_batch + 1) - cur_batch_kv_start_idx
+     active = _active_splits(cur_batch_seq_len, num_splits, BLOCK_N)
+ 
+     # skip idle workgroups
+@@ -138,66 +143,66 @@ def _verify_mla_prefix_stage1(
+         # appended RoPE width. For ordinary shared-KV attention (Qwen3.5),
+         # NOPE_DIM is the complete already-rotated Q/K head and PE_DIM is zero.
+         q_row = tl.reshape(
+             (cur_q_start + offs_l)[None, :] * stride_qbs + offs_h[:, None] * stride_qh,
+             (R,),
+         )
+         q_nope = tl.load(
+             Q + q_row[:, None] + offs_dn[None, :],
+             mask=row_mask[:, None] & (offs_dn[None, :] < NOPE_DIM),
+             other=0.0,
+-        ).to(K_Buffer.dtype.element_ty)
++        ).to(CDT)
+         if PE_DIM > 0:
+             q_pe = tl.load(
+                 Q + q_row[:, None] + (NOPE_DIM + offs_dp)[None, :],
+                 mask=row_mask[:, None] & (offs_dp[None, :] < PE_DIM),
+                 other=0.0,
+-            ).to(K_Buffer.dtype.element_ty)
++            ).to(CDT)
+ 
+         e_max = tl.zeros([R], dtype=tl.float32) - float("inf")
+         e_sum = tl.zeros([R], dtype=tl.float32)
+         acc = tl.zeros([R, BLOCK_DV], dtype=tl.float32)
+ 
+         # calculate attention scores for each kv split
+         for start_n in tl.range(split_start, split_end, BLOCK_N):
+             offs_n = start_n + tl.arange(0, BLOCK_N)
+             n_mask = offs_n < split_end
+             kv_loc = tl.load(
+                 kv_indices + cur_batch_kv_start_idx + offs_n, mask=n_mask, other=0
+             )
+             base = kv_loc[None, :] * stride_buf_kbs + kv_head_off_k
+             k_nope = tl.load(
+                 K_Buffer + base + offs_dn[:, None],
+                 mask=(offs_dn[:, None] < NOPE_DIM) & n_mask[None, :],
+                 other=0.0,
+-            )
++            ).to(CDT)
+             qk = tl.dot(q_nope, k_nope)
+             if PE_DIM > 0:
+                 k_pe = tl.load(
+                     K_Buffer + base + (NOPE_DIM + offs_dp)[:, None],
+                     mask=(offs_dp[:, None] < PE_DIM) & n_mask[None, :],
+                     other=0.0,
+-                )
++                ).to(CDT)
+                 qk += tl.dot(q_pe, k_pe)
+             qk *= sm_scale * k_scale
+             qk = tl.where(n_mask[None, :], qk, float("-inf"))
+ 
+             # MLA exposes its latent V through V_Buffer; ordinary shared-KV
+             # attention has an independent V cache. Both use this same load.
+             v = tl.load(
+                 V_Buffer
+                 + kv_loc[:, None] * stride_buf_vbs
+                 + kv_head_off_v
+                 + offs_dv[None, :],
+                 mask=n_mask[:, None] & (offs_dv[None, :] < V_HEAD_DIM),
+                 other=0.0,
+-            )
++            ).to(CDT)
+             n_e_max = tl.maximum(tl.max(qk, 1), e_max)
+             re_scale = tl.exp(e_max - n_e_max)
+             p = tl.exp(qk - n_e_max[:, None])
+             acc *= re_scale[:, None]
+             acc += tl.dot(p.to(v.dtype), v)
+             e_sum = e_sum * re_scale + tl.sum(p, 1)
+             e_max = n_e_max
+ 
+         # fp8 dequant of prefix V: scale the accumulated (pre-normalised) output.
+         acc *= v_scale
+@@ -225,20 +230,21 @@ def _verify_mla_prefix_stage1(
+ 
+ @triton.jit
+ def _verify_mla_combine_stage2(
+     Att_Out,
+     Att_Lse,
+     Q,
+     K_Extend,
+     V_Extend,
+     O_Out,
+     sm_scale,
++    Sinks,  # [3090 081] [H_Q] learned per-head sink logits (read only when HAS_SINKS)
+     qo_indptr,
+     kv_indptr,
+     num_splits,
+     stride_ob,
+     stride_oh,
+     stride_os,
+     stride_ol,
+     stride_lb,
+     stride_lh,
+     stride_ls,
+@@ -252,20 +258,21 @@ def _verify_mla_combine_stage2(
+     stride_ooh,
+     L_EXT: tl.constexpr,
+     HEAD_DIM: tl.constexpr,
+     V_HEAD_DIM: tl.constexpr,
+     BLOCK_DMODEL: tl.constexpr,
+     BLOCK_DV: tl.constexpr,
+     BLOCK_N: tl.constexpr,
+     KV_GROUP_NUM: tl.constexpr,
+     HAS_KV_HEADS: tl.constexpr,
+     IS_CAUSAL: tl.constexpr,
++    HAS_SINKS: tl.constexpr = False,
+ ):
+     cur_batch = tl.program_id(0)
+     cur_head = tl.program_id(1)
+     if HAS_KV_HEADS:
+         kv_head_off_ke = (cur_head // KV_GROUP_NUM) * stride_keh
+         kv_head_off_ve = (cur_head // KV_GROUP_NUM) * stride_veh
+     else:
+         kv_head_off_ke = 0
+         kv_head_off_ve = 0
+ 
+@@ -353,23 +360,31 @@ def _verify_mla_combine_stage2(
+         vis = both_valid
+     qk = tl.where(vis, qk, float("-inf"))
+     m_d = tl.max(qk, 1)
+     pd = tl.exp(qk - m_d[:, None])
+     denom_d = tl.sum(pd, 1)
+     o_draft = tl.sum(pd[:, :, None] * ve[None, :, :], 1) / denom_d[:, None]
+     lse_draft = m_d + tl.log(denom_d)
+ 
+     # ---- (c) final LSE merge (prefix vs draft) ----------------------------
+     mm = tl.maximum(lse_prefix, lse_draft)
++    if HAS_SINKS:
++        # [3090 081] a learned sink is a per-head logit with no value: it joins the
++        # softmax denominator only (extend_attention: deno += exp(sink - e_max)).
++        cur_sink = tl.load(Sinks + cur_head).to(tl.float32)
++        mm = tl.maximum(mm, cur_sink)
+     wp = tl.exp(lse_prefix - mm)
+     wd = tl.exp(lse_draft - mm)
+-    o = (o_prefix * wp[:, None] + o_draft * wd[:, None]) / (wp + wd)[:, None]
++    den = wp + wd
++    if HAS_SINKS:
++        den += tl.exp(cur_sink - mm)
++    o = (o_prefix * wp[:, None] + o_draft * wd[:, None]) / den[:, None]
+ 
+     offs_oo = (
+         (cur_q_start + offs_l)[:, None] * stride_oobs
+         + cur_head * stride_ooh
+         + offs_dv[None, :]
+     )
+     tl.store(
+         O_Out + offs_oo,
+         o.to(O_Out.dtype.element_ty),
+         mask=mask_l[:, None] & (offs_dv[None, :] < V_HEAD_DIM),
+@@ -481,47 +496,50 @@ class VerifyMLA:
+             BLOCK_H=self.block_h,
+             KV_GROUP_NUM=self.kv_group_num,
+             HAS_KV_HEADS=self.has_kv_heads,
+             NOPE_DIM=self.nope_dim,
+             PE_DIM=self.pe_dim,
+             V_HEAD_DIM=self.v_head_dim,
+             BLOCK_DNOPE=triton.next_power_of_2(self.nope_dim),
+             BLOCK_DPE=max(1, triton.next_power_of_2(self.pe_dim)),
+             BLOCK_DV=triton.next_power_of_2(self.v_head_dim),
+             BLOCK_N=self.block_n,
++            UPCAST_K=_UPCAST_K,
+             num_warps=self.num_warps,
+             num_stages=1,
+             **_AMD_LAUNCH_KWARGS,
+         )
+ 
+     def _run_combine_kernel(
+         self,
+         bs,
+         num_splits,
+         q_extend,
+         k_extend,
+         v_extend,
+         o_out,
+         qo_indptr,
+         kv_indptr,
+         sm_scale,
+         is_causal=True,
++        sinks=None,
+     ):
+         grid = (bs, self.h_q)
+         _verify_mla_combine_stage2[grid](
+             self.att_out,
+             self.att_lse,
+             q_extend,
+             k_extend,
+             v_extend,
+             o_out,
+             sm_scale,
++            sinks if sinks is not None else qo_indptr,  # dummy pointer when HAS_SINKS is False
+             qo_indptr,
+             kv_indptr,
+             num_splits,
+             self.att_out.stride(0),
+             self.att_out.stride(1),
+             self.att_out.stride(2),
+             self.att_out.stride(3),
+             self.att_lse.stride(0),
+             self.att_lse.stride(1),
+             self.att_lse.stride(2),
+@@ -535,39 +553,41 @@ class VerifyMLA:
+             o_out.stride(1),
+             L_EXT=self.l_pad,
+             HEAD_DIM=self.head_dim,
+             V_HEAD_DIM=self.v_head_dim,
+             BLOCK_DMODEL=triton.next_power_of_2(self.head_dim),
+             BLOCK_DV=triton.next_power_of_2(self.v_head_dim),
+             BLOCK_N=self.block_n,
+             KV_GROUP_NUM=self.kv_group_num,
+             HAS_KV_HEADS=self.has_kv_heads,
+             IS_CAUSAL=is_causal,
++            HAS_SINKS=sinks is not None,
+             num_warps=4,
+             num_stages=1,
+         )
+ 
+     def __call__(
+         self,
+         q_extend,
+         k_extend,
+         v_extend,
+         k_buffer,
+         v_buffer,
+         qo_indptr,
+         kv_indptr,
+         kv_indices,
+         sm_scale,
+         o_out=None,
+         k_scale=1.0,
+         v_scale=1.0,
+         is_causal=True,
++        sinks=None,
+     ):
+         if o_out is None:
+             o_out = torch.empty(
+                 (q_extend.shape[0], self.h_q, self.v_head_dim),
+                 dtype=q_extend.dtype,
+                 device=q_extend.device,
+             )
+         bs = qo_indptr.shape[0] - 1
+         # One split count for both stages (they must agree on the active count).
+         num_splits = self._num_splits(bs)
+@@ -588,20 +608,21 @@ class VerifyMLA:
+             bs,
+             num_splits,
+             q_extend,
+             k_extend,
+             v_extend,
+             o_out,
+             qo_indptr,
+             kv_indptr,
+             sm_scale,
+             is_causal=is_causal,
++            sinks=sinks,
+         )
+         return o_out
+ 
+ 
+ _VMLA_CACHE = {}
+ 
+ 
+ def _get_vmla(max_bs, h_q, head_dim, v_head_dim, l_ext, device, kv_group_num=None):
+     key = (h_q, head_dim, v_head_dim, l_ext, str(device), kv_group_num)
+     vk = _VMLA_CACHE.get(key)
+@@ -658,21 +679,24 @@ def can_handle(
+     baseline.
+ 
+     IMPORTANT: ``custom_mask`` is intentionally NOT inspected (its values can't
+     be read inside a captured HIP graph without a host sync). Every draft query
+     sees the whole committed prefix and, when ``is_causal``, only its own
+     predecessors among the draft tokens -- that is the tree mask ONLY at
+     speculative topk == 1. The caller therefore MUST gate enablement on topk == 1
+     (TritonAttnBackend does: ``use_verify_shared_kv = ... and self.topk == 1``).
+     At topk > 1 the tree is not causal and this path must stay disabled."""
+     # No exotic features.
+-    if sinks is not None:
++    # [3090 081] learned sinks ARE handled: a [H_Q] tensor joins the final LSE merge.
++    if sinks is not None and (
++        not torch.is_tensor(sinks) or sinks.dim() != 1 or sinks.shape[0] != q_extend.shape[1]
++    ):
+         return False
+     if sliding_window_size is not None and sliding_window_size > 0:
+         return False
+     if logit_cap and logit_cap > 0:
+         return False
+     if xai_temperature_len is not None and xai_temperature_len > 0:
+         return False
+     if not is_causal and custom_mask is not None:
+         return False
+     # q layout must be [tokens, H_Q, D]; head dims handled by power-of-2 pad.
+@@ -808,12 +832,13 @@ def verify_shared_kv_fwd(
+         k_buffer,
+         v_buffer,
+         qo_indptr,
+         kv_indptr,
+         kv_indices,
+         sm_scale,
+         o_out=o_extend,
+         k_scale=k_scale,
+         v_scale=v_scale,
+         is_causal=is_causal,
++        sinks=sinks,
+     )
+     return True
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index f42cf8e93e..cf558fbf25 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -151,20 +151,30 @@ def _mla_decode_kv_splits_cap(
+     base_max_kv_splits: int, sm_count: int, max_context_len: int
+ ) -> int:
+     if sm_count <= 0:
+         return base_max_kv_splits
+     sm_cap = next_power_of_2(sm_count)
+     ctx_cap = next_power_of_2(triton.cdiv(max_context_len, _MLA_DECODE_MIN_BLOCK_KV))
+     return max(base_max_kv_splits, min(sm_cap, ctx_cap))
+ 
+ 
+ def _should_use_verify_shared_kv(model_config, topk, use_mla, use_verify_splitkv):
++    # [3090 081] CUDA GQA opt-in: the grouped kernel reads each KV head's prefix once per
++    # head block instead of once per query head (Flint TP=2: 16 Q / 2 KV per rank, 8x).
++    # Sinks merge in stage 2; SWA layers still fall back (can_handle).
++    if (
++        _is_cuda
++        and topk == 1
++        and not use_mla
++        and os.environ.get("SGLANG_VERIFY_SHARED_KV_CUDA", "0") == "1"
++    ):
++        return use_verify_splitkv
+     if not is_gfx95_supported() or topk != 1:
+         return False
+     if use_mla:
+         return is_kimi_k3(model_config.hf_config)
+     if is_dspark_draft(model_config.hf_config):
+         return use_verify_splitkv
+     return (
+         use_verify_splitkv
+         and is_qwen3_5(model_config.hf_config)
+         and model_config.get_num_kv_heads(

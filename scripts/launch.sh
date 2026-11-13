@@ -807,6 +807,11 @@ apply_preset() {
                     --speculative-draft-model-quantization unquant \
                     --speculative-attention-mode ${FLINT_SPEC_ATTN:-decode} \
                     --disable-overlap-schedule"
+                # Patch 081: grouped (GQA) target verify -- one pass over each KV head
+                # serves all of its query heads (16 Q / 2 KV per rank). DFlash2 natural-text
+                # decode 105 -> 126 tok/s at 131K, 82 -> 116 at 262K vs the per-head verify;
+                # MMLU / HumanEval / haystack needle tie over two interleaved passes. 0 = per-head.
+                export SGLANG_VERIFY_SHARED_KV_CUDA="${SGLANG_VERIFY_SHARED_KV_CUDA:-1}"
             fi
             ;;
         qwen35-dense)

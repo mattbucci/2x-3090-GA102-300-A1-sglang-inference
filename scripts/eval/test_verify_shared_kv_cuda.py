@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-"""Grouped-head target verify on CUDA (3090 patch 079, after R9700's 125): does `verify_shared_kv_fwd` match the per-head
+"""Grouped-head target verify on CUDA (3090 patch 081, after R9700's 125): does `verify_shared_kv_fwd` match the per-head
 `verify_splitkv_fwd` (patch 078's CUDA route) at Flint's per-rank shape, with learned sinks and an fp8_e5m2 cache, and how
 much faster per layer? Topk=1 verify: K draft tokens over a P-token prefix, qo_indptr [0, K], causal draft block.
-Gate against the fp32 reference: grouped max error <= 1.6x the per-head kernel's, cosine >= 0.9999, finite.
+Gate against the fp32 reference: grouped max error <= 1.6x the per-head kernel's, or within half a bf16 ulp of the reference max (4e-3), cosine >= 0.9999, finite.
     CUDA_VISIBLE_DEVICES=0 python scripts/eval/test_verify_shared_kv_cuda.py --out benchmarks/profiling/verify-shared-kv-cuda-<date>.json
 """
 import argparse, json, os, sys, torch
@@ -50,7 +50,7 @@ def main():
                             print(pname, kvn, P, K, use_sinks, row["status"], flush=True); continue
                         ref32 = fp32_reference(q, k_ext, v_ext, k_buf, v_buf, kv_indices, k_scale, v_scale, sm_scale, sinks)
                         e_ref, e_new = err_vs(ref32, o_ref), err_vs(ref32, o_new)
-                        ok = e_new["finite"] and e_new["cosine"] >= 0.9999 and e_new["max_err_over_refmax"] <= max(1.6 * e_ref["max_err_over_refmax"], 1e-3)
+                        ok = e_new["finite"] and e_new["cosine"] >= 0.9999 and e_new["max_err_over_refmax"] <= max(1.6 * e_ref["max_err_over_refmax"], 4e-3)  # floor = half a bf16 ulp at the reference max: output rounding alone reaches it
                         t_ref = time_us(lambda: run(verify_splitkv_fwd, o_ref)); t_new = time_us(lambda: run(verify_shared_kv_fwd, o_new))
                         row.update(status="ok" if ok else "FAIL", per_head=e_ref, grouped=e_new, per_head_us=round(t_ref, 1), grouped_us=round(t_new, 1))
                         results.append(row); fails += 0 if ok else 1
