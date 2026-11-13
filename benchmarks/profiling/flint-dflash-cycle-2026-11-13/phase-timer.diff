@@ -1,0 +1,58 @@
+211a212,253
+> class _PhaseTimer:
+>     """Scratch instrument (SGLANG_DFLASH_PHASE_TIMING=1): GPU-synchronised wall per cycle phase."""
+> 
+>     on = os.environ.get("SGLANG_DFLASH_PHASE_TIMING", "0") == "1"
+>     acc = {}
+>     n = 0
+> 
+>     def __init__(self):
+>         if self.on:
+>             import time
+> 
+>             self.clock = time.perf_counter
+>             torch.cuda.synchronize()
+>             self.t = self.clock()
+> 
+>     def mark(self, name, seq=None):
+>         if not self.on:
+>             return
+>         torch.cuda.synchronize()
+>         now = self.clock()
+>         _PhaseTimer.acc.setdefault(name, []).append((now - self.t) * 1e3)
+>         self.t = now
+>         if seq is not None:
+>             _PhaseTimer.n += 1
+>             if _PhaseTimer.n % 50 == 0:
+>                 import statistics
+> 
+>                 logger.info(
+>                     "DFLASH_PHASE seq=%d %s",
+>                     seq,
+>                     " ".join(
+>                         f"{k}={statistics.median(v):.3f}"
+>                         for k, v in _PhaseTimer.acc.items()
+>                     ),
+>                 )
+>                 _PhaseTimer.acc = {}
+> 
+> 
+> def _phase_timer():
+>     return _PhaseTimer()
+> 
+> 
+2683a2726,2727
+>         _pt = _phase_timer()
+>         _pt.mark("prep")
+2688a2733
+>         _pt.mark("draft_fwd")
+2812a2858
+>         _pt.mark("draft_sample")
+2874a2921
+>         _pt.mark("verify_prep")
+2884a2932
+>         _pt.mark("target_verify")
+2984a3033
+>         _pt.mark("accept")
+2995a3045
+>         _pt.mark("draft_kv_append", seq=int(prefix_lens.max().item()) if _pt.on else 0)
