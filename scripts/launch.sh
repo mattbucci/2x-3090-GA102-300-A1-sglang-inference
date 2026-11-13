@@ -796,8 +796,8 @@ apply_preset() {
             if [[ -n "${SPEC_DECODE:-}" ]]; then
                 FLINT_DRAFT="${FLINT_DRAFT:-$MODELS_DIR/drafts/flint-dflash2}"
                 [[ -f "$FLINT_DRAFT/config.json" ]] || { echo "ERROR: flint SPEC_DECODE: DFlash2 draft not found at $FLINT_DRAFT" >&2; exit 1; }
-                # --speculative-attention-mode decode + --disable-overlap-schedule as on the
-                # qwen38 DSpark / qwen36 DFlash arms: the first Flint arm (prefill-mode verify,
+                # --speculative-attention-mode decode as on the qwen38 DSpark / qwen36 DFlash
+                # arms: the first Flint arm (prefill-mode verify,
                 # 2026-11-09 05:50) held accept 3.5-4.4 but decoded 0.43x/0.13x/0.10x of no-spec
                 # at 32K/131K/262K (+9 % at 1K) -- the 8-token verify went through the extend
                 # path over the whole KV each step.
@@ -806,9 +806,11 @@ apply_preset() {
                     --speculative-draft-model-path $FLINT_DRAFT \
                     --speculative-draft-model-quantization unquant \
                     --speculative-attention-mode ${FLINT_SPEC_ATTN:-decode}"
-                # FLINT_SPEC_OVERLAP=1 keeps the overlap schedule (A/B switch; Flint is not
-                # a DeltaNet hybrid, so the flag is not a boot requirement here).
-                [[ "${FLINT_SPEC_OVERLAP:-0}" == "1" ]] || EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
+                # Overlap schedule stays ON for the Flint spec arm (FLINT_SPEC_OVERLAP=0 adds
+                # --disable-overlap-schedule back): that flag is a boot requirement of the
+                # DeltaNet hybrids only. Spec cycle 16.4 -> 15.0 ms at 34K, 22.6 -> 21.3 ms
+                # at 241K; MMLU / HumanEval / haystack needle tie.
+                [[ "${FLINT_SPEC_OVERLAP:-1}" == "1" ]] || EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
                 # Patch 081: grouped (GQA) target verify -- one pass over each KV head
                 # serves all of its query heads (16 Q / 2 KV per rank). DFlash2 natural-text
                 # decode 105 -> 126 tok/s at 131K, 82 -> 116 at 262K vs the per-head verify;
