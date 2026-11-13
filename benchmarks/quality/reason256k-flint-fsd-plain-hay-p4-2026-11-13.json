@@ -1,0 +1,93 @@
+{
+  "tag": "flint-fsd-plain-hay-p4-2026-11-13",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 29413,
+        "correct": true,
+        "s": 5.7,
+        "finish_reason": "stop",
+        "completion_tokens": 574,
+        "answer_tail": "expect one value maybe not. Maybe answer should be \"ANSWER: 3286, 7912, 2424\". The final line must be exact format, no extra after.\n\nLet's final.\nThe access codes are:\n\n- Cobalt: 3286\n- Tundra: 7912\n- Verbena: 2424\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 29373,
+        "correct": true,
+        "s": 6.2,
+        "finish_reason": "stop",
+        "completion_tokens": 679,
+        "answer_tail": "mes 2. <<<\" So VAR_C = (37+5)*2 = 84.\n\nFinal answer should include line exactly 'ANSWER: <value>'. Probably 'ANSWER: 84'.\nVAR_C equals VAR_B times 2, and VAR_B equals VAR_A plus 5. Since VAR_A is 37, VAR_B is 42, so VAR_C is 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 29399,
+        "correct": true,
+        "s": 3.9,
+        "finish_reason": "stop",
+        "completion_tokens": 332,
+        "answer_tail": "last line ANSWER: 269.\n\n\nThe five items mentioned and their costs are:\n\n- Onyx: 85 credits\n- Falcon: 45 credits\n- Tundra: 10 credits\n- Verbena: 99 credits\n- Cobalt: 30 credits\n\nTotal cost = 85 + 45 + 10 + 99 + 30 = 269 credits.\n\nANSWER: 269"
+      },
+      "actual_tokens": 29413,
+      "score": 1.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 118547,
+        "correct": false,
+        "s": 33.4,
+        "finish_reason": "stop",
+        "completion_tokens": 2569,
+        "answer_tail": "rmatted exactly as 'ANSWER: <value>'.\" I can include a brief step: \"The last access code mentioned is 2424 for verbena.\" Then final line.\n\nLet's final with final line \"ANSWER: 2424\".</think>The access code for verbena is 2424.\n\nANSWER: 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 118511,
+        "correct": false,
+        "s": 36.3,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "..\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n...\n\n"
+      },
+      "aggregate": {
+        "actual_tokens": 118533,
+        "correct": false,
+        "s": 17.4,
+        "finish_reason": "stop",
+        "completion_tokens": 433,
+        "answer_tail": "nswer should include calculation and final line. Ensure last line exactly \"ANSWER: 259\".\nThe five items mentioned have costs: Onyx 85, Falcon 45, Tundra 10, Cobalt 30, and Verbena 99.\n\nTotal cost = 85 + 45 + 10 + 30 + 99 = 259.\n\nANSWER: 259"
+      },
+      "actual_tokens": 118547,
+      "score": 0.0
+    },
+    {
+      "approx": 240000,
+      "multikey": {
+        "actual_tokens": 218994,
+        "correct": true,
+        "s": 44.2,
+        "finish_reason": "stop",
+        "completion_tokens": 315,
+        "answer_tail": " If multiple, maybe \"3286, 7912, 2424\". The format says 'ANSWER: <value>'. I'll end with \"ANSWER: 3286, 7912, 2424\". Ensure no text after.</think>The access codes are:\n\n- Cobalt: 3286\n- Tundra: 7912\n- Verbena: 2424\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 218958,
+        "correct": false,
+        "s": 52.9,
+        "finish_reason": "stop",
+        "completion_tokens": 1450,
+        "answer_tail": "hould output reasoning and final line.\n\nI'll answer: VAR_C = VAR_B * 2, and VAR_B = 40, so VAR_C = 80. Final line: ANSWER: 80.\n\nNeed not include too much. Ensure final line exactly.</think>The final numeric value of VAR_C is 80.\n\nANSWER: 80"
+      },
+      "aggregate": {
+        "actual_tokens": 218980,
+        "correct": true,
+        "s": 48.8,
+        "finish_reason": "stop",
+        "completion_tokens": 1033,
+        "answer_tail": "But maybe if they intended only the last five items? Let's count: onyx, falcon, tundra, verbena, cobalt = five. Sum 269.\n\nLet's final.</think>The five item costs mentioned are 85, 45, 10, 99, and 30 credits. Their total is 269.\n\nANSWER: 269"
+      },
+      "actual_tokens": 218994,
+      "score": 0.6666666666666666
+    }
+  ],
+  "overall": 0.556
+}

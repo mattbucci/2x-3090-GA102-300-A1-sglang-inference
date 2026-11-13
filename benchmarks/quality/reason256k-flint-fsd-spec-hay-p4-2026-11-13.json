@@ -1,0 +1,93 @@
+{
+  "tag": "flint-fsd-spec-hay-p4-2026-11-13",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 29413,
+        "correct": true,
+        "s": 3.9,
+        "finish_reason": "stop",
+        "completion_tokens": 535,
+        "answer_tail": "\"value\" maybe should be just one? The question asks plural. Could put \"ANSWER: 3286, 7912, 2424\". The line format includes no extra after. Good.\n\n\nThe access codes are: cobalt = 3286, tundra = 7912, verbena = 2424.\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 29373,
+        "correct": false,
+        "s": 11.1,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "g] ... Compute $\\dbinom{8}{0}$.\n\n...\n\nWhat is the final numeric value of VAR_C? Think step by step, then end your reply with a line formatted exactly as 'ANSWER: <value>'.\"\n\nBut before that, there are VAR lines? Let's check the text around\n"
+      },
+      "aggregate": {
+        "actual_tokens": 29399,
+        "correct": true,
+        "s": 3.3,
+        "finish_reason": "stop",
+        "completion_tokens": 402,
+        "answer_tail": "ly okay.\n\nLet's craft: The five items mentioned are onyx 85, falcon 45, tundra 10, verbena 99, cobalt 30. Sum = 269. End with line.\n\n\nThe five item costs are 85, 45, 10, 99, and 30 credits.\n\nTotal = 85 + 45 + 10 + 99 + 30 = 269\n\nANSWER: 269"
+      },
+      "actual_tokens": 29413,
+      "score": 0.6666666666666666
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 118547,
+        "correct": false,
+        "s": 24.8,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": " are for cobalt, tundra, and verbena. From the text, we have cobalt=3286, verbena=2424. Tundra is not mentioned, but maybe the access code for tundra is 2424? No, the code for verbena is 2424. Could be that the access code for tundra is 242"
+      },
+      "vartrack": {
+        "actual_tokens": 118511,
+        "correct": true,
+        "s": 16.5,
+        "finish_reason": "stop",
+        "completion_tokens": 351,
+        "answer_tail": ": <value>'.\" The last relevant computation: VAR_A = 37, VAR_B = VAR_A + 5 = 42, VAR_C = VAR_B * 2 = 84.\n\nSo final should include reasoning maybe concise, end with ANSWER: 84.\nVAR_A = 37, VAR_B = 37 + 5 = 42, VAR_C = 42 \u00d7 2 = 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 118533,
+        "correct": false,
+        "s": 25.9,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "al answer from a previous problem? The final answer might be from a list of five items: \"onyx, falcon, tundra, cobalt, and ...\" The text might have omitted one due to line breaks? Let's look at the last few lines before the final question:\n"
+      },
+      "actual_tokens": 118547,
+      "score": 0.3333333333333333
+    },
+    {
+      "approx": 240000,
+      "multikey": {
+        "actual_tokens": 218994,
+        "correct": true,
+        "s": 43.0,
+        "finish_reason": "stop",
+        "completion_tokens": 282,
+        "answer_tail": "ybe answer. To be safe final line: ANSWER: 3286, 7912, 2424. But maybe they expect just one? The question asks plural. End with that line.</think>The access codes are:\n\n- Cobalt: 3286\n- Tundra: 7912\n- Verbena: 2424\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 218958,
+        "correct": false,
+        "s": 50.3,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "8.\" Then \"How many 9 step paths... 40.\" Then \"Four standard dice... probability ... 8/15.\" Then \"Two cards... 13/204.\" Then \"When three standard dice... probability ... 125/216.\" Then \"At end... 16.\" Then \"Compute binom... 455.\" Then \"Given"
+      },
+      "aggregate": {
+        "actual_tokens": 218980,
+        "correct": false,
+        "s": 52.8,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": " new letters ... largest possible number of ADDITIONAL license plates that can be made by adding two letters?\" No.\n\nMaybe the final question is from a different problem: \"Automobile license plates ... three letters followed by a sequence of"
+      },
+      "actual_tokens": 218994,
+      "score": 0.3333333333333333
+    }
+  ],
+  "overall": 0.444
+}

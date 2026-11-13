@@ -1,0 +1,275 @@
+{
+ "what": "Flint SPEC_DECODE (DFlash2, patches 081+082, overlap on) vs plain decode: default-flip gate",
+ "code_generation_tok_s": [
+  {
+   "arm": "plain-a",
+   "chars": 120000,
+   "prompt_tokens": 27246,
+   "max_tokens": 3500,
+   "tok_s": 169.1
+  },
+  {
+   "arm": "plain-a",
+   "chars": 800000,
+   "prompt_tokens": 183035,
+   "max_tokens": 3500,
+   "tok_s": 126.9
+  },
+  {
+   "arm": "spec-a",
+   "chars": 120000,
+   "prompt_tokens": 27246,
+   "max_tokens": 3500,
+   "tok_s": 277.4
+  },
+  {
+   "arm": "spec-a",
+   "chars": 800000,
+   "prompt_tokens": 183035,
+   "max_tokens": 3500,
+   "tok_s": 202.5
+  },
+  {
+   "arm": "plain-b",
+   "chars": 120000,
+   "prompt_tokens": 27246,
+   "max_tokens": 3500,
+   "tok_s": 169.0
+  },
+  {
+   "arm": "plain-b",
+   "chars": 800000,
+   "prompt_tokens": 183035,
+   "max_tokens": 3500,
+   "tok_s": 126.7
+  },
+  {
+   "arm": "spec-b",
+   "chars": 120000,
+   "prompt_tokens": 27246,
+   "max_tokens": 3500,
+   "tok_s": 288.9
+  },
+  {
+   "arm": "spec-b",
+   "chars": 800000,
+   "prompt_tokens": 183035,
+   "max_tokens": 3500,
+   "tok_s": 182.9
+  }
+ ],
+ "plain_needle_passes": [
+  "plain needle pass=f rc=0 score 0.87",
+  "plain needle pass=g rc=0 score 1.00",
+  "plain needle pass=h rc=0 score 0.80"
+ ],
+ "reason_probe_32k_bisect_spec_arms": {
+  "default-1": {
+   "multikey": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 1055
+   },
+   "vartrack": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 392
+   },
+   "aggregate": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 314
+   }
+  },
+  "default-2": {
+   "multikey": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 459
+   },
+   "vartrack": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 1976
+   },
+   "aggregate": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 315
+   }
+  },
+  "gqa0-1": {
+   "multikey": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 538
+   },
+   "vartrack": {
+    "correct": false,
+    "finish": "length",
+    "completion_tokens": 3000
+   },
+   "aggregate": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 363
+   }
+  },
+  "gqa0-2": {
+   "multikey": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 591
+   },
+   "vartrack": {
+    "correct": false,
+    "finish": "length",
+    "completion_tokens": 3000
+   },
+   "aggregate": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 298
+   }
+  },
+  "gqa0-ovl0-1": {
+   "multikey": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 647
+   },
+   "vartrack": {
+    "correct": false,
+    "finish": "length",
+    "completion_tokens": 3000
+   },
+   "aggregate": {
+    "correct": false,
+    "finish": "length",
+    "completion_tokens": 3000
+   }
+  },
+  "gqa0-ovl0-2": {
+   "multikey": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 407
+   },
+   "vartrack": {
+    "correct": false,
+    "finish": "length",
+    "completion_tokens": 3000
+   },
+   "aggregate": {
+    "correct": false,
+    "finish": "length",
+    "completion_tokens": 3000
+   }
+  },
+  "swa0-1": {
+   "multikey": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 458
+   },
+   "vartrack": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 734
+   },
+   "aggregate": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 289
+   }
+  },
+  "swa0-2": {
+   "multikey": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 454
+   },
+   "vartrack": {
+    "correct": false,
+    "finish": "length",
+    "completion_tokens": 3000
+   },
+   "aggregate": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 289
+   }
+  }
+ },
+ "reason_probe_32k_plain_one_server": {
+  "pass1": {
+   "multikey": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 505
+   },
+   "vartrack": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 308
+   },
+   "aggregate": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 281
+   }
+  },
+  "pass2": {
+   "multikey": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 466
+   },
+   "vartrack": {
+    "correct": false,
+    "finish": "length",
+    "completion_tokens": 3000
+   },
+   "aggregate": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 410
+   }
+  },
+  "pass3": {
+   "multikey": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 466
+   },
+   "vartrack": {
+    "correct": false,
+    "finish": "length",
+    "completion_tokens": 3000
+   },
+   "aggregate": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 410
+   }
+  },
+  "pass4": {
+   "multikey": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 466
+   },
+   "vartrack": {
+    "correct": false,
+    "finish": "length",
+    "completion_tokens": 3000
+   },
+   "aggregate": {
+    "correct": true,
+    "finish": "stop",
+    "completion_tokens": 410
+   }
+  }
+ },
+ "note": "plain pass1 is a fresh prefill, passes 2-4 are prefix-cache hits: vartrack derails to the 3000-token limit on every hit. The spec arm takes the same branch (token 13, top-2 gap 0.16 nats). Model trajectory fragility, not a verify-path error."
+}

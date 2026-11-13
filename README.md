@@ -52,8 +52,8 @@ Every deep point is server-verified at its labeled depth (`actual_input_tokens`;
 ![Single-user decode, plain AWQ vs + draft, per model and depth (green: with draft)](benchmarks/specdec_comparison.png)
 
 DSpark on `qwen38` holds **1.21× at 250K actual** with the true 256K window (fp8 KV; 1.95× / 1.34× /
-1.21× / 1.11× at 1K / 32K / 131K / 262K) and serves its bake-off cycle (`SPEC_DECODE=1`). Other drafts
-collapse at depth ([ledger](docs/decode-levers.md#speculative-decoding)); data `benchmarks/specdec-comparison.json`.
+1.21× / 1.11× at 1K / 32K / 131K / 262K) and serves its bake-off cycle (`SPEC_DECODE=1`); `flint` with
+DFlash2 (`SPEC_DECODE=1`) decodes 115 → **162 tok/s at 262K** ([ledger](docs/decode-levers.md#speculative-decoding)).
 
 ### Agentic follow-up turns and prefill
 

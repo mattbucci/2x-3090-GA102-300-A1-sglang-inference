@@ -69,7 +69,7 @@ STACK_TAG="${STACK_TAG:-sglang-v0.5.15}"
 # dense Marlin, Qwen3Moe native-AWQ, DeltaNet hybrid, group-32 AWQ fallback path,
 # Mamba2-hybrid moe_wna16 (the b09882f model), dense Mistral (tokenizer-backend
 # canary family, patches 054/057).
-TRIPWIRE_PRESETS=(qwen36 qwen36-dense coder-30b qwen35-moe gemma4 nemotron3-omni devstral qwen38 flint qwen38-spec)
+TRIPWIRE_PRESETS=(qwen36 qwen36-dense coder-30b qwen35-moe gemma4 nemotron3-omni devstral qwen38 flint qwen38-spec flint-spec)
 
 mkdir -p "$RUNS_DIR"
 
