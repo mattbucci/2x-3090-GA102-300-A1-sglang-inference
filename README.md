@@ -1,7 +1,7 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
 Single-user, **256K-context** LLM inference on 2× NVIDIA RTX 3090 (GA102, Ampere, 48 GB total): SGLang
-**v0.5.23** + 42 local patches, CUDA 13.2 / PyTorch cu130, every model an **AWQ-int4 ship calibrated
+**v0.5.23** + 43 local patches, CUDA 13.2 / PyTorch cu130, every model an **AWQ-int4 ship calibrated
 in-house** from the upstream BF16 base. This rig owns all evals and the AWQ/INT4 calibrations; FP8 work
 lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
@@ -195,7 +195,7 @@ live under [`evals/swebench/`](evals/swebench/).
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.23 + 42 local patches (serving tree under `/data`, env `sglang-v0523`; the v0.5.22 tree + env kept as the one-revert rollback) |
+| SGLang | v0.5.23 + 43 local patches (serving tree under `/data`, env `sglang-v0523`; the v0.5.22 tree + env kept as the one-revert rollback) |
 | PyTorch | 2.14.1 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
 | transformers | 5.19.0 (ships gemma4_unified natively; routes Mistral ckpts to MistralCommonBackend, countered by patch 057) |
