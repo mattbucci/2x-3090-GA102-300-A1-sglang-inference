@@ -1,0 +1,58 @@
+# Decode roofline: theoretical maximum, bottlenecks, where each preset stands
+
+The single-user decode ceiling on this box is the **memory-bandwidth roofline**: the bytes one
+decode step must read on each GPU (the active weights plus the KV cache the attention layers scan),
+divided by the GA102's 936 GB/s. Compute and kernel latency only ever add to it. A preset "at the
+roofline" has no serving-side decode lever left; a preset far below it is bound by something else,
+and the kernel trace says what.
+
+Instrument: `/start_profile` kernel trace of 60 steps on rank 0 (TP=2, 300 W cap), grouped by
+`benchmarks/profiling/roofline-2026-11-13/group_trace.py`; bytes from the checkpoint's safetensors
+headers. Step times are GPU-side (client tok/s is a few percent lower).
+
+## Standing
+
+| Preset | Depth | Measured step | Bandwidth floor | Standing | Bound by |
+|---|---|---|---|---|---|
+| `flint` (40B-A2.5B MoE, 14 full + 35 SWA layers) | 34K | 6.30 ms (159 tok/s) | ~1.1 ms | ~17 % | kernel count, small-GEMM latency |
+| `flint` | 241K | 8.81 ms (113 tok/s) | ~2.7 ms | ~30 % | same, plus the KV read |
+| `qwen38` (dense 27B) | short | 11.55 ms (87 tok/s) | weights at ~925 GB/s | at roofline | memory bandwidth |
+| `qwen38` | 244K | 16.87 ms (59 tok/s) | KV read at ~900 GB/s | at roofline | memory bandwidth |
+| `qwen36` (35B-A3B MoE) | short | 4.48 ms (223 tok/s) | — | 14 % idle gap | ~1,000 kernels/step |
+| `qwen36` | 244K | 6.78 ms (148 tok/s) | attention at roofline | attention 45 % of step | KV read |
+
+`qwen38` / `qwen36` rows: [`decode-profile-2026-10-31.md`](../benchmarks/profiling/decode-profile-2026-10-31.md).
+Not yet broken down this way: `gemma4-31b` decode, a measured (not spec-sheet) bandwidth ceiling at
+the 300 W cap, and prefill (compute-bound: a tensor-rate roofline, not this one).
+
+## Flint, plain decode at 241K
+
+Per token each rank reads ~0.77 GB of weights (dense projections + shared expert ~0.37 GB, 6 of 256
+experts per layer ~0.24 GB, INT8 `lm_head` ~0.15 GB) and 1.73 GB of fp8 KV over the 14
+full-attention layers.
+
+| Cost | Measured | Bandwidth floor | Note |
+|---|---|---|---|
+| Attention over KV | 3.63 ms | 1.85 ms | depth-dependent part (2.47 ms) at ~75 % of the roofline; 1.16 ms is fixed overhead of 233 small kernels |
+| Dense INT4 GEMM | 1.80 ms | ~0.4–0.55 ms | 197 calls on 2048-wide matrices, ~9 µs each: latency-bound |
+| MoE expert INT4 GEMM | 0.98 ms | ~0.26 ms | |
+| Glue: elementwise 0.89, MoE routing 0.63, norms 0.34, all-reduce 0.30 | 2.16 ms | 0 | ~1,170 of the step's 1,702 kernels, no model bytes |
+| Idle gaps | 0.24 ms | 0 | |
+
+Flint is not memory-bound: ~3.3 ms of the step (glue, attention fixed overhead, idle) carries no
+roofline bytes, and the GEMMs run at 20–27 % of bandwidth because the matrices are small.
+
+## Past the roofline: speculative decode
+
+One verify pass reads the weights once for several tokens, so accepted tokens per cycle multiply the
+ceiling. Flint DFlash2 with patch 082: cycle 11.6 ms at 34K, 18.1 ms at 241K, against plain steps of
+6.3 / 8.8 ms → break-even at 1.8 / 2.1 accepted tokens. In the cycle at 241K attention is 9.5 ms
+(8 verify rows scan the same KV the 1-row decode kernel scans in ~2.5 ms), MoE GEMM 2.3 ms (expert
+fan-out across rows), glue 3.4 ms. `qwen38` DSpark is the shipped example (1.4–1.5×).
+
+## Levers this ranks
+
+1. Flint verify attention at depth: 8 rows cost ~3× the 1-row KV scan for the same bytes.
+2. Flint glue kernel count (MoE routing, elementwise): 2.2 ms plain, 3.4 ms per spec cycle.
+3. Flint attention fixed overhead: 1.16 ms across 49 layers at any depth.
+4. Dense presets: model-side only (spec drafts, fewer KV bytes).

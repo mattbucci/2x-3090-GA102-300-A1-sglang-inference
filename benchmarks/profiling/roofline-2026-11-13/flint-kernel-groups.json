@@ -1,0 +1,170 @@
+{
+ "flint-nospec-34K": {
+  "step_ms": 6.304525732421874,
+  "busy_ms": 6.081730110677084,
+  "idle_ms": 0.22279562174479167,
+  "kernels": 1702.15,
+  "groups": {
+   "elementwise glue": {
+    "n": 639.1166666666667,
+    "ms": 0.8894881833333578
+   },
+   "other": {
+    "n": 9.033333333333333,
+    "ms": 0.015234516666666685
+   },
+   "attention over KV": {
+    "n": 233.0,
+    "ms": 1.1635719166666325
+   },
+   "TP all-reduce / NCCL": {
+    "n": 100.0,
+    "ms": 0.30515543333333556
+   },
+   "norms + activations": {
+    "n": 195.0,
+    "ms": 0.33470390000001443
+   },
+   "dense INT4 GEMM (attn proj + shared expert)": {
+    "n": 197.0,
+    "ms": 1.7963371833333157
+   },
+   "MoE routing glue (topk/align/sum/scatter)": {
+    "n": 235.0,
+    "ms": 0.6272319666666334
+   },
+   "MoE expert INT4 GEMM": {
+    "n": 94.0,
+    "ms": 0.9745108333333448
+   }
+  }
+ },
+ "flint-nospec-241K": {
+  "step_ms": 8.805167635091145,
+  "busy_ms": 8.56444961751302,
+  "idle_ms": 0.240718017578125,
+  "kernels": 1702.1,
+  "groups": {
+   "elementwise glue": {
+    "n": 639.1,
+    "ms": 0.8936785166666869
+   },
+   "other": {
+    "n": 9.0,
+    "ms": 0.015136416666666699
+   },
+   "attention over KV": {
+    "n": 233.0,
+    "ms": 3.631885099999846
+   },
+   "TP all-reduce / NCCL": {
+    "n": 100.0,
+    "ms": 0.29716868333333274
+   },
+   "norms + activations": {
+    "n": 195.0,
+    "ms": 0.33719083333334554
+   },
+   "dense INT4 GEMM (attn proj + shared expert)": {
+    "n": 197.0,
+    "ms": 1.8037597833333279
+   },
+   "MoE routing glue (topk/align/sum/scatter)": {
+    "n": 235.0,
+    "ms": 0.6310059666666431
+   },
+   "MoE expert INT4 GEMM": {
+    "n": 94.0,
+    "ms": 0.9777660333333453
+   }
+  }
+ },
+ "flint-dflash2-082-34K": {
+  "step_ms": 11.886530680338542,
+  "busy_ms": 11.60400079752604,
+  "idle_ms": 0.28252988281249997,
+  "kernels": 2073.1666666666665,
+  "groups": {
+   "elementwise glue": {
+    "n": 812.0833333333334,
+    "ms": 1.3845271333332723
+   },
+   "other": {
+    "n": 57.083333333333336,
+    "ms": 0.11673193333333505
+   },
+   "TP all-reduce / NCCL": {
+    "n": 114.0,
+    "ms": 0.4334925333333357
+   },
+   "attention over KV": {
+    "n": 251.0,
+    "ms": 3.4040436499998163
+   },
+   "norms + activations": {
+    "n": 212.0,
+    "ms": 0.3808584333333543
+   },
+   "MoE routing glue (topk/align/sum/scatter)": {
+    "n": 260.0,
+    "ms": 1.219792816666673
+   },
+   "lm_head / sampling / other GEMM": {
+    "n": 75.0,
+    "ms": 0.3438952000000023
+   },
+   "dense INT4 GEMM (attn proj + shared expert)": {
+    "n": 198.0,
+    "ms": 1.9941868666666513
+   },
+   "MoE expert INT4 GEMM": {
+    "n": 94.0,
+    "ms": 2.358817283333338
+   }
+  }
+ },
+ "flint-dflash2-082-241K": {
+  "step_ms": 18.565895068359374,
+  "busy_ms": 18.098621004231774,
+  "idle_ms": 0.46727406412760414,
+  "kernels": 2073.1666666666665,
+  "groups": {
+   "elementwise glue": {
+    "n": 812.0833333333334,
+    "ms": 1.4435847333334104
+   },
+   "other": {
+    "n": 57.083333333333336,
+    "ms": 0.1210623333333323
+   },
+   "TP all-reduce / NCCL": {
+    "n": 114.0,
+    "ms": 0.7247626166666679
+   },
+   "attention over KV": {
+    "n": 251.0,
+    "ms": 9.476724199999818
+   },
+   "norms + activations": {
+    "n": 212.0,
+    "ms": 0.3964159833333307
+   },
+   "MoE routing glue (topk/align/sum/scatter)": {
+    "n": 260.0,
+    "ms": 1.2540372999999718
+   },
+   "lm_head / sampling / other GEMM": {
+    "n": 75.0,
+    "ms": 0.35144528333332725
+   },
+   "dense INT4 GEMM (attn proj + shared expert)": {
+    "n": 198.0,
+    "ms": 2.0456028499999883
+   },
+   "MoE expert INT4 GEMM": {
+    "n": 94.0,
+    "ms": 2.317362233333332
+   }
+  }
+ }
+}
