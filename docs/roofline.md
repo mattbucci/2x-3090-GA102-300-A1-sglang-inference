@@ -2,7 +2,7 @@
 
 The single-user decode ceiling on this box is the **memory-bandwidth roofline**: the bytes one
 decode step must read on each GPU (the active weights plus the KV cache the attention layers scan),
-divided by the GA102's 936 GB/s. Compute and kernel latency only ever add to it. A preset "at the
+divided by the GA102's memory bandwidth (936 GB/s on paper; a 4 GiB read measures 889 GB/s on both cards at the 300 W cap, `gpu-bandwidth-300w.json` — the floors below use the paper figure, so they are ~5 % optimistic). Compute and kernel latency only ever add to it. A preset "at the
 roofline" has no serving-side decode lever left; a preset far below it is bound by something else,
 and the kernel trace says what.
 
@@ -46,7 +46,7 @@ roofline bytes, and the GEMMs run at 20–27 % of bandwidth because the matrices
 
 One verify pass reads the weights once for several tokens, so accepted tokens per cycle multiply the
 ceiling. Flint DFlash2 with patch 082: cycle 11.6 ms at 34K, 18.1 ms at 241K, against plain steps of
-6.3 / 8.8 ms → break-even at 1.8 / 2.1 accepted tokens. In the cycle at 241K attention is 9.5 ms
+6.3 / 8.8 ms → break-even at 1.8 / 2.1 accepted tokens. Head-to-head on a natural-text summary (two interleaved passes, `flint-plain-vs-dflash2.json`): **166 → 234 / 252 tok/s at 34K, 115 → 195 / 176 tok/s at 241K** — at depth the spec arm runs at about half of the plain-decode bandwidth ceiling, the plain arm at 30 %. In the cycle at 241K attention is 9.5 ms
 (8 verify rows scan the same KV the 1-row decode kernel scans in ~2.5 ms), MoE GEMM 2.3 ms (expert
 fan-out across rows), glue 3.4 ms. `qwen38` DSpark is the shipped example (1.4–1.5×).
 
