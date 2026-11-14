@@ -486,6 +486,8 @@ apply_preset() {
             # gate: MMLU 292 vs 291 of 342, HumanEval 302 vs 298 of 328, needle band 7/10 vs 6/10, caps
             # 5/5. The first routed request per JIT cache pays a one-time flashinfer compile. 0 disables.
             export SGLANG_EXTEND_FLASHINFER_MIN_ROWS="${SGLANG_EXTEND_FLASHINFER_MIN_ROWS:-257}"
+            # patch 084 (2026-11-13): INT8 copy of the tied output head (see gemma4-31b). 0 disables.
+            export SGLANG_LM_HEAD_INT8_UNTIE="${SGLANG_LM_HEAD_INT8_UNTIE:-1}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
             ;;
         qwen3-vl-32b)

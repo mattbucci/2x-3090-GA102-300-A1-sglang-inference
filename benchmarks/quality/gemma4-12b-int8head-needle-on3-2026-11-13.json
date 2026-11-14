@@ -1,0 +1,60 @@
+{
+ "tag": "gemma4-12b-int8head-needle-on3-2026-11-13",
+ "timestamp": "2026-11-13 17:45",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": false,
+    "actual_prompt_tokens": 140281,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 10,
+    "content_tail": "$500$",
+    "reasoning_tail": "",
+    "miss": {
+     "content": "$500$",
+     "reasoning": null
+    },
+    "answered": false
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": false,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 14,
+    "content_tail": "The final answer is 340.",
+    "reasoning_tail": "",
+    "miss": {
+     "content": "The final answer is 340.",
+     "reasoning": null
+    },
+    "answered": false
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 69,
+    "content_tail": "The secret password is BANANA42.",
+    "reasoning_tail": " problem description for the secret password, I see:\n\"The secret password is: BANANA42.\"\nThe question asks for the secret password.\n\nThe password is \"BANANA42\".",
+    "answered": true
+   }
+  ],
+  "score": 0.3333333333333333,
+  "answered_score": 0.3333333333333333
+ }
+}
