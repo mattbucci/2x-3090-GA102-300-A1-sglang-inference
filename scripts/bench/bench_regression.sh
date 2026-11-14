@@ -69,6 +69,9 @@ STACK_TAG="${STACK_TAG:-sglang-v0.5.15}"
 # dense Marlin, Qwen3Moe native-AWQ, DeltaNet hybrid, group-32 AWQ fallback path,
 # Mamba2-hybrid moe_wna16 (the b09882f model), dense Mistral (tokenizer-backend
 # canary family, patches 054/057).
+# Presets whose launch.sh default is spec decode: their plain (random-prompt) arm launches
+# with SPEC_DECODE=0, the "-spec" arm is the as-shipped one.
+SPEC_DEFAULT_PRESETS=(flint)
 TRIPWIRE_PRESETS=(qwen36 qwen36-dense coder-30b qwen35-moe gemma4 nemotron3-omni devstral qwen38 flint qwen38-spec flint-spec)
 
 mkdir -p "$RUNS_DIR"
@@ -82,6 +85,11 @@ AUTH_ARGS=()
 server_served_name() {
     curl -s -m 5 "${AUTH_ARGS[@]}" "$BASE_URL/v1/models" | python3 -c \
         "import json,sys; print(json.load(sys.stdin)['data'][0]['id'])" 2>/dev/null
+}
+
+server_spec_algorithm() {   # empty when the live server runs without a draft
+    curl -s -m 5 "${AUTH_ARGS[@]}" "$BASE_URL/get_server_info" | python3 -c \
+        "import json,sys; v=json.load(sys.stdin).get('speculative_algorithm'); print(v if v and str(v).upper()!='NONE' else '')" 2>/dev/null
 }
 
 server_model_path() {
@@ -228,6 +236,13 @@ bench_live() {
     # A "<preset>-spec" arm is the preset launched with SPEC_DECODE=1 and benched on NATURAL text:
     # random prompts make the draft near-perfect and the output degenerate (qwen38 DSpark read
     # 230 tok/s at 262K that way, 2026-10-31), so a spec arm is only measurable on natural text.
+    # A plain arm against a live spec server (a preset that ships spec by default, served
+    # as shipped by the docker smoke) is benched as its "-spec" arm instead.
+    if [ "${preset%-spec}" = "$preset" ] && [ -n "$(server_spec_algorithm)" ] \
+        && [[ " ${TRIPWIRE_PRESETS[*]} " == *" ${preset}-spec "* ]]; then
+        echo "=== $preset: live server runs spec decode — benching the ${preset}-spec arm ==="
+        preset="${preset}-spec"
+    fi
     local launch_preset="${preset%-spec}" prompt_source="${PROMPT_SOURCE:-random}"
     [ "$launch_preset" != "$preset" ] && prompt_source=natural
     if [ "$served" != "$launch_preset" ]; then
@@ -333,6 +348,8 @@ arm() {
         local launch_preset="${preset%-spec}"
         if [ "$launch_preset" != "$preset" ]; then   # spec arm: SPEC_DECODE=1 on the base preset, natural-text bench
             SPEC_DECODE=1 "$REPO_DIR/scripts/launch.sh" "$launch_preset" > "$RUNS_DIR/serve-${preset}-${DATE}.log" 2>&1 &
+        elif [[ " ${SPEC_DEFAULT_PRESETS[*]} " == *" $preset "* ]]; then   # plain arm of a spec-default preset
+            SPEC_DECODE=0 "$REPO_DIR/scripts/launch.sh" "$preset" > "$RUNS_DIR/serve-${preset}-${DATE}.log" 2>&1 &
         else
             "$REPO_DIR/scripts/launch.sh" "$preset" > "$RUNS_DIR/serve-${preset}-${DATE}.log" 2>&1 &
         fi

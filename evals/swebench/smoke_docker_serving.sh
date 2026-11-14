@@ -175,7 +175,7 @@ smoke_preset() {
     SGLANG_API_KEY="$(_serve_api_key)" RUN_SUFFIX="docker-smoke" STACK_TAG="${STACK_TAG:-sglang-v0.5.20-docker}" \
       bash "$REPO_DIR/scripts/bench/bench_regression.sh" "$preset" > "$d/bench.log" 2>&1
     rc=$?
-    local verdict_line; verdict_line="$(grep -E "^  $preset/|no baseline|^RESULT" "$d/bench.log" | sed 's/^ *//' | tr '\n' '|')"
+    local verdict_line; verdict_line="$(grep -E "^  $preset(-spec)?/|no baseline|^RESULT" "$d/bench.log" | sed 's/^ *//' | tr '\n' '|')"
     if [ $rc -eq 0 ]; then mark bench PASS "$verdict_line"; else mark bench FAIL "rc=$rc $verdict_line ($d/bench.log)"; fail=1; fi
   fi
 
