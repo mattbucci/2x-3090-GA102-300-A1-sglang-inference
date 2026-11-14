@@ -1,0 +1,81 @@
+{
+ "instrument": "cycle ms = accept len / gen throughput from server Decode batch lines, long greedy generations (flint DFlash2 spec, tile 8x128x8)",
+ "arms": {
+  "splits32": {
+   "34K": [
+    11.46,
+    11.47,
+    11.43
+   ],
+   "131K": [
+    13.54,
+    13.64,
+    13.64
+   ],
+   "241K": [
+    16.38,
+    16.43,
+    16.35
+   ]
+  },
+  "splits40": {
+   "34K": [
+    11.37,
+    11.37
+   ],
+   "131K": [
+    13.11,
+    13.2
+   ],
+   "241K": [
+    15.53,
+    15.61
+   ]
+  },
+  "splits64": {
+   "34K": [
+    11.7
+   ],
+   "131K": [
+    13.84
+   ],
+   "241K": [
+    16.59
+   ]
+  },
+  "splits80": {
+   "34K": [
+    11.58,
+    11.65
+   ],
+   "131K": [
+    13.46,
+    13.46
+   ],
+   "241K": [
+    15.75,
+    15.82
+   ]
+  }
+ },
+ "served_trace_241K_us_per_full_layer": {
+  "splits32": {
+   "stage1": 376,
+   "combine": 13,
+   "grid": [
+    1,
+    2,
+    32
+   ]
+  },
+  "splits80": {
+   "stage1": 308,
+   "combine": 30,
+   "grid": [
+    1,
+    2,
+    80
+   ]
+  }
+ }
+}

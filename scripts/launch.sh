@@ -853,6 +853,9 @@ apply_preset() {
                 # 14.45 -> 13.6 ms at 128K, 18.1 -> 16.4 ms at 241K, flat at 34K; MMLU /
                 # HumanEval / needle tie over two passes. Empty = the kernel's table.
                 export SGLANG_VERIFY_SHARED_KV_TILE="${SGLANG_VERIFY_SHARED_KV_TILE-8,128,8}"
+                # Patch 086: stage-1 split bound 40 = 80 programs (two head blocks), one per GA102 SM
+                # (cycle 16.4 -> 15.6 ms at 241K; 48 falls off a cliff). Empty = the upstream 32.
+                export SGLANG_VERIFY_SHARED_KV_MAX_SPLITS="${SGLANG_VERIFY_SHARED_KV_MAX_SPLITS-40}"
             fi
             ;;
         qwen35-dense)
