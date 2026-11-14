@@ -1,0 +1,122 @@
+085 verify-shared-kv-tile: stage-1 tile override for the grouped target-verify kernel
+
+The grouped verify kernel (081 / 082) takes its prefix tile from a per-head_dim table that
+only lists 256 / 576 / 64; every other shape, Flint's 128-wide heads included, runs the
+untuned default of 4 heads x 64 keys on 8 warps. SGLANG_VERIFY_SHARED_KV_TILE=
+"BLOCK_H,BLOCK_N,num_warps" overrides the tile (unset / malformed = the table). Arithmetic
+is unchanged; only the fp32 accumulation order moves (same error vs the fp32 reference).
+A head_dim whose env tile overflows shared memory at compile time (a 256-key tile over a
+bf16 KV) is remembered and keeps the table tile.
+flint DFlash2, 8 x 128 x 8: spec cycle 14.45 -> 13.6 ms at 128K, 18.1 -> 16.4 ms at 241K,
+11.5 -> 11.4 ms at 34K. Kernel alone (8 rows, e5m2): 574 -> 432 us per layer at 254K.
+---
+diff --git a/python/sglang/kernels/ops/attention/verify_mla.py b/python/sglang/kernels/ops/attention/verify_mla.py
+--- a/python/sglang/kernels/ops/attention/verify_mla.py
++++ b/python/sglang/kernels/ops/attention/verify_mla.py
+@@ -17,6 +17,7 @@
+ import torch
+ import triton
+ import triton.language as tl
++from triton.runtime.errors import OutOfResources
+ 
+ from sglang.kernels.ops.attention.verify_splitkv import _AMD_LAUNCH_KWARGS
+ # [3090 081] Ampere has no fp8 tensor-core dot: keep q/p in the model dtype and upcast K/V.
+@@ -40,11 +41,35 @@
+ }
+ 
+ 
++
++def _env_tile():
++    """SGLANG_VERIFY_SHARED_KV_TILE="BLOCK_H,BLOCK_N,num_warps" overrides the
++    stage-1 tile for every head_dim (unset / malformed = the table above)."""
++    raw = os.environ.get("SGLANG_VERIFY_SHARED_KV_TILE", "").strip()
++    if not raw:
++        return None
++    try:
++        block_h, block_n, num_warps = (int(x) for x in raw.split(","))
++    except ValueError:
++        return None
++    if block_h < 1 or block_h & (block_h - 1) or block_n < 1 or num_warps < 1:
++        return None
++    return (block_h, block_n, num_warps)
++
++
++_ENV_TILE = _env_tile()
++# head_dims whose env tile overflowed shared memory at compile time (e.g. a
++# 256-key tile over a bf16 KV); they keep the table tile for the process.
++_ENV_TILE_OVERFLOW = set()
++
++
+ def block_config(head_dim):
+     """
+     Return (BLOCK_H, BLOCK_N, num_warps) for a head_dim; default for untuned
+     dims. BLOCK_H must be a power of 2 (heads beyond H_Q are masked).
+     """
++    if _ENV_TILE is not None and head_dim not in _ENV_TILE_OVERFLOW:
++        return _ENV_TILE
+     return _BLOCK_CONFIG.get(
+         head_dim, (DEFAULT_BLOCK_H, DEFAULT_BLOCK_N, DEFAULT_NUM_WARPS)
+     )
+@@ -852,28 +877,38 @@
+ 
+     if max_bs is None or max_bs < bs:
+         max_bs = bs
+-    vk = _get_vmla(
+-        max_bs, h_q, head_dim, v_head_dim, l_ext, q_extend.device, kv_group_num
+-    )
+-    vk(
+-        q_extend,
+-        k_extend.contiguous(),
+-        v_extend.contiguous(),
+-        k_buffer,
+-        v_buffer,
+-        qo_indptr,
+-        kv_indptr,
+-        kv_indices,
+-        sm_scale,
+-        o_out=o_extend,
+-        k_scale=k_scale,
+-        v_scale=v_scale,
+-        is_causal=is_causal,
+-        sinks=sinks,
+-        sliding_window_size=(
+-            int(sliding_window_size)
+-            if sliding_window_size is not None and sliding_window_size > 0
+-            else 0
+-        ),
+-    )
++    def _launch():
++        vk = _get_vmla(
++            max_bs, h_q, head_dim, v_head_dim, l_ext, q_extend.device, kv_group_num
++        )
++        vk(
++            q_extend,
++            k_extend.contiguous(),
++            v_extend.contiguous(),
++            k_buffer,
++            v_buffer,
++            qo_indptr,
++            kv_indptr,
++            kv_indices,
++            sm_scale,
++            o_out=o_extend,
++            k_scale=k_scale,
++            v_scale=v_scale,
++            is_causal=is_causal,
++            sinks=sinks,
++            sliding_window_size=(
++                int(sliding_window_size)
++                if sliding_window_size is not None and sliding_window_size > 0
++                else 0
++            ),
++        )
++
++    try:
++        _launch()
++    except OutOfResources:
++        if _ENV_TILE is None or head_dim in _ENV_TILE_OVERFLOW:
++            raise
++        _ENV_TILE_OVERFLOW.add(head_dim)
++        _VMLA_CACHE.clear()
++        _launch()
+     return True
