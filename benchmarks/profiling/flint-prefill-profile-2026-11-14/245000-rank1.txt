@@ -1,0 +1,37 @@
+# flint fresh prefill — actual prompt_tokens=254722, trace 1794672835.4974086-TP-1.trace.json.gz
+
+=== step[EXTEND bs=1] × 32 steps (after skipping 0) ===
+  per step: CPU wall 1661.80 ms | GPU span 1673.91 ms | kernel-sum 1671.03 ms
+  exposed time (sweep line):
+    1243.246 ms/step   74.3%  attention
+    195.701 ms/step   11.7%  marlin(int4)
+    119.609 ms/step    7.1%  misc
+     84.018 ms/step    5.0%  nccl
+     19.787 ms/step    1.2%  norm
+      6.832 ms/step    0.4%  act
+  top 25 kernels (ms/step, count/step):
+    1243.246    14.0  void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::Mask
+     97.497   209.6  void sglang::device::marlin::Marlin<__nv_bfloat16, 1125899906843648l, 256, 4, 16, 4, false, 4, 2, fa
+     83.996    95.9  ncclDevKernel_AllReduce_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)
+     73.826    35.0  _fwd_kernel
+     55.533    45.5  void sglang::device::marlin_moe::Marlin<__nv_bfloat16, 1125899906843648l, 1125899906909960l, 256, 4,
+     41.762    45.5  void sglang::device::marlin_moe::Marlin<__nv_bfloat16, 1125899906843648l, 1125899906909960l, 256, 4,
+     15.332    98.0  void flashinfer::norm::FusedAddRMSNormKernel<8u, __nv_bfloat16>(__nv_bfloat16*, __nv_bfloat16*, __nv
+     12.419    47.0  void moe_sum_reduce_warp_per_token_vec_kernel<8>(c10::BFloat16 const*, c10::BFloat16*, long, long, l
+      9.111    47.0  void at::native::sbtopk::gatherTopK<float, unsigned int, 2, false>(at::cuda::detail::TensorInfo<floa
+      5.814    96.0  void sglang::act_and_mul_kernel<__nv_bfloat16, (sglang::ActivationKind)0, false, false, false, false
+      5.587    47.0  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<c10::BFloat16>, std::a
+      4.372    49.0  void sglang::fused_qknorm_half_warp<false, __nv_bfloat16>(sglang::QKNormParams)
+      4.189    45.5  void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_128x256_32x3_tn_align8>(cutlass_
+      3.346    35.0  void sglang::fused_rope_kernel<true, 128l, false, __nv_bfloat16, __nv_bfloat16, long, 16u>(sglang::F
+      2.187    84.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::direct_co
+      1.427    98.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::BUnaryFun
+      1.371    98.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::float8_co
+      1.264    14.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::BinaryFun
+      1.139    21.2  Memcpy DtoD (Device -> Device)
+      1.109    61.0  void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunct
+      1.018    61.0  void at::native::vectorized_elementwise_kernel<4, at::native::sigmoid_kernel_cuda(at::TensorIterator
+      0.817    62.0  void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda(at::TensorIteratorB
+      0.684    47.0  void sglang::moe::count_and_sort_expert_tokens_kernel<int>(int const*, int*, int*, unsigned long)
+      0.562    47.0  void sglang::moe::moe_align_block_size_kernel<int, true, false, false>(int const*, int*, int*, int*,
+      0.529    14.0  void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<c10::BFloat16>, std::array

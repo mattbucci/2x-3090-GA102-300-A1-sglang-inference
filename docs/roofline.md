@@ -51,9 +51,32 @@ ceiling. Flint DFlash2 with patch 082: cycle 11.6 ms at 34K, 18.1 ms at 241K, ag
 (8 verify rows scan the same KV the 1-row decode kernel scans in ~2.5 ms), MoE GEMM 2.3 ms (expert
 fan-out across rows), glue 3.4 ms; after patch 085 the verify prefix stage is 5.6 ms of the 16.4 ms cycle and is the only term that grows with depth (1.2 ms at 34K). Patch 086 (40 KV splits = one program per SM) takes the cycle to 15.6 ms, break-even 1.8. As shipped on the tripwire prompt at 262K: 184.5 tok/s with the draft (three boots 179.5 / 184.5 / 189.7) against 122.7 plain, 1.50×. `qwen38` DSpark is the shipped example (1.4–1.5×). Code generation over a source-code context holds the same ratio (169 → 277 / 289 tok/s at 27K, 127 → 203 / 183 at 183K), and the `flint-spec` tripwire arm reads 298 / 238 / 162 tok/s at 1K / 32K / 262K against 115 plain at 262K. Quality gate vs plain decode is at parity (tool use, cached turns, deep needle; the one reasoning-probe cell that differed is a near-tie branch plain decode also takes on a cache hit — ledger).
 
+## Prefill: Flint cold prefill against the tensor peak
+
+Decode is bandwidth-bound; cold prefill is compute-bound, so its ceiling is the tensor-core rate
+(FP16 GEMM measured 82–111 TFLOPS per card at the 300 W cap). Served profile of a fresh prefill on
+the shipped stack (flashinfer route, 8K chunks, `benchmarks/profiling/flint-prefill-profile-2026-11-14/`):
+
+| Prompt | Total | Full-layer attention | INT4 GEMM | NCCL allreduce | SWA attention + rest |
+|---|---|---|---|---|---|
+| 130K | 17.4 s | 10.0 s (58 %) | 3.2 s (18 %) | 1.7 s (10 %) | 2.4 s (14 %) |
+| 255K | 53.6 s | 39.3 s (73 %) | 6.2 s (12 %) | 3.3 s (6 %) | 4.8 s (9 %) |
+
+Exact causal attention over the 14 full layers is n²/2 pairs × 16 Q heads per rank × 4·128 FLOPs
+(QKᵀ plus P·V) = 3.7e15 FLOPs per card at 255K. The kernel delivers that in 39.3 s = **95 TFLOPS,
+inside the measured FP16 peak band** (96 TFLOPS at 130K). At the top of the band (111) the attention
+term would be 33.5 s, so the most a better FP16 kernel can return is ~6 s of 54 (11 %). Everything
+linear in n (GEMM, allreduce, SWA layers, norms) is 14 s at 255K and no single term exceeds 12 %.
+
+So Flint's deep cold prefill sits at the hardware roofline for exact FP16 attention. What remains is
+structural: not paying the quadratic term (prefix cache, already the agentic path — a cache-hit turn
+is ~0.1 s), or cheaper arithmetic for it (INT8 tensor rate is 163–196 TOPS, ~1.8× FP16, at a
+quality risk in QKᵀ that has not been tested).
+
 ## Levers this ranks
 
 1. Flint verify attention at depth: 8 rows cost ~3× the 1-row KV scan for the same bytes.
 2. Flint glue kernel count (MoE routing, elementwise): 2.2 ms plain, 3.4 ms per spec cycle.
 3. Flint attention fixed overhead: 1.16 ms across 49 layers at any depth.
 4. Dense presets: model-side only (spec drafts, fewer KV bytes).
+5. Flint cold prefill: at the FP16 tensor peak; only INT8 attention arithmetic or the linear terms (≤ 12 % each) remain.
