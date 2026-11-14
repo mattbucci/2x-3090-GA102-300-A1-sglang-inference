@@ -1,0 +1,91 @@
+{
+ "tag": "gemma4-31b-kvctl-needle-platdeep-e5m2-2026-11-14",
+ "timestamp": "2026-11-14 02:49",
+ "temperature": 0.0,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 150000,
+    "depth": 0.2,
+    "found": true,
+    "actual_prompt_tokens": 162073,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 127,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " Hidden within the text is the sentence: \"The secret password is: BANANA42.\"\n    *   The user asks for the secret password.\n\n    *   The password is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 150000,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 162072,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 95,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "r the secret password.\n\n    *   Scanning the text for \"secret password\".\n    *   Found: \"The secret password is: BANANA42.\"\n\n    *   The password is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 150000,
+    "depth": 0.8,
+    "found": true,
+    "actual_prompt_tokens": 162072,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 106,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "provided text...\n    *   Found: \"The secret password is: BANANA42.\" (Located in the section discussing a deck of 40 cards).\n\n    *   The password is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 197000,
+    "depth": 0.2,
+    "found": true,
+    "actual_prompt_tokens": 213419,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 155,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "\".\n\n    *   The text explicitly states: \"The secret password is: BANANA42.\"\n\n    *   The user asked for the secret password.\n    *   The password is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 197000,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 213418,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 114,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " is: BANANA42.\"\n\n    *   The text says: \"The secret password is: BANANA42.\"\n\n    *   The user asked for the secret password.\n    *   The password is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 197000,
+    "depth": 0.8,
+    "found": true,
+    "actual_prompt_tokens": 213418,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 120,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "here is a specific line: \"The secret password is: BANANA42.\"\n    *   The user's prompt asks for the secret password.\n\n    *   The secret password is \"BANANA42\".",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}
