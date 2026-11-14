@@ -59,7 +59,7 @@ DFlash2 by default (`SPEC_DECODE=0` off): 122 → **162 tok/s at 262K** ([ledger
 
 ![Cold-prefill time to first token per model, natural text, cache flushed (pale: 32K, solid: 128K)](benchmarks/all_models_ttft_natural.png)
 
-A chat-API follow-up turn re-sends the whole conversation; the server now re-encodes only the tail
+A chat-API follow-up turn re-sends the whole conversation; the server re-encodes only the tail
 (patch 072), routes short cache-hit extends through a split-KV kernel on the triton presets (patch 070,
 up to 128 new tokens once the cached prefix is ≥ 32K) and replays a CUDA graph for 8–128-token extends
 on the flashinfer presets, with Mamba-state tracking on `nemotron3-omni` (patch 074).
@@ -75,8 +75,7 @@ default on `qwen38` (**8.6 s @32K, 51 s @131K, 145 s @262K**), `qwen36-dense`, `
 Its INT8 path moves greedy outputs in about half of the cache-hit cells (up to 2.8 nats; fp16 stays within
 0.1), invisible to the single-turn gates; agentic cost is [issue #20](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/20),
 off switch `SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS=1000000000` ([receipt](benchmarks/quality/cache-hit-w4a8-2026-11-02.md)).
-The triton presets are bound by the extend-attention kernel
-([issue #12](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/12)); `flint` ships a
+The triton presets are bound by the extend-attention kernel; `flint` ships a
 128×128 tile, the bf16 softmax·V dot (patch 075) and flashinfer paged prefill on
 full-attention layers (080): cold fill **2.7 s @32K, 18.3 s @131K, 50 s @250K**
 ([receipt](benchmarks/profiling/prefill-flashinfer-route-2026-11-11/README.md)).
@@ -195,14 +194,14 @@ live under [`evals/swebench/`](evals/swebench/).
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.23 + 43 local patches (serving tree under `/data`, env `sglang-v0523`; the v0.5.22 tree + env kept as the one-revert rollback) |
+| SGLang | v0.5.23 + 51 local patches (serving tree under `/data`, env `sglang-v0523`; the v0.5.22 tree + env kept as the one-revert rollback) |
 | PyTorch | 2.14.1 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
 | transformers | 5.19.0 (ships gemma4_unified natively; routes Mistral ckpts to MistralCommonBackend, countered by patch 057) |
-| FlashInfer | 0.7.1 [cu13] (sgl-kernel 0.4.9, xgrammar 0.2.7) |
+| FlashInfer | 0.7.2 [cu13] (sglang-kernel 0.4.10, xgrammar 0.2.7) |
 | compressed-tensors | serving env pin; 0.15.1.dev in the separate `quant` calibration env |
 
-**Patches**: 32 logical units in [`patches/`](patches/), applied idempotently by `setup.sh`: AWQ/CT int4
+**Patches**: 51 logical units in [`patches/`](patches/), applied idempotently by `setup.sh`: AWQ/CT int4
 weight loading, Qwen3.5/3.6/3.8 enablement, Gemma 4 bring-up (26B MoE / 31B dense / 12B unified omni),
 Nemotron-3-Nano-Omni serving, kernel precision, sm_86 enablement, the agentic-turn and prefill levers,
 serving robustness. Each rebase is gated by the 3-gate pristine replay (`scripts/test_patch_gates.sh`), a
@@ -214,7 +213,7 @@ the NVIDIA container toolkit) and runs unprivileged with `SGLANG_SECURE_LAUNCH=1
 protected server options refused, NCCL on loopback). The SWE-bench cycle serves from it with a per-cycle
 API key. Build, run and the security caveats: [`docs/oci-image.md`](docs/oci-image.md).
 
-**Quantization** (the `quant` conda env, on the calibration device, never concurrently with serving):
+**Quantization** (the `quant` conda env, never concurrently with serving):
 
 ```bash
 conda activate quant

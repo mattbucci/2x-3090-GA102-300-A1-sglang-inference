@@ -13,7 +13,7 @@ SGLang for 2x NVIDIA RTX 3090 (GA102-300-A1, 48GB total VRAM).
 
 ## Key Commands
 ```bash
-scripts/setup.sh                       # Full setup (clones SGLang v0.5.23, applies all patches/*.patch — 50 logical units)
+scripts/setup.sh                       # Full setup (clones SGLang v0.5.23, applies all patches/*.patch)
 scripts/serve_production.sh gemma4-31b # Persistent PRODUCTION endpoint on :30000 (start/stop/status/restart; eval harness stays :23334)
 scripts/launch.sh devstral             # Devstral 24B AWQ (Dense, Mistral)  [ad-hoc/eval serve on :23334]
 scripts/launch.sh coder-30b-eval       # Qwen3-Coder-30B-A3B AWQ CT (256K, bake-off 43.0% opencode)
@@ -25,7 +25,7 @@ scripts/launch.sh qwen3-ream           # Qwen3-30B Instruct REAM AWQ (96 experts
 scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ (thinking+image+video+audio)
 scripts/launch.sh gemma4-31b           # Gemma 4 31B Dense AWQ
 ```
-Full preset list: `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scripts/launch.sh` (21 currently). Every preset carries an explicit `--tool-call-parser` matching its chat-template's tool format (qwen3_coder / qwen25 / mistral / gemma4 — see Critical Rules below).
+Full preset list: `grep -E "^        [a-z][a-zA-Z0-9-]*[\|\)]" scripts/launch.sh`. Every preset carries an explicit `--tool-call-parser` matching its chat-template's tool format (qwen3_coder / qwen25 / mistral / gemma4 — see Critical Rules below).
 
 ## Critical Rules
 - **SGLang only** — uses AWQ_Marlin kernels (sm_80+), patches may be needed for tuning
@@ -44,14 +44,14 @@ In force, read before touching a checkpoint, the harness or the host: [docs/agen
 - **Primary:** single-user **256K context** performance (decode tok/s, TPOT). Measure at long context first.
 - **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win batch benchmarks.
 - **Eval harness:** SWE-bench Lite on **one lane per preset, `omp` (oh-my-pi) by default** — the scaffolds tied within noise (user decision); do not spend GPU time on scaffold A/Bs.
-- **Current focus (user): Flint** — after the v0.5.23 flip campaign lands, Flint levers first (issues #15 / #12: omp re-roll under the fixed tool grammar, prefill kernel, deep-retrieval band, calibrated g32 A/B); other presets only for fleet-wide fixes. One-off cycles may use the GPUs; the main bake-off queue stays PAUSED until the user resumes it.
+- **Current focus (user): Flint** — Flint levers first (spec-decode cycle time, prefill, the deep-retrieval band in issue #7); other presets only for fleet-wide fixes. One-off cycles may use the GPUs; the main bake-off queue stays PAUSED until the user resumes it.
 
 ## Optimization Iteration Loop (the standing process)
 This is a **continuous loop**, not a one-shot. Each iteration (a wake-up, a finished background job, or a fresh session) runs these steps. Never stop to ask for confirmation — the user reads the README + everything we report and interjects with course-corrections.
 
 1. **Sync first.** `git fetch` BOTH repos (this one + R9700 `~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference`); read new commits (`git log HEAD..origin/main`); `git pull --rebase` ours (the calibration device pushes here). New R9700 findings can re-prioritize the loop.
 2. **Read live state.** `nvidia-smi`, `sudo docker ps`, check for running serving/scoring/calibration. Honor **Rule 1** (no concurrent calibration + eval/serving) and **Rule 2** (no concurrent rollout + score) — only one GPU/docker workload at a time.
-3. **Pick the next lever.** Highest-value untried *serving/optimization or eval* item for a model in the perf table — README → Status & next steps (item 2) / `docs/decode-levers.md`, a bake-off cycle, or a 256K quality/throughput probe. **This box owns evals + serving/256K-optimization + analysis + docs + cross-team sharing, and (user, after the Qwopus ship) may also run calibrations** — GPTQ→CT→AWQ and Flint AWQ-calibrator builds are allowed here under Rule 1 (never concurrent with serving/eval; GPU work is serial), the separate same-repo calibration device still pushes its own commits that we `git pull --rebase`. Note the chosen lever in its GitHub issue (open one if none exists) *before* starting (user can redirect); the README carries state only.
+3. **Pick the next lever.** Highest-value untried *serving/optimization or eval* item for a model in the perf table — the open GitHub issues (`P1` first) / `docs/decode-levers.md`, a bake-off cycle, or a 256K quality/throughput probe. **This box owns evals + serving/256K-optimization + analysis + docs + cross-team sharing, and may also run calibrations** — GPTQ→CT→AWQ and Flint AWQ-calibrator builds are allowed here under Rule 1 (never concurrent with serving/eval; GPU work is serial), the separate same-repo calibration device still pushes its own commits that we `git pull --rebase`. Note the chosen lever in its GitHub issue (open one if none exists) *before* starting (user can redirect); the README carries state only.
 4. **Baseline → apply → measure.** Single-user (M=1), at the model's real KV cap, fresh prefill. Harness: `scripts/eval/run_v0512_fleet_eval.sh` (quality + tok/s + 256K probe) or `scripts/bench/bench_long_context.py`. Record tok/s + TPOT.
 5. **Decide & document.** WIN → update the preset in `launch.sh` + the [Performance] / [Model Support] tables (these tables ARE the receipts), and `BASELINE=save scripts/bench/bench_regression.sh <preset>` to lock the new level into the tripwire. NULL/parked → one ledger line in `docs/decode-levers.md` with the receipt path under `benchmarks/`; negative results are findings, keep them. Either way, push portable findings to R9700's README. Any patch touching the serving hot path → re-run `bench_regression.sh` compare on affected presets.
 6. **Commit + push** at the clean boundary (small self-contained commits). Then **schedule the next iteration** (background-job completion re-invokes us; otherwise `ScheduleWakeup`).
