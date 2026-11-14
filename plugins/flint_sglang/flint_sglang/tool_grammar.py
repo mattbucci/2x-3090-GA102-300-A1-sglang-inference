@@ -78,18 +78,19 @@ TRAILING_KEYS = ("i", "description", "intent", "explanation", "reason", "summary
 # ``edit`` (1.9 % -> 45.7 %: ``input`` forced first, Flint writes ``x``/``true`` there, the edit fails and is
 # retried) — receipt ``benchmarks/quality/omp-lane-close-flint-v5-2026-11-11/README.md``.
 DECLARED_ORDER_TOOLS = ("edit",)
-# Intent keys of those tools are held to one short line that cannot open a hashline or patch header: with the
-# declared order restored, Flint still wrote the whole edit payload into ``i`` and a filler into ``input`` in
-# 9-14 % of ``edit`` calls (flint:omp probe 2026-11-11 34/243, spec30 cell 2026-11-14 18/195; every one failed
-# and was retried). The pattern closes ``i`` at the first newline, so the payload has to go to ``input``.
-# ``FLINT_EDIT_INTENT_PATTERN=0`` turns it off; a schema that already constrains the key is left alone.
+# Opt-in (``FLINT_EDIT_INTENT_PATTERN=1``), off by default: hold the intent key of those tools to one short line
+# that cannot open a hashline or patch header. Flint writes the whole edit payload into ``i`` and a filler into
+# ``input`` in 9-14 % of ``edit`` calls (order probe 2026-11-11 34/243, spec30 cell 2026-11-14 18/195), and the
+# pattern was meant to push the payload into ``input``. Served, it made things worse: Flint wrote the header
+# without its bracket into ``i`` and the hunk into ``input``, and one of the first three instances repeated that
+# failing call 251 times (receipt ``benchmarks/quality/flint/omp-editintent-probe-2026-11-14.json``).
 INTENT_PATTERN_ENV = "FLINT_EDIT_INTENT_PATTERN"
 INTENT_KEYS = ("i",)
 INTENT_PATTERN = r"^([^\n\[*][^\n]{0,199})?$"
 
 
 def _intent_one_line(parameters: Any) -> Any:
-    if os.environ.get(INTENT_PATTERN_ENV, "1").strip().lower() in ("0", "false", "no", "off"):
+    if os.environ.get(INTENT_PATTERN_ENV, "0").strip().lower() not in ("1", "true", "yes", "on"):
         return parameters
     if not isinstance(parameters, dict) or not isinstance(parameters.get("properties"), dict):
         return parameters

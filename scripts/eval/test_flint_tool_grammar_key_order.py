@@ -13,6 +13,7 @@ import os
 import sys
 
 os.environ["FLINT_STRICT_TOOLS"] = "1"
+os.environ["FLINT_EDIT_INTENT_PATTERN"] = "1"  # opt-in; the grammar cases below cover it
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(REPO, "plugins", "flint_sglang"))
 

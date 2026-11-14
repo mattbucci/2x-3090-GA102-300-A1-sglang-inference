@@ -1,0 +1,26 @@
+{
+ "what": "flint:omp served probe of the strict-grammar one-line pattern on edit's intent key (8b6e46f), stopped after 3 of 24 instances",
+ "edit_calls": 273,
+ "calls_with_header_in_intent_and_hunk_in_input": 251,
+ "sessions_with_that_shape": {
+  "django__django-13033": 251
+ },
+ "example": {
+  "i": "django/db/models/sql/compiler.py#6E92\\n   \\n\\n        ",
+  "input": "PUT 730.730:\\n+        if field.is_relation ..."
+ },
+ "reference_same_shape_without_pattern": {
+  "spec30_cell_2026-11-14": "18 of 195 edit calls (payload in intent, filler input)",
+  "order_probe_2026-11-11": "34 of 243",
+  "v4_full_cell": "163 of 2532"
+ },
+ "edit_error_rate_without_pattern": {
+  "spec30": "123 of 195",
+  "top_messages": {
+   "payload line has no preceding hunk header": 17,
+   "clipboard-backed op given body rows": 12,
+   "input must begin with a section header": "about 13"
+  }
+ },
+ "verdict": "pattern off by default; the value grammar also lets whitespace and newlines trail the pattern match"
+}
