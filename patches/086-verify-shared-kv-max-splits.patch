@@ -1,0 +1,40 @@
+086 verify-shared-kv-max-splits: env bound for the stage-1 split grid of the grouped verify kernel
+
+The grouped target-verify kernel (081 / 082 / 085) caps its stage-1 grid at 32 KV splits.
+With Flint's 16 Q heads per rank on the 8-head tile (two head blocks) that is 64 programs on
+an 82-SM GA102; the optimum is about one 8-warp program per SM. SGLANG_VERIFY_SHARED_KV_MAX_SPLITS
+sets the bound (unset / malformed / out of 1..512 = 32). Arithmetic is unchanged; only the
+split partition of the log-sum-exp merge moves (same error vs the fp32 reference).
+flint DFlash2, 40 splits: spec cycle 13.6 -> 13.15 ms at 131K, 16.4 -> 15.6 ms at 241K,
+11.45 -> 11.37 ms at 34K. Kernel alone (16 Q / 2 KV heads, 8 rows, e5m2): 428 -> 358 us per
+layer at 241K; 48 splits (96 programs) falls to 581 us, 80 splits pays in the combine stage.
+---
+diff --git a/python/sglang/kernels/ops/attention/verify_mla.py b/python/sglang/kernels/ops/attention/verify_mla.py
+--- a/python/sglang/kernels/ops/attention/verify_mla.py
++++ b/python/sglang/kernels/ops/attention/verify_mla.py
+@@ -25,7 +25,24 @@
+ 
+ _VERIFY_SWA = os.environ.get("SGLANG_VERIFY_SHARED_KV_SWA", "1") != "0"
+ 
+-MAX_N_SPLITS = 32  # Grid split dim upper bound
++
++def _env_max_splits(default=32):
++    """[3090 086] SGLANG_VERIFY_SHARED_KV_MAX_SPLITS: upper bound of the stage-1 split grid.
++
++    With one head block per launch (TP-split GQA heads on a wide BLOCK_H) the upstream
++    bound of 32 leaves most SMs idle; ~1 program per SM is the optimum on GA102 (82 SMs).
++    """
++    raw = os.environ.get("SGLANG_VERIFY_SHARED_KV_MAX_SPLITS", "").strip()
++    if not raw:
++        return default
++    try:
++        val = int(raw)
++    except ValueError:
++        return default
++    return val if 1 <= val <= 512 else default
++
++
++MAX_N_SPLITS = _env_max_splits()  # Grid split dim upper bound
+ TARGET_PROGRAMS = 512  # Target total stage-1 programs
+ 
+ DEFAULT_BLOCK_H = (
