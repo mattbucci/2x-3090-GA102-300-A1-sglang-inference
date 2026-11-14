@@ -1,0 +1,52 @@
+{
+ "tag": "gemma4-12b-int8head-needle-off-2026-11-13",
+ "timestamp": "2026-11-13 17:33",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 140281,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 338,
+    "content_tail": "The secret password is: BANANA42.",
+    "reasoning_tail": "solved problems.\nIn the middle of the problems, there'5s a \"secret password\" label.\nIt says \"The secret password is: BANANA42.\"\nI will just output the password.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 183,
+    "content_tail": "The secret password is **BANANA42**.",
+    "reasoning_tail": "\n\n    *   The prompt ends with \"What is the secret password?\"\n    *   The text contains \"The secret password is: BANANA42.\"\n\n    *   State the password clearly.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1093,
+    "content_tail": "15",
+    "reasoning_tail": "o the last math problem.\nThe last math problem's answer is 15.\n\nLet me check the provided text for any other \"password\" or \"secret\".\nNone found.\n\nI will try 15.",
+    "answered": false
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 0.6666666666666666
+ }
+}

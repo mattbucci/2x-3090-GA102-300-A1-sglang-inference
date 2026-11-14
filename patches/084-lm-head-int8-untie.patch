@@ -1,0 +1,100 @@
+084 lm-head-int8-untie: INT8 copy of the tied Gemma 4 output head
+
+Patch 069 repacks a separate bf16 output head to Marlin W8A16; Gemma 4 ties the head to
+the embedding table, so its presets kept a bf16 gemv over the whole vocabulary shard every
+decode step (131072 x 5376 = 1.41 GB per rank on the 31B). SGLANG_LM_HEAD_INT8_UNTIE=1
+(with SGLANG_LM_HEAD_INT8=1) takes the existing non-tied path on a single PP rank: a real
+ParallelLMHead is built, the checkpoint embedding is copied into it and patch 069 repacks
+that copy. The embedding lookup stays dense bf16; the cost is the INT8 copy in VRAM
+(0.70 GB per rank on the 31B: KV pool 330,994 -> 306,418 tokens, still above 262,144).
+Covers both served classes (Gemma4ForConditionalGeneration and the unified class the 12B
+loads through). Tripwire, tok/s at 1K / 32K / 262K:
+gemma4-31b      60.2 / 55.9 / 39.8 -> 70.9 / 65.1 / 44.3
+gemma4          90.4 / 85.9 / 64.4 -> 101.8 / 96.4 / 70.2
+gemma4-21b-reap 89.2 / 84.7 / 63.5 -> 102.2 / 96.3 / 70.4
+gemma4-12b      118.3 / 106.4 / 64.5 -> 149.7 / 131.6 / 73.4
+---
+diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
+index 9f49cfab85..159cde69e0 100644
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -555,6 +555,9 @@ class Envs:
+     # INT4 weight made per call) for calls with at least this many rows; 0 = off (decode stays W4A16).
+     SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS = EnvInt(0)
+     SGLANG_LM_HEAD_INT8 = EnvBool(False)
++    # [3090 084] Tied heads (Gemma 4): materialize a separate head so the INT8 repack applies;
++    # the embedding table stays dense. Costs the INT8 copy in VRAM (half the bf16 table).
++    SGLANG_LM_HEAD_INT8_UNTIE = EnvBool(False)
+     # Scale granularity for the INT8 head: -1 = per output channel, or a group size
+     # (32 / 64 / 128) along the hidden dim; Marlin takes either.
+     SGLANG_LM_HEAD_INT8_GROUP = EnvInt(-1)
+diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
+index 2f0768d264..adf0d88257 100644
+--- a/python/sglang/srt/models/gemma4_mm.py
++++ b/python/sglang/srt/models/gemma4_mm.py
+@@ -263,6 +263,11 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+             self.pp_group.world_size == 1
+             and text_tie
+             and not (_is_cpu and _is_cpu_amx_available)
++            # [3090 084] opt-in INT8 copy of the tied head (the gemv reads half the bytes)
++            and not (
++                envs.SGLANG_LM_HEAD_INT8.get()
++                and envs.SGLANG_LM_HEAD_INT8_UNTIE.get()
++            )
+         )
+         if self.lm_head_is_tied:
+             self.lm_head = self.language_model.embed_tokens
+diff --git a/python/sglang/srt/models/gemma4_unified.py b/python/sglang/srt/models/gemma4_unified.py
+index 1d00d0cbca..19ae7104d9 100644
+--- a/python/sglang/srt/models/gemma4_unified.py
++++ b/python/sglang/srt/models/gemma4_unified.py
+@@ -50,7 +50,12 @@ from sglang.srt.managers.schedule_batch import (
+     flatten_nested_list,
+ )
+ from sglang.srt.model_loader.weight_utils import default_weight_loader
+-from sglang.srt.models.gemma4_causal import Gemma4TextModel, pp_filter_load_weight
++from sglang.srt.environ import envs
++from sglang.srt.models.gemma4_causal import (
++    Gemma4TextModel,
++    load_tied_lm_head,
++    pp_filter_load_weight,
++)
+ from sglang.srt.models.gemma4_mm import Gemma4ForConditionalGeneration
+ from sglang.srt.runtime_context import get_parallel
+ from sglang.srt.utils import add_prefix
+@@ -190,7 +195,15 @@ class Gemma4UnifiedForConditionalGeneration(Gemma4ForConditionalGeneration):
+         )
+ 
+         text_tie = getattr(text_config, "tie_word_embeddings", True)
+-        self.lm_head_is_tied = self.pp_group.world_size == 1 and text_tie
++        self.lm_head_is_tied = (
++            self.pp_group.world_size == 1
++            and text_tie
++            # [3090 084] opt-in INT8 copy of the tied head (the gemv reads half the bytes)
++            and not (
++                envs.SGLANG_LM_HEAD_INT8.get()
++                and envs.SGLANG_LM_HEAD_INT8_UNTIE.get()
++            )
++        )
+         if self.lm_head_is_tied:
+             self.lm_head = self.language_model.embed_tokens
+         elif self.pp_group.is_last_rank:
+@@ -411,6 +424,18 @@ class Gemma4UnifiedForConditionalGeneration(Gemma4ForConditionalGeneration):
+                 weight_loader = getattr(param, "weight_loader", default_weight_loader)
+                 weight_loader(param, loaded_weight)
+                 loaded_params.add(name)
++                # [3090 084] untied head on a single PP rank: copy the embedding in
++                if (
++                    text_tie
++                    and not self.lm_head_is_tied
++                    and self.pp_group.world_size == 1
++                    and name == "language_model.embed_tokens.weight"
++                ):
++                    load_tied_lm_head(
++                        loaded_weight,
++                        params_dict=params_dict,
++                        loaded_params=loaded_params,
++                    )
+ 
+         unloaded_params = params_dict.keys() - loaded_params
+         if unloaded_params:

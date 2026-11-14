@@ -1,0 +1,91 @@
+{
+ "tag": "gemma4-31b-int8head-needle-2026-11-13",
+ "timestamp": "2026-11-13 15:35",
+ "temperature": "default",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 140281,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 114,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ret password is: BANANA42.\"\n\n    *   Scanning the text...\n    *   Found it: \"The secret password is: BANANA42.\"\n\n    *   The user asked for \"just the password\".",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 149,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "igits within this string is divisible by 19 or 31... The secret password is: BANANA42.\"\n\n    *   The text explicitly states: \"The secret password is: BANANA42.\"",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 140283,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 121,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "or \"secret password\".\n    *   Found the sentence: \"The secret password is: BANANA42.\"\n\n    *   The user wants only the password.\n    *   Password is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 240000,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 231280,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 151,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "rd is: BANANA42.\"\n    *   The user asks for the secret password.\n    *   The user specifies \"Answer with just the password.\"\n\nThe secret password is \"BANANA42\".",
+    "answered": true
+   },
+   {
+    "context": 240000,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 231280,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 96,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ough the text...\n    *   Found a line: \"The secret password is: BANANA42.\"\n    *   The request is: \"What is the secret password? Answer with just the password.\"",
+    "answered": true
+   },
+   {
+    "context": 240000,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 231280,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 176,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "contains 1024 lockers... The secret password is: BANANA42.\"\n\n    *   The text says \"The secret password is: BANANA42.\"\n    *   The user wants just the password.",
+    "answered": true
+   }
+  ],
+  "score": 1.0,
+  "answered_score": 1.0
+ }
+}

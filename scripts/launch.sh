@@ -81,7 +81,8 @@ EXTRA_ARGS="${EXTRA_ARGS:-}"
 # (eval_and_chart bf16-vs-int8, five presets, MMLU within noise, HumanEval identical;
 # receipt benchmarks/quality/lm-head-int8-2026-10-31.md). Special-token rows stay bf16
 # (SGLANG_LM_HEAD_INT8_EXACT_SPECIALS=1); SGLANG_LM_HEAD_INT8_GROUP=-1|32|64|128.
-# Tied heads (Gemma 4) are untouched. SGLANG_LM_HEAD_INT8=0 disables; nemotron3-omni pins it off.
+# Tied heads (Gemma 4) need SGLANG_LM_HEAD_INT8_UNTIE=1 (patch 084, set per preset: an INT8
+# copy of the head, the embedding stays dense). SGLANG_LM_HEAD_INT8=0 disables; nemotron3-omni pins it off.
 export SGLANG_LM_HEAD_INT8="${SGLANG_LM_HEAD_INT8:-1}"
 # patch 072 (2026-11-01): exact incremental tokenization for append-only chat prompts — the
 # server re-encoded the whole conversation every turn (Flint 1.7 us/token: 415 ms of a 466 ms
@@ -324,6 +325,10 @@ apply_preset() {
             # gate: MMLU 288 vs 286 of 342, HumanEval 308 vs 305 of 328, needle band 10/10 vs 9/10, caps
             # 5/5. The first routed request per JIT cache pays a one-time flashinfer compile. 0 disables.
             export SGLANG_EXTEND_FLASHINFER_MIN_ROWS="${SGLANG_EXTEND_FLASHINFER_MIN_ROWS:-257}"
+            # patch 084 (2026-11-13): INT8 copy of the tied output head — the bf16 head gemv
+            # over the vocab shard was 13-17 % of the decode step. Costs the INT8 copy in VRAM
+            # (pool stays above 262,144). Parity gate on vs off in one session. 0 disables.
+            export SGLANG_LM_HEAD_INT8_UNTIE="${SGLANG_LM_HEAD_INT8_UNTIE:-1}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
             ;;
         gemma4-21b-reap)
@@ -360,6 +365,10 @@ apply_preset() {
             # gate: MMLU 274 vs 275 of 342, HumanEval 304 vs 305 of 328, needle band 7/10 both arms, caps
             # 5/5. The first routed request per JIT cache pays a one-time flashinfer compile. 0 disables.
             export SGLANG_EXTEND_FLASHINFER_MIN_ROWS="${SGLANG_EXTEND_FLASHINFER_MIN_ROWS:-257}"
+            # patch 084 (2026-11-13): INT8 copy of the tied output head — the bf16 head gemv
+            # over the vocab shard was 13-17 % of the decode step. Costs the INT8 copy in VRAM
+            # (pool stays above 262,144). Parity gate on vs off in one session. 0 disables.
+            export SGLANG_LM_HEAD_INT8_UNTIE="${SGLANG_LM_HEAD_INT8_UNTIE:-1}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
             ;;
         gemma4-31b)
@@ -407,6 +416,10 @@ apply_preset() {
             # gate: MMLU 328 vs 326 of 342, HumanEval 312 vs 312 of 328, needle band 10/10 both arms, caps
             # 5/5. The first routed request per JIT cache pays a one-time flashinfer compile. 0 disables.
             export SGLANG_EXTEND_FLASHINFER_MIN_ROWS="${SGLANG_EXTEND_FLASHINFER_MIN_ROWS:-257}"
+            # patch 084 (2026-11-13): INT8 copy of the tied output head — the bf16 head gemv
+            # over the vocab shard was 13-17 % of the decode step. Costs the INT8 copy in VRAM
+            # (pool stays above 262,144). Parity gate on vs off in one session. 0 disables.
+            export SGLANG_LM_HEAD_INT8_UNTIE="${SGLANG_LM_HEAD_INT8_UNTIE:-1}"
             #  * patch 071 (2026-11-01): W4A8 prefill on the dense AWQ-Marlin linears —
             #    fresh-prefill TTFT 169 -> 147 s @131K (-13 %; the 512-wide global-layer
             #    attention is the larger share here), decode identical, MMLU 55/57, HE 30/30,
