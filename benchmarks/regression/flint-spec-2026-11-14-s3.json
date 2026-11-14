@@ -1,0 +1,39 @@
+{
+  "model": "flint-spec",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "bench_long_context natural-text (chat stream, cache flushed per point)",
+  "prompt_source": "natural",
+  "timestamp": "2026-11-14 14:24:23",
+  "output_tokens": 100,
+  "max_total_num_tokens": 620336,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1081,
+      "ttft_ms": 176.68,
+      "tpot_ms": 3.54,
+      "throughput": 189.77,
+      "tok_per_sec": 282.6,
+      "completion_tokens": 100
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32152,
+      "ttft_ms": 2458.26,
+      "tpot_ms": 3.88,
+      "throughput": 35.18,
+      "tok_per_sec": 257.5,
+      "completion_tokens": 100
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 253121,
+      "ttft_ms": 53361.27,
+      "tpot_ms": 4.98,
+      "throughput": 1.86,
+      "tok_per_sec": 200.7,
+      "completion_tokens": 100
+    }
+  ]
+}
