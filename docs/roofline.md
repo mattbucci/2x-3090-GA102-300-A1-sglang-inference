@@ -47,7 +47,7 @@ roofline bytes, and the GEMMs run at 20–27 % of bandwidth because the matrices
 
 One verify pass reads the weights once for several tokens, so accepted tokens per cycle multiply the
 ceiling. Flint DFlash2 with patch 082: cycle 11.6 ms at 34K, 18.1 ms at 241K, against plain steps of
-6.3 / 8.8 ms → break-even at 1.8 / 2.1 accepted tokens. Head-to-head on a natural-text summary (two interleaved passes, `flint-plain-vs-dflash2.json`): **166 → 234 / 252 tok/s at 34K, 115 → 195 / 176 tok/s at 241K** — at depth the spec arm runs at about half of the plain-decode bandwidth ceiling, the plain arm at 30 %. In the cycle at 241K attention is 9.5 ms
+6.3 / 8.8 ms → break-even at 1.8 / 2.1 accepted tokens (patch 085's verify tile then takes the 241K cycle to 16.4 ms, break-even 1.9; the figures below predate it). Head-to-head on a natural-text summary (two interleaved passes, `flint-plain-vs-dflash2.json`): **166 → 234 / 252 tok/s at 34K, 115 → 195 / 176 tok/s at 241K** — at depth the spec arm runs at about half of the plain-decode bandwidth ceiling, the plain arm at 30 %. In the cycle at 241K attention is 9.5 ms
 (8 verify rows scan the same KV the 1-row decode kernel scans in ~2.5 ms), MoE GEMM 2.3 ms (expert
 fan-out across rows), glue 3.4 ms. `qwen38` DSpark is the shipped example (1.4–1.5×). Code generation over a source-code context holds the same ratio (169 → 277 / 289 tok/s at 27K, 127 → 203 / 183 at 183K), and the `flint-spec` tripwire arm reads 298 / 238 / 162 tok/s at 1K / 32K / 262K against 115 plain at 262K. Quality gate vs plain decode is at parity (tool use, cached turns, deep needle; the one reasoning-probe cell that differed is a near-tie branch plain decode also takes on a cache hit — ledger).
 

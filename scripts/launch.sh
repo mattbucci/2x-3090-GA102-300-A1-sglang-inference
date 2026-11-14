@@ -848,6 +848,11 @@ apply_preset() {
                 # Patch 082: the 35 sliding-window layers take the grouped verify too (default
                 # on; SGLANG_VERIFY_SHARED_KV_SWA=0 = extend-kernel fallback). Spec cycle
                 # 15.0 -> 11.6 ms at 34K, 21.2 -> 18.1 ms at 241K; MMLU / HumanEval / needle tie.
+                # Patch 085: prefix tile of the grouped verify, 8 heads x 128 keys on 8 warps
+                # (the kernel's table has no 128-wide entry -> untuned 4 x 64). Spec cycle
+                # 14.45 -> 13.6 ms at 128K, 18.1 -> 16.4 ms at 241K, flat at 34K; MMLU /
+                # HumanEval / needle tie over two passes. Empty = the kernel's table.
+                export SGLANG_VERIFY_SHARED_KV_TILE="${SGLANG_VERIFY_SHARED_KV_TILE-8,128,8}"
             fi
             ;;
         qwen35-dense)
