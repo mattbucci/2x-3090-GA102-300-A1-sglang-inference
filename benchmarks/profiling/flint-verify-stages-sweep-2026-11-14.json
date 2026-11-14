@@ -1,0 +1,180 @@
+{
+ "what": "Flint DFlash2 spec cycle vs Triton num_stages on the shared-KV verify stage-1 kernel (patch 088) and on the draft extend kernel. Served kernel trace, 60 steps mid-generation, interleaved server boots, 300 W cap. cycle_ms = trace span per step; verify_stage1_ms = that kernel per step on rank 0.",
+ "rows": [
+  {
+   "depth": "241K",
+   "boot": "v1e1-1",
+   "verify_stage1_num_stages": 1,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 14.66,
+   "kernel_ms": 14.38,
+   "verify_stage1_ms": 4.628
+  },
+  {
+   "depth": "241K",
+   "boot": "v2e1-1",
+   "verify_stage1_num_stages": 2,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 14.69,
+   "kernel_ms": 14.44,
+   "verify_stage1_ms": 4.483
+  },
+  {
+   "depth": "241K",
+   "boot": "v2e2-1",
+   "verify_stage1_num_stages": 2,
+   "draft_extend_num_stages": 2,
+   "cycle_ms": 14.61,
+   "kernel_ms": 14.35,
+   "verify_stage1_ms": 4.463
+  },
+  {
+   "depth": "241K",
+   "boot": "v1e1-2",
+   "verify_stage1_num_stages": 1,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 14.74,
+   "kernel_ms": 14.48,
+   "verify_stage1_ms": 4.622
+  },
+  {
+   "depth": "241K",
+   "boot": "v2e1-2",
+   "verify_stage1_num_stages": 2,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 14.62,
+   "kernel_ms": 14.38,
+   "verify_stage1_ms": 4.453
+  },
+  {
+   "depth": "241K",
+   "boot": "v3e1-1",
+   "verify_stage1_num_stages": 3,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 14.17,
+   "kernel_ms": 13.91,
+   "verify_stage1_ms": 3.928
+  },
+  {
+   "depth": "241K",
+   "boot": "v4e1-1",
+   "verify_stage1_num_stages": 4,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 14.05,
+   "kernel_ms": 13.8,
+   "verify_stage1_ms": 3.948
+  },
+  {
+   "depth": "241K",
+   "boot": "v3e1-2",
+   "verify_stage1_num_stages": 3,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 14.26,
+   "kernel_ms": 13.99,
+   "verify_stage1_ms": 3.947
+  },
+  {
+   "depth": "241K",
+   "boot": "v5e1-1",
+   "verify_stage1_num_stages": 5,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 16.22,
+   "kernel_ms": 15.95,
+   "verify_stage1_ms": 5.872
+  },
+  {
+   "depth": "241K",
+   "boot": "v1e1-3",
+   "verify_stage1_num_stages": 1,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 14.86,
+   "kernel_ms": 14.59,
+   "verify_stage1_ms": 4.625
+  },
+  {
+   "depth": "241K",
+   "boot": "v4e1-2",
+   "verify_stage1_num_stages": 4,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 13.64,
+   "kernel_ms": 13.39,
+   "verify_stage1_ms": 3.942
+  },
+  {
+   "depth": "241K",
+   "boot": "v3e1-3",
+   "verify_stage1_num_stages": 3,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 14.17,
+   "kernel_ms": 13.91,
+   "verify_stage1_ms": 3.945
+  },
+  {
+   "depth": "34K",
+   "boot": "s1-1",
+   "verify_stage1_num_stages": 1,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 10.54,
+   "kernel_ms": 10.29,
+   "verify_stage1_ms": 1.08
+  },
+  {
+   "depth": "34K",
+   "boot": "s3-1",
+   "verify_stage1_num_stages": 3,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 10.41,
+   "kernel_ms": 10.14,
+   "verify_stage1_ms": 0.98
+  },
+  {
+   "depth": "34K",
+   "boot": "s1-2",
+   "verify_stage1_num_stages": 1,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 10.59,
+   "kernel_ms": 10.33,
+   "verify_stage1_ms": 1.08
+  },
+  {
+   "depth": "34K",
+   "boot": "s3-2",
+   "verify_stage1_num_stages": 3,
+   "draft_extend_num_stages": 1,
+   "cycle_ms": 10.46,
+   "kernel_ms": 10.2,
+   "verify_stage1_ms": 0.98
+  }
+ ],
+ "quality_at_3_stages": {
+  "mmlu": "146/171",
+  "humaneval": "137/164",
+  "needle_196K_229K_254K": "12/15 found",
+  "receipts": [
+   "benchmarks/quality/flint-verifystages-3-2026-11-14.json",
+   "benchmarks/quality/flint-verifystages-3-needle-2026-11-14.json"
+  ]
+ },
+ "tripwire_flint_spec_tok_s": {
+  "baseline_saved_before_085": [
+   269.6,
+   255.7,
+   189.7
+  ],
+  "run1": [
+   326.1,
+   310.4,
+   217.2
+  ],
+  "run2": [
+   282.5,
+   255.0,
+   210.6
+  ],
+  "points": [
+   "1024",
+   "32768",
+   "deep 261916"
+  ]
+ }
+}
