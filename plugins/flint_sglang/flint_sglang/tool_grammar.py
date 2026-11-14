@@ -78,11 +78,35 @@ TRAILING_KEYS = ("i", "description", "intent", "explanation", "reason", "summary
 # ``edit`` (1.9 % -> 45.7 %: ``input`` forced first, Flint writes ``x``/``true`` there, the edit fails and is
 # retried) — receipt ``benchmarks/quality/omp-lane-close-flint-v5-2026-11-11/README.md``.
 DECLARED_ORDER_TOOLS = ("edit",)
+# Intent keys of those tools are held to one short line that cannot open a hashline or patch header: with the
+# declared order restored, Flint still wrote the whole edit payload into ``i`` and a filler into ``input`` in
+# 9-14 % of ``edit`` calls (flint:omp probe 2026-11-11 34/243, spec30 cell 2026-11-14 18/195; every one failed
+# and was retried). The pattern closes ``i`` at the first newline, so the payload has to go to ``input``.
+# ``FLINT_EDIT_INTENT_PATTERN=0`` turns it off; a schema that already constrains the key is left alone.
+INTENT_PATTERN_ENV = "FLINT_EDIT_INTENT_PATTERN"
+INTENT_KEYS = ("i",)
+INTENT_PATTERN = r"^([^\n\[*][^\n]{0,199})?$"
+
+
+def _intent_one_line(parameters: Any) -> Any:
+    if os.environ.get(INTENT_PATTERN_ENV, "1").strip().lower() in ("0", "false", "no", "off"):
+        return parameters
+    if not isinstance(parameters, dict) or not isinstance(parameters.get("properties"), dict):
+        return parameters
+    props = dict(parameters["properties"])
+    for key in INTENT_KEYS:
+        if props.get(key) == {"type": "string"} or (
+            isinstance(props.get(key), dict)
+            and props[key].get("type") == "string"
+            and not ({"pattern", "enum", "const", "maxLength", "format"} & set(props[key]))
+        ):
+            props[key] = {**props[key], "pattern": INTENT_PATTERN}
+    return {**parameters, "properties": props}
 
 
 def _trailing_keys_last(parameters: Any, name: str | None = None) -> Any:
     if name in DECLARED_ORDER_TOOLS:
-        return parameters
+        return _intent_one_line(parameters)
     if not isinstance(parameters, dict) or not isinstance(parameters.get("properties"), dict):
         return parameters
     props = parameters["properties"]

@@ -84,6 +84,13 @@ def main():
         ("omp: edit i then input", accepts(g_both, ECALL.format(ARG.format("i", "fix") + ARG.format("input", body)), stop), True),
         ("omp: edit input then i (v5 forced order)", accepts(g_both, ECALL.format(ARG.format("input", body) + ARG.format("i", "fix")), stop), False),
         ("omp: bash still command first next to edit", accepts(g_both, cmd_then_i, stop), True),
+        # the intent is one short line: a payload cannot be written into it (flint:omp, 9-14 % of edit calls)
+        ("omp: edit payload in i, filler input", accepts(g_both, ECALL.format(ARG.format("i", body) + ARG.format("input", "true")), stop), False),
+        ("omp: edit patch header in i", accepts(g_both, ECALL.format(ARG.format("i", "*** Begin Patch") + ARG.format("input", body)), stop), False),
+        ("omp: edit 201-char i", accepts(g_both, ECALL.format(ARG.format("i", "x" * 201) + ARG.format("input", body)), stop), False),
+        ("omp: edit 200-char i", accepts(g_both, ECALL.format(ARG.format("i", "x" * 200) + ARG.format("input", body)), stop), True),
+        ("omp: edit empty i", accepts(g_both, ECALL.format(ARG.format("i", "") + ARG.format("input", body)), stop), True),
+        ("omp: bash i stays free-form", accepts(g_both, CALL.format(ARG.format("command", "ls") + ARG.format("i", "a\nb")), stop), True),
     ]
     bad = 0
     for name, got, want in checks:
