@@ -1,0 +1,139 @@
+{
+ "what": "Flint DFlash2 spec cycle: SGLANG_EXTEND_ATTN_SMALL_TILE sweep for the draft attention (patch 087). Served start_profile trace, 60 steps, rank 0; arm = <max_rows>_<BLOCK_M>_<BLOCK_N>_<warps>, off = 128x128 prefill tile. chars 120000 = 34.5K prompt, 800000 = 241.5K.",
+ "cycle_trace": [
+  {
+   "arm": "off-1",
+   "chars": 120000,
+   "cycle_ms": 11.73,
+   "kernel_sum_ms": 11.4,
+   "draft_fwd_kernel_ms": 1.465
+  },
+  {
+   "arm": "16_16_128_4-1",
+   "chars": 120000,
+   "cycle_ms": 10.63,
+   "kernel_sum_ms": 10.38,
+   "draft_fwd_kernel_ms": 0.399
+  },
+  {
+   "arm": "16_16_64_4-1",
+   "chars": 120000,
+   "cycle_ms": 10.65,
+   "kernel_sum_ms": 10.4,
+   "draft_fwd_kernel_ms": 0.503
+  },
+  {
+   "arm": "32_32_128_4-1",
+   "chars": 120000,
+   "cycle_ms": 10.67,
+   "kernel_sum_ms": 10.41,
+   "draft_fwd_kernel_ms": 0.574
+  },
+  {
+   "arm": "64_16_128_4-1",
+   "chars": 120000,
+   "cycle_ms": 10.55,
+   "kernel_sum_ms": 10.27,
+   "draft_fwd_kernel_ms": 0.402
+  },
+  {
+   "arm": "off-2",
+   "chars": 120000,
+   "cycle_ms": 11.68,
+   "kernel_sum_ms": 11.47,
+   "draft_fwd_kernel_ms": 1.475
+  },
+  {
+   "arm": "off-3",
+   "chars": 800000,
+   "cycle_ms": 15.77,
+   "kernel_sum_ms": 15.51,
+   "draft_fwd_kernel_ms": 1.534
+  },
+  {
+   "arm": "off-4",
+   "chars": 800000,
+   "cycle_ms": 15.89,
+   "kernel_sum_ms": 15.64,
+   "draft_fwd_kernel_ms": 1.538
+  },
+  {
+   "arm": "16_16_128_4-3",
+   "chars": 800000,
+   "cycle_ms": 14.77,
+   "kernel_sum_ms": 14.5,
+   "draft_fwd_kernel_ms": 0.422
+  }
+ ],
+ "repeat_241k_no_profiler": {
+  "note": "3500-token generations, tile on/off interleaved, one boot each. tok/s is content-dependent: zlib_ratio < 0.2 = the model fell into a repetition loop (full-accept cycles); it occurs in the off arm (2 of 4) so it is the checkpoint's attractor, not the tile. One profiled tile-on run (16_16_128_4-2, 518 tok/s, no trace captured) was the same event.",
+  "runs": [
+   {
+    "run": "rep1-16_16_128_4",
+    "tok_s": 214.7,
+    "text_chars": 14834,
+    "zlib_ratio": 0.249,
+    "prompt_tokens": 241518
+   },
+   {
+    "run": "rep2-off",
+    "tok_s": 332.9,
+    "text_chars": 15629,
+    "zlib_ratio": 0.106,
+    "prompt_tokens": 241518
+   },
+   {
+    "run": "rep3-16_16_128_4",
+    "tok_s": 226.1,
+    "text_chars": 13871,
+    "zlib_ratio": 0.297,
+    "prompt_tokens": 241518
+   },
+   {
+    "run": "rep4-off",
+    "tok_s": 189.1,
+    "text_chars": 12620,
+    "zlib_ratio": 0.366,
+    "prompt_tokens": 241518
+   },
+   {
+    "run": "rep5-16_16_128_4",
+    "tok_s": 221.8,
+    "text_chars": 11904,
+    "zlib_ratio": 0.373,
+    "prompt_tokens": 241518
+   },
+   {
+    "run": "rep6-off",
+    "tok_s": 255.9,
+    "text_chars": 14423,
+    "zlib_ratio": 0.192,
+    "prompt_tokens": 241518
+   },
+   {
+    "run": "rep7-16_16_128_4",
+    "tok_s": 204.8,
+    "text_chars": 12200,
+    "zlib_ratio": 0.336,
+    "prompt_tokens": 241518
+   },
+   {
+    "run": "rep8-off",
+    "tok_s": 388.5,
+    "text_chars": 13810,
+    "zlib_ratio": 0.079,
+    "prompt_tokens": 241518
+   }
+  ]
+ },
+ "quality_tile_on": {
+  "mmlu": "149/171",
+  "humaneval": "134/164",
+  "needle_haystack_196K_229K_254K": "12/15",
+  "baseline_s40_a_b": {
+   "mmlu": "150/151",
+   "humaneval": "135/134",
+   "needle": "14/11"
+  }
+ }
+}

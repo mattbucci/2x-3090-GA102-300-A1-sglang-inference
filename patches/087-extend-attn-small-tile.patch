@@ -1,0 +1,48 @@
+087 extend-attn-small-tile: row-count-aware tile for short extends on CUDA
+
+The Triton extend kernel sizes BLOCK_M from the arch table for long prefills (128 rows on
+Flint's head_dim-128 override). A spec-decode draft block of a few rows then pays a full
+128-row tile per key block: the DFlash2 draft's 5 layers cost 1.5 ms of every Flint spec
+cycle at any depth. SGLANG_EXTEND_ATTN_SMALL_TILE="<max_rows>:<BLOCK_M>,<BLOCK_N>,<num_warps>"
+(unset / malformed = off) picks the given tile when max_len_extend <= max_rows.
+flint DFlash2, "16:16,128,4": draft attention 1.47 -> 0.40 ms per cycle; spec cycle
+11.7 -> 10.6 ms at 34K, 15.8 -> 14.8 ms at 241K. Arithmetic is unchanged (same kernel,
+smaller row tile); the draft is verified by the target either way.
+---
+diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
+index 1b4a419f9a..2bed070f7e 100644
+--- a/python/sglang/kernels/ops/attention/extend_attention.py
++++ b/python/sglang/kernels/ops/attention/extend_attention.py
+@@ -46,6 +46,19 @@ _is_gfx1250 = _is_hip and is_gfx1250_supported()
+ # bf16 p downcast for the P.V dot (fp32 accumulation either way). Default unchanged.
+ _FP32_SOFTMAX_PV = os.environ.get("SGLANG_EXTEND_ATTN_FP32_PV", "1") == "1"
+ 
++
++def _parse_small_tile():
++    ov = os.environ.get("SGLANG_EXTEND_ATTN_SMALL_TILE", "")
++    try:
++        rows, cfg = ov.split(":")
++        bm, bn, nw = (int(x) for x in cfg.split(","))
++        return (int(rows), bm, bn, nw)
++    except ValueError:
++        return None
++
++
++_SMALL_TILE = _parse_small_tile()
++
+ try:
+     _triton_version_parts = tuple(
+         int(part) for part in triton.__version__.split(".")[:2]
+@@ -1035,6 +1048,12 @@ def extend_attention_fwd(
+     BLOCK_DMODEL, BLOCK_DPE, BLOCK_DV, BLOCK_M, BLOCK_N, num_warps = (
+         _get_block_sizes_for_extend_attention(Lq, Lv)
+     )
++    # [3090] row-count-aware tile for short extends on CUDA (default off):
++    # SGLANG_EXTEND_ATTN_SMALL_TILE="<max_rows>:<BLOCK_M>,<BLOCK_N>,<num_warps>", e.g. "16:16,128,4".
++    # The arch table sizes BLOCK_M for long prefills; a spec-decode draft block of a few
++    # rows otherwise pays a full 128-row tile per key block.
++    if _SMALL_TILE is not None and _is_cuda and max_len_extend is not None and 0 < max_len_extend <= _SMALL_TILE[0]:
++        BLOCK_M, BLOCK_N, num_warps = _SMALL_TILE[1:]
+ 
+     USE_CUSTOM_MASK = custom_mask is not None
+     # Skip custom mask for prefix part

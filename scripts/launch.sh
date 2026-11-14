@@ -856,6 +856,11 @@ apply_preset() {
                 # Patch 086: stage-1 split bound 40 = 80 programs (two head blocks), one per GA102 SM
                 # (cycle 16.4 -> 15.6 ms at 241K; 48 falls off a cliff). Empty = the upstream 32.
                 export SGLANG_VERIFY_SHARED_KV_MAX_SPLITS="${SGLANG_VERIFY_SHARED_KV_MAX_SPLITS-40}"
+                # Patch 087: the draft's 5 attention layers run the extend kernel on a block of a few
+                # rows; a 16-row tile instead of the 128-row prefill tile takes them 1.47 -> 0.40 ms
+                # per cycle (cycle 11.7 -> 10.6 ms at 34K, 15.8 -> 14.8 ms at 241K; MMLU / HumanEval /
+                # needle tie). Applies to extends of <= 16 rows only. Empty = the arch table.
+                export SGLANG_EXTEND_ATTN_SMALL_TILE="${SGLANG_EXTEND_ATTN_SMALL_TILE-16:16,128,4}"
             fi
             ;;
         qwen35-dense)
