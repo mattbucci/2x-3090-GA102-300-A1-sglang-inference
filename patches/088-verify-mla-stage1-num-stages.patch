@@ -1,0 +1,44 @@
+088 verify-mla-stage1-num-stages: pipeline depth knob for the shared-KV verify kernel
+
+The stage-1 kernel of the grouped spec-decode verify walks the cached prefix through the
+page table at num_stages=1, so every K/V tile load sits in front of its dot.
+SGLANG_VERIFY_SHARED_KV_STAGES (1..4, unset = 1) sets the Triton pipeline depth of that loop.
+flint DFlash2 at 241K, served trace, interleaved boots: stage-1 4.62 ms per cycle at 1 stage,
+4.46 at 2, 3.94 at 3 and 4, 5.87 at 5 (cap 4); spec cycle 14.7 -> 14.2 ms at 3 stages.
+Arithmetic is unchanged (same kernel, loads issued earlier).
+---
+diff --git a/python/sglang/kernels/ops/attention/verify_mla.py b/python/sglang/kernels/ops/attention/verify_mla.py
+--- a/python/sglang/kernels/ops/attention/verify_mla.py
++++ b/python/sglang/kernels/ops/attention/verify_mla.py
+@@ -26,6 +26,22 @@
+ _VERIFY_SWA = os.environ.get("SGLANG_VERIFY_SHARED_KV_SWA", "1") != "0"
+ 
+ 
++def _env_stage1_num_stages(default=1):
++    """[3090 088] SGLANG_VERIFY_SHARED_KV_STAGES: Triton pipeline depth of the stage-1 KV loop.
++
++    The loop gathers K/V through the page table, so a deeper software pipeline overlaps the
++    loads of the next tiles with the dots of the current one. Unset / malformed = 1.
++    """
++    raw = os.environ.get("SGLANG_VERIFY_SHARED_KV_STAGES", "").strip()
++    try:
++        return min(max(int(raw), 1), 4) if raw else default
++    except ValueError:
++        return default
++
++
++_STAGE1_NUM_STAGES = _env_stage1_num_stages()
++
++
+ def _env_max_splits(default=32):
+     """[3090 086] SGLANG_VERIFY_SHARED_KV_MAX_SPLITS: upper bound of the stage-1 split grid.
+ 
+@@ -567,7 +583,7 @@
+             UPCAST_K=_UPCAST_K,
+             SLIDING_WINDOW_SIZE=sliding_window_size,
+             num_warps=self.num_warps,
+-            num_stages=1,
++            num_stages=_STAGE1_NUM_STAGES,
+             **_AMD_LAUNCH_KWARGS,
+         )
+ 

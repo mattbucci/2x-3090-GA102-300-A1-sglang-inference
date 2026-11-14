@@ -861,6 +861,9 @@ apply_preset() {
                 # per cycle (cycle 11.7 -> 10.6 ms at 34K, 15.8 -> 14.8 ms at 241K; MMLU / HumanEval /
                 # needle tie). Applies to extends of <= 16 rows only. Empty = the arch table.
                 export SGLANG_EXTEND_ATTN_SMALL_TILE="${SGLANG_EXTEND_ATTN_SMALL_TILE-16:16,128,4}"
+                # Patch 088: 3 Triton pipeline stages on the verify stage-1 KV loop (4.62 -> 3.94 ms per
+                # cycle at 241K, cycle 14.7 -> 14.2 ms; 2 stages 4.46, 4 = 3, 5 regresses). Empty = 1.
+                export SGLANG_VERIFY_SHARED_KV_STAGES="${SGLANG_VERIFY_SHARED_KV_STAGES-3}"
             fi
             ;;
         qwen35-dense)
