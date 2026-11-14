@@ -30,7 +30,7 @@ def _prefill_kernel(Q, K, V, QS, KS, O, LSE, L, N, P, sm_scale,
     mask_m = offs_m < L
     q = tl.load(Q + offs_m[:, None] * (H_Q * D) + h * D + offs_d[None, :], mask=mask_m[:, None], other=0)
     if INT8:
-        qs = tl.load(QS + pid_m * H_Q + h)  # sm_scale folded in
+        qs = tl.load(QS + offs_m * H_Q + h, mask=mask_m, other=0.0)  # per-row scale, sm_scale folded in
     m_i = tl.full([BM], -1.0e30, dtype=tl.float32); l_i = tl.zeros([BM], dtype=tl.float32)
     acc = tl.zeros([BM, D], dtype=tl.float32)
     hi = tl.minimum(N, P + (pid_m + 1) * BM)
@@ -38,7 +38,8 @@ def _prefill_kernel(Q, K, V, QS, KS, O, LSE, L, N, P, sm_scale,
         cols = start_n + offs_n
         k = tl.load(K + cols[None, :] * (H_KV * D) + hk * D + offs_d[:, None], mask=cols[None, :] < N, other=0)
         if INT8:
-            qk = tl.dot(q, k).to(tl.float32) * (qs * tl.load(KS + (start_n // BN) * H_KV + hk))
+            ks = tl.load(KS + cols * H_KV + hk, mask=cols < N, other=0.0)  # per-key scale
+            qk = tl.dot(q, k).to(tl.float32) * qs[:, None] * ks[None, :]
         else:
             qk = tl.dot(q, k).to(tl.float32) * sm_scale
         valid = (cols[None, :] <= (P + offs_m)[:, None]) & (cols[None, :] < N)
@@ -56,21 +57,22 @@ def _prefill_kernel(Q, K, V, QS, KS, O, LSE, L, N, P, sm_scale,
 
 
 def quant_tiles(x, block, extra_scale=1.0):
-    """x [n, H, D] float -> int8 [n, H, D] and per-(tile, head) scale [n_tiles, H] (x ~= int8 * scale)."""
+    """x [n, H, D] float -> int8 [n, H, D] and a per-(token, head) scale [n, H] (x ~= int8 * scale).
+    block > 1 shares one scale per (tile of `block` tokens, head); block = 1 is per-token."""
     n, H, D = x.shape; nt = (n + block - 1) // block
     pad = torch.zeros(nt * block, H, D, device=x.device, dtype=torch.float32); pad[:n] = x
     s = pad.view(nt, block, H, D).abs().amax(dim=(1, 3)).clamp_min(1e-8) / 127.0
     xi = torch.round(pad.view(nt, block, H, D) / s[:, None, :, None]).clamp_(-127, 127).to(torch.int8).view(nt * block, H, D)[:n]
-    return xi.contiguous(), (s * extra_scale).contiguous()
+    return xi.contiguous(), (s * extra_scale).repeat_interleave(block, 0)[:n].contiguous()
 
 
-def run_kernel(q, k, v, qs, ks, P, sm_scale, BM, BN, warps, int8):
+def run_kernel(q, k, v, qs, ks, P, sm_scale, BM, BN, warps, int8, stages=1):
     L, Hq, D = q.shape; N, Hkv, _ = k.shape
     o = torch.empty(L, Hq, D, device=q.device, dtype=torch.bfloat16); lse = torch.empty(L, Hq, device=q.device, dtype=torch.float32)
     grid = ((L + BM - 1) // BM, Hq)
     def f():
         _prefill_kernel[grid](q, k, v, qs, ks, o, lse, L, N, P, sm_scale, H_Q=Hq, H_KV=Hkv, D=D, BM=BM, BN=BN, INT8=int8,
-                              num_warps=warps, num_stages=1)
+                              num_warps=warps, num_stages=stages)
         return o
     return f, o
 
@@ -103,7 +105,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dump", default=None, help="torch file: q [L,Hq,D] bf16, k/v [N,Hkv,D] pool dtype, k_scale, v_scale, sm_scale (N = prefix + L)")
     ap.add_argument("--prefixes", default="131072,245760"); ap.add_argument("--rows", type=int, default=8192)
-    ap.add_argument("--tiles", default="128x128x8,128x64x8,64x128x4", help="BMxBNxwarps list for the triton arms")
+    ap.add_argument("--tiles", default="128x128x8,128x64x8,64x128x4", help="BMxBNxwarps[xstages] list for the triton arms")
+    ap.add_argument("--scales", default="block,token", help="int8 scale granularity: block (one per tile) and/or token")
     ap.add_argument("--sample-rows", type=int, default=48); ap.add_argument("--out", default=None)
     a = ap.parse_args()
     import flashinfer
@@ -138,28 +141,28 @@ def main():
 
         k16 = kf.to(torch.bfloat16).contiguous(); v16 = vf.to(torch.bfloat16).contiguous(); dummy = torch.zeros(1, device=dev)
         for t in a.tiles.split(","):
-            BM, BN, warps = (int(x) for x in t.split("x"))
+            BM, BN, warps, stages = (tuple(int(x) for x in t.split("x")) + (1,))[:4]
             try:
-                f, o = run_kernel(q.contiguous(), k16, v16, dummy, dummy, P, sm_scale, BM, BN, warps, False)
+                f, o = run_kernel(q.contiguous(), k16, v16, dummy, dummy, P, sm_scale, BM, BN, warps, False, stages)
                 f(); torch.cuda.synchronize(); ms = time_us(f, iters=2, repeats=3) / 1e3
                 row = dict(base, arm="triton-fp16", tile=t, ms=round(ms, 2), vs_flashinfer=round(ms / ms_fi, 3), **err(o[rows], ref))
             except Exception as e:  # noqa: BLE001
                 row = dict(base, arm="triton-fp16", tile=t, error=str(e)[:200])
             out_rows.append(row); print(json.dumps(row), flush=True)
-            for smooth in (True, False):
+            for smooth, gran in [(s, g) for s in (True, False) for g in a.scales.split(",")]:
                 try:
                     kq = kf - kf.mean(dim=0, keepdim=True) if smooth else kf  # softmax is invariant to a constant shift of K
-                    qi, qs = quant_tiles(qf, BM, extra_scale=sm_scale); ki, ks = quant_tiles(kq, BN)
-                    f, o = run_kernel(qi, ki, v16, qs, ks, P, sm_scale, BM, BN, warps, True)
+                    qi, qs = quant_tiles(qf, BM if gran == "block" else 1, extra_scale=sm_scale); ki, ks = quant_tiles(kq, BN if gran == "block" else 1)
+                    f, o = run_kernel(qi, ki, v16, qs, ks, P, sm_scale, BM, BN, warps, True, stages)
                     f(); torch.cuda.synchronize(); ms = time_us(f, iters=2, repeats=3) / 1e3
-                    G = Hq // Hkv; qd = qi.float() * qs.repeat_interleave(BM, 0)[:L, :, None]; kd = ki.float() * ks.repeat_interleave(BN, 0)[:N, :, None]
+                    G = Hq // Hkv; qd = qi.float() * qs[:, :, None]; kd = ki.float() * ks[:, :, None]
                     _, p_q = reference(qf, kf, vf, P, sm_scale, rows, logits_fn=lambda r, hk: qd[r, hk * G:(hk + 1) * G] @ kd[:, hk].T)
                     kl = (p_ref * (torch.log(p_ref.clamp_min(1e-30)) - torch.log(p_q.clamp_min(1e-30)))).sum(-1)
-                    row = dict(base, arm="triton-int8", tile=t, k_smooth=smooth, ms=round(ms, 2), vs_flashinfer=round(ms / ms_fi, 3), **err(o[rows], ref),
+                    row = dict(base, arm="triton-int8", tile=t, k_smooth=smooth, scale=gran, ms=round(ms, 2), vs_flashinfer=round(ms / ms_fi, 3), **err(o[rows], ref),
                                attn_kl_mean=round(kl.mean().item(), 5), attn_kl_max=round(kl.max().item(), 4),
                                attn_top1_agree=round((p_ref.argmax(-1) == p_q.argmax(-1)).float().mean().item(), 4))
                 except Exception as e:  # noqa: BLE001
-                    row = dict(base, arm="triton-int8", tile=t, k_smooth=smooth, error=str(e)[:200])
+                    row = dict(base, arm="triton-int8", tile=t, k_smooth=smooth, scale=gran, error=str(e)[:200])
                 out_rows.append(row); print(json.dumps(row), flush=True)
         del w; torch.cuda.empty_cache()
     if a.out:

@@ -70,8 +70,10 @@ linear in n (GEMM, allreduce, SWA layers, norms) is 14 s at 255K and no single t
 
 So Flint's deep cold prefill sits at the hardware roofline for exact FP16 attention. What remains is
 structural: not paying the quadratic term (prefix cache, already the agentic path — a cache-hit turn
-is ~0.1 s), or cheaper arithmetic for it (INT8 tensor rate is 163–196 TOPS, ~1.8× FP16, at a
-quality risk in QKᵀ that has not been tested).
+is ~0.1 s), or cheaper arithmetic for it (INT8 tensor rate is 163–196 TOPS, ~1.8× FP16, measured
+on dumped Flint Q/K/V: INT8 QKᵀ takes a one-pass Triton kernel 185 → 166 ms per 8,192-row chunk at
+229K, which only matches the served flashinfer kernel at 163 ms, at 0.6–1.6 % output error per layer
+against the 0.17 % FP16 floor — parked, see the ledger).
 
 ## Levers this ranks
 
