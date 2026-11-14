@@ -1,0 +1,85 @@
+{
+ "what": "Triton num_stages on stage 1 of the grouped split-KV decode kernel (upstream: 2), tripwire arms, interleaved boots, 300 W cap. flint = plain arm (SPEC_DECODE=0).",
+ "rows": [
+  {
+   "preset": "gemma4-31b",
+   "num_stages": 2,
+   "rep": "a",
+   "tok_s_1024": 71.0,
+   "tok_s_32768": 65.2,
+   "tok_s_deep_261916": 44.5
+  },
+  {
+   "preset": "gemma4-31b",
+   "num_stages": 3,
+   "rep": "a",
+   "tok_s_1024": 70.8,
+   "tok_s_32768": 64.3,
+   "tok_s_deep_261916": 41.1
+  },
+  {
+   "preset": "gemma4-31b",
+   "num_stages": 4,
+   "rep": "a",
+   "tok_s_1024": 70.7,
+   "tok_s_32768": 64.3,
+   "tok_s_deep_261916": 41.1
+  },
+  {
+   "preset": "flint",
+   "num_stages": 2,
+   "rep": "a",
+   "tok_s_1024": 180.5,
+   "tok_s_32768": 167.8,
+   "tok_s_deep_261916": 122.7
+  },
+  {
+   "preset": "flint",
+   "num_stages": 3,
+   "rep": "a",
+   "tok_s_1024": 179.9,
+   "tok_s_32768": 167.2,
+   "tok_s_deep_261916": 123.2
+  },
+  {
+   "preset": "flint",
+   "num_stages": 4,
+   "rep": "a",
+   "tok_s_1024": 179.5,
+   "tok_s_32768": 167.2,
+   "tok_s_deep_261916": 123.2
+  },
+  {
+   "preset": "gemma4-31b",
+   "num_stages": 3,
+   "rep": "b",
+   "tok_s_1024": 70.9,
+   "tok_s_32768": 64.5,
+   "tok_s_deep_261916": 41.2
+  },
+  {
+   "preset": "gemma4-31b",
+   "num_stages": 2,
+   "rep": "b",
+   "tok_s_1024": 70.8,
+   "tok_s_32768": 65.0,
+   "tok_s_deep_261916": 44.4
+  },
+  {
+   "preset": "flint",
+   "num_stages": 3,
+   "rep": "b",
+   "tok_s_1024": 179.2,
+   "tok_s_32768": 166.9,
+   "tok_s_deep_261916": 122.9
+  },
+  {
+   "preset": "flint",
+   "num_stages": 2,
+   "rep": "b",
+   "tok_s_1024": 178.6,
+   "tok_s_32768": 167.5,
+   "tok_s_deep_261916": 122.7
+  }
+ ]
+}
