@@ -1,0 +1,47 @@
+089 kv-index-token-blocks: block-parallel KV index gather for every pack_read_stream caller
+
+create_flashinfer_kv_indices_triton already tiles a request's gather over token blocks, but only
+the EAGLE call sites ask for it; DFlash verify / draft and the triton backend's decode stream still
+launch one program per request that walks the whole prefix. SGLANG_KV_INDEX_TOKEN_BLOCKS=1 sizes
+those launches with spec_kv_index_token_blocks as well (servers below 32K context keep the old grid).
+flint DFlash2 at 241K, served trace, two interleaved boots per arm: the gather 0.327 -> 0.018 ms per
+cycle (4 launches), cycle 14.16 -> 13.87 ms; at 34K 0.055 -> 0.009 ms, cycle flat.
+The emitted indices are identical (any block count is correct).
+---
+diff --git a/python/sglang/srt/mem_cache/kv_index_translator.py b/python/sglang/srt/mem_cache/kv_index_translator.py
+--- a/python/sglang/srt/mem_cache/kv_index_translator.py
++++ b/python/sglang/srt/mem_cache/kv_index_translator.py
+@@ -61,6 +61,7 @@ DCP index kernels select them.
+ 
+ from __future__ import annotations
+ 
++import os
+ import functools
+ from typing import Dict, Optional
+ 
+@@ -98,6 +99,13 @@ from sglang.srt.utils import is_npu
+ _is_npu = is_npu()
+ 
+ 
++_KV_INDEX_TOKEN_BLOCKS = os.environ.get("SGLANG_KV_INDEX_TOKEN_BLOCKS", "0").strip().lower() in (
++    "1",
++    "true",
++    "yes",
++    "on",
++)
++
+ class KVIndexTable(msgspec.Struct, frozen=True):
+     """What one batch gathers from, and how its entries become the ids a
+     kernel reads: lane ``b``'s entry ``j`` is ``ids[row_ids[b] * row_stride +
+@@ -561,6 +569,11 @@ class KVIndexTranslator:
+         falls back to the table width). The packed-table build path has its
+         own parallelism and ignores the count."""
+         bs = int(seq_lens.numel())
++        # [3090 089] SGLANG_KV_INDEX_TOKEN_BLOCKS=1: callers that still ask for the serial
++        # one-program-per-request gather (DFlash verify/draft, the triton backend's decode
++        # stream) get the token-block grid EAGLE already uses. Any block count is correct.
++        if num_token_blocks == 1 and _KV_INDEX_TOKEN_BLOCKS:
++            num_token_blocks = None
+         if num_token_blocks is None:
+             num_token_blocks = spec_kv_index_token_blocks(
+                 table_width=self.req_to_token.size(1),

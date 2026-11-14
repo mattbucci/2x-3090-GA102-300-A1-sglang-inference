@@ -785,6 +785,9 @@ apply_preset() {
             # @131K; exact, same kernel); 64x64 and 4-warp variants are 12-22 % slower. Preset-scoped:
             # Gemma 4 (head dim 256 / 512) is unaffected. Receipt benchmarks/profiling/flint-d128-tiles-2026-11-02/.
             export SGLANG_EXTEND_ATTN_TILE="${SGLANG_EXTEND_ATTN_TILE:-128:128,128,8}"
+            # Patch 089: the per-step KV index gather walks the prefix on a token-block grid instead of
+            # one program (spec cycle 14.16 -> 13.87 ms at 241K; indices identical). 0 = serial.
+            export SGLANG_KV_INDEX_TOKEN_BLOCKS="${SGLANG_KV_INDEX_TOKEN_BLOCKS-1}"
             # 2026-11-02: bf16 softmax.V dot (patch 075 env; patch 011 forces fp32 on every platform, which
             # on Ampere is the TF32/FMA path). With the tile above: fresh prefill 3.62 -> 2.97 s @32K,
             # 33.0 -> 23.4 s @131K (-18 % / -29 %); decode identical. Parity: needle 3/3, MMLU 48 -> 51,

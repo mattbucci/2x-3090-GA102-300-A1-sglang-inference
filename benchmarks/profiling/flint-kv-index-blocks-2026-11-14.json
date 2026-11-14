@@ -1,0 +1,77 @@
+{
+ "what": "Flint DFlash2 spec cycle with the KV index gather serial (off) vs token-block parallel (on, patch 089, SGLANG_KV_INDEX_TOKEN_BLOCKS=1). Served kernel trace, 60 steps mid-generation, interleaved boots, 300 W cap; ms per cycle on rank 0.",
+ "rows": [
+  {
+   "boot": "off-1",
+   "depth": "241K",
+   "cycle_ms": 14.145,
+   "kernel_ms": 13.876,
+   "kv_indices_ms": 0.3274,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 3.974
+  },
+  {
+   "boot": "off-1",
+   "depth": "34K",
+   "cycle_ms": 10.466,
+   "kernel_ms": 10.165,
+   "kv_indices_ms": 0.055,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 0.988
+  },
+  {
+   "boot": "on-1",
+   "depth": "241K",
+   "cycle_ms": 13.929,
+   "kernel_ms": 13.659,
+   "kv_indices_ms": 0.0183,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 3.969
+  },
+  {
+   "boot": "on-1",
+   "depth": "34K",
+   "cycle_ms": 10.479,
+   "kernel_ms": 10.182,
+   "kv_indices_ms": 0.0085,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 0.986
+  },
+  {
+   "boot": "off-2",
+   "depth": "241K",
+   "cycle_ms": 14.174,
+   "kernel_ms": 13.936,
+   "kv_indices_ms": 0.3269,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 3.957
+  },
+  {
+   "boot": "off-2",
+   "depth": "34K",
+   "cycle_ms": 10.522,
+   "kernel_ms": 10.219,
+   "kv_indices_ms": 0.054,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 0.978
+  },
+  {
+   "boot": "on-2",
+   "depth": "241K",
+   "cycle_ms": 13.814,
+   "kernel_ms": 13.537,
+   "kv_indices_ms": 0.0184,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 4.002
+  },
+  {
+   "boot": "on-2",
+   "depth": "34K",
+   "cycle_ms": 10.535,
+   "kernel_ms": 10.232,
+   "kv_indices_ms": 0.0085,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 0.993
+  }
+ ]
+}
