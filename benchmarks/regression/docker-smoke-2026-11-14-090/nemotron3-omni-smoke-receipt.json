@@ -1,0 +1,42 @@
+{
+  "preset": "nemotron3-omni",
+  "verdict": "PASS",
+  "serve_mode": "docker",
+  "image": "sglang-cuda-3090:local",
+  "image_id": "74b614839063b934a083f4435f37a92baab9f1e5561dbeb111ed7cec1aa603d5",
+  "date": "2026-11-14T20:14:18",
+  "steps": {
+    "stop": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "responses_api": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "bench": {
+      "status": "PASS",
+      "detail": "nemotron3-omni/1024: 116.0 -> 116.0 tok/s (+0.0%) [ok]|nemotron3-omni/32768: 114.2 -> 114.3 tok/s (+0.1%) [ok]|nemotron3-omni/deep(261916): 106.5 -> 105.9 tok/s (-0.6%) [ok]|nemotron3-omni/deep(261916): WARN ttft 416 -> 817 ms (+96.2%) \u2014 prefill drift (no gate)|RESULT: PASS|"
+    },
+    "rollout": {
+      "status": "PASS",
+      "detail": "rc=0 preds=2 nonempty=1 meta=ok budget_lines=2"
+    },
+    "boot": {
+      "status": "PASS",
+      "detail": "124s to /health; /v1/models=[nemotron3-omni]"
+    },
+    "scaffold_audit": {
+      "status": "PASS",
+      "detail": "api_auth=True opencode:auth=ok dcode:auth=ok"
+    },
+    "leak_audit": {
+      "status": "PASS",
+      "detail": "Using the latest cached version of the dataset since princeton-nlp/SWE-bench_Lite couldn't be found on the Hugging Face Hub (offline mode is enabled)."
+    },
+    "api_auth": {
+      "status": "PASS",
+      "detail": "anon /v1/models -> 401"
+    }
+  }
+}
