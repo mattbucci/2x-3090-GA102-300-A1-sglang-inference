@@ -47,11 +47,15 @@ def main():
     ap.add_argument("--chars-per-token", type=float, default=3.4)
     ap.add_argument("--user-open", default="<|user|>")
     ap.add_argument("--assistant-open", default="<|assistant|><think>")
-    ap.add_argument("--mode", choices=sorted(MODES), default="echo")
+    ap.add_argument("--mode", choices=sorted(MODES) + ["free"], default="echo",
+                    help="free = ordinary chat request with free thinking, scored hit/miss on the same cells")
+    ap.add_argument("--question", choices=["tail", "both"], default="tail",
+                    help="free mode: ask after the text only, or before and after it")
+    ap.add_argument("--max-tokens", type=int, default=1024, help="free mode answer budget")
     ap.add_argument("--no-flush", action="store_true")
     a = ap.parse_args()
 
-    FORCED, sep = MODES[a.mode]
+    FORCED, sep = MODES.get(a.mode, ("", ""))
     base = f"http://127.0.0.1:{a.port}"
     tok = Tokenizer.from_file(str(Path(a.tokenizer).expanduser()))
     hay = Path(a.haystack).read_text(errors="replace")
@@ -77,9 +81,18 @@ def main():
                         requests.post(base + "/flush_cache", timeout=60)
                     t0 = time.time()
                     try:
-                        r = requests.post(base + "/v1/completions", json={
-                            "model": "default", "prompt": prompt, "max_tokens": 8, "temperature": 0,
-                            "logprobs": 20}, timeout=1800).json()
+                        if a.mode == "free":
+                            text = body[:pos] + f"\nThe secret password is: {code}.\n" + body[pos:] + QUESTION
+                            if a.question == "both":
+                                text = ("I will ask you for the secret password that is stated somewhere in the"
+                                        " following text.\n\n" + text)
+                            r = requests.post(base + "/v1/chat/completions", json={
+                                "model": "default", "messages": [{"role": "user", "content": text}],
+                                "max_tokens": a.max_tokens, "temperature": 0}, timeout=1800).json()
+                        else:
+                            r = requests.post(base + "/v1/completions", json={
+                                "model": "default", "prompt": prompt, "max_tokens": 8, "temperature": 0,
+                                "logprobs": 20}, timeout=1800).json()
                     except Exception as e:  # noqa: BLE001
                         r = {"error": {"message": f"request failed: {e}"}}
                     if "choices" in r:
@@ -90,7 +103,16 @@ def main():
                         rec["error"] = err
                         break
                     cpt = cpt * ctx / int(m.group(1)) * 0.995
-                if "choices" in r:
+                if "choices" in r and a.mode == "free":
+                    ch = r["choices"][0]
+                    msg = ch.get("message") or {}
+                    content, think = msg.get("content") or "", msg.get("reasoning_content") or ""
+                    rec.update({"actual_tokens": r.get("usage", {}).get("prompt_tokens"),
+                                "completion_tokens": r.get("usage", {}).get("completion_tokens"),
+                                "finish_reason": ch.get("finish_reason"), "found": code in content,
+                                "code_in_thinking": code in think, "content_tail": content[-80:],
+                                "thinking_tail": think[-200:], "seconds": round(time.time() - t0, 1)})
+                elif "choices" in r:
                     ch = r["choices"][0]
                     lp = ch.get("logprobs") or {}
                     top = (lp.get("top_logprobs") or [{}])[0] or {}
@@ -116,11 +138,15 @@ def main():
                 summary[f"{ctx}@{depth}"] = {"n": len(g), "found": sum(c["found"] for c in g),
                                              "mean_margin": round(statistics.mean(c["margin"] for c in g), 3),
                                              "min_margin": round(min(c["margin"] for c in g), 3)}
-    ok = [c for c in cells if c.get("margin") is not None]
-    out = {"tag": a.tag, "timestamp": datetime.now().isoformat(timespec="seconds"), "mode": a.mode, "forced_prefix": FORCED,
+    if a.mode == "free":
+        for ctx in sorted({c["context"] for c in cells}):
+            g = [c for c in cells if c["context"] == ctx and "found" in c]
+            summary[str(ctx)] = {"n": len(g), "found": sum(c["found"] for c in g)}
+    ok = [c for c in cells if c.get("margin") is not None or (a.mode == "free" and "found" in c)]
+    out = {"tag": a.tag, "timestamp": datetime.now().isoformat(timespec="seconds"), "mode": a.mode, "question": a.question, "forced_prefix": FORCED,
            "haystack": Path(a.haystack).name, "flush": not a.no_flush,
            "overall": {"n": len(ok), "found": sum(c["found"] for c in ok),
-                       "mean_margin": round(statistics.mean(c["margin"] for c in ok), 3) if ok else None},
+                       "mean_margin": round(statistics.mean(c["margin"] for c in ok), 3) if ok and a.mode != "free" else None},
            "summary": summary, "cells": cells}
     p = REPO / "benchmarks" / "quality" / f"{a.tag}.json"
     p.write_text(json.dumps(out, indent=1))
