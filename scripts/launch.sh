@@ -329,6 +329,9 @@ apply_preset() {
             # over the vocab shard was 13-17 % of the decode step. Costs the INT8 copy in VRAM
             # (pool stays above 262,144). Parity gate on vs off in one session. 0 disables.
             export SGLANG_LM_HEAD_INT8_UNTIE="${SGLANG_LM_HEAD_INT8_UNTIE:-1}"
+            # Patch 089: block-parallel KV index gather, +0.7..1.1 % decode at 262K on the Gemma 4 triton
+            # presets (indices identical; greedy needle cell-identical on vs off). 0 = serial.
+            export SGLANG_KV_INDEX_TOKEN_BLOCKS="${SGLANG_KV_INDEX_TOKEN_BLOCKS-1}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
             ;;
         gemma4-21b-reap)
@@ -420,6 +423,9 @@ apply_preset() {
             # over the vocab shard was 13-17 % of the decode step. Costs the INT8 copy in VRAM
             # (pool stays above 262,144). Parity gate on vs off in one session. 0 disables.
             export SGLANG_LM_HEAD_INT8_UNTIE="${SGLANG_LM_HEAD_INT8_UNTIE:-1}"
+            # Patch 089: block-parallel KV index gather, +0.7..1.1 % decode at 262K on the Gemma 4 triton
+            # presets (indices identical; greedy needle cell-identical on vs off). 0 = serial.
+            export SGLANG_KV_INDEX_TOKEN_BLOCKS="${SGLANG_KV_INDEX_TOKEN_BLOCKS-1}"
             #  * patch 071 (2026-11-01): W4A8 prefill on the dense AWQ-Marlin linears —
             #    fresh-prefill TTFT 169 -> 147 s @131K (-13 %; the 512-wide global-layer
             #    attention is the larger share here), decode identical, MMLU 55/57, HE 30/30,
