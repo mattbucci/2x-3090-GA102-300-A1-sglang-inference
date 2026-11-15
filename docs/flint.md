@@ -35,6 +35,19 @@ Instrument note: `needle_band_probe.py` now records `answered` (turn finished wi
 next to the fleet's `found` (needle anywhere in reasoning + content) — a haystack-quoting run to the budget scores
 `found` without answering.
 
+**The deep band is a free-thinking behaviour on particular text, not a retrieval or serving-numerics limit.** `scripts/eval/needle_margin_probe.py`
+(three passwords × haystack offsets per cell, greedy, flushed, 132K–258K actual tokens, depths 0.1–0.5) on the shipped preset:
+forced recall reads the right first answer token in 36/36 cells with the thinking ended on the needle's phrase (`--mode echo`,
+mean margin 5.1 nats, no cliff with length) and in 36/36 with the thinking closed and nothing recalled (`--mode direct`).
+Free thinking on the same cells finds it in 26/27 at 196K–250K nominal with the question after the text and 27/27 with the task also
+stated before the text (`--mode free`, 1024-token budget). The misses the fixed-slice hit/miss probe keeps showing
+(196608 @ 0.5, 253952 @ 0.1 in 6 of 8 receipts) are the thinking reasoning about the tail of that slice, deciding no password
+was given, and either running out a 256-token budget or answering with an invented one; a 2048 budget moves the 9 band
+cells 6 → 7 and greedy thinking is not reproducible pass to pass at this depth. Practical guidance at ≥ 200K: state the
+task before the long context as well as after it, and leave ≥ 1K tokens of answer budget.
+Receipts: `benchmarks/quality/flint-margin-{base,direct-base}-2026-11-15.json`, `flint-band-budget{256,2048}-2026-11-15.json`,
+`flint-free-q{tail,both}-2026-11-15.json`.
+
 Serving image rebuilt on the new default the same day (`sglang-cuda-3090:local` = `a64ac6ea24ed`, kept as `v0522-e5m2` once the INT8-head image `6c9ede80f03a` replaced it later that day; `713a79eec75a` stays as `v0522-keyorder`): parity smoke PASS — docker decode 159.5 / 148.4 / 104.6 tok/s vs the bare-metal baseline 159.0 / 147.7 / 104.7, scaffold audit, Responses-API probe, 2/2 isolated rollouts non-empty, leak audit clean ([receipt](../benchmarks/quality/flint/docker-serving-smoke-2026-10-31.json)).
 
 ## Calibrated g32 ships (2026-11-09)
