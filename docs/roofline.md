@@ -81,7 +81,7 @@ against the 0.17 % FP16 floor — parked, see the ledger).
 
 ## Levers this ranks
 
-1. Flint verify attention at depth: 8 rows cost ~3× the 1-row KV scan for the same bytes.
+1. Flint verify attention at depth: 8 rows cost ~3× the 1-row KV scan for the same bytes. After patches 085–088 stage 1 is ≈ 3.5 ms depth-dependent at 241K against a ≈ 2.3 ms FP16 tensor floor (221 GFLOP per cycle and rank) — a kernel rewrite is worth ≤ 9 % of the cycle.
 2. Flint glue kernel count (MoE routing, elementwise): 2.2 ms plain, 3.4 ms per spec cycle.
 3. Flint attention fixed overhead: 1.16 ms across 49 layers at any depth.
 4. Dense presets: model-side only (spec drafts, fewer KV bytes).
