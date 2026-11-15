@@ -1,0 +1,45 @@
+# qwen36 short — actual prompt_tokens=135, 64 decode steps, trace 1794746165.333211-TP-1.trace.json.gz
+
+=== step[DECODE bs=1] × 60 steps (after skipping 3) ===
+  per step: CPU wall 1.91 ms | GPU span 4.24 ms | kernel-sum 4.68 ms
+  exposed time (sweep line):
+      1.648 ms/step   38.9%  marlin(int4)
+      0.444 ms/step   10.5%  gemm/gemv(fp16)+marlin(int4)
+      0.440 ms/step   10.4%  idle-gap
+      0.344 ms/step    8.1%  gdn
+      0.335 ms/step    7.9%  misc
+      0.271 ms/step    6.4%  norm
+      0.244 ms/step    5.8%  marlin(int4)+misc
+      0.150 ms/step    3.5%  act
+      0.136 ms/step    3.2%  attention
+      0.082 ms/step    1.9%  act+misc
+      0.049 ms/step    1.2%  gemm/gemv(fp16)
+      0.046 ms/step    1.1%  gemm/gemv(fp16)+memcpy/memset
+      0.037 ms/step    0.9%  nccl
+      0.012 ms/step    0.3%  memcpy/memset
+  top 25 kernels (ms/step, count/step):
+      1.269   160.0  void sglang::device::marlin::Marlin<__half, 1125899906843648l, 256, 1, 8, 8, true, 4, 8, false>(int4
+      0.512    40.0  void sglang::device::marlin_moe::Marlin<__half, 1125899906843648l, 1125899906910725l, 128, 1, 8, 4, 
+      0.326    30.0  std::enable_if<!(false), void>::type internal::gemvx::kernel<int, int, __half, float, float, float, 
+      0.316     1.0  void sglang::device::marlin::Marlin<__half, 1125899923621888l, 256, 1, 8, 8, true, 4, -1, false>(int
+      0.294    40.0  void sglang::device::marlin_moe::Marlin<__half, 1125899906843648l, 1125899906910725l, 128, 1, 8, 4, 
+      0.278    30.0  fused_recurrent_gated_delta_rule_packed_decode_kernel
+      0.242    81.0  void sglang::all_reduce_1shot_push_kernel<__half, 2u, false>(sglang::AllReducePushParams<2u>)
+      0.196    80.0  void flashinfer::norm::FusedAddRMSNormKernel<8u, __half>(__half*, __half*, __half*, unsigned int, un
+      0.165    40.0  _router_triton_kernel
+      0.155    40.0  std::enable_if<!(false), void>::type internal::gemvx::kernel<int, int, __half, __half, __half, float
+      0.143    80.0  void sglang::act_and_mul_kernel<__half, (sglang::ActivationKind)0, false, false, false, false, false
+      0.111    10.0  void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::Mask
+      0.091    40.0  void sglang::align_single_token_kernel<false, true>(sglang::AlignSingleTokenParams)
+      0.075    40.0  _fused_gate_sigmoid_mul_add_kernel
+      0.075    40.0  void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<int>, std::array<char*, 1u
+      0.069    30.0  _fused_qkvzba_causal_conv1d_update_contiguous_kernel
+      0.059    30.0  void cublasLt::splitKreduce_kernel<32, 16, int, float, __half, float, __half, false, __half, __half,
+      0.055    40.0  void moe_sum_reduce_kernel<c10::Half, 8>(c10::Half const*, c10::Half*, long, long, long, long, long,
+      0.052    40.0  memcpy32_post
+      0.048    30.0  _layer_norm_fwd_1pass_kernel
+      0.037     1.0  ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)
+      0.026    10.0  _fused_qk_rmsnorm_rope_gate_kernel
+      0.025    10.0  void flashinfer::PersistentVariableLengthMergeStatesKernel<8u, 32u, 4u, 4u, __half, __half, int>(__h
+      0.014    10.0  void sglang::store_kvcache_kernel<512l, 512l, 32u, false, long>(sglang::StoreKVCacheParams)
+      0.014    10.0  _fused_sigmoid_mul_kernel

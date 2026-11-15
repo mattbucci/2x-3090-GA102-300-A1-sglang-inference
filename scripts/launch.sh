@@ -971,10 +971,11 @@ apply_preset() {
             # single card.
             MODEL="${MODEL:-$MODELS_DIR/hf-mattbucci/Qwen3.6-35B-A3B-AWQ}"
             QUANT="${QUANT:-awq_marlin}"
-            # Force bf16 KV: fp8_e4m3 KV produces garbage on this model via
-            # Qwen3_5MoeForConditionalGeneration on Ampere. Env override
-            # (KV_DTYPE=X on the command line) still wins.
-            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            # fp8_e4m3 KV (the fleet default): the garbage that forced fp16 here
+            # on an early build does not reproduce — 148.6 -> 186.2 tok/s @262K,
+            # pool 882K -> 1.76M tokens, quality gate at parity
+            # (benchmarks/quality/qwen36-kvgate-*). KV_DTYPE=auto restores fp16.
+            KV_DTYPE="${_ENV_KV_DTYPE:-fp8_e4m3}"
             # Cross-team breadcrumb (R9700 commit 6de2ff9): DECODE_STEPS=32 +
             # DeltaNet + thinking crashes scheduler on RDNA4; their fix was
             # =8. Ampere TP=2 thinking-mode 4/4 PASS at =32 (2026-05-09).

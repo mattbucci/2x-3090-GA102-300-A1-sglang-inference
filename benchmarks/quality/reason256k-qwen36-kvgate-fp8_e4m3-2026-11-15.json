@@ -1,0 +1,93 @@
+{
+  "tag": "qwen36-kvgate-fp8_e4m3-2026-11-15",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 32862,
+        "correct": true,
+        "s": 7.1,
+        "finish_reason": "stop",
+        "completion_tokens": 1260,
+        "answer_tail": "nd of the text, we find `>>> The access code for verbena is 2424. <<<`. Thus, the code for verbena is `2424`.\n\nCompiling these in the order requested (cobalt, tundra, verbena) gives the values 3286, 7912, and 2424.\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 32808,
+        "correct": true,
+        "s": 4.4,
+        "finish_reason": "stop",
+        "completion_tokens": 575,
+        "answer_tail": "rack the variables step by step:\n\n1. **VAR_A** is explicitly set to `37`.\n2. **VAR_B** is defined as `VAR_A plus 5`. Therefore, VAR_B = 37 + 5 = `42`.\n3. **VAR_C** is defined as `VAR_B times 2`. Therefore, VAR_C = 42 * 2 = `84`.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 32842,
+        "correct": true,
+        "s": 5.8,
+        "finish_reason": "stop",
+        "completion_tokens": 1017,
+        "answer_tail": "5 credits\n2. Falcon: 45 credits\n3. Tundra: 10 credits\n4. Cobalt: 30 credits\n5. Verbena: 99 credits\n\nNext, we add these amounts together:\n85 + 45 = 130\n130 + 10 = 140\n140 + 30 = 170\n170 + 99 = 269\n\nThe total cost is 269 credits.\n\nANSWER: 269"
+      },
+      "actual_tokens": 32862,
+      "score": 1.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 131037,
+        "correct": true,
+        "s": 22.6,
+        "finish_reason": "stop",
+        "completion_tokens": 1383,
+        "answer_tail": "access code for cobalt is 3286. <<<`\n2. **Tundra**: Searching the text reveals `>>> The access code for tundra is 7912. <<<`\n3. **Verbena**: Searching the text reveals `>>> The access code for verbena is 2424. <<<`\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 130983,
+        "correct": true,
+        "s": 19.9,
+        "finish_reason": "stop",
+        "completion_tokens": 750,
+        "answer_tail": "s `>>> VAR_B equals VAR_A plus 5. <<<`. Substituting the value of VAR_A gives: `37 + 5 = 42`.\nStep 3: Calculate `VAR_C`. The log states `>>> VAR_C equals VAR_B times 2. <<<`. Substituting the value of VAR_B gives: `42 * 2 = 84`.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 131017,
+        "correct": true,
+        "s": 22.1,
+        "finish_reason": "stop",
+        "completion_tokens": 1223,
+        "answer_tail": "each item mentioned in the text:\n- Onyx: 85 credits\n- Falcon: 45 credits\n- Tundra: 10 credits\n- Cobalt: 30 credits\n- Verbena: 99 credits\n\nStep 2: Add the individual costs together to find the total:\n85 + 45 + 10 + 30 + 99 = 269\n\nANSWER: 269"
+      },
+      "actual_tokens": 131037,
+      "score": 1.0
+    },
+    {
+      "approx": 256000,
+      "multikey": {
+        "actual_tokens": 255798,
+        "correct": true,
+        "s": 59.4,
+        "finish_reason": "stop",
+        "completion_tokens": 1372,
+        "answer_tail": " cobalt is 3286. <<<`\n2. Searching for **tundra** reveals: `>>> The access code for tundra is 7912. <<<`\n3. Searching for **verbena** reveals: `>>> The access code for verbena is 2424. <<<`\n\nANSWER: cobalt: 3286, tundra: 7912, verbena: 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 255747,
+        "correct": true,
+        "s": 55.9,
+        "finish_reason": "stop",
+        "completion_tokens": 749,
+        "answer_tail": "fectly. Proceeds. \n[Output Generation] (done)\n\n\n\nBased on the embedded instructions in the text:\n\n1. `VAR_A is set to 37`\n2. `VAR_B equals VAR_A plus 5` \u2192 VAR_B = 37 + 5 = 42\n3. `VAR_C equals VAR_B times 2` \u2192 VAR_C = 42 \u00d7 2 = 84\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 255778,
+        "correct": true,
+        "s": 56.4,
+        "finish_reason": "stop",
+        "completion_tokens": 813,
+        "answer_tail": " the text:\n1. **onyx**: 85 credits\n2. **falcon**: 45 credits\n3. **tundra**: 10 credits\n4. **cobalt**: 30 credits\n5. **verbena**: 99 credits\n\nNext, we sum these amounts:\n85 + 45 = 130\n130 + 10 = 140\n140 + 30 = 170\n170 + 99 = 269\n\nANSWER: 269"
+      },
+      "actual_tokens": 255798,
+      "score": 1.0
+    }
+  ],
+  "overall": 1.0
+}
