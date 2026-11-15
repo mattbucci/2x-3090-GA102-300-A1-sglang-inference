@@ -1,0 +1,35 @@
+090 nemotron-moe-serial-path: env switch to run the NemotronH shared + routed experts serially
+
+On CUDA NemotronHMoE always takes _forward_core_shared_routed_overlap: the routed experts launch on
+an alternate stream while the shared expert runs on the main stream. At TP=2 on GA102 with the
+INT4 routed kernel (fused_moe_kernel_gptq_awq) and the shared expert on the AWQ dequantize + cuBLAS
+path, the concurrent launch stretches the routed gate/up kernel from 124 us to 124 + k x 37 us
+(k = 0..6, per token, uncorrelated across ranks) - 3.3..5.0 ms of an 11 ms decode step.
+SGLANG_NEMOTRON_MOE_STREAM_OVERLAP=0 takes _forward_core_normal instead (same math, one stream).
+nemotron3-omni tripwire, two interleaved boots per arm: 91.5 / 93.8 / 89.8 and 92.4 / 94.9 / 89.6
+-> 115.9 / 114.9 / 107.0 and 116.3 / 114.7 / 106.8 tok/s at 1K / 32K / 262K.
+Default (unset or 1) keeps upstream behaviour.
+---
+diff --git a/python/sglang/srt/models/nemotron_h.py b/python/sglang/srt/models/nemotron_h.py
+index 0d88bb4312..b7d5620b3b 100644
+--- a/python/sglang/srt/models/nemotron_h.py
++++ b/python/sglang/srt/models/nemotron_h.py
+@@ -152,6 +152,9 @@ class NemotronHMLP(nn.Module):
+         return x
+ 
+ 
++import os as _os
++
++_MOE_STREAM_OVERLAP = _os.environ.get("SGLANG_NEMOTRON_MOE_STREAM_OVERLAP", "1") != "0"
+ _alt_stream = None
+ 
+ 
+@@ -374,7 +377,7 @@ class NemotronHMoE(nn.Module):
+             and is_sm120()
+         ):
+             return self._forward_core_prefill_overlap(hidden_states)
+-        if _is_cuda and (
++        if _is_cuda and _MOE_STREAM_OVERLAP and (
+             not get_moe_a2a_backend().is_flashinfer() or get_is_capture_mode()
+         ):
+             return self._forward_core_shared_routed_overlap(hidden_states)

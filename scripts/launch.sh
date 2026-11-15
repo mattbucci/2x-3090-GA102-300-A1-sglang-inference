@@ -1080,6 +1080,9 @@ apply_preset() {
             # gemm costs more than the bf16 gemv saves at this shape (2026-10-31 tripwire:
             # 100.8 -> 98.1 / 99.6 -> 97.9 / 93.1 -> 91.3 tok/s). Every other head is a win.
             export SGLANG_LM_HEAD_INT8=0
+            # [090] shared + routed experts on one stream: upstream's alt-stream overlap stretches
+            # the INT4 routed gate/up kernel at TP=2 (89.7 -> 106.9 tok/s at 262K serial). 1 = upstream.
+            export SGLANG_NEMOTRON_MOE_STREAM_OVERLAP="${SGLANG_NEMOTRON_MOE_STREAM_OVERLAP:-0}"
             ;;
         *)
             echo "Unknown model: $1"

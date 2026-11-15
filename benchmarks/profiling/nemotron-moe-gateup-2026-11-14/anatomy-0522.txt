@@ -1,0 +1,52 @@
+
+=== step[DECODE bs=1] × 179 steps (after skipping 20) ===
+  per step: CPU wall 1.63 ms | GPU span 10.40 ms | kernel-sum 12.17 ms
+  exposed time (sweep line):
+      8.864 ms/step   85.3%  misc
+      0.858 ms/step    8.3%  gemm/gemv(fp16)
+      0.299 ms/step    2.9%  gemm/gemv(fp16)+misc
+      0.163 ms/step    1.6%  norm
+      0.067 ms/step    0.6%  idle-gap
+      0.060 ms/step    0.6%  attention
+      0.052 ms/step    0.5%  gdn
+  top 40 kernels (ms/step, count/step):
+      5.328    46.0  fused_moe_kernel_gptq_awq
+      1.816    53.0  void sglang::all_reduce_1shot_push_kernel<sglang::LoadStoreImpl<sglang::device::AlignedVector<__half
+      0.897    46.0  void sglang::device::awq::dequantize_weights<__half>(int*, __half*, int*, __half*, int, int, int)
+      0.832    23.0  void gemv2T_kernel_val<int, int, __half, __half, __half, float, 128, 16, 4, 4, false, false, cublasG
+      0.621    23.0  ampere_fp16_s16816gemm_fp16_64x64_sliced1x2_ldg8_f2f_stages_64x5_nn
+      0.509    29.0  ampere_fp16_s16816gemm_fp16_64x64_sliced1x2_ldg8_f2f_stages_64x5_tn
+      0.423     1.0  void cutlass::Kernel2<cutlass_80_tensorop_f16_s16816gemm_relu_f16_256x64_32x4_tn_align8>(cutlass_80_
+      0.361    23.0  ampere_fp16_s16816gemm_fp16_128x64_ldg8_f2f_stages_32x6_nn
+      0.245    23.0  _router_triton_kernel
+      0.230    23.0  std::enable_if<!(false), void>::type internal::gemvx::kernel<int, int, __half, float, float, float, 
+      0.123    52.0  void flashinfer::norm::FusedAddRMSNormKernel<8u, __half>(__half*, __half*, __half*, unsigned int, un
+      0.120     6.0  ampere_fp16_s16816gemm_fp16_64x64_ldg8_f2f_stages_64x5_tn
+      0.097    24.0  void cublasLt::splitKreduce_kernel<32, 16, int, __half, __half, float, __half, false, __half, __half
+      0.079    23.0  _selective_scan_update_kernel
+      0.055    23.0  _causal_conv1d_update_kernel
+      0.053    23.0  void sglang::act_kernel<__half, (sglang::ActivationKind)3, false>(sglang::UnaryActivationParams)
+      0.050    23.0  void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::launch_clamp_sc
+      0.048     6.0  void flashinfer::BatchPrefillWithPagedKVCacheKernel<true, flashinfer::KernelTraits<(flashinfer::Mask
+      0.045    23.0  _moe_align_small_numel_kernel
+      0.039    23.0  _layer_norm_fwd_1pass_kernel
+      0.035    23.0  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<c10::Half>, std::array
+      0.029    23.0  triton_poi_fused_copy__mul_sum_0
+      0.029    23.0  track_mamba_state_if_needed_kernel
+      0.027    23.0  void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::pow_tensor_scal
+      0.019     1.0  ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)
+      0.017    12.0  void at::native::vectorized_elementwise_kernel<4, at::native::ConvertToFloat8E4M3fnOp<c10::Half>, st
+      0.012     6.0  void flashinfer::PersistentVariableLengthMergeStatesKernel<8u, 16u, 8u, 4u, __half, __half, int>(__h
+      0.008     6.0  void sglang::store_kvcache_kernel<128l, 128l, 32u, false, long>(sglang::StoreKVCacheParams)
+      0.006     6.0  Memset (Device)
+      0.003     1.0  void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda(at::TensorIteratorB
+      0.003     2.0  Memcpy DtoD (Device -> Device)
+      0.002     1.0  void flashinfer::norm::RMSNormKernel<8u, __half>(__half*, __half*, __half*, unsigned int, unsigned i
+      0.002     1.0  _vocab_parallel_embedding_kernel
+      0.002     1.0  void at_cuda_detail::cub::detail::scan::DeviceScanKernel<at_cuda_detail::cub::detail::scan::policy_h
+      0.002     1.0  create_flashinfer_kv_indices_triton
+      0.002     1.0  Memcpy HtoD (Pinned -> Device)
+      0.002     1.0  void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda(at::TensorIteratorB
+      0.002     1.0  _small_copy_kernel
+      0.001     1.0  _fused_replay_state_indices_kernel
+      0.001     1.0  void at_cuda_detail::cub::detail::scan::DeviceScanInitKernel<at_cuda_detail::cub::ScanTileState<long
