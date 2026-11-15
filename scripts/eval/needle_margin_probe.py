@@ -10,7 +10,7 @@ Several samples per cell vary the password and the haystack offset.
 
     python scripts/eval/needle_margin_probe.py --port 23334 --tag flint-margin-base \
         --tokenizer ~/AI/models/hf-mattbucci/Flint-AWQ-INT4-g32-gptq/tokenizer.json \
-        --lengths 196000,229000,250000 --depths 0.1,0.3,0.5 --samples 3
+        --lengths 196000,229000,250000 --depths 0.1,0.3,0.5 --samples 3 --mode direct
 
 Receipt: benchmarks/quality/<tag>.json. Prompt framing defaults to Flint's
 template (`--user-open`, `--assistant-open`).
@@ -29,7 +29,10 @@ from tokenizers import Tokenizer
 REPO = Path(__file__).resolve().parents[2]
 CODES = ["BANANA42", "ORCHID17", "MARBLE58", "COBALT93", "WALNUT26", "SAFFRON71", "GRANITE35", "LANTERN84"]
 QUESTION = "\n\nWhat is the secret password? Answer with just the password."
-FORCED = "The user wants the secret password from the text. The secret password is:"
+# echo: the forced thinking ends on the needle's own phrase (a verbatim copy cue, the easy case).
+# direct: the thinking is closed without recalling anything, so the answer token must be found from the question alone.
+MODES = {"echo": ("The user wants the secret password from the text. The secret password is:", " "),
+         "direct": ("The user asks for the secret password. I will answer with just the password.</think>", "")}
 
 
 def main():
@@ -44,9 +47,11 @@ def main():
     ap.add_argument("--chars-per-token", type=float, default=3.4)
     ap.add_argument("--user-open", default="<|user|>")
     ap.add_argument("--assistant-open", default="<|assistant|><think>")
+    ap.add_argument("--mode", choices=sorted(MODES), default="echo")
     ap.add_argument("--no-flush", action="store_true")
     a = ap.parse_args()
 
+    FORCED, sep = MODES[a.mode]
     base = f"http://127.0.0.1:{a.port}"
     tok = Tokenizer.from_file(str(Path(a.tokenizer).expanduser()))
     hay = Path(a.haystack).read_text(errors="replace")
@@ -57,7 +62,7 @@ def main():
             for s in range(a.samples):
                 code = CODES[s % len(CODES)]
                 # first answer token as it appears after the forced prefix
-                ids = tok.encode(FORCED + " " + code, add_special_tokens=False).ids
+                ids = tok.encode(FORCED + sep + code, add_special_tokens=False).ids
                 n_forced = len(tok.encode(FORCED, add_special_tokens=False).ids)
                 want = tok.decode(ids[n_forced:n_forced + 1])
                 off = (s * 3_000_011 + ctx) % (len(hay) // 2)
@@ -112,7 +117,7 @@ def main():
                                              "mean_margin": round(statistics.mean(c["margin"] for c in g), 3),
                                              "min_margin": round(min(c["margin"] for c in g), 3)}
     ok = [c for c in cells if c.get("margin") is not None]
-    out = {"tag": a.tag, "timestamp": datetime.now().isoformat(timespec="seconds"), "forced_prefix": FORCED,
+    out = {"tag": a.tag, "timestamp": datetime.now().isoformat(timespec="seconds"), "mode": a.mode, "forced_prefix": FORCED,
            "haystack": Path(a.haystack).name, "flush": not a.no_flush,
            "overall": {"n": len(ok), "found": sum(c["found"] for c in ok),
                        "mean_margin": round(statistics.mean(c["margin"] for c in ok), 3) if ok else None},
