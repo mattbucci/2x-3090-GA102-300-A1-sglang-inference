@@ -1,0 +1,314 @@
+{
+  "tag": "flint-v0523-ftopk-nospec",
+  "timestamp": "2026-11-14 22:46",
+  "max_context": 262144,
+  "thinking": {
+    "results": [
+      {
+        "name": "simple_mc",
+        "tokens": 34,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "reasoning",
+        "tokens": 48,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "knowledge",
+        "tokens": 26,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "code",
+        "tokens": 32,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "hard_mc",
+        "tokens": 64,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      }
+    ],
+    "think_tags_rate": 0.0,
+    "clean_answer_rate": 1.0,
+    "truncation_rate": 0.0,
+    "avg_tokens": 40.8
+  },
+  "mmlu": {
+    "correct": 27,
+    "total": 30,
+    "accuracy": 0.9
+  },
+  "humaneval": {
+    "passed": 20,
+    "total": 25,
+    "pass_rate": 0.8
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 4,
+      "total": 8,
+      "accuracy": 0.5
+    },
+    "DbQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "SuppQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "TableQA": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "ProtocolQA": {
+      "correct": 3,
+      "total": 8,
+      "accuracy": 0.375
+    },
+    "SeqQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "CloningScenarios": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "_overall": {
+      "correct": 13,
+      "total": 56,
+      "accuracy": 0.23214285714285715
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 1049,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 63,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "\" Then repeats. Asks: What is the secret password? Answer with just the password.\n\nWe should answer just password. Likely BANANA42. Need maybe no quotes. Final."
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 1049,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 62,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "NANA42.\" Then repeats. Asks: What is the secret password? Answer with just the password.\n\nWe should answer just password. Need likely BANANA42. Ensure no extra."
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 1050,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 89,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "ed answer with just password. Likely BANANA42. But need be careful maybe secret password is BANANA42. They explicitly say. Final should just password. No extra."
+      },
+      {
+        "context": 16384,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 16410,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 91,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "ith just the password.\"\n\nWe need answer with just password. The secret password is: BANANA42. So likely just BANANA42. Need maybe no extra. Ensure exact. Final."
+      },
+      {
+        "context": 16384,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 16409,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 93,
+        "content_tail": "BANANA42",
+        "reasoning_tail": ". Should we include BANANA42? They said answer with just the password. The secret password is: BANANA42. So final should be just BANANA42. Ensure no extra text."
+      },
+      {
+        "context": 16384,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 16409,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 96,
+        "content_tail": "BANANA42",
+        "reasoning_tail": ". So likely answer \"BANANA42\". Must be careful maybe just password. They explicitly \"Answer with just the password.\" So final should be BANANA42. No extra text."
+      },
+      {
+        "context": 65536,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 65561,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 70,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "password? Answer with just the password.\" We need likely provide password. The secret password is: BANANA42. So answer just BANANA42. Need maybe include. Final."
+      },
+      {
+        "context": 65536,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 65562,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 391,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "inal answer should not include extra. We can say: BANANA42\n\nBut maybe they want just the password, not explanation. Final should be just: BANANA42\n\nLet's final."
+      },
+      {
+        "context": 65536,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 65561,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 415,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "just the password\" means just \"BANANA42\". Let's final with just: BANANA42. Ensure no extra. The final answer should be just the password. I'll output: BANANA42."
+      },
+      {
+        "context": 131072,
+        "depth": 0.1,
+        "found": false,
+        "actual_prompt_tokens": 131098,
+        "finish_reason": "length",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 512,
+        "content_tail": "",
+        "reasoning_tail": "final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final.",
+        "miss": {
+          "content": "",
+          "reasoning": "We need answer user. Need parse. We need answer. We need final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final. We need likely final."
+        }
+      },
+      {
+        "context": 131072,
+        "depth": 0.5,
+        "found": false,
+        "actual_prompt_tokens": 131098,
+        "finish_reason": "length",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 512,
+        "content_tail": "",
+        "reasoning_tail": "l. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need",
+        "miss": {
+          "content": "",
+          "reasoning": "We need answer user. Need parse. We need answer. We need final. We need final answer. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need"
+        }
+      },
+      {
+        "context": 131072,
+        "depth": 0.9,
+        "found": false,
+        "actual_prompt_tokens": 131098,
+        "finish_reason": "length",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 512,
+        "content_tail": "",
+        "reasoning_tail": "lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown",
+        "miss": {
+          "content": "",
+          "reasoning": "We need to find the secret key. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown"
+        }
+      },
+      {
+        "context": 250000,
+        "depth": 0.1,
+        "found": false,
+        "actual_prompt_tokens": 250025,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 9,
+        "content_tail": "",
+        "reasoning_tail": "We need to produce a password.",
+        "miss": {
+          "content": "",
+          "reasoning": "We need to produce a password."
+        }
+      },
+      {
+        "context": 250000,
+        "depth": 0.5,
+        "found": false,
+        "actual_prompt_tokens": 250025,
+        "finish_reason": "length",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 512,
+        "content_tail": "",
+        "reasoning_tail": " dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox",
+        "miss": {
+          "content": "",
+          "reasoning": "We need to answer the password. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox"
+        }
+      },
+      {
+        "context": 250000,
+        "depth": 0.9,
+        "found": false,
+        "actual_prompt_tokens": 250025,
+        "finish_reason": "length",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 512,
+        "content_tail": "",
+        "reasoning_tail": "n fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy",
+        "miss": {
+          "content": "",
+          "reasoning": "We need to compose the final answer. The user is the secret. The final answer is: Banan42. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy"
+        }
+      }
+    ],
+    "score": 0.6
+  }
+}
