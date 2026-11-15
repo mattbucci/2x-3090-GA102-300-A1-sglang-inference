@@ -1,0 +1,38 @@
+091 kv-skip-unit-scale: skip the divide-by-1.0 on the fp8 KV write
+
+SWAKVPool.set_kv_buffer defaults k_scale / v_scale to the float 1.0 (not None) and forwards them to
+MHATokenToKVPool.set_kv_buffer, which then runs cache_k.div_(1.0) / cache_v.div_(1.0) before the
+fp8 cast: two no-op elementwise launches per attention layer per step on every hybrid-SWA preset
+with an fp8 KV pool (98 per Flint step). Skip the divide when the scale is the Python float 1.0
+(bit-exact). SGLANG_KV_SKIP_UNIT_SCALE=0 restores the unconditional divide.
+flint plain tripwire, two interleaved boots per arm: 200.4 / 186.2 / 134.8 and 201.2 / 186.2 / 135.0
+-> 204.5 / 189.4 / 136.8 and 206.2 / 190.5 / 137.0 tok/s at 1K / 32K / 262K. Flint spec cycle at
+241K unchanged (13.18 / 13.19 -> 13.17 ms; Mul launches 100 -> 2 per cycle).
+---
+diff --git a/python/sglang/srt/mem_cache/memory_pool.py b/python/sglang/srt/mem_cache/memory_pool.py
+index f6d0b71ae3..22eb7663e1 100644
+--- a/python/sglang/srt/mem_cache/memory_pool.py
++++ b/python/sglang/srt/mem_cache/memory_pool.py
+@@ -107,6 +107,9 @@ if TYPE_CHECKING:
+ 
+ logger = logging.getLogger(__name__)
+ 
++# SGLANG_KV_SKIP_UNIT_SCALE=0 restores the unconditional fp8 KV scale divide.
++_SKIP_UNIT_KV_SCALE = os.environ.get("SGLANG_KV_SKIP_UNIT_SCALE", "1") != "0"
++
+ # Debug-only invariant in the Mamba slot-donation path calls tensor.item(), which
+ # forces a per-request cudaStreamSynchronize on the scheduler thread and can stall
+ # the scheduler under load. Off by default; set SGLANG_MAMBA_DEBUG_ASSERTS=1 to
+@@ -2924,9 +2927,10 @@ class MHATokenToKVPool(KVCache):
+             return
+ 
+         if cache_k.dtype != self.dtype:
+-            if k_scale is not None:
++            # SWAKVPool forwards a default scale of exactly 1.0: skip the divide-by-one launch.
++            if k_scale is not None and not (_SKIP_UNIT_KV_SCALE and type(k_scale) is float and k_scale == 1.0):
+                 cache_k.div_(k_scale)
+-            if v_scale is not None:
++            if v_scale is not None and not (_SKIP_UNIT_KV_SCALE and type(v_scale) is float and v_scale == 1.0):
+                 cache_v.div_(v_scale)
+             cache_k = cache_k.to(self.dtype)
+             cache_v = cache_v.to(self.dtype)

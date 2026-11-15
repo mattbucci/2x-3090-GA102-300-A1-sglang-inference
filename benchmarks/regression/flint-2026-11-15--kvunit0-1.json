@@ -1,0 +1,36 @@
+{
+  "model": "flint",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "prompt_source": "random",
+  "timestamp": "2026-11-15 00:05:06",
+  "output_tokens": 100,
+  "max_total_num_tokens": 1097420,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1024,
+      "throughput": 176.69,
+      "ttft_ms": 60.41,
+      "tpot_ms": 4.99,
+      "tok_per_sec": 200.4
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32768,
+      "throughput": 147.41,
+      "ttft_ms": 135.18,
+      "tpot_ms": 5.37,
+      "tok_per_sec": 186.2
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261916,
+      "throughput": 78.32,
+      "ttft_ms": 531.19,
+      "tpot_ms": 7.42,
+      "tok_per_sec": 134.8
+    }
+  ]
+}
