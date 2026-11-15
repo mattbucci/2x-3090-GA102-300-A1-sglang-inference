@@ -23,6 +23,10 @@ headers. Step times are GPU-side (client tok/s is a few percent lower).
 | `gemma4-31b` (dense 31B, 10 global + 50 SWA layers) | 37K | 18.56 ms (50 tok/s) | ~12.7 ms | ~68 % | weights + bf16 tied head, at bandwidth |
 | `gemma4-31b` | 223K | 23.9 ms (42 tok/s) | ~16.9 ms | ~71 % | global-layer KV read at ~74 % of bandwidth on the 64-key tile (patch 083; 28.0 ms / ~60 % before) |
 
+The two `flint` rows are the 2026-11-13 trace. The fused top-k router and patch 091 (unit-scale KV write) landed after it:
+the plain-decode tripwire now reads 190.5 / 136.4 tok/s at 32K / 262K (client side), so the measured step and the standing
+percentages are a few points better than tabulated; the bound (kernel count, small-GEMM latency) is unchanged.
+
 `qwen38` / `qwen36` rows: [`decode-profile-2026-10-31.md`](../benchmarks/profiling/decode-profile-2026-10-31.md).
 `gemma4-31b` ([`gemma4-31b-groups.json`](../benchmarks/profiling/roofline-2026-11-13/gemma4-31b-groups.json)): 1,246 kernels per step with 0.14 ms idle, so launch count is not the bound. Per rank and step: INT4 linears 9.92 ms for ~7.65 GB of weights (87 % of the 889 GB/s ceiling); the tied bf16 `lm_head` is one 3.17 ms gemv over 2.82 GB (at the ceiling — 17 % of the step at 37K, and patch 084 now serves an INT8 copy of it: 39.8 → 44.3 tok/s at 262K, the rows above predate it); attention is 3.55 ms at 37K and 12.97 ms at 223K, of which the 10 global layers (512-wide heads, e5m2 KV, 2,048 B per token per rank) take 1.13 ms each for 0.46 GB — ~400 GB/s, under half the ceiling — while the 50 sliding-window layers cost 12 µs each. Not yet broken down this way: prefill (compute-bound: a tensor-rate roofline, not this one).
 
