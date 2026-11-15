@@ -1,0 +1,314 @@
+{
+  "tag": "flint-v0523-ftopk",
+  "timestamp": "2026-11-14 21:06",
+  "max_context": 262144,
+  "thinking": {
+    "results": [
+      {
+        "name": "simple_mc",
+        "tokens": 29,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "reasoning",
+        "tokens": 48,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "knowledge",
+        "tokens": 30,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "code",
+        "tokens": 30,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      },
+      {
+        "name": "hard_mc",
+        "tokens": 60,
+        "finish": "stop",
+        "has_think_tags": false,
+        "clean_answer": true,
+        "truncated": false
+      }
+    ],
+    "think_tags_rate": 0.0,
+    "clean_answer_rate": 1.0,
+    "truncation_rate": 0.0,
+    "avg_tokens": 39.4
+  },
+  "mmlu": {
+    "correct": 28,
+    "total": 30,
+    "accuracy": 0.9333333333333333
+  },
+  "humaneval": {
+    "passed": 16,
+    "total": 25,
+    "pass_rate": 0.64
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "DbQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "SuppQA": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "TableQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "ProtocolQA": {
+      "correct": 2,
+      "total": 8,
+      "accuracy": 0.25
+    },
+    "SeqQA": {
+      "correct": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "CloningScenarios": {
+      "correct": 1,
+      "total": 8,
+      "accuracy": 0.125
+    },
+    "_overall": {
+      "correct": 9,
+      "total": 56,
+      "accuracy": 0.16071428571428573
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 1049,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 60,
+        "content_tail": "BANANA42",
+        "reasoning_tail": " BANANA42.\" Then asks What is the secret password? Answer with just the password.\n\nWe should output just password. Likely BANANA42. Need maybe no quotes. Final."
+      },
+      {
+        "context": 1024,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 1049,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 113,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "NA42. They ask answer with just the password. So final should be just BANANA42. No extra. Ensure no quotes? \"Answer with just the password.\" So final: BANANA42."
+      },
+      {
+        "context": 1024,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 1050,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 62,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "BANANA42.\" Then later asks \"What is the secret password? Answer with just the password.\"\n\nWe should answer just password. Need likely BANANA42. Ensure no extra."
+      },
+      {
+        "context": 16384,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 16410,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 75,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "the password.\n\nWe need likely extract secret password: \"The secret password is: BANANA42.\" So answer just password: BANANA42.\n\nNeed comply. final just BANANA42."
+      },
+      {
+        "context": 16384,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 16409,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 93,
+        "content_tail": "BANANA42",
+        "reasoning_tail": " They likely expect just \"BANANA42\" or maybe \"BANANA42.\" The instruction: Answer with just the password. So final should be just BANANA42. Ensure no extra text."
+      },
+      {
+        "context": 16384,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 16409,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 75,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "with just the password.\"\n\nWe need answer with just password. The secret password is: BANANA42. So likely answer just BANANA42. Must comply. Final just password."
+      },
+      {
+        "context": 65536,
+        "depth": 0.1,
+        "found": true,
+        "actual_prompt_tokens": 65561,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 96,
+        "content_tail": "BANANA42",
+        "reasoning_tail": "likely final should be just \"BANANA42.\" But maybe include? They specifically \"Answer with just the password.\" So final should be just BANANA42. Ensure no extra."
+      },
+      {
+        "context": 65536,
+        "depth": 0.5,
+        "found": true,
+        "actual_prompt_tokens": 65562,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 230,
+        "content_tail": "BANANA42.",
+        "reasoning_tail": " want just the password. So final: BANANA42. Maybe include no quotes. Desired oververbosity 5, answer concise. We should not over-explain. Final just: BANANA42."
+      },
+      {
+        "context": 65536,
+        "depth": 0.9,
+        "found": true,
+        "actual_prompt_tokens": 65561,
+        "finish_reason": "stop",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 197,
+        "content_tail": "BANANA42.",
+        "reasoning_tail": "be final: \"BANANA42.\" But to satisfy \"Answer with just the password\" maybe final just: BANANA42.\n\nWe need final. Could be: \"BANANA42\" only. Let's final concise."
+      },
+      {
+        "context": 131072,
+        "depth": 0.1,
+        "found": false,
+        "actual_prompt_tokens": 131098,
+        "finish_reason": "length",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 512,
+        "content_tail": "",
+        "reasoning_tail": "need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final",
+        "miss": {
+          "content": "",
+          "reasoning": "We need answer user. Need parse. We need answer. We need final. We need likely. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final"
+        }
+      },
+      {
+        "context": 131072,
+        "depth": 0.5,
+        "found": false,
+        "actual_prompt_tokens": 131098,
+        "finish_reason": "length",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 512,
+        "content_tail": "",
+        "reasoning_tail": "eed final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final.",
+        "miss": {
+          "content": "",
+          "reasoning": "We need answer user. Need answer likely. We need respond final. We need answer likely. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final."
+        }
+      },
+      {
+        "context": 131072,
+        "depth": 0.9,
+        "found": false,
+        "actual_prompt_tokens": 131098,
+        "finish_reason": "length",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 512,
+        "content_tail": "",
+        "reasoning_tail": ". We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer",
+        "miss": {
+          "content": "",
+          "reasoning": "We need answer user. Need parse. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer. We need answer"
+        }
+      },
+      {
+        "context": 250000,
+        "depth": 0.1,
+        "found": false,
+        "actual_prompt_tokens": 250025,
+        "finish_reason": "length",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 512,
+        "content_tail": "",
+        "reasoning_tail": " dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox",
+        "miss": {
+          "content": "",
+          "reasoning": "We need to provide the password. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox"
+        }
+      },
+      {
+        "context": 250000,
+        "depth": 0.5,
+        "found": false,
+        "actual_prompt_tokens": 250025,
+        "finish_reason": "length",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 512,
+        "content_tail": "",
+        "reasoning_tail": "n fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy",
+        "miss": {
+          "content": "",
+          "reasoning": "We need answer the following question: \"What is the secret?\" The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy"
+        }
+      },
+      {
+        "context": 250000,
+        "depth": 0.9,
+        "found": false,
+        "actual_prompt_tokens": 250025,
+        "finish_reason": "length",
+        "haystack": "filler",
+        "flushed": false,
+        "completion_tokens": 512,
+        "content_tail": "",
+        "reasoning_tail": "he key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided",
+        "miss": {
+          "content": "",
+          "reasoning": "We need answer. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided the key. The user provided"
+        }
+      }
+    ],
+    "score": 0.6
+  }
+}

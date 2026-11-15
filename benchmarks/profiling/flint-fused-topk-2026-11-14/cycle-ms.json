@@ -1,0 +1,81 @@
+{
+ "what": "Flint spec cycle, FLINT_FUSED_TOPK off/on, two interleaved boots per arm, 60-step kernel trace; 800000 chars = 241.5K tokens, 120000 = 34.5K",
+ "kernels_per_cycle": {
+  "off": 2073,
+  "on": 1697
+ },
+ "rows": [
+  {
+   "boot": "off-1",
+   "prompt_chars": 800000,
+   "cycle_ms": 13.815,
+   "kernel_ms": 13.544,
+   "kv_indices_ms": 0.0182,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 3.952
+  },
+  {
+   "boot": "off-1",
+   "prompt_chars": 120000,
+   "cycle_ms": 10.482,
+   "kernel_ms": 10.184,
+   "kv_indices_ms": 0.0085,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 0.987
+  },
+  {
+   "boot": "on-1",
+   "prompt_chars": 800000,
+   "cycle_ms": 13.304,
+   "kernel_ms": 13.061,
+   "kv_indices_ms": 0.0186,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 4.061
+  },
+  {
+   "boot": "on-1",
+   "prompt_chars": 120000,
+   "cycle_ms": 9.781,
+   "kernel_ms": 9.519,
+   "kv_indices_ms": 0.0086,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 1.0
+  },
+  {
+   "boot": "off-2",
+   "prompt_chars": 800000,
+   "cycle_ms": 13.865,
+   "kernel_ms": 13.595,
+   "kv_indices_ms": 0.0184,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 4.011
+  },
+  {
+   "boot": "off-2",
+   "prompt_chars": 120000,
+   "cycle_ms": 10.45,
+   "kernel_ms": 10.151,
+   "kv_indices_ms": 0.0084,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 0.982
+  },
+  {
+   "boot": "on-2",
+   "prompt_chars": 800000,
+   "cycle_ms": 13.19,
+   "kernel_ms": 12.948,
+   "kv_indices_ms": 0.0186,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 4.06
+  },
+  {
+   "boot": "on-2",
+   "prompt_chars": 120000,
+   "cycle_ms": 9.76,
+   "kernel_ms": 9.499,
+   "kv_indices_ms": 0.0086,
+   "kv_indices_launches": 4.0,
+   "verify_stage1_ms": 0.999
+  }
+ ]
+}

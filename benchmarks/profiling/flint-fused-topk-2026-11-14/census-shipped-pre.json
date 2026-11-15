@@ -1,0 +1,236 @@
+{
+ "spec-120000": {
+  "span_ms_per_step": 10.419736930338543,
+  "kernel_ms_per_step": 10.125441583333291,
+  "n_per_step": 2073.1666666666665,
+  "top": [
+   [
+    "void sglang::device::marlin_moe::Marlin",
+    94.0,
+    2.275
+   ],
+   [
+    "void sglang::device::marlin::Marlin",
+    198.0,
+    1.996
+   ],
+   [
+    "_verify_mla_prefix_stage1",
+    49.0,
+    0.988
+   ],
+   [
+    "void at::native::elementwise_kernel",
+    421.0,
+    0.775
+   ],
+   [
+    "void cutlass::Kernel2",
+    70.0,
+    0.502
+   ],
+   [
+    "_verify_mla_combine_stage2",
+    49.0,
+    0.429
+   ],
+   [
+    "_fwd_kernel",
+    5.0,
+    0.404
+   ],
+   [
+    "void sglang::all_reduce_1shot_push_kernel",
+    110.0,
+    0.309
+   ],
+   [
+    "void at::native::sbtopk::gatherTopK",
+    48.0,
+    0.301
+   ],
+   [
+    "void at::native::vectorized_elementwise_kernel",
+    211.0,
+    0.263
+   ],
+   [
+    "void flashinfer::norm::FusedAddRMSNormKernel",
+    108.0,
+    0.23
+   ],
+   [
+    "_moe_align_small_numel_kernel",
+    47.0,
+    0.214
+   ],
+   [
+    "void at::native::unrolled_elementwise_kernel",
+    104.0,
+    0.193
+   ],
+   [
+    "void sglang::act_and_mul_kernel",
+    101.0,
+    0.144
+   ],
+   [
+    "void moe_sum_reduce_kernel_general",
+    47.0,
+    0.109
+   ],
+   [
+    "void at::native::reduce_kernel",
+    48.0,
+    0.104
+   ],
+   [
+    "void cublasLt::splitKreduce_kernel",
+    64.0,
+    0.099
+   ],
+   [
+    "ampere_bf16_s16816gemm_bf16_64x64_ldg8_f2f_stages_64x5_tn",
+    5.0,
+    0.094
+   ],
+   [
+    "ampere_s16816gemm_bf16_64x64_ldg8_stages_64x5_tn",
+    5.0,
+    0.09
+   ],
+   [
+    "ncclDevKernel_AllGather_RING_LL",
+    3.0,
+    0.085
+   ],
+   [
+    "void at::native::_scatter_gather_elementwise_kernel",
+    48.0,
+    0.072
+   ],
+   [
+    "void sglang::store_kvcache_kernel",
+    54.0,
+    0.069
+   ]
+  ]
+ },
+ "spec-800000": {
+  "span_ms_per_step": 13.999867236328125,
+  "kernel_ms_per_step": 13.637746849999964,
+  "n_per_step": 2073.1666666666665,
+  "top": [
+   [
+    "_verify_mla_prefix_stage1",
+    49.0,
+    4.0
+   ],
+   [
+    "void sglang::device::marlin_moe::Marlin",
+    94.0,
+    2.293
+   ],
+   [
+    "void sglang::device::marlin::Marlin",
+    198.0,
+    2.064
+   ],
+   [
+    "void at::native::elementwise_kernel",
+    421.0,
+    0.819
+   ],
+   [
+    "void cutlass::Kernel2",
+    70.0,
+    0.515
+   ],
+   [
+    "void sglang::all_reduce_1shot_push_kernel",
+    110.0,
+    0.491
+   ],
+   [
+    "_verify_mla_combine_stage2",
+    49.0,
+    0.453
+   ],
+   [
+    "_fwd_kernel",
+    5.0,
+    0.425
+   ],
+   [
+    "void at::native::sbtopk::gatherTopK",
+    48.0,
+    0.32
+   ],
+   [
+    "void at::native::vectorized_elementwise_kernel",
+    211.0,
+    0.277
+   ],
+   [
+    "void flashinfer::norm::FusedAddRMSNormKernel",
+    108.0,
+    0.242
+   ],
+   [
+    "_moe_align_small_numel_kernel",
+    47.0,
+    0.226
+   ],
+   [
+    "void at::native::unrolled_elementwise_kernel",
+    104.0,
+    0.204
+   ],
+   [
+    "void sglang::act_and_mul_kernel",
+    101.0,
+    0.152
+   ],
+   [
+    "void moe_sum_reduce_kernel_general",
+    47.0,
+    0.114
+   ],
+   [
+    "void at::native::reduce_kernel",
+    48.0,
+    0.11
+   ],
+   [
+    "void cublasLt::splitKreduce_kernel",
+    64.0,
+    0.104
+   ],
+   [
+    "ampere_bf16_s16816gemm_bf16_64x64_ldg8_f2f_stages_64x5_tn",
+    5.0,
+    0.096
+   ],
+   [
+    "ampere_s16816gemm_bf16_64x64_ldg8_stages_64x5_tn",
+    5.0,
+    0.091
+   ],
+   [
+    "ncclDevKernel_AllGather_RING_LL",
+    3.0,
+    0.088
+   ],
+   [
+    "void at::native::_scatter_gather_elementwise_kernel",
+    48.0,
+    0.076
+   ],
+   [
+    "void sglang::store_kvcache_kernel",
+    54.0,
+    0.072
+   ]
+  ]
+ }
+}

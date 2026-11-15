@@ -146,6 +146,14 @@ class FlintAttention(Qwen3MoeAttention):
         return output
 
 
+# FLINT_FUSED_TOPK=0 restores the eager routing chain (10 kernel launches per MoE layer).
+_FUSED_TOPK = os.environ.get("FLINT_FUSED_TOPK", "1") != "0"
+try:
+    from sgl_kernel import topk_sigmoid as _topk_sigmoid
+except ImportError:  # pragma: no cover - kernel package without the sigmoid top-k
+    _FUSED_TOPK = False
+
+
 class FlintSparseMoeBlock(Qwen3MoeSparseMoeBlock):
     """Sparse MoE block with sigmoid top-k routing and an ungated shared expert."""
 
@@ -156,6 +164,14 @@ class FlintSparseMoeBlock(Qwen3MoeSparseMoeBlock):
         self.gate.expert_bias = nn.Parameter(torch.zeros(config.num_experts, dtype=torch.float32), requires_grad=False)
 
         def sigmoid_routing(hidden_states, gating_output, topk, renormalize):
+            if _FUSED_TOPK and gating_output.is_cuda:
+                # One sgl_kernel launch for sigmoid + biased top-k + gather + renormalize (same
+                # expert set and weights as the chain below; ids come back sorted by score).
+                num_tokens = gating_output.shape[0]
+                topk_weights = torch.empty((num_tokens, topk), dtype=torch.float32, device=gating_output.device)
+                topk_ids = torch.empty((num_tokens, topk), dtype=torch.int32, device=gating_output.device)
+                _topk_sigmoid(topk_weights, topk_ids, gating_output.contiguous(), True, self.gate.expert_bias)
+                return topk_weights, topk_ids
             scores = torch.sigmoid(gating_output.float())
             scores_for_choice = scores + self.gate.expert_bias.unsqueeze(0)
             topk_ids = torch.topk(scores_for_choice, k=topk, dim=-1, sorted=False)[1]
