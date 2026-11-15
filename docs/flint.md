@@ -43,10 +43,11 @@ Free thinking on the same cells finds it in 26/27 at 196K–250K nominal with th
 stated before the text (`--mode free`, 1024-token budget). The misses the fixed-slice hit/miss probe keeps showing
 (196608 @ 0.5, 253952 @ 0.1 in 6 of 8 receipts) are the thinking reasoning about the tail of that slice, deciding no password
 was given, and either running out a 256-token budget or answering with an invented one; a 2048 budget moves the 9 band
-cells 6 → 7 and greedy thinking is not reproducible pass to pass at this depth. Practical guidance at ≥ 200K: state the
-task before the long context as well as after it, and leave ≥ 1K tokens of answer budget.
+cells 6 → 7 and greedy thinking is not reproducible pass to pass at this depth. On the fixed-slice probe's own nine band cells (1024 budget, two interleaved passes)
+the task stated before the text scores 9/9 and 9/9; without it 6/9 and 9/9 on identical code — the pass-to-pass swing is the band.
+Practical guidance at ≥ 200K: state the task before the long context as well as after it, and leave ≥ 1K tokens of answer budget.
 Receipts: `benchmarks/quality/flint-margin-{base,direct-base}-2026-11-15.json`, `flint-band-budget{256,2048}-2026-11-15.json`,
-`flint-free-q{tail,both}-2026-11-15.json`.
+`flint-free-q{tail,both}-2026-11-15.json`, `flint-band-{pre,none}{1,2}-2026-11-15.json`.
 
 Serving image rebuilt on the new default the same day (`sglang-cuda-3090:local` = `a64ac6ea24ed`, kept as `v0522-e5m2` once the INT8-head image `6c9ede80f03a` replaced it later that day; `713a79eec75a` stays as `v0522-keyorder`): parity smoke PASS — docker decode 159.5 / 148.4 / 104.6 tok/s vs the bare-metal baseline 159.0 / 147.7 / 104.7, scaffold audit, Responses-API probe, 2/2 isolated rollouts non-empty, leak audit clean ([receipt](../benchmarks/quality/flint/docker-serving-smoke-2026-10-31.json)).
 

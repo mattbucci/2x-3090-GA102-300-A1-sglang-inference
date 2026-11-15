@@ -45,6 +45,7 @@ def main():
     ap.add_argument("--chars-per-token", type=float, default=None,
                     help="chars/token of the haystack under the served tokenizer (filler 4.5; "
                          "default 3.4 with --haystack, 4.5 without) — sizes the prompt")
+    ap.add_argument("--preamble", default="", help="text placed before the haystack (state the task up front)")
     ap.add_argument("--flush", action="store_true",
                     help="POST /flush_cache before every cell (no radix-cache prefix reuse)")
     a = ap.parse_args()
@@ -58,7 +59,8 @@ def main():
     for _ in range(a.repeat):
         results += needle_eval(url, lengths, depths=depths, budget=a.max_tokens,
                                temperature=temperature, haystack=haystack,
-                               chars_per_token=chars_per_token, flush=a.flush)["results"]
+                               chars_per_token=chars_per_token, flush=a.flush,
+                               preamble=a.preamble)["results"]
     # `found` is the fleet rule (needle text anywhere in reasoning + content).
     # `answered` is the strict read: the turn finished (`stop`) AND the needle is
     # in the final content. A model that quotes the haystack until the budget

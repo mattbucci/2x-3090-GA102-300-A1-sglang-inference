@@ -262,7 +262,7 @@ def labbench_suite(url, n_samples=50, max_workers=1, max_tokens=4096):
 
 
 def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9), max_tokens=4096,
-                budget=None, temperature=0, haystack=None, chars_per_token=4.5, flush=False):
+                budget=None, temperature=0, haystack=None, chars_per_token=4.5, flush=False, preamble=""):
     """Needle-in-a-haystack at various context lengths AND depths.
 
     Varying the needle DEPTH (fraction through the filler) catches lost-in-the-
@@ -305,7 +305,8 @@ def needle_eval(url, lengths=[1024, 4096, 16384, 65536], depths=(0.1, 0.5, 0.9),
                 n_chars = int(ctx * chars_per_token)
                 body = (filler * (n_chars // len(filler) + 1))[:n_chars]
                 pos = int(len(body) * depth)
-                prompt = (body[:pos] + "\n" + needle + "\n" + body[pos:]
+                # `preamble` states the task before the haystack as well (deep-context framing A/B)
+                prompt = (preamble + body[:pos] + "\n" + needle + "\n" + body[pos:]
                           + "\n\nWhat is the secret password? Answer with just the password.")
                 try:
                     if flush:
