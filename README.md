@@ -36,7 +36,7 @@ Every deep point is server-verified at its labeled depth (`actual_input_tokens`;
 `benchmarks/<preset>/results.json`, the lever ledger in [`docs/decode-levers.md`](docs/decode-levers.md).
 
 - **True-256K decoders:** the A3B DeltaNet MoEs lead (`qwen36-ream` **187 tok/s @255K**, `qwen35-moe` 186,
-  `qwen36` 148; ~286 short); the Mamba2-hybrid `nemotron3-omni` is near-flat (101 → 95); the 30B-A3B coder
+  `qwen36` 148; ~286 short); the Mamba2-hybrid `nemotron3-omni` is near-flat (116 → 107); the 30B-A3B coder
   trio sits at ~78 @255K; the dense DeltaNet 27Bs (`qwen36-dense`, `qwen38`) at 58; on the triton backend
   `flint` **122**, the Gemma 4 MoEs 70, `gemma4-31b` 44.
 - **Expert pruning or merging does not speed M=1 decode**; REAP/REAM win on KV headroom and footprint.
@@ -148,7 +148,7 @@ single-user at 32K and at the deepest point. Full table, HuggingFace zoo, MoE co
 | `qwen35-moe` | Qwen3.5-28B-A3B-REAP AWQ | DeltaNet+MoE A3B (205 exp, VL) | 262K | 258 → **186** | [link](https://huggingface.co/mattbucci/Qwen3.5-28B-A3B-REAP-AWQ) |
 | `qwen36` | Qwen3.6-35B-A3B AWQ-Marlin | DeltaNet+MoE A3B (256 exp, VL) | 262K | 248 → **148** | [link](https://huggingface.co/mattbucci/Qwen3.6-35B-A3B-AWQ) |
 | `flint` | Flint 40B-A2.5B AWQ (calibrated g32) | MoE A2.5B, 35 SWA + 14 NoPE layers, learned sinks, thinking + tools | 262K | 170 → **122** | [link](https://huggingface.co/mattbucci/Flint-AWQ-g32) |
-| `nemotron3-omni` | Nemotron-3-Nano-Omni-30B-A3B AWQ | Mamba2-hybrid MoE A3B (AVLM, 6/6 caps, `moe_wna16`) | 262K | 100 → **95** | [link](https://huggingface.co/mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ) |
+| `nemotron3-omni` | Nemotron-3-Nano-Omni-30B-A3B AWQ | Mamba2-hybrid MoE A3B (AVLM, 6/6 caps, `moe_wna16`) | 262K | 116 → **107** | [link](https://huggingface.co/mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ) |
 | `coder-30b` / `coder-30b-eval` | Qwen3-Coder-30B-A3B AWQ (CT) | MoE A3B (128 exp) | 262K | 191 → **79** | [link](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-AWQ) |
 | `coder-reap-25b` | Qwen3-Coder-30B-A3B-REAP AWQ | MoE A3B (96 exp) | 262K | 189 → **78** | [link](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) |
 | `qwen3-ream` | Qwen3-30B-Instruct-2507 REAM AWQ | MoE A3B (96 exp, text) | 262K | 189 → **78** | [link](https://huggingface.co/mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ) |
