@@ -1,0 +1,135 @@
+{
+ "M": 1,
+ "default_us": 213.31903457641602,
+ "up": {
+  "BLOCK_SIZE_M": 16,
+  "BLOCK_SIZE_N": 16,
+  "BLOCK_SIZE_K": 256,
+  "GROUP_SIZE_M": 1,
+  "num_warps": 4,
+  "num_stages": 2
+ },
+ "down": {
+  "BLOCK_SIZE_M": 16,
+  "BLOCK_SIZE_N": 16,
+  "BLOCK_SIZE_K": 32,
+  "GROUP_SIZE_M": 1,
+  "num_warps": 1,
+  "num_stages": 4
+ },
+ "tuned_us": 126.28479957580565,
+ "top_up": [
+  [
+   149.82000350952148,
+   {
+    "BLOCK_SIZE_M": 16,
+    "BLOCK_SIZE_N": 16,
+    "BLOCK_SIZE_K": 256,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 4,
+    "num_stages": 2
+   }
+  ],
+  [
+   149.90336418151855,
+   {
+    "BLOCK_SIZE_M": 16,
+    "BLOCK_SIZE_N": 16,
+    "BLOCK_SIZE_K": 256,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 4,
+    "num_stages": 3
+   }
+  ],
+  [
+   151.73583984375,
+   {
+    "BLOCK_SIZE_M": 16,
+    "BLOCK_SIZE_N": 16,
+    "BLOCK_SIZE_K": 64,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 1,
+    "num_stages": 3
+   }
+  ],
+  [
+   151.80288314819336,
+   {
+    "BLOCK_SIZE_M": 16,
+    "BLOCK_SIZE_N": 16,
+    "BLOCK_SIZE_K": 64,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 1,
+    "num_stages": 4
+   }
+  ],
+  [
+   151.94623947143555,
+   {
+    "BLOCK_SIZE_M": 16,
+    "BLOCK_SIZE_N": 16,
+    "BLOCK_SIZE_K": 128,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 1,
+    "num_stages": 2
+   }
+  ]
+ ],
+ "top_down": [
+  [
+   126.28479957580565,
+   {
+    "BLOCK_SIZE_M": 16,
+    "BLOCK_SIZE_N": 16,
+    "BLOCK_SIZE_K": 32,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 1,
+    "num_stages": 4
+   }
+  ],
+  [
+   126.62272453308104,
+   {
+    "BLOCK_SIZE_M": 16,
+    "BLOCK_SIZE_N": 16,
+    "BLOCK_SIZE_K": 32,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 1,
+    "num_stages": 2
+   }
+  ],
+  [
+   126.79167747497557,
+   {
+    "BLOCK_SIZE_M": 16,
+    "BLOCK_SIZE_N": 16,
+    "BLOCK_SIZE_K": 32,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 1,
+    "num_stages": 3
+   }
+  ],
+  [
+   128.26623916625977,
+   {
+    "BLOCK_SIZE_M": 16,
+    "BLOCK_SIZE_N": 16,
+    "BLOCK_SIZE_K": 32,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 2,
+    "num_stages": 4
+   }
+  ],
+  [
+   130.08383750915527,
+   {
+    "BLOCK_SIZE_M": 16,
+    "BLOCK_SIZE_N": 16,
+    "BLOCK_SIZE_K": 32,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 2,
+    "num_stages": 3
+   }
+  ]
+ ]
+}

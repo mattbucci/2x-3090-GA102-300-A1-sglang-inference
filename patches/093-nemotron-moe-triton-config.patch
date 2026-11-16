@@ -1,0 +1,201 @@
+093 nemotron-moe-triton-config: tuned M=1 Triton MoE config for Nemotron-3-Nano int4 w4a16 on RTX 3090
+
+nemotron3-omni (QUANT=moe_wna16, E=128, per-rank intermediate 928, group 32, zero points, non-gated
+relu2) ran fused_moe_kernel_gptq_awq on the upstream default config: no file exists for this shape.
+Only the "1" key is tuned (decode at max_running 1); M >= 2 keeps the upstream default values so
+prefill is unchanged. up: BLOCK_N 16 / BLOCK_K 256 / 4 warps / 2 stages; down: BLOCK_N 16 /
+BLOCK_K 32 / 1 warp / 4 stages. Microbench 191 -> 127 us per fused_moe call.
+nemotron3-omni tripwire, interleaved boots: 125.8 / 124.2 / 115.5 and 125.6 / 123.9 / 114.9
+-> 151.3 / 148.6 / 136.1 and 151.1 / 148.4 / 135.9 tok/s at 1K / 32K / 262K. Greedy text and
+logprobs identical on 5 prompts; MMLU 51/57, HumanEval 30/30, 256K reasoning probe 44 % both arms.
+---
+diff --git a/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_8_0/E=128,N=464,device_name=NVIDIA_GeForce_RTX_3090,dtype=int4_w4a16.json b/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_8_0/E=128,N=464,device_name=NVIDIA_GeForce_RTX_3090,dtype=int4_w4a16.json
+new file mode 100644
+index 0000000000..8f52503185
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_8_0/E=128,N=464,device_name=NVIDIA_GeForce_RTX_3090,dtype=int4_w4a16.json
+@@ -0,0 +1,88 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 16,
++        "BLOCK_SIZE_K": 256,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 2
++    },
++    "2": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "4": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "16": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "32": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "64": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "128": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "256": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "512": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "1024": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "2048": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "4096": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "8192": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    }
++}
+\ No newline at end of file
+diff --git a/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_8_0/E=128,N=464,device_name=NVIDIA_GeForce_RTX_3090,dtype=int4_w4a16_down.json b/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_8_0/E=128,N=464,device_name=NVIDIA_GeForce_RTX_3090,dtype=int4_w4a16_down.json
+new file mode 100644
+index 0000000000..75a41be8ad
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_8_0/E=128,N=464,device_name=NVIDIA_GeForce_RTX_3090,dtype=int4_w4a16_down.json
+@@ -0,0 +1,88 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 16,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 1,
++        "num_stages": 4
++    },
++    "2": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "4": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "16": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "32": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "64": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "128": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "256": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "512": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "1024": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "2048": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "4096": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "8192": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    }
++}
+\ No newline at end of file
