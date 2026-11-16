@@ -118,7 +118,7 @@ tool-use ladder and the 256K reasoning probe with footnotes: [`docs/quality-eval
 | `qwen38` | **93 %** | **96 %** | ✓ 250K | DSpark cell, 196/300 SWE-bench | — |
 | `qwopus38` | 87.7 % | **100 %** | ✓ 250K | caps 5/5, 190/300 SWE-bench (omp) | **100 %** |
 | `gemma4-31b` | 93.0 % | **97.5 %** | ✓ 250K | 1.0 → 258K | **100 %** |
-| `gemma4` / `gemma4-21b-reap` / `gemma4-12b` | 82.5 / 80.7 / 77.2 % | 97.5 / 0 † / 92.5 % | ✓ 250K | 1.0 → 255,957 / 258K / 258K | 94 / 94 / 61 % |
+| `gemma4` / `gemma4-21b-reap` / `gemma4-12b` | 82.5 / 82.5 / 77.2 % | 97.5 / 92.5 / 92.5 % | ✓ 250K | 1.0 → 255,957 / 258K / 258K | 94 / 94 / 61 % |
 | `qwen35-moe` | 69.6 % | 80.0 % | ✓ | 1.0 → 255,889 | 72 % (multikey soft ≥ 131K) |
 | `flint` | 86–88 % | 73–80 % | ✓ 244K @ ≥ 0.5 natural ◆◆ | 1.0 → 234,430 on a natural haystack | see ◆◆ |
 | `devstral` | 77.2 % | 80.0 % | ✓ 131K | 1.0 → 132K firm | ~80 % at 178K |
@@ -126,7 +126,7 @@ tool-use ladder and the 256K reasoning probe with footnotes: [`docs/quality-eval
 | `nemotron3-omni` | — | — | — | 0.6 → 131K at an 8K budget | — |
 | `qwen3-ream` | 80.7 % | 27.5 % ◊ | ✓ 250K | 148K single-turn only | 100 % at 178K |
 
-† REAP prune lost coding. ◆ 57-question chat-mode MMLU under a 200-token cap on a thinking model.
+◆ 57-question chat-mode MMLU under a 200-token cap on a thinking model.
 ◆◆ natural Open-Platypus haystack; the stock filler is a repetition attractor on Flint's NoPE layers, so
 retrieval and reasoning probes on Flint use `--haystack` ([issue #7](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/7)).
 ◊ non-coder text generalist on a code task. The flagship MoE thinkers and the Gemma 4s hold perfect
@@ -153,7 +153,7 @@ single-user at 32K and at the deepest point. Full table, HuggingFace zoo, MoE co
 | `coder-reap-25b` | Qwen3-Coder-30B-A3B-REAP AWQ | MoE A3B (96 exp) | 262K | 189 → **78** | [link](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) |
 | `qwen3-ream` | Qwen3-30B-Instruct-2507 REAM AWQ | MoE A3B (96 exp, text) | 262K | 189 → **78** | [link](https://huggingface.co/mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ) |
 | `gemma4` | Gemma 4 26B A4B MoE AWQ | MoE A4B (103 exp, VL + video + audio) | 262K | 96 → **70** | [link](https://huggingface.co/mattbucci/gemma-4-26B-AWQ) |
-| `gemma4-21b-reap` | Gemma 4 21B REAP AWQ | MoE (VL; HumanEval 0, vision/chat ship) | 262K | 98 → **83** | [link](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ) |
+| `gemma4-21b-reap` | Gemma 4 21B REAP AWQ | MoE (VL) | 262K | 98 → **83** | [link](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ) |
 | `gemma4-12b` | Gemma 4 12B Unified AWQ | omni, encoder-free (5/5) | 262K | 137 → **99** | [link](https://huggingface.co/mattbucci/gemma-4-12B-AWQ) |
 | `gemma4-31b` | Gemma 4 31B Dense AWQ | dense (VL), fp8_e5m2 KV, triton | 262K | 65 → **44** | [link](https://huggingface.co/mattbucci/gemma-4-31B-AWQ) |
 | `qwen38` | Qwen3.8-27B AWQ | dense + DeltaNet (VL + video); `SPEC_DECODE=1` = DSpark | 262K | 81 → **58** (spec 125 → 58 @250K) | [link](https://huggingface.co/mattbucci/Qwen3.8-27B-AWQ) |
