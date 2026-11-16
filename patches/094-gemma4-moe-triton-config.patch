@@ -1,0 +1,202 @@
+094 gemma4-moe-triton-config: tuned M=1 Triton MoE config for the Gemma 4 MoE int4 w4a16 shape on RTX 3090
+
+gemma4 (26B) and gemma4-21b-reap share the routed-expert shape (E=128, hidden 2816, per-rank
+intermediate 352, group 32, zero points, top-8, gated gelu) and ran fused_moe_kernel_gptq_awq on the
+upstream default config. Only the "1" key is tuned; M >= 2 keeps the upstream default values.
+up: BLOCK_N 16 / BLOCK_K 64 / 1 warp / 2 stages; down: BLOCK_N 16 / BLOCK_K 32 / 2 warps / 4 stages.
+Microbench 211 -> 107 us per fused_moe call.
+Tripwire at 1K / 32K / 262K, interleaved boots:
+  gemma4          101.9 / 97.0 / 72.1 and 102.4 / 97.1 / 71.7 -> 148.6 / 137.6 / 91.1 and 148.6 / 137.0 / 91.1
+  gemma4-21b-reap 101.6 / 98.4 / 83.2 and 101.9 / 98.9 / 83.7 -> 147.1 / 140.6 / 111.0 and 147.5 / 140.6 / 111.2
+Gate at parity on both (MMLU-57, HumanEval-30, natural-haystack needle grid 131K-229K).
+---
+diff --git a/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_8_0/E=128,N=176,device_name=NVIDIA_GeForce_RTX_3090,dtype=int4_w4a16.json b/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_8_0/E=128,N=176,device_name=NVIDIA_GeForce_RTX_3090,dtype=int4_w4a16.json
+new file mode 100644
+index 0000000000..75ea5169a0
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_8_0/E=128,N=176,device_name=NVIDIA_GeForce_RTX_3090,dtype=int4_w4a16.json
+@@ -0,0 +1,88 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 16,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 1,
++        "num_stages": 2
++    },
++    "2": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "4": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "16": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "32": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "64": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "128": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "256": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "512": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "1024": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "2048": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "4096": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "8192": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    }
++}
+\ No newline at end of file
+diff --git a/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_8_0/E=128,N=176,device_name=NVIDIA_GeForce_RTX_3090,dtype=int4_w4a16_down.json b/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_8_0/E=128,N=176,device_name=NVIDIA_GeForce_RTX_3090,dtype=int4_w4a16_down.json
+new file mode 100644
+index 0000000000..87a18a556d
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_8_0/E=128,N=176,device_name=NVIDIA_GeForce_RTX_3090,dtype=int4_w4a16_down.json
+@@ -0,0 +1,88 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 16,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 2,
++        "num_stages": 4
++    },
++    "2": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "4": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "16": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "32": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "64": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "128": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 32,
++        "BLOCK_SIZE_K": 64,
++        "GROUP_SIZE_M": 1
++    },
++    "256": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "512": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "1024": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "2048": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "4096": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    },
++    "8192": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 32,
++        "GROUP_SIZE_M": 8
++    }
++}
+\ No newline at end of file

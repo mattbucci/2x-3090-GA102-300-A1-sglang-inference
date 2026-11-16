@@ -1,0 +1,220 @@
+{
+ "tag": "gemma4-21b-reap-moecfg-needle-on-2026-11-16",
+ "timestamp": "2026-11-16 04:46",
+ "temperature": 0.0,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 140298,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 603,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "k you for the secret password that is stated somewhere in the following text.\"\nThe text contains: \"The secret password is: BANANA42.\"\n\nThe password is BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.3,
+    "found": true,
+    "actual_prompt_tokens": 140299,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 500,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "ord is `BANANA42`.\n\n    *   The user asks for the secret password.\n    *   The text says: \"The secret password is: BANANA42.\"\n\n    *   The password is BANANA42.",
+    "answered": true
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": false,
+    "actual_prompt_tokens": 140300,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1024,
+    "content_tail": "",
+    "reasoning_tail": "56. Math problem about 10 students.\n    57. Math problem about 10 students.\n    58. Math problem about 10 students.\n    59. Math problem about 10 students.\n    ",
+    "miss": {
+     "content": "",
+     "reasoning": "The user wants me to find a \"secret password\" that is stated somewhere in the provided text.\n\n    *   I will scan the entire text for the phrase \"secret password\" or any mention of a password.\n    *   Scanning...\n    *   \"I will ask you for the secret password that is stated somewhere in the following text.\" (This is the prompt, not the text itself).\n    *   Scanning the text blocks...\n    *   Block 1: Math problem about a spinner.\n    *   Block 2: Math problem about a math club.\n    *   Block 3: Math problem about 4-letter words.\n    *   Block 4: Math problem about Melinda and dice.\n    *   Block 5: Math problem about a fair coin.\n    *   Block 6: Math problem about a sequence of H's and T's.\n    *   Block 7: Math problem about 4-digit numbers.\n    *   Block 8: Math problem about 5 marbles.\n    *   Block 9: Math problem about white and black balls.\n    *   Block 10: Math problem about increasing sequences.\n    *   Block 11: Math problem about ordered pairs (a,b).\n    *   Block 12: Math problem about TARTAR.\n    *   Block 13: Math problem about license plates.\n    *   Block 14: Math problem about 4-card deck.\n    *   Block 15: Math problem about 3 captains.\n     hands-on...\n    *   Block 16: Math problem about a point P in a square.\n    *   Block 17: Math problem about $P(x) = x^2 - 3x - 9$.\n    *   Block 18: Math problem about 6 distinct integers.\n    *   Block 19: Math problem about 10 members, 5 boys and 5 girls.\n    *   Block 20: Math problem about a grid.\n    *   Block 21: Math problem about 4-letter arrangements.\n    *   Block 22: Math problem about 11^n.\n    *   Block 23: Math problem about 3 math books.\n    *   Block 24: Math problem about 4-digit numbers and repeated digits.\n    *   Block 25: Math problem about paths from A to B.\n    *   Block 26: Math problem about 27 cards.\n    *   Block 27: Math problem about 10 dogs.\n    *   Block 28: Math problem about coefficient of $x^2y^6$.\n    *   Block 29: Math problem about a lottery.\n    30. Math problem about 6 green and 4 purple marbles.\n    31. Math problem about 4 cards from a 52-card deck.\n    32. Math problem about 11 people.\n    33. Math problem about 10 cards.\n    34. Math problem about 2 cards from a 52-card deck.\n    35. Math problem about 10 students.\n    36. Math problem about 10 students.\n    37. Math problem about 10 students.\n    38. Math problem about 10 students.\n    39. Math problem about 10 students.\n    40. Math problem about 10 students.\n    41. Math problem about 10 students.\n    42. Math problem about 10 students.\n    43. Math problem about 10 students.\n    44. Math problem about 10 students.\n    45. Math problem about 10 students.\n    46. Math problem about 10 students.\n    47. Math problem about 10 students.\n    48. Math problem about 10 students.\n    49. Math problem about 10 students.\n    50. Math problem about 10 students.\n    51. Math problem about 10 students.\n    52. Math problem about 10 students.\n    53. Math problem about 10 students.\n    54. Math problem about 10 students.\n    55. Math problem about 10 students.\n    56. Math problem about 10 students.\n    57. Math problem about 10 students.\n    58. Math problem about 10 students.\n    59. Math problem about 10 students.\n    "
+    },
+    "answered": false
+   },
+   {
+    "context": 131072,
+    "depth": 0.7,
+    "found": false,
+    "actual_prompt_tokens": 140298,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1024,
+    "content_tail": "",
+    "reasoning_tail": "bers, 5 boys and 5 girls. Two of the members are chosen at random. What is the probability that they are both girls?\" (Math problem)\n    *   \"There are $\\binom{",
+    "miss": {
+     "content": "",
+     "reasoning": "The user wants me to find a \"secret password\" that is stated somewhere in the provided text.\n\n    *   \"A board game spinner is divided into three parts labeled $A$, $B$ and $C$...\" (Math problem)\n    *   \"To find the probability of the spinner landing on $C$, I need to subtract...\" (Solution)\n    *   \"My school's math club has 6 boys and 8 girls...\" (Math problem)\n    *   \"I need to choose 6 people out of 14...\" (Solution)\n    *   \"How many 4-letter words with at least one consonant...\" (Math problem)\n    *   \"First we count the number of all 4-letter words...\" (Solution)\n    *   \"Melinda will roll two standard six-sided dice...\" (Math problem)\n    *   \"She can do this if and only if at least one of the dice lands on a 1...\" (Solution)\n    *   \"Let $p$ be the probability that, in the process of repeatedly flipping a fair coin...\" (Math problem)\n    *   \"Think of the problem as a\n    *   \"How many four-digit numbers greater than 2999 can be formed...\" (Math problem)\n    *   \"For the first digit, there are seven choices...\" (Solution)\n    *   \"I have 5 marbles numbered 1 through 5 in a bag...\" (Math problem)\n    *   \"I need to find the average of all possible sums...\" (Solution)\n    *   \"A box contains 5 white balls and 6 black balls...\" (Math problem)\n    *   \"There are $\\binom{11}{2} = 55$ combinations...\" (Solution)\n    *   \"The number of increasing sequences of positive integers $a_1 \\le a_2 \\le a_3 \\le \\cdots \\le a_{10} \\le 2007$...\" (Math problem)\n    *   \"The numbers $a_i - i$ are ten not-necessarily distinct even elements...\" (Solution)\n    *   \"Find the number of ordered pairs of positive integers $(a,b)$ such that $a+b=1000$ and neither $a$ nor $b$ has a zero digit.\" (Math problem)\n    *   \"There are $\\lfloor\\frac{999}{10}\\rfloor = 99$ numbers up to 1000...\" (Solution)\n    *   \"Determine the number of ways to arrange the letters of the word TARTAR.\" (Math problem)\n    *   \"To arrange the letters of a word, I can use theformula...\" (Solution)\n    *   \"A mathematical organization is producing a set of commemorative license plates...\" (Math problem)\n    *   \"If a sequence contains no more than one 0, there are $7\\cdot 6\\cdot 5\\cdot 4\\cdot 3 = 2520$ sequences...\" (Solution)\n    *   \"If I choose four cards from a standard 52-card deck, with replacement, what is the probability that I will end up with one card from each suit?\" (Math problem)\n    *   \"I want to find the probability of getting one card from each suit...\" (Solution)\n    *   \"In how many ways can I choose 3 captains from a team of 11 people?\" (Math problem)\n    *   \"This is a problem of counting combinations...\" (Solution)\n    *   \"A point $P$ is randomly selected from the square region with vertices at $(\\pm 2, \\pm 2)$...\" (Math problem)\n    *   \"I need to find the area of the region that is within one unit of the origin...\" (Solution)\n    *   \"Let $P(x) = x^2 - 3x - 9$. A real number $x$ is chosen at random from the interval $5 \\le x \\le 15$...\" (Math problem)\n    *   \"Table of values of $P(x)$: ...\" (Solution)\n    *   \"Six distinct integers are picked at random from $\\{1,2,3,\\ldots,10\\}$...\" (Math problem)\n    *   \"The total number of ways to choose 6 numbers is $\\binom{10}{6} = 210$...\" (Solution)\n    *   \"A club has 10 members, 5 boys and 5 girls. Two of the members are chosen at random. What is the probability that they are both girls?\" (Math problem)\n    *   \"There are $\\binom{"
+    },
+    "answered": false
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": false,
+    "actual_prompt_tokens": 140300,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1024,
+    "content_tail": "",
+    "reasoning_tail": "is the coefficient of $x^2y^6$ in the expansion of $\\left(\\frac{3}{5}x-\\frac{y}{2}\\right)^8$?\"\n    *   \"The lottery in our state consists of two drawings. First",
+    "miss": {
+     "content": "",
+     "reasoning": "The user wants me to find a \"secret password\" that is stated somewhere in the provided text.\n\n    *   \"I will ask you for the secret password that is stated somewhere in the following text.\"\n    *   The text is a long list of math problems and their solutions.\n    *   I need to scan the text for the phrase \"the secret password is\" or something similar.\n\n    *   Scanning...\n    *   \"A board game spinner is divided into three parts labeled $A$, $B$ and $dots$...\"\n    *   \"To find the probability of the spinner landing on $C$, I need to subtract...\"\n    *   \"My school's math club has 6 boys and 8 girls...\"\n    *   \"How many 4-letter words with at least one consonant can be constructed from the letters $A$, $B$, $C$, $D$, and $E$?\"\n    *   \"Melinda will roll two standard six-sided dice...\"\n    *   \"Let $p$ be the probability that, in the process of repeatedly flipping a fair coin...\"\n    *   \"How many four-digit numbers greater than 2999 can be formed...\"\n    *   \"I have 5 marbles numbered 1 through 5 in a bag...\"\n    *   \"A box contains 5 white balls and 6 black balls...\"\n    *   \"The number of increasing sequences of positive integers $a_1 \\le a_2 \\le a_3 \\le \\cdots \\le a_{10} \\le 2007$...\"\n    *   \"Find the number of ordered pairs of positive integers $(a,b)$ such that $a+b=1000$ and neither $a$ nor $b$ has a zero digit.\"\n    *   \"Determine the number of ways to arrange the letters of the word TARTAR.\"\n    *   \"A mathematical organization is producing a set of commemorative license plates...\"\n    *   \"If I choose four cards from a standard $52$-card deck, with replacement, what is the probability that I will end up with one card from each suit?\"\n    *   \"In how many ways can I choose 3 captains from a11 people?\"\n    *   \"A point $P$ is randomly selected from the square region...\"\n    *   \"Let $P(x) = x^2 - 3x - 9$. A real number $x$ is chosen at random...\"\n    *   \"Six distinct integers are picked at random from $\\{1,2,3,\\ldots,10\\}$...\"\n    *   \"A club has 10 members, 5 boys and 5 girls. Two of the members are chosen at random. What is the probability that they are both girls?\"\n    *   \"Each block on the grid shown in the Figure is 1 unit by 1 unit...\"\n    *   \"How many different four-letter arrangements can be formed using the six letters $A, B, C, D, E$, and $F$, if the first letter must be $C$, one of the other letters must be $B$, and no letter can be used more than once in the arrangement?\"\n    *   \"Find the smallest positive integer that is both an integer power of 11 and is not a palindrome.\"\n    *   \"How many ways can we put 3 math books and 5 English books on a shelf if all the math books must stay together and all the English books must also stay together? (The math books are all different and so are the English books.)\"\n    *   \"If $x\\%$ of four-digit numbers have a repeated digit (the repeated digits do not need to be adjacent), then what is $x$?\"\n    *   \"How many paths are there from $A$ to $B$, if every step must be up or to the right?\"\n    *   \"Every card in a deck has a picture of one shape - circle, square, or triangle, which is painted in one of the three colors - red, blue, or green. The deck has 207 cards, with every shape-color-combination represented.\" (Wait, the text says 27 cards, but the logic says 27. Let me re-read.)\n    *   \"At the Gooddog Obedience School, dogs can learn to do three tricks: sit, stay, and roll over. Of the dogs at the school: ...\"\n    *   \"What is the coefficient of $x^2y^6$ in the expansion of $\\left(\\frac{3}{5}x-\\frac{y}{2}\\right)^8$?\"\n    *   \"The lottery in our state consists of two drawings. First"
+    },
+    "answered": false
+   },
+   {
+    "context": 196608,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 213039,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1024,
+    "content_tail": "",
+    "reasoning_tail": "e prompt, but the text provided in the prompt is \"How many different four-digit numbers can be formed using the digits 2, 2, 9 and 9?\").\nActually, the text says",
+    "answered": false
+   },
+   {
+    "context": 196608,
+    "depth": 0.3,
+    "found": true,
+    "actual_prompt_tokens": 213039,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1024,
+    "content_tail": "",
+    "reasoning_tail": "2}{12} - \\frac{4}{12} - \\frac{5}{12} = \\frac{3}{12}$. I can reduce this fraction by dividing the numerator and denominator by $3$, and I get: $P(C) = \\frac{1}{4",
+    "answered": false
+   },
+   {
+    "context": 196608,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 213039,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1024,
+    "content_tail": "",
+    "reasoning_tail": "e text.\nI'll search for \"BANANA42\" in the text.\n\nI'll search for \"secret password\" in the text.\nI'll search for \"BANANA42\" in the text.\n\nI'll search for \"secret",
+    "answered": false
+   },
+   {
+    "context": 196608,
+    "depth": 0.7,
+    "found": true,
+    "actual_prompt_tokens": 213039,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1024,
+    "content_tail": "",
+    "reasoning_tail": " password is: BANANA42, and the other two are 32, and 12. Wait, no, that is not it. The secret password is: BANANA42, and the other two are 32, and 12. Wait, no",
+    "answered": false
+   },
+   {
+    "context": 196608,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 213039,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 642,
+    "content_tail": "The secret password is: BANANA42.",
+    "reasoning_tail": "ys:\n\"The secret password is: BANANA42.\"\n\nLet me check if there are any other passwords.\nScanning...\nNo other mention of \"password\".\n\nThe password is `BANANA42`.",
+    "answered": true
+   },
+   {
+    "context": 229376,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 252081,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 242,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "et password that is stated somewhere in the following text.\"\n    *   The text contains: \"The secret password is: BANANA42.\"\n\n    *   The password is `BANANA42`.",
+    "answered": true
+   },
+   {
+    "context": 229376,
+    "depth": 0.3,
+    "found": true,
+    "actual_prompt_tokens": 252082,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 142,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "secret password that is stated somewhere in the following text.\"\n    *   The text says: \"The secret password is: BANANA42.\"\n\n    *   The password is `BANANA42`.",
+    "answered": true
+   },
+   {
+    "context": 229376,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 252080,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1024,
+    "content_tail": "",
+    "reasoning_tail": "range the letters of            the word TARTAR. ... The number of ways to arrange the letters of the word TARTAR. ... The number of ways to arrange the letters",
+    "answered": false
+   },
+   {
+    "context": 229376,
+    "depth": 0.7,
+    "found": true,
+    "actual_prompt_tokens": 252080,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 1024,
+    "content_tail": "",
+    "reasoning_tail": " let me look at the very end of the text.\n    *   Found: \"The secret password is: BAN\n    *   Wait, let me look at the very end of the text.\n    *   Found: \"The",
+    "answered": false
+   },
+   {
+    "context": 229376,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 252081,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 123,
+    "content_tail": "BANANA42",
+    "reasoning_tail": " \"The secret password is: BANANA42.\"\n\n    *   The user asks for the secret password.\n    *   The text explicitly states it.\n\n    *   The password is `BANANA42`.",
+    "answered": true
+   }
+  ],
+  "score": 0.8,
+  "answered_score": 0.4
+ }
+}
