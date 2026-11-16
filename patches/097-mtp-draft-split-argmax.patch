@@ -1,0 +1,134 @@
+097 mtp-draft-split-argmax: frozen-KV MTP draft head scores each rank's vocabulary share (topk == 1)
+
+The Gemma 4 assistant draft keeps a full tied head (262144 x 1024 bf16 = 0.54 GB) and, with
+skip_all_gather, every TP rank reads all of it at every draft step, then the worker runs a softmax
+over the vocabulary to take one token. SGLANG_MTP_DRAFT_SPLIT_ARGMAX=1: each rank scores
+vocab / tp_size rows, the ranks exchange (max logit, index as three base-256 digits) through one
+bf16 all-reduce, and the logits handed to the worker are 0 with a 1 at the exact argmax; the worker
+takes the argmax of the logits instead of softmax + max when topk == 1 (the score is unused in a
+greedy chain). Ties resolve to the lowest token id as torch.max does. Target verification is
+untouched, so outputs keep the target's distribution.
+gemma4-31b TP=2, two interleaved boots per arm, spec cycle 24.17 / 24.20 -> 22.40 / 22.41 ms at
+32K and 30.64 / 30.66 -> 28.87 / 28.89 ms at 131K; natural-prompt decode 202 -> 219 / 189 -> 204 /
+128 -> 136 tok/s at 1K / 32K / 131K; greedy text identical on 5 prompts in all four boots.
+Default (unset or 0) keeps upstream behaviour.
+---
+diff --git a/python/sglang/srt/models/gemma4_mtp.py b/python/sglang/srt/models/gemma4_mtp.py
+index 1a1ec65d60..e99fb82171 100644
+--- a/python/sglang/srt/models/gemma4_mtp.py
++++ b/python/sglang/srt/models/gemma4_mtp.py
+@@ -35,6 +35,52 @@ from sglang.srt.runtime_context import get_parallel
+ from sglang.srt.speculative.frozen_kv_mtp_info import FrozenKVMTPContext
+ from sglang.srt.utils import add_prefix
+ 
++import os as _os
++
++# [3090 097] topk == 1 draft head: each TP rank scores its share of the vocabulary and the ranks
++# exchange (max, index) through one all-reduce, instead of every rank reading the whole tied head
++# (262144 x 1024 bf16 = 0.54 GB per draft step on gemma4-31b). 0 = upstream full-vocabulary logits.
++_SPLIT_ARGMAX = _os.environ.get("SGLANG_MTP_DRAFT_SPLIT_ARGMAX", "0") == "1"
++
++
++class _SplitArgmaxLogitsProcessor(LogitsProcessor):
++    """Returns logits that are 0 everywhere and 1 at the exact argmax of ``hidden @ W.T``.
++
++    Only valid for a greedy (topk == 1) draft: the worker reads nothing but the top token.
++    Ties resolve to the lowest token id, as ``torch.max`` over the full row does.
++    """
++
++    def _compute_lm_head(self, hidden_states, lm_head, embedding_bias=None, *, out=None):
++        group = get_parallel().tp_group
++        rank, size = (0, 1) if group is None else (group.rank_in_group, group.world_size)
++        weight = lm_head.weight
++        vocab = weight.shape[0]
++        if size <= 1 or embedding_bias is not None or hidden_states.dim() != 2:
++            return super()._compute_lm_head(hidden_states, lm_head, embedding_bias, out=out)
++        share = vocab // size
++        lo = rank * share
++        hi = vocab if rank == size - 1 else lo + share
++        part = torch.matmul(hidden_states.to(weight.dtype), weight[lo:hi].T)
++        val, idx = part.max(dim=-1)
++        idx = idx + lo
++        bs = hidden_states.shape[0]
++        # 4 slots per rank: the max logit and the index as three base-256 digits (exact in bf16 / fp16).
++        packed = torch.zeros((bs, size, 4), dtype=weight.dtype, device=weight.device)
++        packed[:, rank, 0] = val
++        packed[:, rank, 1] = (idx >> 16).to(weight.dtype)
++        packed[:, rank, 2] = ((idx >> 8) & 255).to(weight.dtype)
++        packed[:, rank, 3] = (idx & 255).to(weight.dtype)
++        packed = group.all_reduce(packed.view(bs, size * 4)).view(bs, size, 4)
++        best = packed[:, :, 0].float().argmax(dim=-1, keepdim=True)  # first max = lowest rank on a tie
++        digits = packed.gather(1, best[:, :, None].expand(bs, 1, 4))[:, 0, 1:].long()
++        token = (digits[:, 0] << 16) | (digits[:, 1] << 8) | digits[:, 2]
++        if out is not None and out.shape == (bs, vocab):
++            logits = out.zero_()
++        else:
++            logits = torch.zeros((bs, vocab), dtype=torch.float32, device=weight.device)
++        logits.scatter_(1, token[:, None], 1.0)
++        return logits
++
+ logger = logging.getLogger(__name__)
+ 
+ 
+@@ -111,7 +157,9 @@ class Gemma4AssistantForCausalLM(Gemma4ForCausalLM):
+             self.lm_head = self.model.embed_tokens
+         else:
+             self.lm_head = nn.Linear(self.hidden_size, self.vocab_size, bias=False)
+-        self.logits_processor = LogitsProcessor(text_config, skip_all_gather=True)
++        self.logits_processor = (
++            _SplitArgmaxLogitsProcessor if _SPLIT_ARGMAX and not self.use_ordered_embeddings else LogitsProcessor
++        )(text_config, skip_all_gather=True)
+ 
+         if self.use_ordered_embeddings:
+             self.num_centroids = int(config.num_centroids)
+diff --git a/python/sglang/srt/speculative/frozen_kv_mtp_worker_v2.py b/python/sglang/srt/speculative/frozen_kv_mtp_worker_v2.py
+index 06dbb5f3c4..03ef3c9f71 100644
+--- a/python/sglang/srt/speculative/frozen_kv_mtp_worker_v2.py
++++ b/python/sglang/srt/speculative/frozen_kv_mtp_worker_v2.py
+@@ -89,6 +89,10 @@ from sglang.srt.utils.async_probe import (
+ 
+ logger = logging.getLogger(__name__)
+ 
++import os as _os
++
++_MTP_DRAFT_ARGMAX = _os.environ.get("SGLANG_MTP_DRAFT_SPLIT_ARGMAX", "0") == "1"
++
+ 
+ class FrozenKVMTPDraftWorker(EagleDraftWorkerBase, TpModelWorker):
+     """Frozen-KV MTP draft worker.
+@@ -589,8 +593,7 @@ class FrozenKVMTPDraftWorker(EagleDraftWorkerBase, TpModelWorker):
+             seed_next_logits = seed_output.next_token_logits
+             seed_hidden_per_req = seed_output.hidden_states
+ 
+-        probs = torch.softmax(seed_next_logits, dim=-1)
+-        topk_p, topk_index = fast_topk(probs, self.topk, dim=-1)
++        topk_p, topk_index = self._draft_topk(seed_next_logits)
+         maybe_detect_oob(
+             topk_index,
+             0,
+@@ -632,8 +635,7 @@ class FrozenKVMTPDraftWorker(EagleDraftWorkerBase, TpModelWorker):
+             maybe_detect_inf(
+                 logits_output.next_token_logits, f"frozen_kv_mtp_draft step {i}"
+             )
+-            probs = torch.softmax(logits_output.next_token_logits, dim=-1)
+-            topk_p, topk_index = fast_topk(probs, self.topk, dim=-1)
++            topk_p, topk_index = self._draft_topk(logits_output.next_token_logits)
+             maybe_detect_oob(
+                 topk_index,
+                 0,
+@@ -646,6 +648,15 @@ class FrozenKVMTPDraftWorker(EagleDraftWorkerBase, TpModelWorker):
+             score_list, token_list, parents_list, self.speculative_num_draft_tokens
+         )
+ 
++    def _draft_topk(self, logits: torch.Tensor):
++        """[3090 097] top-k draft tokens and their probabilities. A greedy chain (topk == 1) only
++        needs the argmax, so the softmax over the vocabulary is skipped (the score is unused)."""
++        if self.topk == 1 and _MTP_DRAFT_ARGMAX:
++            topk_index = torch.argmax(logits, dim=-1, keepdim=True)
++            return torch.ones_like(topk_index, dtype=torch.float32), topk_index
++        probs = torch.softmax(logits, dim=-1)
++        return fast_topk(probs, self.topk, dim=-1)
++
+     def draft_extend(self):
+         # EagleDraftWorkerBase contract. Frozen has no draft-KV extend forward; the
+         # orchestrator calls `_draft_extend_for_{prefill,decode}` directly.

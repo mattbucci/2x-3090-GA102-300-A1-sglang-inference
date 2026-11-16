@@ -1,0 +1,39 @@
+{
+  "model": "gemma4-31b-split2",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "bench_long_context natural-text (chat stream, cache flushed per point)",
+  "prompt_source": "natural",
+  "timestamp": "2026-11-16 14:05:01",
+  "output_tokens": 600,
+  "max_total_num_tokens": 284574,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1067,
+      "ttft_ms": 533.95,
+      "tpot_ms": 4.56,
+      "throughput": 183.7,
+      "tok_per_sec": 219.2,
+      "completion_tokens": 600
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32731,
+      "ttft_ms": 12835.95,
+      "tpot_ms": 4.9,
+      "throughput": 38.05,
+      "tok_per_sec": 204.3,
+      "completion_tokens": 600
+    },
+    {
+      "context": 131072,
+      "actual_input_tokens": 131891,
+      "ttft_ms": 96845.81,
+      "tpot_ms": 7.38,
+      "throughput": 5.92,
+      "tok_per_sec": 135.5,
+      "completion_tokens": 600
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+096 frozen-kv-mtp-pool: do not reserve draft KV rows for a frozen-KV MTP draft
+
+The KV pool configurators size the pool for an EAGLE-style draft that owns its own KV rows
+(eagle_draft_num_layers). SpeculativeAlgorithm.is_eagle() includes FROZEN_KV_MTP, but that draft
+(the Gemma 4 *-assistant models) attends over the target's KV and allocates only a 64-token stub.
+On gemma4-31b at TP=2 / --mem-fraction-static 0.92 the reservation cut the pool from 306,419 to
+224,664 tokens (below the 262,144 window) with 3.5 GB left unused per card; with this patch the
+spec boot gets 284,574 tokens and leaves 1.78 GB (plain: 306,419 / 1.91 GB).
+---
+diff --git a/python/sglang/srt/model_executor/pool_configurator.py b/python/sglang/srt/model_executor/pool_configurator.py
+index 5cf47c00dc..565e818209 100644
+--- a/python/sglang/srt/model_executor/pool_configurator.py
++++ b/python/sglang/srt/model_executor/pool_configurator.py
+@@ -258,9 +258,12 @@ class DefaultPoolConfigurator(MemoryPoolConfigurator):
+ 
+         # EAGLE/STANDALONE: assumes the draft shares the target's per-layer KV size,
+         # which holds for EAGLE/MTP drafts that reuse the target's attention config.
++        # [3090 096] not for a frozen-KV MTP draft: it reads the target's KV and owns no pool.
+         if (
+-            kvc.spec_algorithm.is_eagle() or kvc.spec_algorithm.is_standalone()
+-        ) and not kvc.is_draft_worker:
++            (kvc.spec_algorithm.is_eagle() or kvc.spec_algorithm.is_standalone())
++            and not kvc.spec_algorithm.is_frozen_kv_mtp()
++            and not kvc.is_draft_worker
++        ):
+             eagle_draft_num_layers = kvc.spec_aux_config.eagle_draft_num_layers
+             fused_full_entry = kvc.fused_entry_bytes("full")
+             if fused_full_entry is not None:
+@@ -730,9 +733,13 @@ class HybridSWAPoolConfigurator(MemoryPoolConfigurator):
+         self._draft_full_layers_num = 0
+         self._draft_swa_layers_num = 0
+         self._draft_swa_full_layers_num = 0
++        # [3090 096] a frozen-KV MTP draft (Gemma 4 assistant) reads the target's KV and owns no
++        # pool; reserving rows for it cost 56K of 306K tokens on gemma4-31b at TP=2.
+         if (
+-            kvc.spec_algorithm.is_eagle() or kvc.spec_algorithm.is_standalone()
+-        ) and not kvc.is_draft_worker:
++            (kvc.spec_algorithm.is_eagle() or kvc.spec_algorithm.is_standalone())
++            and not kvc.spec_algorithm.is_frozen_kv_mtp()
++            and not kvc.is_draft_worker
++        ):
+             draft_layers = kvc.spec_aux_config.eagle_draft_num_layers
+             if draft_layers is not None and int(draft_layers) > 0:
+                 draft_layers = int(draft_layers)

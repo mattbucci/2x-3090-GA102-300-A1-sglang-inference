@@ -1,0 +1,73 @@
+# gemma4-31b deep — actual prompt_tokens=244269, 256 decode steps, trace 1794862431.8917196-TP-0.trace.json.gz
+
+=== step[DRAFT_LOOP raw_bs=1 bs=1 topk=1] × 42 steps (after skipping 3) ===
+  per step: CPU wall 0.35 ms | GPU span 10.20 ms | kernel-sum 10.16 ms
+  exposed time (sweep line):
+      5.673 ms/step   55.6%  misc
+      3.801 ms/step   37.3%  gemm/gemv(fp16)
+      0.420 ms/step    4.1%  sampling
+      0.210 ms/step    2.1%  norm
+      0.047 ms/step    0.5%  idle-gap
+      0.030 ms/step    0.3%  act
+  top 25 kernels (ms/step, count/step):
+      3.949    20.0  _fwd_grouped_kernel_stage1
+      3.047     5.0  void gemv2T_kernel_val<int, int, __nv_bfloat16, __nv_bfloat16, __nv_bfloat16, float, 128, 16, 4, 4, 
+      1.022    45.0  void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_16x16_128x1_tn_align8>(cutlass_
+      0.756    45.0  std::enable_if<!(false), void>::type internal::gemvx::kernel<int, int, __nv_bfloat16, __nv_bfloat16,
+      0.411     5.0  void at::native::(anonymous namespace)::cunn_SoftMaxForward<4, float, float, float, at::native::(ano
+      0.266    40.0  void sglang::all_reduce_1shot_push_kernel<__nv_bfloat16, 2u, false>(sglang::AllReducePushParams<2u>)
+      0.240    20.0  _fwd_kernel_stage2
+      0.096    45.0  void flashinfer::norm::RMSNormKernel<8u, __nv_bfloat16>(__nv_bfloat16*, __nv_bfloat16*, __nv_bfloat1
+      0.047    20.0  void flashinfer::norm::FusedAddRMSNormKernel<8u, __nv_bfloat16>(__nv_bfloat16*, __nv_bfloat16*, __nv
+      0.043     5.0  void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::MaxOps<float>, unsign
+      0.035    20.0  _gemma_qkv_rmsnorm_kernel
+      0.035    20.0  _gemma_rmsnorm_residual_kernel
+      0.033    20.0  void sglang::act_and_mul_kernel<__nv_bfloat16, (sglang::ActivationKind)2, false, false, false, false
+      0.027    15.0  void sglang::fused_rope_kernel<true, 256l, false, __nv_bfloat16, __nv_bfloat16, long, 32u>(sglang::F
+      0.021    20.0  void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<c10::BFloat16>, std::array
+      0.019     5.0  void at::native::unrolled_elementwise_kernel<at::native::direct_copy_kernel_cuda(at::TensorIteratorB
+      0.012     9.0  memcpy32_post
+      0.010     5.0  void at::native::(anonymous namespace)::indexSelectSmallIndex<c10::BFloat16, long, unsigned int, 2, 
+      0.009     5.0  void sglang::fused_rope_kernel<true, 512l, false, __nv_bfloat16, __nv_bfloat16, long, 64u>(sglang::F
+      0.008     5.0  _small_copy_kernel
+      0.008     5.0  void at::native::vectorized_elementwise_kernel<2, at::native::CUDAFunctorOnSelf_add<long>, std::arra
+      0.007     5.0  void at::native::(anonymous namespace)::CatArrayBatchedCopy_vectorized<at::native::(anonymous namesp
+      0.007     5.0  void at::native::vectorized_elementwise_kernel<2, at::native::(anonymous namespace)::launch_clamp_sc
+      0.006     5.0  void at::native::vectorized_elementwise_kernel<4, at::native::AUnaryFunctor<c10::BFloat16, c10::BFlo
+      0.006     4.0  triton_poi_fused_max_mul_unsqueeze_view_0
+
+=== step[VERIFY bs=1] × 42 steps (after skipping 3) ===
+  per step: CPU wall 0.96 ms | GPU span 34.21 ms | kernel-sum 34.17 ms
+  exposed time (sweep line):
+     22.201 ms/step   64.9%  misc
+     10.892 ms/step   31.8%  marlin(int4)
+      0.808 ms/step    2.4%  norm
+      0.103 ms/step    0.3%  act
+      0.074 ms/step    0.2%  nccl
+      0.069 ms/step    0.2%  idle-gap
+  top 25 kernels (ms/step, count/step):
+     19.209    60.0  _verify_mla_prefix_stage1
+     10.071   240.0  void sglang::device::marlin::Marlin<__nv_bfloat16, 1125899906843648l, 256, 1, 8, 8, true, 4, 8, fals
+      1.313   120.0  void sglang::all_reduce_1shot_push_kernel<__nv_bfloat16, 2u, false>(sglang::AllReducePushParams<2u>)
+      0.918    60.0  _verify_mla_combine_stage2
+      0.838     1.0  void sglang::device::marlin::Marlin<__nv_bfloat16, 1125899923621888l, 256, 1, 8, 8, true, 4, -1, fal
+      0.317   121.0  void flashinfer::norm::RMSNormKernel<8u, __nv_bfloat16>(__nv_bfloat16*, __nv_bfloat16*, __nv_bfloat1
+      0.286   120.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::float8_co
+      0.268   121.0  void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::direct_co
+      0.185    60.0  void flashinfer::norm::FusedAddRMSNormKernel<8u, __nv_bfloat16>(__nv_bfloat16*, __nv_bfloat16*, __nv
+      0.182    60.0  _gemma_rmsnorm_residual_kernel
+      0.137    60.0  _gemma_qkv_rmsnorm_kernel
+      0.110    60.0  void sglang::act_and_mul_kernel<__nv_bfloat16, (sglang::ActivationKind)2, false, false, false, false
+      0.089    50.0  void sglang::fused_rope_kernel<true, 256l, false, __nv_bfloat16, __nv_bfloat16, long, 32u>(sglang::F
+      0.074     1.0  ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)
+      0.069    50.0  void sglang::store_kvcache_kernel<2048l, 2048l, 128u, false, long>(sglang::StoreKVCacheParams)
+      0.037     1.0  void gemmSN_TN_kernel<float, 128, 16, 2, 4, 6, 7, false, cublasGemvTensorStridedBatched<__nv_bfloat1
+      0.019    10.0  void sglang::fused_rope_kernel<true, 512l, false, __nv_bfloat16, __nv_bfloat16, long, 64u>(sglang::F
+      0.014    10.0  void sglang::store_kvcache_kernel<1024l, 1024l, 64u, false, long>(sglang::StoreKVCacheParams)
+      0.010     1.0  softcap_inplace_logits_kernel
+      0.005     3.0  void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::(anonymou
+      0.005     1.0  void at::native::(anonymous namespace)::indexSelectSmallIndex<c10::BFloat16, long, unsigned int, 2, 
+      0.004     3.0  void at::native::vectorized_elementwise_kernel<4, at::native::AUnaryFunctor<long, long, bool, at::na
+      0.004     3.0  void at::native::vectorized_elementwise_kernel<2, at::native::FillFunctor<long>, std::array<char*, 1
+      0.003     2.0  Memcpy DtoD (Device -> Device)
+      0.002     1.0  void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_put
