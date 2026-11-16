@@ -153,7 +153,7 @@ single-user at 32K and at the deepest point. Full table, HuggingFace zoo, MoE co
 | `coder-reap-25b` | Qwen3-Coder-30B-A3B-REAP AWQ | MoE A3B (96 exp) | 262K | 189 → **78** | [link](https://huggingface.co/mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ) |
 | `qwen3-ream` | Qwen3-30B-Instruct-2507 REAM AWQ | MoE A3B (96 exp, text) | 262K | 189 → **78** | [link](https://huggingface.co/mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ) |
 | `gemma4` | Gemma 4 26B A4B MoE AWQ | MoE A4B (103 exp, VL + video + audio) | 262K | 96 → **70** | [link](https://huggingface.co/mattbucci/gemma-4-26B-AWQ) |
-| `gemma4-21b-reap` | Gemma 4 21B REAP AWQ | MoE (VL; HumanEval 0, vision/chat ship) | 262K | 96 → **70** | [link](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ) |
+| `gemma4-21b-reap` | Gemma 4 21B REAP AWQ | MoE (VL; HumanEval 0, vision/chat ship) | 262K | 98 → **83** | [link](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ) |
 | `gemma4-12b` | Gemma 4 12B Unified AWQ | omni, encoder-free (5/5) | 262K | 137 → **99** | [link](https://huggingface.co/mattbucci/gemma-4-12B-AWQ) |
 | `gemma4-31b` | Gemma 4 31B Dense AWQ | dense (VL), fp8_e5m2 KV, triton | 262K | 65 → **44** | [link](https://huggingface.co/mattbucci/gemma-4-31B-AWQ) |
 | `qwen38` | Qwen3.8-27B AWQ | dense + DeltaNet (VL + video); `SPEC_DECODE=1` = DSpark | 262K | 81 → **58** (spec 125 → 58 @250K) | [link](https://huggingface.co/mattbucci/Qwen3.8-27B-AWQ) |

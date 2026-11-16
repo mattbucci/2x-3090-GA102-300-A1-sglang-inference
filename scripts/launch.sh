@@ -358,7 +358,13 @@ apply_preset() {
             # true; no agentic scaffold sends it. Server default = thinking on
             # (per-request chat_template_kwargs still win: setdefault merge).
             THINK_DEFAULT="${THINK_DEFAULT:-{\"enable_thinking\": true}}"
-            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            # fp8_e5m2 KV + the 64 x 8 grouped decode tile (as on gemma4-12b / gemma4-31b): 71.0 -> 83.3 tok/s @262K,
+            # pool 619K -> 1.24M tokens; gate at parity vs fp16 (task-first natural-haystack needle 45/52 both,
+            # MMLU 49 vs 47 of 57, HumanEval 29/30 both, caps 5/5, 256K reasoning 56 vs 67 %). The 26B MoE loses
+            # retrieval under the same dtype and stays on bf16. KV_DTYPE=auto restores fp16.
+            KV_DTYPE="${_ENV_KV_DTYPE:-fp8_e5m2}"
+            export SGLANG_TRITON_DECODE_GROUPED_BLOCK_N="${SGLANG_TRITON_DECODE_GROUPED_BLOCK_N:-64}"
+            export SGLANG_TRITON_DECODE_GROUPED_NUM_WARPS="${SGLANG_TRITON_DECODE_GROUPED_NUM_WARPS:-8}"
             DTYPE="${_ENV_DTYPE:-bfloat16}"
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
