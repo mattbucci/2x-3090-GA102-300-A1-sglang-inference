@@ -1,0 +1,22 @@
+[2026-11-16 14:10:34] BOOT spec :: max_total_num_tokens=284574 available_gpu_mem=1.78 GB spec=1
+[2026-11-16 14:10:38] GREEDY spec rc=0
+[2026-11-16 14:11:03] SAMPLED spec rc=0 :: 1097@213.1 1097@203.2 32845@146.4 32845@166.3  :: last decode lines 33287:3.45:151.72 32923:3.35:140.32 33082:4.08:179.15 33241:3.90:171.50 
+[2026-11-16 14:11:08] CAPS spec rc=0 :: --- 5/5 passed in 4.9s ---
+[2026-11-16 14:14:06] EVAL spec rc=0 :: mmlu 55 / 57 he 30 / 30
+[2026-11-16 14:15:32] TURNS spec rc=0 ::  k=64 run2: TTFT=317.8 ms prompt_tokens=117527 cached=None| k=64 run3: TTFT=317.2 ms prompt_tokens=117528 cached=None| k=512 run1: TTFT=551.9 ms prompt_tokens=117756 cached=None| k=512 run2: TTFT=552.1 ms prompt_tokens=117756 cached=None| k=512 run3: TTFT=547.6 ms prompt_tokens=117756 cached=None| depth~131072: decode reference TPOT=5.29 ms (188.87 tok/s) over 32 tokens at 117478 prompt tokens|EXTEND COST SUMMARY (me
+[2026-11-16 14:35:37] NEEDLE spec rc=0 score 1.00 :: 131072@0.1:found 131072@0.5:found 131072@0.9:found 229376@0.1:found 229376@0.5:found 229376@0.9:found 
+[2026-11-16 14:42:40] LADDER spec rc=0 :: 1067@176.7 32731@174.4 131891@118.5 256207@80.2  :: 252247:3.98:0.27 1179:2.52:33.08 1355:4.53:221.79 32851:2.73:7.77 132023:3.15:1.26 132171:3.65:125.77 256339:3.05:0.40 256467:3.30:88.47 
+[2026-11-16 14:43:24] BOOT plain :: max_total_num_tokens=306419 available_gpu_mem=1.91 GB spec=0
+[2026-11-16 14:43:34] GREEDY plain rc=0
+[2026-11-16 14:44:18] SAMPLED plain rc=0 :: 1097@69.9 1097@69.8 32845@64.3 32845@64.3  :: last decode lines 33220:64.35:33260 64.29:33300:64.26 33340:64.33: 
+[2026-11-16 14:44:32] CAPS plain rc=0 :: --- 5/5 passed in 14.2s ---
+[2026-11-16 14:52:35] EVAL plain rc=0 :: mmlu 54 / 57 he 30 / 30
+[2026-11-16 14:54:03] TURNS plain rc=0 ::  k=64 run2: TTFT=308.3 ms prompt_tokens=117527 cached=None| k=64 run3: TTFT=341.7 ms prompt_tokens=117528 cached=None| k=512 run1: TTFT=561.2 ms prompt_tokens=117756 cached=None| k=512 run2: TTFT=578.6 ms prompt_tokens=117756 cached=None| k=512 run3: TTFT=559.4 ms prompt_tokens=117756 cached=None| depth~131072: decode reference TPOT=17.90 ms (55.87 tok/s) over 32 tokens at 117478 prompt tokens|EXTEND COST SUMMARY (me
+[2026-11-16 15:14:20] NEEDLE plain rc=0 score 1.00 :: 131072@0.1:found 131072@0.5:found 131072@0.9:found 229376@0.1:found 229376@0.5:found 229376@0.9:found 
+[2026-11-16 15:36:04] REASON plain rc=0 ::  32768 32864 OK OK OK 100%| 131072 131037 OK OK OK 100%| 256000 255803 OK OK OK 100%|
+greedy prompt 0: identical=True first lp gap>0.02 at 2 of 61 (plain -0.260 spec -0.171, max before 0.0000)
+greedy prompt 1: identical=False first lp gap>0.02 at 3 of 256 (plain -0.376 spec -0.267, max before 0.0006)
+greedy prompt 2: identical=False first lp gap>0.02 at 16 of 46 (plain -0.831 spec -0.710, max before 0.0068)
+greedy prompt 3: identical=True first lp gap>0.02 at 5 of 256 (plain -0.345 spec -0.312, max before 0.0115)
+greedy prompt 4: identical=False first lp gap>0.02 at 0 of 10 (plain -0.916 spec -0.884, max before 0.0000)
+[2026-11-16 15:36:12] DONE

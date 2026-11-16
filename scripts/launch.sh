@@ -457,6 +457,37 @@ apply_preset() {
             # Override with GEMMA4_31B_CHAT_TEMPLATE="--chat-template <file>".
             CHAT_TEMPLATE="${GEMMA4_31B_CHAT_TEMPLATE:---chat-template $SCRIPT_DIR/gemma4_chat_template.jinja}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.05 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
+            # SPEC_DECODE default ON (SPEC_DECODE=0 opts out): Google's MTP assistant draft for this model
+            # (google/gemma-4-31B-it-assistant, 0.94 GB bf16; 4 layers that attend over the target's own KV, so
+            # no second KV pool — SGLang FROZEN_KV_MTP, reached through NEXTN). 5 draft steps / 6 verified
+            # tokens is the draft's trained horizon (num_assistant_tokens 6). Natural-prompt greedy decode
+            # 71.5 / 65.6 / 54.6 / 44.9 -> 176.7 / 174.4 / 118.5 / 80.2 tok/s at 1K / 32K / 131K / 256K; at the
+            # default sampling temperature 70 -> 203-213 at 1K, 64 -> 146-166 at 33K. Gate spec vs plain in
+            # one session: caps 5/5 both, MMLU 55 vs 54 of 57, HumanEval 30/30 both, needle 6/6 to 252K both,
+            # 256K reasoning 100 % both, cache-hit turn TTFT unchanged. Needs patch 096 (no draft-row
+            # reservation in the KV pool: 284K tokens at this fraction instead of 225K).
+            # Receipts benchmarks/profiling/gemma4-31b-mtp-profile-2026-11-16/.
+            if [[ "${SPEC_DECODE:-1}" != "0" ]]; then
+                GEMMA_DRAFT="${GEMMA_DRAFT:-$MODELS_DIR/drafts/gemma-4-31B-it-assistant}"
+                [[ -f "$GEMMA_DRAFT/config.json" ]] || { echo "ERROR: gemma4-31b SPEC_DECODE: MTP assistant not found at $GEMMA_DRAFT (download google/gemma-4-31B-it-assistant there, or SPEC_DECODE=0)" >&2; exit 1; }
+                EXTRA_ARGS="$EXTRA_ARGS \
+                    --speculative-algorithm NEXTN \
+                    --speculative-draft-model-path $GEMMA_DRAFT \
+                    --speculative-draft-model-quantization unquant \
+                    --speculative-num-steps 5 --speculative-num-draft-tokens 6 --speculative-eagle-topk 1 \
+                    --speculative-attention-mode decode"
+                # Grouped verify (patch 081): one pass over each KV head serves its 8 query heads x 6 rows
+                # (per-head verify: no gain past 100K). The 512-wide global layers take an 8-head x 64-key
+                # tile at 1 pipeline stage (the table's 4 x 64 reads each KV head twice; 2+ stages overflow
+                # shared memory): 1857 -> 1219 us per layer at 244K, spec cycle 45.9 -> 38.8 ms at 256K.
+                export SGLANG_VERIFY_SHARED_KV_CUDA="${SGLANG_VERIFY_SHARED_KV_CUDA:-1}"
+                export SGLANG_VERIFY_SHARED_KV_TILE="${SGLANG_VERIFY_SHARED_KV_TILE-8,64,8}"
+                export SGLANG_VERIFY_SHARED_KV_MAX_SPLITS="${SGLANG_VERIFY_SHARED_KV_MAX_SPLITS-40}"
+                # Patch 097: the draft's tied head (262144 x 1024 bf16) was read in full on both ranks at
+                # every draft step; each rank now scores half the vocabulary and the ranks exchange the
+                # argmax. Spec cycle 24.2 -> 22.4 ms at 32K, 30.6 -> 28.9 ms at 131K, same tokens. 0 = full head.
+                export SGLANG_MTP_DRAFT_SPLIT_ARGMAX="${SGLANG_MTP_DRAFT_SPLIT_ARGMAX:-1}"
+            fi
             ;;
         gemma4-12b)
             # Gemma 4 12B unified omni (Gemma4UnifiedForConditionalGeneration) —

@@ -44,7 +44,7 @@ In force, read before touching a checkpoint, the harness or the host: [docs/agen
 - **Primary:** single-user **256K context** performance (decode tok/s, TPOT). Measure at long context first.
 - **Secondary:** multi-user throughput. Do not sacrifice single-user latency to win batch benchmarks.
 - **Eval harness:** SWE-bench Lite on **one lane per preset, `omp` (oh-my-pi) by default** — the scaffolds tied within noise (user decision); do not spend GPU time on scaffold A/Bs.
-- **Current focus (user): Flint** — Flint levers first (spec-decode cycle time, prefill, the deep-retrieval band in issue #7); other presets only for fleet-wide fixes. One-off cycles may use the GPUs; the main bake-off queue stays PAUSED until the user resumes it.
+- **Current focus (user): `gemma4-31b`** — Gemma 4 31B performance first (decode at 256K, then cold prefill and follow-up turns); other presets only for fleet-wide fixes. One-off cycles may use the GPUs; the main bake-off queue stays PAUSED until the user resumes it.
 
 ## Optimization Iteration Loop (the standing process)
 This is a **continuous loop**, not a one-shot. Each iteration (a wake-up, a finished background job, or a fresh session) runs these steps. Never stop to ask for confirmation — the user reads the README + everything we report and interjects with course-corrections.

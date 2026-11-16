@@ -71,8 +71,8 @@ STACK_TAG="${STACK_TAG:-sglang-v0.5.15}"
 # canary family, patches 054/057).
 # Presets whose launch.sh default is spec decode: their plain (random-prompt) arm launches
 # with SPEC_DECODE=0, the "-spec" arm is the as-shipped one.
-SPEC_DEFAULT_PRESETS=(flint)
-TRIPWIRE_PRESETS=(qwen36 qwen36-dense coder-30b qwen35-moe gemma4 nemotron3-omni devstral qwen38 flint qwen38-spec flint-spec)
+SPEC_DEFAULT_PRESETS=(flint gemma4-31b)
+TRIPWIRE_PRESETS=(qwen36 qwen36-dense coder-30b qwen35-moe gemma4 nemotron3-omni devstral qwen38 flint gemma4-31b qwen38-spec flint-spec gemma4-31b-spec)
 
 mkdir -p "$RUNS_DIR"
 

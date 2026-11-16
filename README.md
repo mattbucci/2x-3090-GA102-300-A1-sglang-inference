@@ -1,7 +1,7 @@
 # NVIDIA Inference: SGLang on 2x RTX 3090
 
 Single-user, **256K-context** LLM inference on 2× NVIDIA RTX 3090 (GA102, Ampere, 48 GB total): SGLang
-**v0.5.23** + 53 local patches, CUDA 13.2 / PyTorch cu130, every model an **AWQ-int4 ship calibrated
+**v0.5.23** + 59 local patches, CUDA 13.2 / PyTorch cu130, every model an **AWQ-int4 ship calibrated
 in-house** from the upstream BF16 base. This rig owns all evals and the AWQ/INT4 calibrations; FP8 work
 lives with the [R9700 RDNA4 stack](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference).
 
@@ -20,7 +20,7 @@ Per-patch narratives: [`patches/README.md`](patches/README.md).
 
 ## Results
 
-- **Decode at a true 256K window:** `nemotron3-omni` **196 tok/s**, `qwen36-ream` 187, `qwen35-moe` 186, `qwen36` 186, `gemma4-21b-reap` 151, `flint` 136 (162 with its default DFlash2 draft).
+- **Decode at a true 256K window:** `nemotron3-omni` **196 tok/s**, `qwen36-ream` 187, `qwen35-moe` 186, `qwen36` 186, `gemma4-21b-reap` 151, `flint` 136 (162 with its default draft), `gemma4-31b` 45 (**80** with its default draft).
 - **Cold prefill at 131K:** `qwen36` 15.9 s, `flint` 18.3 s; a cached 1-token turn at 197K: 70–85 ms.
 - **SWE-bench Lite:** `qwen38` 65.3 %, `qwopus38` 63.3 %, `flint` 60.7 %; scaffolds tie within noise.
 
@@ -40,8 +40,7 @@ Every deep point is server-verified at its labeled depth (`actual_input_tokens`;
   trio sits at ~78 @255K; the dense DeltaNet 27Bs (`qwen36-dense`, `qwen38`) at 58; on the triton backend
   `flint` **136**, the Gemma 4 MoEs 116–151, `gemma4-31b` 44.
 - **Expert pruning or merging does not speed M=1 decode**; REAP/REAM win on KV headroom and footprint.
-- **The dense DeltaNet presets sit at the GA102 memory roofline**; the A3B MoEs carry a 14 % idle gap that
-  is kernel count, not bandwidth ([issue #13](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/13)).
+- **The dense presets sit at or near the GA102 memory roofline** ([`docs/roofline.md`](docs/roofline.md)); only a draft beats it.
 - **Power:** the 300 W cap costs 0–5 % against 400 W; weight-streaming decode saturates near 320 W
   ([sweep](benchmarks/power-sweep-2026-10-24/)).
 
@@ -53,7 +52,9 @@ Every deep point is server-verified at its labeled depth (`actual_input_tokens`;
 
 DSpark on `qwen38` holds **1.21× at 250K actual** with the true 256K window (fp8 KV; 1.95× / 1.34× /
 1.21× / 1.11× at 1K / 32K / 131K / 262K) and serves its bake-off cycle (`SPEC_DECODE=1`); `flint` ships
-DFlash2 by default (`SPEC_DECODE=0` off): 122 → **162 tok/s at 262K** ([ledger](docs/decode-levers.md#speculative-decoding)).
+DFlash2 by default (`SPEC_DECODE=0` off): 122 → **162 tok/s at 262K**; `gemma4-31b` ships Google's MTP assistant draft by
+default: 71 / 66 / 55 / 45 → **177 / 174 / 119 / 80 tok/s** at 1K / 32K / 131K / 256K on natural text
+([ledger](docs/decode-levers.md#speculative-decoding)).
 
 ### Agentic follow-up turns and prefill
 
@@ -73,8 +74,8 @@ Cold prefill: W4A8 (patch 071, per-token INT8 activations through the unlocked I
 default on `qwen38` (**8.6 s @32K, 51 s @131K, 145 s @262K**), `qwen36-dense`, `gemma4-31b`,
 `qwen35-moe` and `qwen36`; `devstral` is excluded because its long-prompt reasoning collapses under it.
 Its INT8 path moves greedy outputs in about half of the cache-hit cells (up to 2.8 nats; fp16 stays within
-0.1), invisible to the single-turn gates; agentic cost is [issue #20](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/20),
-off switch `SGLANG_AWQ_W4A8_PREFILL_MIN_TOKENS=1000000000` ([receipt](benchmarks/quality/cache-hit-w4a8-2026-11-02.md)).
+0.1), invisible to the single-turn gates; agentic cost is [issue #20](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/issues/20)
+([receipt](benchmarks/quality/cache-hit-w4a8-2026-11-02.md)).
 The triton presets are bound by the extend-attention kernel; `flint` ships a
 128×128 tile, the bf16 softmax·V dot (patch 075) and flashinfer paged prefill on
 full-attention layers (080): cold fill **2.7 s @32K, 18.3 s @131K, 50 s @250K**
@@ -155,7 +156,7 @@ single-user at 32K and at the deepest point. Full table, HuggingFace zoo, MoE co
 | `gemma4` | Gemma 4 26B A4B MoE AWQ | MoE A4B (103 exp, VL + video + audio) | 262K | 225 → **116** | [link](https://huggingface.co/mattbucci/gemma-4-26B-AWQ) |
 | `gemma4-21b-reap` | Gemma 4 21B REAP AWQ | MoE (VL) | 262K | 222 → **151** | [link](https://huggingface.co/mattbucci/gemma-4-21B-REAP-AWQ) |
 | `gemma4-12b` | Gemma 4 12B Unified AWQ | omni, encoder-free (5/5) | 262K | 137 → **99** | [link](https://huggingface.co/mattbucci/gemma-4-12B-AWQ) |
-| `gemma4-31b` | Gemma 4 31B Dense AWQ | dense (VL), fp8_e5m2 KV, triton | 262K | 65 → **44** | [link](https://huggingface.co/mattbucci/gemma-4-31B-AWQ) |
+| `gemma4-31b` | Gemma 4 31B Dense AWQ | dense (VL), fp8_e5m2 KV, triton, MTP draft | 262K | 65 → **44** (draft 174 → **80**) | [link](https://huggingface.co/mattbucci/gemma-4-31B-AWQ) |
 | `qwen38` | Qwen3.8-27B AWQ | dense + DeltaNet (VL + video); `SPEC_DECODE=1` = DSpark | 262K | 81 → **58** (spec 125 → 58 @250K) | [link](https://huggingface.co/mattbucci/Qwen3.8-27B-AWQ) |
 | `qwopus38` | Qwopus3.8-27B-Coder-Flash AWQ (coding / agentic SFT of Qwen3.8) | dense + DeltaNet (VL + video), same stack as `qwen38` | 262K | 80 → **58** | [link](https://huggingface.co/mattbucci/Qwopus3.8-27B-Coder-Flash-AWQ) |
 | `qwen36-dense` | Qwen3.6-27B Dense AWQ | dense + DeltaNet (VL) | 262K | 81 → **58** | [link](https://huggingface.co/mattbucci/Qwen3.6-27B-AWQ) |
@@ -194,7 +195,7 @@ live under [`evals/swebench/`](evals/swebench/).
 
 | Component | Version |
 |-----------|---------|
-| SGLang | v0.5.23 + 53 local patches (serving tree under `/data`, env `sglang-v0523`; the v0.5.22 tree + env kept as the one-revert rollback) |
+| SGLang | v0.5.23 + 59 local patches (serving tree under `/data`, env `sglang-v0523`; the v0.5.22 tree + env kept as the one-revert rollback) |
 | PyTorch | 2.14.1 + cu130 |
 | CUDA | 13.2 driver (595.71.05) / cu130 wheel |
 | transformers | 5.19.0 (ships gemma4_unified natively; routes Mistral ckpts to MistralCommonBackend, countered by patch 057) |
