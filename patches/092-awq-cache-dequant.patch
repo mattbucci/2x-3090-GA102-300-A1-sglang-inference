@@ -1,0 +1,47 @@
+092 awq-cache-dequant: env switch to dequantize plain-AWQ linear weights once at load
+
+AWQLinearKernel (the non-Marlin AWQ path) runs awq_dequantize on every forward and then a cuBLAS
+fp16 matmul. On nemotron3-omni the shared experts take this path (QUANT=moe_wna16; the 1856-wide
+down_proj shard is not Marlin-compatible) and the dequant is 1.07 ms of an ~11 ms decode step.
+SGLANG_AWQ_CACHE_DEQUANT=1 dequantizes once in process_weights_after_loading and reuses the fp16
+tensor: same kernel, same weight, so the matmul is bit-identical (greedy text + logprobs 5/5 on
+every boot). Cost: 4x the packed bytes in fp16 (~460 MB per rank on nemotron3-omni).
+nemotron3-omni tripwire, interleaved boots: 116.4 / 114.5 / 106.7 and 115.9 / 114.5 / 106.7
+-> 125.9 / 123.8 / 115.1 and 125.8 / 124.1 / 114.8 tok/s at 1K / 32K / 262K.
+Default (unset or 0) keeps upstream behaviour.
+---
+diff --git a/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py b/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
+index de1103568e..a7ba88da77 100644
+--- a/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
++++ b/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
+@@ -78,6 +78,8 @@ else:
+ _, scalar_types = get_scalar_types()
+ 
+ 
++import os as _os
++
+ class AWQLinearKernel:
+     def __init__(self, quant_config: Optional[QuantizationConfig] = None):
+         self.quant_config = quant_config
+@@ -86,6 +88,10 @@ class AWQLinearKernel:
+         layer.qweight = torch.nn.Parameter(layer.qweight.data, requires_grad=False)
+         layer.qzeros = torch.nn.Parameter(layer.qzeros.data, requires_grad=False)
+         layer.scales = torch.nn.Parameter(layer.scales.data, requires_grad=False)
++        # [3090 092] Dequantize once at load instead of every forward (same kernel, same fp16 weight,
++        # so the matmul is bit-identical). Costs 4x the packed bytes in fp16.
++        if _os.environ.get("SGLANG_AWQ_CACHE_DEQUANT", "0") == "1":
++            layer.awq_dequant_weight = awq_dequantize(layer.qweight, layer.scales, layer.qzeros)
+ 
+     def apply(
+         self,
+@@ -99,7 +105,9 @@ class AWQLinearKernel:
+         pack_factor = self.quant_config.pack_factor
+         out_shape = x.shape[:-1] + (qweight.shape[-1] * pack_factor,)
+         reshaped_x = x.reshape(-1, x.shape[-1])
+-        out = awq_dequantize(qweight, scales, qzeros)
++        out = getattr(layer, "awq_dequant_weight", None)
++        if out is None:
++            out = awq_dequantize(qweight, scales, qzeros)
+         out = torch.matmul(reshaped_x, out)
+ 
+         if bias is not None:
