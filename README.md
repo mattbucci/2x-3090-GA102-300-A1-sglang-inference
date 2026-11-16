@@ -20,7 +20,7 @@ Per-patch narratives: [`patches/README.md`](patches/README.md).
 
 ## Results
 
-- **Decode at a true 256K window:** `qwen36-ream` **187 tok/s**, `qwen35-moe` 186, `qwen36` 186, `flint` 136.
+- **Decode at a true 256K window:** `nemotron3-omni` **196 tok/s**, `qwen36-ream` 187, `qwen35-moe` 186, `qwen36` 186, `gemma4-21b-reap` 151, `flint` 136 (162 with its default DFlash2 draft).
 - **Cold prefill at 131K:** `qwen36` 15.9 s, `flint` 18.3 s; a cached 1-token turn at 197K: 70–85 ms.
 - **SWE-bench Lite:** `qwen38` 65.3 %, `qwopus38` 63.3 %, `flint` 60.7 %; scaffolds tie within noise.
 
@@ -35,8 +35,8 @@ Every deep point is server-verified at its labeled depth (`actual_input_tokens`;
 255K = 262144 − output − margin), single-user, fresh prefill, at each model's real KV pool. Receipts:
 `benchmarks/<preset>/results.json`, the lever ledger in [`docs/decode-levers.md`](docs/decode-levers.md).
 
-- **True-256K decoders:** the A3B DeltaNet MoEs lead (`qwen36-ream` **187 tok/s @255K**, `qwen35-moe` 186,
-  `qwen36` 186; ~286 short); the Mamba2-hybrid `nemotron3-omni` is near-flat (228 → 196); the 30B-A3B coder
+- **True-256K decoders:** the Mamba2-hybrid `nemotron3-omni` leads and is near-flat (228 → **196 tok/s @255K**); the A3B
+  DeltaNet MoEs follow (`qwen36-ream` 187, `qwen35-moe` 186, `qwen36` 186; ~286 short); the 30B-A3B coder
   trio sits at ~78 @255K; the dense DeltaNet 27Bs (`qwen36-dense`, `qwen38`) at 58; on the triton backend
   `flint` **136**, the Gemma 4 MoEs 116–151, `gemma4-31b` 44.
 - **Expert pruning or merging does not speed M=1 decode**; REAP/REAM win on KV headroom and footprint.
