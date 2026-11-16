@@ -552,9 +552,14 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --tool-call-parser qwen3_coder"
-            # Canonical spelling of the former --disable-cuda-graph (deprecated shim,
-            # maps to exactly these two phase backends; the only preset still on it).
-            CUDA_GRAPH="--cuda-graph-backend-decode disabled --cuda-graph-backend-prefill disabled"
+            # CUDA graphs ON (the qwen36 capture config) + fp8_e4m3 KV. The disabled-graph pin was
+            # bring-up baggage: 23.1 -> 186.6 tok/s @262K (graphs alone 148.6), pool 1.21M -> 2.42M
+            # tokens. Gate fp16-graph vs fp8-graph at parity: task-first natural-haystack needle
+            # 25/25 both, MMLU 42 vs 41 of 57, HumanEval 30/30 both, 256K reasoning 100 % both.
+            # Vision is broken on this checkpoint in every arm (third-party base dropped the vision
+            # tensors). KV_DTYPE=auto restores fp16.
+            KV_DTYPE="${_ENV_KV_DTYPE:-fp8_e4m3}"
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill breakable --cuda-graph-bs-prefill 8 16 32 64 128 --cuda-graph-max-bs-prefill 1 --cuda-graph-max-seq-len-prefill 128"
             ;;
         qwen36-dense|qwen36-27b)
             # patch 071 (2026-11-01): W4A8 prefill, same path as qwen38 (dense 27B GDN hybrid):

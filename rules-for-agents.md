@@ -52,8 +52,8 @@ doc rot).
 - Graphs run **ON by default**: the launch.sh default is `CUDA_GRAPH=""` (launch.sh:66 —
   no flag appended, SGLang's own graphs-on default applies). Several presets additionally
   pin `--cuda-graph-max-bs-decode 1` for single-user bs=1 capture.
-- `qwen36-vl-reap` (launch.sh:444) is the ONE preset that disables graphs, via
-  `--disable-cuda-graph --cuda-graph-backend-prefill disabled`.
+- No preset disables decode graphs. `qwen36-vl-reap` was the last one; turning them on
+  took it 23 → 149 tok/s @262K (187 with fp8 KV).
 - Receipt for why graphs stay on: enabling them took qwen36 single-user decode
   **31 → 129 tok/s @262K (4.15×, TPOT 32.1 → 7.8 ms)** with 5/5 capabilities under
   graph replay (launch.sh preset comment).

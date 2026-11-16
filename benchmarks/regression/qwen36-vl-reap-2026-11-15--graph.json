@@ -1,0 +1,36 @@
+{
+  "model": "qwen36-vl-reap",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "sglang.bench_serving",
+  "prompt_source": "random",
+  "timestamp": "2026-11-15 18:50:39",
+  "output_tokens": 100,
+  "max_total_num_tokens": 1210911,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 1024,
+      "throughput": 207.46,
+      "ttft_ms": 75.14,
+      "tpot_ms": 3.44,
+      "tok_per_sec": 290.7
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32768,
+      "throughput": 97.45,
+      "ttft_ms": 618.98,
+      "tpot_ms": 4.0,
+      "tok_per_sec": 250.0
+    },
+    {
+      "context": 261916,
+      "actual_input_tokens": 261916,
+      "throughput": 90.33,
+      "ttft_ms": 430.01,
+      "tpot_ms": 6.73,
+      "tok_per_sec": 148.6
+    }
+  ]
+}
