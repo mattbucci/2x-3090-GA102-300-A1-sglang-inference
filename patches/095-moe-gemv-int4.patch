@@ -1,0 +1,120 @@
+095 moe-gemv-int4: decode-time int4 MoE GEMV for the plain GPTQ/AWQ (moe_wna16) Triton path
+
+At M=1 fused_moe_kernel_gptq_awq launches cdiv(EM, BLOCK_SIZE_M) x cdiv(N, BLOCK_SIZE_N) programs
+(nearly all exit at once with E=128), computes a 16-row tl.dot for one valid row and gathers
+scales / zero points per element. moe_gemv_int4_kernel runs one program per routed row and N block,
+reads each packed byte once (even / odd k nibbles), loads scale and zero point once per group and
+folds the zero point as scale * (sum q*a - z * sum a). Dispatched from invoke_fused_moe_kernel for
+M <= SGLANG_MOE_GEMV_INT4 tokens (default 0 = off) on the int4 GPTQ/AWQ path without c_sorted /
+LoRA output flags. Microbench per fused_moe call at M=1: Gemma 4 MoE shape 123 -> 35 us,
+Nemotron-3-Nano shape 144 -> 40 us; max relative output difference vs the Triton path 5-6e-4.
+Tripwire at 1K / 32K / 262K, two interleaved boots per arm (off = tuned 093/094 configs):
+  gemma4           148.6 / 137.7 / 91.4  -> 225.2 / 200.8 / 116.4
+  nemotron3-omni   150.8 / 147.5 / 136.1 -> 228.3 / 222.2 / 196.1
+  gemma4-21b-reap  147.7 / 140.6 / 111.1 -> 222.2 / 207.5 / 151.3
+---
+diff --git a/python/sglang/kernels/ops/moe/fused_moe_triton_kernels.py b/python/sglang/kernels/ops/moe/fused_moe_triton_kernels.py
+index babf74af8e..209b7501cc 100644
+--- a/python/sglang/kernels/ops/moe/fused_moe_triton_kernels.py
++++ b/python/sglang/kernels/ops/moe/fused_moe_triton_kernels.py
+@@ -318,6 +318,81 @@ def fused_moe_kernel_gptq_awq(
+     tl.store(c_ptrs, accumulator, mask=c_mask)
+ 
+ 
++
++# [3090 095] Decode-time int4 (moe_wna16 / AWQ layout) MoE GEMV: one program per routed row and
++# N block, no padded BLOCK_SIZE_M rows and no per-element scale / zero-point gathers. Used for
++# M <= SGLANG_MOE_GEMV_INT4 tokens (0 = off) on the plain GPTQ/AWQ path.
++import os as _os
++
++_MOE_GEMV_INT4_MAX_M = int(_os.environ.get("SGLANG_MOE_GEMV_INT4", "0"))
++
++
++@triton.jit
++def moe_gemv_int4_kernel(a_ptr, b_ptr, c_ptr, s_ptr, z_ptr, w_ptr, ids_ptr,
++                         N, K, stride_am, stride_be, stride_bn, stride_cm,
++                         stride_se, stride_sn, stride_ze, stride_zn,
++                         top_k: tl.constexpr, G: tl.constexpr, NG: tl.constexpr,
++                         BLOCK_N: tl.constexpr, MUL_W: tl.constexpr, HAS_ZP: tl.constexpr):
++    r = tl.program_id(0)
++    pid_n = tl.program_id(1)
++    e = tl.load(ids_ptr + r).to(tl.int64)
++    offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
++    nmask = offs_n < N
++    if e < 0:
++        tl.store(c_ptr + r * stride_cm + offs_n, tl.zeros((BLOCK_N,), dtype=c_ptr.dtype.element_ty), mask=nmask)
++        return
++    row = r // top_k
++    BK: tl.constexpr = NG * G           # k per iteration
++    HB: tl.constexpr = BK // 2          # packed bytes per iteration
++    offs_g = tl.arange(0, NG)
++    offs_h = tl.arange(0, G // 2)
++    acc = tl.zeros((BLOCK_N,), dtype=tl.float32)
++    for k0 in range(0, K, BK):
++        g0 = k0 // G
++        # packed weights [BLOCK_N, NG, G//2]
++        boff = offs_n[:, None, None] * stride_bn + (k0 // 2 + offs_g[None, :, None] * (G // 2) + offs_h[None, None, :])
++        kvalid = (k0 + offs_g[None, :, None] * G) < K
++        byt = tl.load(b_ptr + e * stride_be + boff, mask=nmask[:, None, None] & kvalid, other=0).to(tl.int32)
++        lo = (byt & 0xF).to(tl.float32)
++        hi = (byt >> 4).to(tl.float32)
++        gmask = (g0 + offs_g) < (K // G)
++        sc = tl.load(s_ptr + e * stride_se + offs_n[:, None] * stride_sn + (g0 + offs_g)[None, :],
++                     mask=nmask[:, None] & gmask[None, :], other=0.0).to(tl.float32)
++        if HAS_ZP:
++            zb = tl.load(z_ptr + e * stride_ze + (offs_n[:, None] // 2) * stride_zn + (g0 + offs_g)[None, :],
++                         mask=nmask[:, None] & gmask[None, :], other=0).to(tl.int32)
++            zp = ((zb >> ((offs_n[:, None] % 2) * 4)) & 0xF).to(tl.float32)
++        else:
++            zp = tl.full((BLOCK_N, NG), 8.0, tl.float32)
++        # activations: even / odd k within each group
++        ka = k0 + offs_g[:, None] * G + offs_h[None, :] * 2
++        amask = ka < K
++        ae = tl.load(a_ptr + row * stride_am + ka, mask=amask, other=0.0).to(tl.float32)
++        ao = tl.load(a_ptr + row * stride_am + ka + 1, mask=amask, other=0.0).to(tl.float32)
++        part = tl.sum(lo * ae[None, :, :] + hi * ao[None, :, :], axis=2)        # [BLOCK_N, NG] sum_k q*a
++        asum = tl.sum(ae + ao, axis=1)                                             # [NG]  sum_k a
++        acc += tl.sum(sc * (part - zp * asum[None, :]), axis=1)
++    if MUL_W:
++        acc = acc * tl.load(w_ptr + r).to(tl.float32)
++    tl.store(c_ptr + r * stride_cm + offs_n, acc.to(c_ptr.dtype.element_ty), mask=nmask)
++
++
++def _moe_gemv_int4(A, B, C, S, Z, topk_weights, topk_ids, top_k, mul_w, G):
++    R = topk_ids.numel()
++    N = B.shape[1]
++    K = A.shape[1]
++    block_n = 32 if mul_w else 16
++    ng = max(1, min(8, K // G))
++    grid = (R, triton.cdiv(N, block_n))
++    moe_gemv_int4_kernel[grid](
++        A, B, C, S, Z if Z is not None else S, topk_weights.reshape(-1), topk_ids.reshape(-1),
++        N, K, A.stride(0), B.stride(0), B.stride(1), C.stride(-2), S.stride(0), S.stride(1),
++        Z.stride(0) if Z is not None else 0, Z.stride(1) if Z is not None else 0,
++        top_k=top_k, G=G, NG=ng, BLOCK_N=block_n, MUL_W=mul_w, HAS_ZP=Z is not None,
++        num_warps=2, num_stages=3,
++    )
++
++
+ @triton.jit
+ def fused_moe_kernel(
+     # Pointers to matrices
+@@ -990,6 +1065,18 @@ def invoke_fused_moe_kernel(
+         assert B_scale is not None and B_scale.ndim == 3
+         assert B_zp is None or B_zp.ndim == 3
+         assert bias is None
++        if (
++            use_int4_w4a16
++            and 0 < topk_ids.shape[0] <= _MOE_GEMV_INT4_MAX_M
++            and not (c_sorted or fuse_add_to_output or mask_output or lora_preserve_base)
++            and A.shape[1] % block_shape[1] == 0
++            and A.shape[1] == 2 * B.shape[2]
++        ):
++            _moe_gemv_int4(
++                A, B, C, B_scale, B_zp, topk_weights, topk_ids, top_k,
++                mul_routed_weight, block_shape[1],
++            )
++            return
+         fused_moe_kernel_gptq_awq[grid](
+             A,
+             B,

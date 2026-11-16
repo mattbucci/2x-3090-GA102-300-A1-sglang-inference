@@ -333,6 +333,9 @@ apply_preset() {
             # presets (indices identical; greedy needle cell-identical on vs off). 0 = serial.
             export SGLANG_KV_INDEX_TOKEN_BLOCKS="${SGLANG_KV_INDEX_TOKEN_BLOCKS-1}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
+            # [095] decode-time int4 MoE GEMV (one program per routed row, no padded M tile):
+            # 91.4 -> 116.4 tok/s at 262K, 149 -> 225 at 1K; gate at parity (needle 14/15 vs 13/15). 0 = Triton path.
+            export SGLANG_MOE_GEMV_INT4="${SGLANG_MOE_GEMV_INT4:-1}"
             ;;
         gemma4-21b-reap)
             # Gemma 4 21B REAP AWQ — Cerebras-style expert prune of the 26B
@@ -379,6 +382,9 @@ apply_preset() {
             # (pool stays above 262,144). Parity gate on vs off in one session. 0 disables.
             export SGLANG_LM_HEAD_INT8_UNTIE="${SGLANG_LM_HEAD_INT8_UNTIE:-1}"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --attention-backend triton ${_ENV_GEMMA_GRAPH:---cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled} --tool-call-parser gemma4 ${_ENV_GEMMA_TOPK:-} --swa-full-tokens-ratio 0.0625 --triton-attention-num-kv-splits ${GEMMA_KV_SPLITS:-64}"
+            # [095] decode-time int4 MoE GEMV: 111.1 -> 151.3 tok/s at 262K, 148 -> 222 at 1K; gate at parity
+            # (needle 15/15 vs 12/15, MMLU / HumanEval identical). 0 = Triton path.
+            export SGLANG_MOE_GEMV_INT4="${SGLANG_MOE_GEMV_INT4:-1}"
             ;;
         gemma4-31b)
             # Gemma 4 31B Dense AWQ — in-house BF16->GPTQ->AWQ rebuild
@@ -1104,6 +1110,9 @@ apply_preset() {
             # [092] shared-expert AWQ weights dequantized once at load, not every step (bit-identical,
             # ~460 MB per rank): 106.7 -> 115.0 tok/s at 262K, +8 % at every depth. 0 = per-step.
             export SGLANG_AWQ_CACHE_DEQUANT="${SGLANG_AWQ_CACHE_DEQUANT:-1}"
+            # [095] decode-time int4 MoE GEMV: 136.1 -> 196.1 tok/s at 262K, 151 -> 228 at 1K; gate at parity
+            # (MMLU 53 vs 51 / 57, HumanEval 30/30, 256K reasoning identical per length). 0 = Triton path.
+            export SGLANG_MOE_GEMV_INT4="${SGLANG_MOE_GEMV_INT4:-1}"
             ;;
         *)
             echo "Unknown model: $1"
