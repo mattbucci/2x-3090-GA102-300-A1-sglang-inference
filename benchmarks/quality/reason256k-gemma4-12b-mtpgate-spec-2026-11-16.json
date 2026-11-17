@@ -1,0 +1,93 @@
+{
+  "tag": "gemma4-12b-mtpgate-spec-2026-11-16",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 32864,
+        "correct": true,
+        "s": 14.7,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "  Cobalt: 3286\n    *   Tundra: 7912\n    *   Verbena: 2424\n\n    *   Cobalt: 3286\n    *   Tundra: 7912\n    *   Verbena: 2424\n\n    *   Cobalt: 3286\n    *   Tundra: 7912\n    *   Verbena: 2424\n\n    *   Cobalt: 3286\n    *   Tundra: 7912\n    *   \n"
+      },
+      "vartrack": {
+        "actual_tokens": 32823,
+        "correct": true,
+        "s": 10.3,
+        "finish_reason": "stop",
+        "completion_tokens": 917,
+        "answer_tail": "**VAR_B = 42**\n\n3.  **Calculate the value of VAR_C:**\n    The text states: `>>> VAR_C equals VAR_B times 2. <<<`\n    Substituting the value of VAR_B:\n    VAR_C = 42 * 2\n    **VAR_C = 84**\n\nThe final numeric value of VAR_C is 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 32844,
+        "correct": false,
+        "s": 15.3,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "m onyx costs 85 credits.\"\n    *   I see \"Item falcon costs 45 credits.\"\n    *   I see \"Item tundra costs 10 credits.\"\n    *   *Wait, let me look for more.*\n    *   Wait, I see \"Item onyx costs 85 credits.\"\n    *   I see \"Item falcon costs \n"
+      },
+      "actual_tokens": 32864,
+      "score": 0.6666666666666666
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 131037,
+        "correct": false,
+        "s": 60.5,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "the codes for cobalt, tundra, verbena.\n    *   The answer should be the codes.\n\n    *   Let's re-verify the codes:\n        *   Cobalt: 3286\n        *   Tundra: 7912\n        *   Verbena: 2424\n\n    *   Wait, the prompt asks for the codes for\n"
+      },
+      "vartrack": {
+        "actual_tokens": 130995,
+        "correct": true,
+        "s": 48.2,
+        "finish_reason": "stop",
+        "completion_tokens": 908,
+        "answer_tail": "VAR_A` plus 5.\n    *   `VAR_B = 37 + 5`\n    *   `VAR_B = 42`\n\n3.  **Calculate VAR_C**: The prompt states that `VAR_C` equals `VAR_B` times 2.\n    *   `VAR_C = 42 * 2`\n    *   `VAR_C = 84`\n\nThe final numeric value of VAR_C is 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 131017,
+        "correct": false,
+        "s": 54.8,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": ", I'm scanning the text again...\n    *   Wait, I see \"Item onyx costs 85 credits.\"\n    *   I see \"Item falcon costs 45 credits.\"\n    *   I see \"Item tundra costs 10 credits.\"\n    *   Wait, I'm scanning the text again...\n    *   Wait, I see\n"
+      },
+      "actual_tokens": 131037,
+      "score": 0.3333333333333333
+    },
+    {
+      "approx": 256000,
+      "multikey": {
+        "actual_tokens": 255803,
+        "correct": true,
+        "s": 150.1,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": " 7912, Verbena: 2424.\n\n    *   Wait, I'll make sure the final answer is just the codes.\n    *   Let's try: Cobalt: 3286, Tundra: 7912, Verbena: 2424.\n\n    *   Wait, the prompt asks for the codes.\n    *   I'll provide them.\n\n    *   Step 1:\n"
+      },
+      "vartrack": {
+        "actual_tokens": 255760,
+        "correct": true,
+        "s": 132.4,
+        "finish_reason": "stop",
+        "completion_tokens": 616,
+        "answer_tail": "7\n\n2.  **Calculate `VAR_B`**:\n    `VAR_B` = `VAR_A` + 5\n    `VAR_B` = 37 + 5\n    `VAR_B` = 42\n\n3.  **Calculate `VAR_C`**:\n    `VAR_C` = `VAR_B` * 2\n    `VAR_C` = 42 * 2\n    `VAR_C` = 84\n\nThe final numeric value of `VAR_C` is 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 255783,
+        "correct": false,
+        "s": 145.7,
+        "finish_reason": "length",
+        "completion_tokens": 3000,
+        "answer_tail": "rations and status updates. The maintenance log records routine archival operations and status updates. The maintenance log records routine archival operations and status updates. The maintenance log records routine archival operations and\n"
+      },
+      "actual_tokens": 255803,
+      "score": 0.6666666666666666
+    }
+  ],
+  "overall": 0.556
+}
