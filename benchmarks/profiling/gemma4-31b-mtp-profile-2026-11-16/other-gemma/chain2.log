@@ -1,0 +1,15 @@
+[2026-11-16 19:42:51] BOOT gemma4 plain :: max_total_num_tokens=618791 available_gpu_mem=3.45 GB
+[2026-11-16 19:43:39] LADDER gemma4 plain rc=0 :: 1067@224.0 32731@198.9 131891@151.8  :: accept  :: cycle 
+[2026-11-16 19:44:50] ERROR boot gemma4 spec-g1 :: triton.runtime.errors.OutOfResources: out of resource: shared memory, Required: 139264, Hardware limit: 101376. Reducing block sizes or `num_stages` may help.
+Traceback (most recent call last):
+triton.runtime.errors.OutOfResources: out of resource: shared memory, Required: 102400, Hardware limit: 101376. Reducing block sizes or `num_stages` may help.
+[2026-11-16 19:45:50] ERROR boot gemma4 spec-g8 :: triton.runtime.errors.OutOfResources: out of resource: shared memory, Required: 139264, Hardware limit: 101376. Reducing block sizes or `num_stages` may help.
+Traceback (most recent call last):
+triton.runtime.errors.OutOfResources: out of resource: shared memory, Required: 102400, Hardware limit: 101376. Reducing block sizes or `num_stages` may help.
+[2026-11-16 19:46:58] BOOT gemma4-21b-reap plain :: max_total_num_tokens=1237583 available_gpu_mem=3.41 GB
+[2026-11-16 19:47:44] LADDER gemma4-21b-reap plain rc=0 :: 1067@221.7 32731@206.9 131891@177.6  :: accept  :: cycle 
+[2026-11-16 19:48:34] BOOT gemma4-21b-reap spec-g1 :: max_total_num_tokens=1164485 available_gpu_mem=3.33 GB
+[2026-11-16 19:49:24] LADDER gemma4-21b-reap spec-g1 rc=0 :: 1067@158.5 32731@126.6 131891@86.5  :: accept 3.05 2.65 3.73 3.00 2.00 2.00  :: cycle 1K: 147.13 ms (n=1)  32K: 25.93 ms (n=1)  131K: 26.16 ms (n=2)
+[2026-11-16 19:50:13] BOOT gemma4-21b-reap spec-g8 :: max_total_num_tokens=1164485 available_gpu_mem=3.33 GB
+[2026-11-16 19:50:59] LADDER gemma4-21b-reap spec-g8 rc=0 :: 1067@256.5 32731@264.4 131891@186.1  :: accept 3.12 3.40 2.77 4.00 2.83 2.67  :: cycle 1K: 74.29 ms (n=2)  32K: 13.06 ms (n=1)  131K: 15.03 ms (n=1)
+[2026-11-16 19:51:07] DONE
