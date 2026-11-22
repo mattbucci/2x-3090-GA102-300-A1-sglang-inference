@@ -1,0 +1,1046 @@
+diff --git a/python/sglang/kernels/jit/csrc/inkling2/gate_sink.cuh b/python/sglang/kernels/jit/csrc/inkling2/gate_sink.cuh
+index 0df76ac44d..5ad9899789 100644
+--- a/python/sglang/kernels/jit/csrc/inkling2/gate_sink.cuh
++++ b/python/sglang/kernels/jit/csrc/inkling2/gate_sink.cuh
+@@ -42,8 +42,16 @@ __global__ void __launch_bounds__(H* D / kVec) gate_sink_kernel(
+   // The gate (qkvr projection) and sinks are written several kernels earlier.
+   Bits const g = *reinterpret_cast<Bits const*>(gate + row * sg + col);
+   float const s = __bfloat162float(sink[row * ss + head]);
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.wait;" ::: "memory");
++#endif
++
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.launch_dependents;");
++#endif
++
+   float const* xr = x + row * sx + source_head * D + col % D;
+   float const scale = sigmoid(__fsub_rn(lse[row * sl0 + source_head * sl1], s));
+   __nv_bfloat16 const* gh = reinterpret_cast<__nv_bfloat16 const*>(&g);
+diff --git a/python/sglang/kernels/jit/csrc/inkling2/prologue.cuh b/python/sglang/kernels/jit/csrc/inkling2/prologue.cuh
+index 2040cc4513..ed2e58afef 100644
+--- a/python/sglang/kernels/jit/csrc/inkling2/prologue.cuh
++++ b/python/sglang/kernels/jit/csrc/inkling2/prologue.cuh
+@@ -215,8 +215,16 @@ __global__ void __launch_bounds__(kThreads) prologue_kernel(Params p) {
+                                  ? load2(cache[s] + slot * p.sc0 + int64_t(src - bos + W - 1) * p.sc1 + col)
+                                  : make_float2(0.0f, 0.0f);
+         }
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+     asm volatile("griddepcontrol.wait;" ::: "memory");
++#endif
++
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+     asm volatile("griddepcontrol.launch_dependents;");
++#endif
++
+     if constexpr (DYNAMIC) {
+       if (t < 2 * kDyn) {
+         int const s = t / kDyn, n = t % kDyn;
+@@ -331,8 +339,16 @@ __global__ void __launch_bounds__(kThreads) prologue_kernel(Params p) {
+       for (int half = 0; half < 2; ++half)
+         load8_scale<TS>(p.q_scale, head * kD + half * 64 + l * 8, scale[half]);
+     }
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+     asm volatile("griddepcontrol.wait;" ::: "memory");
++#endif
++
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+     asm volatile("griddepcontrol.launch_dependents;");
++#endif
++
+     if (t < HEADS * 8) {
+       bf16 const* x = p.q + int64_t(row) * p.sp + head * kD;
+       float v[2][8];
+@@ -408,8 +424,16 @@ __global__ void __launch_bounds__(kThreads) prologue_kernel(Params p) {
+       lo = top - cnt + 1;
+       base8 = cnt > 0 ? lo & ~7 : 0;
+     }
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+     asm volatile("griddepcontrol.wait;" ::: "memory");
++#endif
++
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+     asm volatile("griddepcontrol.launch_dependents;");
++#endif
++
+     float v[8] = {};
+     if (real) {
+       load8(p.r + int64_t(row) * p.sp + head * kDRel + l * 8, v);
+diff --git a/python/sglang/kernels/jit/csrc/inkling2/route.cuh b/python/sglang/kernels/jit/csrc/inkling2/route.cuh
+index 4bdf6472ae..0d77deed4e 100644
+--- a/python/sglang/kernels/jit/csrc/inkling2/route.cuh
++++ b/python/sglang/kernels/jit/csrc/inkling2/route.cuh
+@@ -106,8 +106,16 @@ __global__ void __launch_bounds__(kThreads) route_metadata_kernel(
+   int const lane = threadIdx.x % 32, warp = threadIdx.x / 32;
+   for (int i = threadIdx.x; i < chunks * stride / 8; i += kThreads)
+     reinterpret_cast<uint4*>(chunk_counts)[i] = make_uint4(0, 0, 0, 0);
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.wait;" ::: "memory");
++#endif
++
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.launch_dependents;");
++#endif
++
+   int expert[kRounds], rank[kRounds];
+   float weight[kRounds];
+ #pragma unroll
+diff --git a/python/sglang/kernels/jit/csrc/inkling2/routed_quant.cuh b/python/sglang/kernels/jit/csrc/inkling2/routed_quant.cuh
+index 6bf3bfded3..3c97add8a4 100644
+--- a/python/sglang/kernels/jit/csrc/inkling2/routed_quant.cuh
++++ b/python/sglang/kernels/jit/csrc/inkling2/routed_quant.cuh
+@@ -204,8 +204,16 @@ __global__ void __launch_bounds__(split_threads(K)) quantize_routed(
+   static_assert(K % 64 == 0 && kSplit > 1);
+   __shared__ int s_offsets[kMaxExperts + 1];
+   __shared__ float red[2][kThreads / 32];
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.wait;" ::: "memory");
++#endif
++
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.launch_dependents;");
++#endif
++
+   load_offsets(offsets, experts, s_offsets);
+   int const block = threadIdx.x / kSplit, part = threadIdx.x % kSplit;
+   bool const active = block < K / 16;
+@@ -284,8 +292,16 @@ __global__ void __launch_bounds__(split_threads(N)) swiglu_quantize_routed(
+   static_assert(N % 64 == 0 && kSplit > 1);
+   __shared__ int s_offsets[kMaxExperts + 1];
+   __shared__ float red[2][kThreads / 32];
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.wait;" ::: "memory");
++#endif
++
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.launch_dependents;");
++#endif
++
+   load_offsets(offsets, experts, s_offsets);
+   int const block = threadIdx.x / kSplit, part = threadIdx.x % kSplit;
+   bool const active = block < N / 16;
+@@ -364,8 +380,16 @@ __global__ void __launch_bounds__(threads(N)) mxfp8_swiglu_quantize_routed(
+     float gate_cap,
+     float up_cap) {
+   static_assert(N % 32 == 0 && N / 16 <= 1024);
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.wait;" ::: "memory");
++#endif
++
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.launch_dependents;");
++#endif
++
+   int const block = threadIdx.x;
+   bool const active = block < N / 16;
+   int const lo = offsets[0], hi = offsets[experts];
+@@ -402,8 +426,16 @@ constexpr int kRowParts = 3;
+ template <int N>
+ __global__ void __launch_bounds__(N / 16 / kRowParts)
+     mxfp8_quantize_rows(__nv_bfloat16 const* __restrict__ x, uint8_t* values, uint8_t* exponents, int rows) {
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.wait;" ::: "memory");
++#endif
++
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.launch_dependents;");
++#endif
++
+   int const block = (blockIdx.x % kRowParts) * blockDim.x + threadIdx.x;
+   for (int row = blockIdx.x / kRowParts; row < rows; row += gridDim.x / kRowParts) {
+     float v[16];
+diff --git a/python/sglang/kernels/jit/csrc/inkling2/routed_rows.cuh b/python/sglang/kernels/jit/csrc/inkling2/routed_rows.cuh
+index b5e763dee1..5aff4e67a4 100644
+--- a/python/sglang/kernels/jit/csrc/inkling2/routed_rows.cuh
++++ b/python/sglang/kernels/jit/csrc/inkling2/routed_rows.cuh
+@@ -76,7 +76,11 @@ __global__ void __launch_bounds__(H / In<T>::kVec / kChunks) routed_rows_kernel(
+   };
+   float scale = 0.0f;
+   if (SCALED && first < last && first >= lo && first < hi) scale = scale_of(first);
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.wait;" ::: "memory");
++#endif
++
+   if (OWNED && calls != nullptr) out += (calls[0] & 1) * slot_size;
+   for (int row = first; row < last; row += stride) {
+     alignas(16) __nv_bfloat16 values[kVec];
+@@ -99,7 +103,11 @@ __global__ void __launch_bounds__(H / In<T>::kVec / kChunks) routed_rows_kernel(
+     }
+     *reinterpret_cast<uint4*>(out + int64_t(row) * H + col) = *reinterpret_cast<uint4*>(values);
+   }
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+   asm volatile("griddepcontrol.launch_dependents;");
++#endif
++
+ }
+ 
+ template <int H, typename T, bool SCALED, bool OWNED>
+diff --git a/python/sglang/kernels/jit/csrc/inkling2/sconv.cuh b/python/sglang/kernels/jit/csrc/inkling2/sconv.cuh
+index 358747c1e8..b79d5596cc 100644
+--- a/python/sglang/kernels/jit/csrc/inkling2/sconv.cuh
++++ b/python/sglang/kernels/jit/csrc/inkling2/sconv.cuh
+@@ -143,8 +143,16 @@ __global__ void __launch_bounds__(kThreads) sconv_kernel(Params p) {
+   // before waiting on the previous kernel, which writes none of them.
+   constexpr bool kEarly = DECODE || WINDOW;
+   if constexpr (!kEarly) {
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+     asm volatile("griddepcontrol.wait;" ::: "memory");
++#endif
++
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+     asm volatile("griddepcontrol.launch_dependents;");
++#endif
++
+   }
+   int const row = blockIdx.x;
+   int const col = (blockIdx.y * kThreads + threadIdx.x) * kVec;
+@@ -189,8 +197,16 @@ __global__ void __launch_bounds__(kThreads) sconv_kernel(Params p) {
+   }
+ 
+   if constexpr (kEarly) {
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+     asm volatile("griddepcontrol.wait;" ::: "memory");
++#endif
++
++
++#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900  // [3090 inkling2-ampere]
+     asm volatile("griddepcontrol.launch_dependents;");
++#endif
++
+   }
+   constexpr bool kGather = TOP_K > 0;
+   constexpr int kRowLoads = DECODE ? 1 : W;
+diff --git a/python/sglang/kernels/ops/attention/inkling2_rel_bias_ampere.py b/python/sglang/kernels/ops/attention/inkling2_rel_bias_ampere.py
+new file mode 100644
+index 0000000000..7914a7a8d5
+--- /dev/null
++++ b/python/sglang/kernels/ops/attention/inkling2_rel_bias_ampere.py
+@@ -0,0 +1,159 @@
++"""[3090 inkling2-ampere] Paged attention with Inkling 2's compact relative bias for GPUs without FA4
++(Ampere sm_80/sm_86): scores = q.k * scale + rel_bias[token, head, d] for backward distance
++0 <= d < extent (0 elsewhere), causal, optional sliding window. Returns the softmax-normalized output
++WITHOUT the sink and its log-sum-exp, the contract FA4's return_lse path feeds to gate_sink.
++
++Split-KV: grid (query block, head, split); each split walks its share of the sequence's keys and
++writes (o, m, l) partials that a second kernel merges into (o, lse). Keys come from the paged pool
++(the new tokens' K/V are written before the call), addressed through kv_indices.
++"""
++
++import torch
++import triton
++import triton.language as tl
++
++
++@triton.jit
++def _rel_bias_attn_partials(
++    Q, K, V, Bias, KvIndices,
++    QStart, QLen, KvStart, KvLen, KvFirst,
++    BlockSeq, BlockQ0,
++    OP, MP, LP,
++    scale,
++    sq_t, sq_h, sk_t, sk_h, sb_t, sb_h,
++    so_s, so_t, so_h, sm_s, sm_t,
++    GROUP: tl.constexpr, D: tl.constexpr, EXTENT: tl.constexpr, WINDOW: tl.constexpr,
++    BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, NUM_SPLITS: tl.constexpr,
++):
++    blk = tl.program_id(0)
++    head = tl.program_id(1)
++    split = tl.program_id(2)
++    seq = tl.load(BlockSeq + blk)
++    q0 = tl.load(BlockQ0 + blk)  # first query row of this block, relative to the sequence
++    q_start = tl.load(QStart + seq)
++    q_len = tl.load(QLen + seq)
++    kv_start = tl.load(KvStart + seq)
++    kv_len = tl.load(KvLen + seq)
++    kv_first = tl.load(KvFirst + seq)  # first absolute position present in KvIndices
++    kvh = head // GROUP
++
++    offs_m = q0 + tl.arange(0, BLOCK_M)
++    m_valid = offs_m < q_len
++    pos = kv_len - q_len + offs_m  # absolute position of each query row
++    offs_d = tl.arange(0, D)
++    q = tl.load(Q + (q_start + offs_m)[:, None] * sq_t + head * sq_h + offs_d[None, :],
++                mask=m_valid[:, None], other=0.0)
++
++    # keys this block can see: [lo, hi)
++    hi = tl.minimum(kv_len, kv_len - q_len + q0 + BLOCK_M)
++    lo = 0
++    if WINDOW > 0:
++        lo = tl.maximum(0, kv_len - q_len + q0 - WINDOW + 1)
++    lo = tl.maximum(lo, kv_first)
++    span = hi - lo
++    per = tl.cdiv(tl.cdiv(span, NUM_SPLITS), BLOCK_N) * BLOCK_N
++    s_lo = lo + split * per
++    s_hi = tl.minimum(hi, s_lo + per)
++
++    m_i = tl.full([BLOCK_M], float("-inf"), tl.float32)
++    l_i = tl.zeros([BLOCK_M], tl.float32)
++    acc = tl.zeros([BLOCK_M, D], tl.float32)
++    bias_row = Bias + (q_start + offs_m)[:, None] * sb_t + head * sb_h
++    for start in range(s_lo, s_hi, BLOCK_N):
++        offs_n = start + tl.arange(0, BLOCK_N)
++        n_valid = offs_n < s_hi
++        loc = tl.load(KvIndices + kv_start + offs_n, mask=n_valid, other=0).to(tl.int64)
++        k = tl.load(K + loc[None, :] * sk_t + kvh * sk_h + offs_d[:, None], mask=n_valid[None, :], other=0.0)
++        s = tl.dot(q, k.to(q.dtype)) * scale
++        dist = pos[:, None] - offs_n[None, :]
++        visible = n_valid[None, :] & m_valid[:, None] & (dist >= 0)
++        if WINDOW > 0:
++            visible = visible & (dist < WINDOW)
++        in_ext = visible & (dist < EXTENT)
++        b = tl.load(bias_row + tl.where(in_ext, dist, 0), mask=in_ext, other=0.0).to(tl.float32)
++        s = tl.where(visible, s + b, float("-inf"))
++        m_new = tl.maximum(m_i, tl.max(s, 1))
++        m_safe = tl.where(m_new == float("-inf"), 0.0, m_new)
++        alpha = tl.exp(m_i - m_safe)
++        p = tl.exp(s - m_safe[:, None])
++        l_i = l_i * alpha + tl.sum(p, 1)
++        v = tl.load(V + loc[:, None] * sk_t + kvh * sk_h + offs_d[None, :], mask=n_valid[:, None], other=0.0)
++        acc = acc * alpha[:, None] + tl.dot(p.to(q.dtype), v.to(q.dtype))
++        m_i = m_new
++    rows = q_start + offs_m
++    tl.store(OP + split * so_s + rows[:, None] * so_t + head * so_h + offs_d[None, :], acc, mask=m_valid[:, None])
++    tl.store(MP + split * sm_s + rows * sm_t + head, m_i, mask=m_valid)
++    tl.store(LP + split * sm_s + rows * sm_t + head, l_i, mask=m_valid)
++
++
++@triton.jit
++def _merge_partials(OP, MP, LP, O, LSE, so_s, so_t, so_h, sm_s, sm_t, s_ot, s_oh, s_lt,
++                    D: tl.constexpr, NUM_SPLITS: tl.constexpr, SPLITS_P2: tl.constexpr):
++    t = tl.program_id(0)
++    h = tl.program_id(1)
++    sp = tl.arange(0, SPLITS_P2)
++    sv = sp < NUM_SPLITS
++    m = tl.load(MP + sp * sm_s + t * sm_t + h, mask=sv, other=float("-inf"))
++    l = tl.load(LP + sp * sm_s + t * sm_t + h, mask=sv, other=0.0)
++    mx = tl.max(m, 0)
++    mx_safe = tl.where(mx == float("-inf"), 0.0, mx)
++    w = tl.where(sv, tl.exp(m - mx_safe), 0.0)
++    l_tot = tl.sum(l * w, 0)
++    offs_d = tl.arange(0, D)
++    o = tl.load(OP + sp[:, None] * so_s + t * so_t + h * so_h + offs_d[None, :], mask=sv[:, None], other=0.0)
++    o = tl.sum(o * w[:, None], 0) / tl.maximum(l_tot, 1e-30)
++    tl.store(O + t * s_ot + h * s_oh + offs_d, o.to(O.dtype.element_ty))
++    tl.store(LSE + t * s_lt + h, tl.where(l_tot > 0, mx_safe + tl.log(tl.maximum(l_tot, 1e-30)), float("-inf")))
++
++
++def build_blocks(q_len_cpu, block_m):
++    """Per-query-block (sequence, first row) tables from host-side extend lengths."""
++    seqs, q0s = [], []
++    for s, n in enumerate(q_len_cpu):
++        for q0 in range(0, int(n), block_m):
++            seqs.append(s)
++            q0s.append(q0)
++    return seqs, q0s
++
++
++def rel_bias_attention(q, k_buf, v_buf, rel_bias, kv_indices, q_start, q_len, kv_start, kv_len,
++                       q_len_cpu, *, scale, window=0, num_splits=None, block_m=None, block_n=64, kv_first=None, out_dtype=None):
++    """q [T, H, D]; k_buf / v_buf [slots, Hkv, D] (the layer's pool, new tokens already written);
++    rel_bias [T, H, extent]; per-sequence int32 tensors q_start / q_len / kv_start / kv_len
++    (kv_len counts the new tokens); q_len_cpu: host list of q_len. Position p of sequence s lives at
++    kv_indices[kv_start[s] + p] for p >= kv_first[s] (default 0), so a window-clipped index rail passes
++    kv_start = rail_start - kv_first. Returns (o [T, H, D], lse [T, H])."""
++    T, H, D = q.shape
++    hkv = k_buf.shape[1]
++    extent = rel_bias.shape[-1]
++    max_q = max(int(x) for x in q_len_cpu) if len(q_len_cpu) else 0
++    if block_m is None:
++        block_m = 16 if max_q <= 16 else 64
++    seqs, q0s = build_blocks(q_len_cpu, block_m)
++    dev = q.device
++    if kv_first is None:
++        kv_first = torch.zeros_like(kv_len)
++    if num_splits is None:
++        # decode / short turns: split long sequences across SMs; long prefills have enough blocks
++        num_splits = 1 if len(seqs) * H >= 2 * 82 else 16
++    block_seq = torch.tensor(seqs, dtype=torch.int32, device=dev)
++    block_q0 = torch.tensor(q0s, dtype=torch.int32, device=dev)
++    op = torch.empty((num_splits, T, H, D), dtype=torch.float32, device=dev)
++    mp = torch.empty((num_splits, T, H), dtype=torch.float32, device=dev)
++    lp = torch.empty((num_splits, T, H), dtype=torch.float32, device=dev)
++    if len(seqs):
++        _rel_bias_attn_partials[(len(seqs), H, num_splits)](
++            q, k_buf, v_buf, rel_bias, kv_indices, q_start, q_len, kv_start, kv_len, kv_first, block_seq, block_q0,
++            op, mp, lp, scale,
++            q.stride(0), q.stride(1), k_buf.stride(0), k_buf.stride(1), rel_bias.stride(0), rel_bias.stride(1),
++            op.stride(0), op.stride(1), op.stride(2), mp.stride(0), mp.stride(1),
++            GROUP=H // hkv, D=D, EXTENT=extent, WINDOW=int(window or 0),
++            BLOCK_M=block_m, BLOCK_N=block_n, NUM_SPLITS=num_splits, num_warps=4, num_stages=2,
++        )
++    o = torch.empty((T, H, D), dtype=out_dtype or q.dtype, device=dev)
++    lse = torch.empty((T, H), dtype=torch.float32, device=dev)
++    if T:
++        _merge_partials[(T, H)](op, mp, lp, o, lse, op.stride(0), op.stride(1), op.stride(2), mp.stride(0), mp.stride(1),
++                                o.stride(0), o.stride(1), lse.stride(0), D=D, NUM_SPLITS=num_splits,
++                                SPLITS_P2=triton.next_power_of_2(num_splits))
++    return o, lse
+diff --git a/python/sglang/kernels/ops/communication/inkling2_comm.py b/python/sglang/kernels/ops/communication/inkling2_comm.py
+index e95f98f121..da1e83516f 100644
+--- a/python/sglang/kernels/ops/communication/inkling2_comm.py
++++ b/python/sglang/kernels/ops/communication/inkling2_comm.py
+@@ -60,10 +60,18 @@ def _multicast_view(group, device, dtype, numel):
+     return _multicast_buffer(name, device, dtype, capacity)[:numel]
+ 
+ 
++def _no_multicast() -> bool:
++    """[3090 inkling2-ampere] Below SM90 there is no NVLink multicast; collectives take
++    the group's regular all-reduce (custom all-reduce / NCCL)."""
++    return torch.cuda.get_device_capability()[0] < 9
++
++
+ def all_reduce(x: torch.Tensor, group, *, multicast: bool = False) -> torch.Tensor:
+     world = group.world_size
+     if world == 1 or x.numel() == 0:
+         return x
++    if _no_multicast():
++        return group.all_reduce(x.contiguous())
+     if world not in _RANK_ORDER_MAX_BYTES:
+         raise ValueError("Inkling2 tensor parallelism requires 2, 4, 8, or 16 ranks")
+     if not x.is_cuda or x.dtype not in (torch.bfloat16, torch.float32):
+@@ -95,7 +103,7 @@ def all_reduce(x: torch.Tensor, group, *, multicast: bool = False) -> torch.Tens
+ def multicast_all_reduce_input(group, shape, dtype):
+     """A view of the symmetric multicast buffer for a producer to write an all-reduce
+     input into; multicast_all_reduce reduces it in place."""
+-    if group.world_size == 1:
++    if group.world_size == 1 or _no_multicast():
+         return torch.empty(shape, dtype=dtype, device=_device())
+     return _multicast_view(group, _device(), dtype, shape[0] * shape[1]).view(shape)
+ 
+@@ -103,6 +111,8 @@ def multicast_all_reduce_input(group, shape, dtype):
+ def multicast_all_reduce(x, group):
+     if group.world_size == 1:
+         return x
++    if _no_multicast():
++        return group.all_reduce(x)
+     torch.ops.symm_mem.multimem_all_reduce_(
+         x.view(-1), "sum", group.device_group.group_name
+     )
+diff --git a/python/sglang/kernels/ops/gemm/inkling2_marlin_sm90.py b/python/sglang/kernels/ops/gemm/inkling2_marlin_sm90.py
+index fc121f648c..4c84831470 100644
+--- a/python/sglang/kernels/ops/gemm/inkling2_marlin_sm90.py
++++ b/python/sglang/kernels/ops/gemm/inkling2_marlin_sm90.py
+@@ -243,6 +243,8 @@ def _gemv_module(nvfp4, n, k, splits, warps):
+ def uses_gemv(marlin, tokens, num_local):
+     """Whether gemv() beats gemm() for this many tokens (rows per expert <= tokens)."""
+     nvfp4 = marlin[2] is not None
++    if torch.cuda.get_device_capability()[0] < 9:  # [3090 inkling2-ampere] gemv uses clusters
++        return False
+     return num_local <= GEMV_MAX_EXPERTS and tokens <= (8 if nvfp4 else 2)
+ 
+ 
+diff --git a/python/sglang/kernels/ops/gemm/inkling2_mxfp8.py b/python/sglang/kernels/ops/gemm/inkling2_mxfp8.py
+index 420f804252..e317e7b9c6 100644
+--- a/python/sglang/kernels/ops/gemm/inkling2_mxfp8.py
++++ b/python/sglang/kernels/ops/gemm/inkling2_mxfp8.py
+@@ -12,6 +12,10 @@ from sglang.kernels.ops.moe.inkling2_moe import (
+ 
+ PDL = is_arch_support_pdl()
+ 
++from sglang.kernels.jit.utils import is_arch_support_pdl as _pdl_ok
++
++_GDC = tl.constexpr(_pdl_ok())
++
+ 
+ @triton.jit
+ def _routed_swap_ab_matmul(
+@@ -31,8 +35,10 @@ def _routed_swap_ab_matmul(
+     BK: tl.constexpr,
+     TOP_K: tl.constexpr,
+ ):
+-    tl.extra.cuda.gdc_wait()
+-    tl.extra.cuda.gdc_launch_dependents()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_wait()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_launch_dependents()
+     entry = tl.load(Schedule + tl.program_id(0))
+     if entry == -1:
+         return
+diff --git a/python/sglang/kernels/ops/inkling2_ampere.py b/python/sglang/kernels/ops/inkling2_ampere.py
+new file mode 100644
+index 0000000000..a0c8e54cba
+--- /dev/null
++++ b/python/sglang/kernels/ops/inkling2_ampere.py
+@@ -0,0 +1,58 @@
++"""[3090 inkling2-ampere] Torch fallbacks for Inkling 2's CuTe-DSL kernels (rms_norm, qk_l2_clip,
++attn_res) on GPUs below SM90, with the CuTe kernels' exact semantics (fp32 math, same eps)."""
++
++import functools
++
++import torch
++
++
++@functools.cache
++def use_ampere_fallbacks() -> bool:
++    return torch.cuda.is_available() and torch.cuda.get_device_capability()[0] < 9
++
++
++def rms_norm(x, weight, eps, *, pre_weight=None, output_dtype=None, out=None):
++    output_dtype = output_dtype or x.dtype
++    xf = x.float()
++    if pre_weight is not None:
++        xf = xf * pre_weight.float()
++    y = xf * torch.rsqrt(xf.square().mean(-1, keepdim=True) + eps)
++    if weight is not None:
++        y = y * weight.float()
++    y = y.to(output_dtype)
++    if out is not None:
++        out.copy_(y)
++        return out
++    return y
++
++
++def qk_l2_clip_fwd(x, threshold, eps=1e-6, *, output_dtype=None, scale=None, output_scale=None):
++    output_dtype = output_dtype or x.dtype
++    n = x.shape[-1]
++    xf = x.reshape(-1, n).float()
++    if scale is not None:
++        if scale.ndim == 1:
++            xf = xf * scale.float()
++        else:
++            xf = (xf.view(-1, scale.shape[0], n) * scale.float()).view(-1, n)
++    coeff = (threshold / (torch.linalg.vector_norm(xf, dim=-1, keepdim=True) + eps)).clamp(max=1.0)
++    y = xf * coeff
++    if output_scale is not None:
++        y = y.to(output_dtype).float() * output_scale.repeat_interleave(xf.shape[0] // output_scale.numel())[:, None]
++    return y.to(output_dtype)
++
++
++def attn_res(blocks, partial_addend, queries, *, normalize_values=False, eps=1e-6):
++    """Softmax over sources n of rstd_n * <x_n, q>; output sum_n p_n * x_n (times rstd_n with
++    normalize_values). The last block gets partial_addend added. Returns a tuple of fp32
++    [tokens, width] tensors, one per query."""
++    xs = torch.stack([b.float() for b in blocks])  # [N, T, W]
++    if partial_addend is not None:
++        xs[-1] += partial_addend.float()
++    rstd = torch.rsqrt(xs.square().mean(-1) + eps)  # [N, T]
++    logits = torch.einsum("ntw,qw->qnt", xs, queries.float()) * rstd  # [Q, N, T]
++    p = torch.softmax(logits, dim=1)
++    if normalize_values:
++        p = p * rstd
++    out = torch.einsum("qnt,ntw->qtw", p, xs).contiguous()  # callers need contiguous rows
++    return tuple(out.unbind(0))
+diff --git a/python/sglang/kernels/ops/moe/inkling2_experts_sm90.py b/python/sglang/kernels/ops/moe/inkling2_experts_sm90.py
+index a2c826e49a..ed4b998813 100644
+--- a/python/sglang/kernels/ops/moe/inkling2_experts_sm90.py
++++ b/python/sglang/kernels/ops/moe/inkling2_experts_sm90.py
+@@ -6,7 +6,7 @@ import torch
+ import triton
+ import triton.language as tl
+ 
+-from sglang.kernels.ops.moe.inkling2_moe import _mxfp8_block
++from sglang.kernels.ops.moe.inkling2_moe import _mxfp8_block, _to_e4m3
+ 
+ ROW_LOOP_MIN_ROWS = 1024
+ 
+@@ -104,8 +104,8 @@ def _nvfp4_values(x, amax):
+     block_max = tl.max(tl.abs(x), 1)
+     scale6 = tl.minimum(block_max * (encoder_scale * (1.0 / 6.0)), 448.0)
+     scale4 = tl.minimum(block_max * (encoder_scale * 0.25), 448.0)
+-    scale6 = scale6.to(tl.float8e4nv).to(tl.float32)
+-    scale4 = scale4.to(tl.float8e4nv).to(tl.float32)
++    scale6 = _to_e4m3(scale6).to(tl.float32)
++    scale4 = _to_e4m3(scale4).to(tl.float32)
+     inverse6 = tl.minimum(tl.div_rn(1.0, scale6 * decoder_scale), 3.4028234663852886e38)
+     inverse4 = tl.minimum(tl.div_rn(1.0, scale4 * decoder_scale), 3.4028234663852886e38)
+     rounded6 = _e2m1_round(x * inverse6[:, None])
+diff --git a/python/sglang/kernels/ops/moe/inkling2_moe.py b/python/sglang/kernels/ops/moe/inkling2_moe.py
+index 501d4144ce..70440e97b2 100644
+--- a/python/sglang/kernels/ops/moe/inkling2_moe.py
++++ b/python/sglang/kernels/ops/moe/inkling2_moe.py
+@@ -9,6 +9,10 @@ PDL = is_arch_support_pdl()
+ # Below this many rows the Triton _mxfp8_quantize is as fast.
+ MXFP8_CUDA_MIN_ROWS = 64
+ 
++from sglang.kernels.jit.utils import is_arch_support_pdl as _pdl_ok
++
++_GDC = tl.constexpr(_pdl_ok())
++
+ 
+ @cache_once
+ def routed_quant_module(width: int):
+@@ -28,6 +32,28 @@ def routed_quant_module(width: int):
+     )
+ 
+ 
++_NATIVE_E4M3 = tl.constexpr(
++    torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 9
++)
++
++
++@triton.jit
++def _round_e4m3(x):
++    """[3090 inkling2-ampere] x (fp32, |x| <= 448) rounded to the nearest e4m3fn value,
++    ties to even, kept in fp32: Triton has no e4m3 cast below SM89/SM90."""
++    e = ((x.to(tl.int32, bitcast=True) >> 23) & 0xFF) - 127
++    quantum = ((tl.maximum(e, -6) - 3 + 127) << 23).to(tl.float32, bitcast=True)
++    return libdevice.rint(x / quantum) * quantum
++
++
++@triton.jit
++def _to_e4m3(values):
++    if _NATIVE_E4M3:
++        return values.to(tl.float8e4nv)
++    else:
++        return _round_e4m3(values)
++
++
+ @triton.jit
+ def _mxfp8_block(groups):
+     amax = tl.max(tl.abs(groups), 1)
+@@ -44,13 +70,15 @@ def _mxfp8_block(groups):
+     values = tl.minimum(
+         tl.maximum(values, -448.0), 448.0, propagate_nan=tl.PropagateNan.ALL
+     )
+-    return values.to(tl.float8e4nv), exponent
++    return _to_e4m3(values), exponent
+ 
+ 
+ @triton.jit
+ def _mxfp8_quantize(X, Y, S, N: tl.constexpr, BLOCK: tl.constexpr):
+-    tl.extra.cuda.gdc_wait()
+-    tl.extra.cuda.gdc_launch_dependents()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_wait()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_launch_dependents()
+     row = tl.program_id(0).to(tl.int64)
+     cols = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
+     x = tl.load(X + row * N + cols, cols < N, other=0).to(tl.float32)
+@@ -168,8 +196,10 @@ def _routed_rows(
+     per_rank=1,
+     THREADS: tl.constexpr = 128,
+ ):
+-    tl.extra.cuda.gdc_wait()
+-    tl.extra.cuda.gdc_launch_dependents()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_wait()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_launch_dependents()
+     if STRIDED:
+         chunks: tl.constexpr = (N + BLOCK - 1) // BLOCK
+         lo = tl.load(Offsets)
+@@ -319,8 +349,10 @@ def _sm_count(device):
+ def _unweighted_post_reorder(
+     X, Y, Src2Dst, TOP_K: tl.constexpr, H: tl.constexpr, BLOCK: tl.constexpr
+ ):
+-    tl.extra.cuda.gdc_wait()
+-    tl.extra.cuda.gdc_launch_dependents()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_wait()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_launch_dependents()
+     src = tl.program_id(0).to(tl.int64)
+     cols = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
+     mask = cols < H
+@@ -347,8 +379,10 @@ def _routed_partial(
+     BLOCK: tl.constexpr,
+     SEARCH: tl.constexpr,
+ ):
+-    tl.extra.cuda.gdc_wait()
+-    tl.extra.cuda.gdc_launch_dependents()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_wait()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_launch_dependents()
+     src = tl.program_id(0).to(tl.int64)
+     cols = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
+     lo = tl.load(Offsets)
+diff --git a/python/sglang/kernels/ops/moe/inkling2_route.py b/python/sglang/kernels/ops/moe/inkling2_route.py
+index ad6ebde86f..6e826674d7 100644
+--- a/python/sglang/kernels/ops/moe/inkling2_route.py
++++ b/python/sglang/kernels/ops/moe/inkling2_route.py
+@@ -14,6 +14,10 @@ ROUTE_MAX_IDS = 4096
+ # is faster below.
+ ROUTE_CUDA_MIN_IDS = 512
+ 
++from sglang.kernels.jit.utils import is_arch_support_pdl as _pdl_ok
++
++_GDC = tl.constexpr(_pdl_ok())
++
+ 
+ @triton.jit
+ def _route_topk(
+@@ -33,8 +37,10 @@ def _route_topk(
+     BLOCK_N: tl.constexpr,
+     RENORM: tl.constexpr,
+ ):
+-    tl.extra.cuda.gdc_wait()
+-    tl.extra.cuda.gdc_launch_dependents()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_wait()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_launch_dependents()
+     row = tl.program_id(0)
+     cols = tl.arange(0, BLOCK_N)
+     mask = cols < N
+@@ -150,8 +156,10 @@ def _route_metadata(
+     SEARCH_N: tl.constexpr,
+     SEARCH_E: tl.constexpr,
+ ):
+-    tl.extra.cuda.gdc_wait()
+-    tl.extra.cuda.gdc_launch_dependents()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_wait()
++    if _GDC:  # [3090 inkling2-ampere] griddepcontrol needs sm_90
++        tl.extra.cuda.gdc_launch_dependents()
+     offs = tl.arange(0, BLOCK_N)
+     mask = offs < n
+     ids = tl.load(Ids + offs, mask, other=65535)
+diff --git a/python/sglang/srt/models/inkling2_vision.py b/python/sglang/srt/models/inkling2_vision.py
+index 3eb3b1c6cc..ea13483639 100644
+--- a/python/sglang/srt/models/inkling2_vision.py
++++ b/python/sglang/srt/models/inkling2_vision.py
+@@ -79,7 +79,8 @@ class Inkling2VisionAttention(nn.Module):
+             for projection in (self.q_proj, self.k_proj, self.v_proj)
+         )
+         q, k = _rotary(q, k, positions)
+-        if hidden.is_cuda:
++        # [3090 inkling2-ampere] below SM90 the per-image SDPA branch runs on CUDA too
++        if hidden.is_cuda and torch.cuda.get_device_capability(hidden.device)[0] >= 9:
+             from sglang.kernels.ops.attention.flash_attn.cute import (
+                 flash_attn_varlen_func,
+             )
+diff --git a/python/sglang/srt/models/inkling_common/inkling2_attn.py b/python/sglang/srt/models/inkling_common/inkling2_attn.py
+index feadfccb0c..1522b5f60a 100644
+--- a/python/sglang/srt/models/inkling_common/inkling2_attn.py
++++ b/python/sglang/srt/models/inkling_common/inkling2_attn.py
+@@ -100,9 +100,16 @@ class QKL2Clip(nn.Module):
+         param.data.copy_(loaded_weight)
+ 
+     def forward(self, x, *, output_scale=None):
+-        from sglang.kernels.ops.layernorm.inkling2_qk_l2_clip import (
+-            qk_l2_clip_fwd_cutedsl,
+-        )
++        from sglang.kernels.ops.inkling2_ampere import use_ampere_fallbacks
++
++        if use_ampere_fallbacks():  # [3090 inkling2-ampere]
++            from sglang.kernels.ops.inkling2_ampere import (
++                qk_l2_clip_fwd as qk_l2_clip_fwd_cutedsl,
++            )
++        else:
++            from sglang.kernels.ops.layernorm.inkling2_qk_l2_clip import (
++                qk_l2_clip_fwd_cutedsl,
++            )
+ 
+         output = qk_l2_clip_fwd_cutedsl(
+             x, self.threshold, self.eps, scale=self.scale, output_scale=output_scale
+@@ -457,7 +464,39 @@ class Inkling2Attention(nn.Module):
+                 attn_padded=attn_padded,
+             )
+ 
++    def _forward_ampere(self, hidden_states, positions, forward_batch, *, attn):
++        """[3090 inkling2-ampere] The unfused prologue + rel-bias Triton attention + gate_sink."""
++        from sglang.srt.models.inkling_common.inkling2_attn_ampere import ampere_attention
++
++        sources = (
++            AttentionSources(hidden_states, hidden_states, hidden_states)
++            if isinstance(hidden_states, torch.Tensor)
++            else hidden_states
++        )
++        q, k, v, r, gate, sinks = self._project_sources(sources)
++        tokens = q.shape[0]
++        output_dtype = q.dtype
++        q, k, v, r = self._prologue(q, k, v, r, sources, positions, forward_batch)
++        rel_bias = self.rel_logits_proj(r)
++        output, lse = ampere_attention(
++            q.reshape(tokens, self.num_tp_heads, self.head_dim),
++            k.reshape(tokens, self.num_tp_kv_heads, self.head_dim),
++            v.reshape(tokens, self.num_tp_kv_heads, self.head_dim),
++            rel_bias,
++            attn,
++            forward_batch,
++            window=self.rel_extent if self.is_local else 0,
++        )
++        output = gate_sink(output, gate, lse, sinks, output_dtype=output_dtype)
++        output, _ = self.wo_ud(output)
++        parallel = get_parallel()
++        return all_reduce(output, parallel.attn_tp_group, multicast=False)
++
+     def _forward(self, hidden_states, positions, forward_batch, *, attn, attn_padded):
++        from sglang.kernels.ops.inkling2_ampere import use_ampere_fallbacks
++
++        if use_ampere_fallbacks():  # [3090 inkling2-ampere] Triton backend, no FA4
++            return self._forward_ampere(hidden_states, positions, forward_batch, attn=attn)
+         assert serving_attention_backend(forward_batch) == "fa4", (
+             "Inkling2 requires FA4 attention"
+         )
+diff --git a/python/sglang/srt/models/inkling_common/inkling2_attn_ampere.py b/python/sglang/srt/models/inkling_common/inkling2_attn_ampere.py
+new file mode 100644
+index 0000000000..36e7c4c2da
+--- /dev/null
++++ b/python/sglang/srt/models/inkling_common/inkling2_attn_ampere.py
+@@ -0,0 +1,111 @@
++"""[3090 inkling2-ampere] Inkling 2 attention on the Triton backend for GPUs without FA4.
++
++The layer's K/V are written through the Triton backend's write locations (window sub-pool aware),
++then inkling2_rel_bias_ampere attends over the backend's read rail (full or window-clipped) plus
++the new tokens, and returns (o, lse) for the model's gate_sink epilogue."""
++
++import torch
++
++from sglang.kernels.ops.attention.inkling2_rel_bias_ampere import rel_bias_attention
++from sglang.srt.mem_cache.memory_pool import KVWriteLoc
++from sglang.srt.model_executor.forward_context import get_attn_backend
++
++
++def _triton_backend(forward_batch):
++    """The TritonAttnBackend serving this forward, unwrapping hybrid wrappers
++    (InklingShortConvHybridAttnBackend.full_attn_backend, HybridAttnBackend's pair)."""
++    from sglang.srt.layers.attention.triton_backend import TritonAttnBackend
++
++    decode = forward_batch.forward_mode.is_decode_or_idle()
++    order = (
++        ("full_attn_backend", "decode_backend", "prefill_backend")
++        if decode
++        else ("full_attn_backend", "prefill_backend", "decode_backend")
++    )
++    backend, seen = get_attn_backend(), set()
++    while backend is not None and id(backend) not in seen:
++        if isinstance(backend, TritonAttnBackend):
++            return backend
++        seen.add(id(backend))
++        backend = next((getattr(backend, n) for n in order if getattr(backend, n, None) is not None), None)
++    raise RuntimeError(f"Inkling2 Ampere attention needs the triton backend, got {type(get_attn_backend()).__name__}")
++
++
++def ampere_attention(q, k, v, rel_bias, attn, forward_batch, *, window):
++    """q [T, H, D], k / v [T, Hkv, D] (this forward's tokens), rel_bias [T, H, extent].
++    Returns (o [T, H*D] fp32, lse [T, H] fp32)."""
++    backend = _triton_backend(forward_batch)
++    meta = backend.forward_metadata
++    layer_id = attn.layer_id
++    window_locs = backend._window_write_locs()
++    backend._set_kv_buffer(
++        forward_batch, attn, KVWriteLoc.for_batch(forward_batch, window_locs=window_locs), k, v
++    )
++    sub_pool = backend.kv_layers.route(layer_id).sub_pool
++    write_loc = (
++        window_locs[sub_pool]
++        if window_locs is not None and sub_pool in window_locs
++        else forward_batch.out_cache_loc
++    )
++    if window and attn.sliding_window_size is not None and attn.sliding_window_size > -1:
++        kv_indptr, kv_indices, _ = backend._window_rail(attn)
++    else:
++        kv_indptr, kv_indices = meta.kv_indptr, meta.kv_indices
++    kv_read = backend.kv_layers.read(layer_id)
++    k_buf, v_buf = kv_read.key(), kv_read.value()
++    bs = forward_batch.batch_size
++    seq_lens = forward_batch.seq_lens[:bs].to(torch.int32)
++    tokens = q.shape[0]
++    dev = q.device
++    if forward_batch.forward_mode.is_decode_or_idle():
++        # the decode rail already holds the new token
++        q_start = torch.arange(bs, dtype=torch.int32, device=dev)
++        q_len = torch.ones(bs, dtype=torch.int32, device=dev)
++        rail_start = kv_indptr[:bs].to(torch.int32)
++        rail_len = (kv_indptr[1 : bs + 1] - kv_indptr[:bs]).to(torch.int32)
++        indices = kv_indices
++        q_len_cpu = [1] * bs
++    else:
++        # extend: the rail covers the cached prefix only; append this forward's write locs
++        qo_indptr = meta.qo_indptr[: bs + 1]
++        q_start = qo_indptr[:bs].to(torch.int32)
++        q_len = (qo_indptr[1:] - qo_indptr[:-1]).to(torch.int32)
++        prefix_len = (kv_indptr[1 : bs + 1] - kv_indptr[:bs]).to(torch.int32)
++        rail_len = prefix_len + q_len
++        comb_indptr = torch.zeros(bs + 1, dtype=torch.int64, device=dev)
++        comb_indptr[1:] = torch.cumsum(rail_len, 0)
++        q_len_cpu = list(forward_batch.extend_seq_lens_cpu)
++        prefix_total = int(kv_indptr[bs].item()) if bs else 0
++        total = prefix_total + tokens
++        indices = torch.empty(total, dtype=kv_indices.dtype, device=dev)
++        seq_of_prefix = torch.repeat_interleave(
++            torch.arange(bs, device=dev), prefix_len.long(), output_size=prefix_total
++        )
++        j = torch.arange(prefix_total, device=dev)
++        indices[comb_indptr[seq_of_prefix] + (j - kv_indptr[seq_of_prefix])] = kv_indices[:prefix_total]
++        seq_of_new = torch.repeat_interleave(
++            torch.arange(bs, device=dev), q_len.long(), output_size=tokens
++        )
++        i = torch.arange(tokens, device=dev)
++        indices[comb_indptr[seq_of_new] + prefix_len[seq_of_new] + (i - qo_indptr[seq_of_new])] = write_loc[:tokens].to(
++            indices.dtype
++        )
++        rail_start = comb_indptr[:bs].to(torch.int32)
++    kv_first = seq_lens - rail_len
++    o, lse = rel_bias_attention(
++        q,
++        k_buf.view(k_buf.shape[0], -1, q.shape[-1]),
++        v_buf.view(v_buf.shape[0], -1, q.shape[-1]),
++        rel_bias,
++        indices,
++        q_start,
++        q_len,
++        rail_start - kv_first,
++        seq_lens,
++        q_len_cpu,
++        scale=attn.scaling,
++        window=window,
++        kv_first=kv_first,
++        out_dtype=torch.float32,
++    )
++    return o.reshape(tokens, -1), lse
+diff --git a/python/sglang/srt/models/inkling_common/inkling2_attn_res.py b/python/sglang/srt/models/inkling_common/inkling2_attn_res.py
+index f7527f43b2..0db29a6f40 100644
+--- a/python/sglang/srt/models/inkling_common/inkling2_attn_res.py
++++ b/python/sglang/srt/models/inkling_common/inkling2_attn_res.py
+@@ -28,7 +28,12 @@ def block_attn_res(
+         if scaled_queries is not None
+         else queries.float() * (hidden_size**-0.5)
+     )
+-    from sglang.kernels.ops.attention.inkling2_attn_res import attn_res
++    from sglang.kernels.ops.inkling2_ampere import use_ampere_fallbacks
++
++    if use_ampere_fallbacks():  # [3090 inkling2-ampere]
++        from sglang.kernels.ops.inkling2_ampere import attn_res
++    else:
++        from sglang.kernels.ops.attention.inkling2_attn_res import attn_res
+ 
+     return attn_res(
+         [x.contiguous() for x in sources],
+diff --git a/python/sglang/srt/models/inkling_common/inkling2_loop.py b/python/sglang/srt/models/inkling_common/inkling2_loop.py
+index ab1028368e..27d70b0b8a 100644
+--- a/python/sglang/srt/models/inkling_common/inkling2_loop.py
++++ b/python/sglang/srt/models/inkling_common/inkling2_loop.py
+@@ -55,7 +55,12 @@ class LoopMessageBank:
+         weights: tuple[torch.Tensor, ...],
+         side: Literal["attn", "mlp"],
+     ) -> torch.Tensor:
+-        from sglang.kernels.ops.attention.inkling2_attn_res import attn_res
++        from sglang.kernels.ops.inkling2_ampere import use_ampere_fallbacks
++
++        if use_ampere_fallbacks():  # [3090 inkling2-ampere]
++            from sglang.kernels.ops.inkling2_ampere import attn_res
++        else:
++            from sglang.kernels.ops.attention.inkling2_attn_res import attn_res
+ 
+         rows = _SIDE_ROWS[side]
+         messages = attn_res(
+diff --git a/python/sglang/srt/models/inkling_common/inkling2_moe.py b/python/sglang/srt/models/inkling_common/inkling2_moe.py
+index 8a6442cc5d..a73d63c671 100644
+--- a/python/sglang/srt/models/inkling_common/inkling2_moe.py
++++ b/python/sglang/srt/models/inkling_common/inkling2_moe.py
+@@ -291,8 +291,10 @@ class Inkling2Experts(nn.Module):
+         )
+         # SM90 lacks block-scaled MMA, and the SM100 kernels need tcgen05: other
+         # SM90 and SM120 experts run through Marlin.
+-        self.use_marlin = platform.is_sm90 or (
+-            platform.is_sm120 and not self.native_sm120
++        self.use_marlin = (
++            platform.is_sm90
++            or (platform.is_sm120 and not self.native_sm120)
++            or torch.cuda.get_device_capability()[0] == 8  # [3090 inkling2-ampere]
+         )
+ 
+     def _empty_weight(self, shape, dtype):
+diff --git a/python/sglang/srt/models/inkling_common/inkling2_norm.py b/python/sglang/srt/models/inkling_common/inkling2_norm.py
+index 07c736db24..815d1791b3 100644
+--- a/python/sglang/srt/models/inkling_common/inkling2_norm.py
++++ b/python/sglang/srt/models/inkling_common/inkling2_norm.py
+@@ -22,7 +22,12 @@ class RMSNorm(nn.Module):
+         self.pre_weight = nn.Parameter(torch.ones(hidden_size)) if pre_affine else None
+ 
+     def forward(self, x: torch.Tensor, out: torch.Tensor | None = None) -> torch.Tensor:
+-        from sglang.kernels.ops.layernorm.inkling2_rms_norm import rms_norm
++        from sglang.kernels.ops.inkling2_ampere import use_ampere_fallbacks
++
++        if use_ampere_fallbacks():  # [3090 inkling2-ampere]
++            from sglang.kernels.ops.inkling2_ampere import rms_norm
++        else:
++            from sglang.kernels.ops.layernorm.inkling2_rms_norm import rms_norm
+ 
+         return rms_norm(
+             x,
+diff --git a/test/registered/kernels/ops/gemm/test_marlin_moe_gemv.py b/test/registered/kernels/ops/gemm/test_marlin_moe_gemv.py
+index 4ddb980fdc..0aa7658f1b 100644
+--- a/test/registered/kernels/ops/gemm/test_marlin_moe_gemv.py
++++ b/test/registered/kernels/ops/gemm/test_marlin_moe_gemv.py
+@@ -13,7 +13,7 @@ EXPERTS, N, K, TOP_K = 8, 512, 1024, 2
+ 
+ 
+ def _is_sm90() -> bool:
+-    return torch.cuda.is_available() and torch.cuda.get_device_capability()[0] == 9
++    return torch.cuda.is_available() and torch.cuda.get_device_capability()[0] in (8, 9)  # [3090 inkling2-ampere]
+ 
+ 
+ def _metadata(tokens, generator):
+diff --git a/test/test_inkling2_rel_bias_ampere.py b/test/test_inkling2_rel_bias_ampere.py
+new file mode 100644
+index 0000000000..211859eb78
+--- /dev/null
++++ b/test/test_inkling2_rel_bias_ampere.py
+@@ -0,0 +1,48 @@
++# Parity: Ampere rel-bias attention vs a torch fp32 reference of the transformers eager math (bias, causal, window).
++import torch, sys
++from sglang.kernels.ops.attention.inkling2_rel_bias_ampere import rel_bias_attention
++torch.manual_seed(0); dev = "cuda"
++H, HKV, D, E = 12, 4, 128, 1024
++def ref(q, k, v, bias, pos, window, scale):
++    # q [n,H,D] at absolute positions pos[n]; k/v [L,HKV,D] positions 0..L-1
++    L = k.shape[0]; G = H // HKV
++    kk = k.float().repeat_interleave(G, 1); vv = v.float().repeat_interleave(G, 1)
++    s = torch.einsum("nhd,lhd->hnl", q.float(), kk) * scale
++    dist = pos[:, None] - torch.arange(L, device=dev)[None, :]
++    vis = dist >= 0
++    if window: vis &= dist < window
++    b = torch.zeros_like(s)
++    idx = dist.clamp(0, E - 1)
++    b = bias.float().permute(1, 0, 2).gather(-1, idx[None].expand(H, -1, -1))
++    b = torch.where((dist >= 0) & (dist < E), b, torch.zeros_like(b))
++    s = torch.where(vis[None], s + b, torch.full_like(s, float("-inf")))
++    lse = torch.logsumexp(s, -1)
++    p = torch.softmax(s, -1)
++    o = torch.einsum("hnl,lhd->nhd", p, vv)
++    return o, lse.T
++worst = 0.0
++for window in (0, 1024):
++    for (prefix, new) in ((0, 300), (2000, 1), (2000, 7), (5000, 1), (1500, 200), (300, 1)):
++        seqs = [(prefix, new), (prefix // 2 + 17, max(1, new // 2))]
++        slots = sum(p + n for p, n in seqs) + 64
++        kb = torch.randn(slots, HKV, D, device=dev, dtype=torch.bfloat16); vb = torch.randn_like(kb)
++        perm = torch.randperm(slots, device=dev).to(torch.int32)
++        qs, biases, qst, ql, kvs, kvl, idx, off_k, off_q, qlc = [], [], [], [], [], [], [], 0, 0, []
++        for p, n in seqs:
++            L = p + n
++            qs.append(torch.randn(n, H, D, device=dev, dtype=torch.bfloat16))
++            biases.append(torch.randn(n, H, E, device=dev, dtype=torch.bfloat16))
++            qst.append(off_q); ql.append(n); kvs.append(off_k); kvl.append(L); qlc.append(n)
++            idx.append(perm[off_k:off_k + L]); off_k += L; off_q += n
++        q = torch.cat(qs); bias = torch.cat(biases); kvi = torch.cat(idx)
++        t = lambda x: torch.tensor(x, dtype=torch.int32, device=dev)
++        o, lse = rel_bias_attention(q, kb, vb, bias, kvi, t(qst), t(ql), t(kvs), t(kvl), qlc, scale=D ** -0.5, window=window)
++        for i, (p, n) in enumerate(seqs):
++            L = p + n; sl = slice(qst[i], qst[i] + n)
++            kk = kb[idx[i].long()]; vv = vb[idx[i].long()]
++            ro, rl = ref(q[sl], kk, vv, bias[sl], torch.arange(p, L, device=dev), window, D ** -0.5)
++            e_o = ((o[sl].float() - ro).abs().max() / ro.abs().max()).item()
++            e_l = (lse[sl] - rl).abs().max().item()
++            worst = max(worst, e_o)
++            print(f"window={window:4} prefix={p:5} new={n:3}  o err/max {e_o:.2e}  lse abs err {e_l:.2e}")
++print("WORST", worst, "PASS" if worst < 2e-2 else "FAIL")
