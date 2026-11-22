@@ -235,10 +235,10 @@ index 358747c1e8..b79d5596cc 100644
    constexpr int kRowLoads = DECODE ? 1 : W;
 diff --git a/python/sglang/kernels/ops/attention/inkling2_rel_bias_ampere.py b/python/sglang/kernels/ops/attention/inkling2_rel_bias_ampere.py
 new file mode 100644
-index 0000000000..7914a7a8d5
+index 0000000000..dc83c8b443
 --- /dev/null
 +++ b/python/sglang/kernels/ops/attention/inkling2_rel_bias_ampere.py
-@@ -0,0 +1,159 @@
+@@ -0,0 +1,322 @@
 +"""[3090 inkling2-ampere] Paged attention with Inkling 2's compact relative bias for GPUs without FA4
 +(Ampere sm_80/sm_86): scores = q.k * scale + rel_bias[token, head, d] for backward distance
 +0 <= d < extent (0 elsewhere), causal, optional sliding window. Returns the softmax-normalized output
@@ -328,6 +328,137 @@ index 0000000000..7914a7a8d5
 +
 +
 +@triton.jit
++def _rel_bias_decode_grouped(
++    Q, K, V, Bias, KvIndices, KvStart, KvLen, KvFirst,
++    OP, MP, LP,
++    scale,
++    sq_t, sq_h, sk_t, sk_h, sb_t, sb_h,
++    so_s, so_t, so_h, sm_s, sm_t,
++    GROUP: tl.constexpr, ROWS: tl.constexpr, D: tl.constexpr, EXTENT: tl.constexpr,
++    WINDOW: tl.constexpr, BLOCK_N: tl.constexpr, NUM_SPLITS: tl.constexpr,
++):
++    """Decode (one query per sequence): one program per (sequence, KV head, split); the
++    KV head's GROUP query heads are the rows, so each K/V tile is read once."""
++    seq = tl.program_id(0)
++    kvh = tl.program_id(1)
++    split = tl.program_id(2)
++    kv_start = tl.load(KvStart + seq)
++    kv_len = tl.load(KvLen + seq)
++    kv_first = tl.load(KvFirst + seq)
++    pos = kv_len - 1
++    rows = tl.arange(0, ROWS)
++    r_valid = rows < GROUP
++    heads = kvh * GROUP + rows
++    offs_d = tl.arange(0, D)
++    q = tl.load(Q + seq * sq_t + heads[:, None] * sq_h + offs_d[None, :], mask=r_valid[:, None], other=0.0)
++    lo = kv_first
++    if WINDOW > 0:
++        lo = tl.maximum(lo, kv_len - WINDOW)
++    span = kv_len - lo
++    per = tl.cdiv(tl.cdiv(span, NUM_SPLITS), BLOCK_N) * BLOCK_N
++    s_lo = lo + split * per
++    s_hi = tl.minimum(kv_len, s_lo + per)
++    m_i = tl.full([ROWS], float("-inf"), tl.float32)
++    l_i = tl.zeros([ROWS], tl.float32)
++    acc = tl.zeros([ROWS, D], tl.float32)
++    bias_row = Bias + seq * sb_t + heads[:, None] * sb_h
++    for start in range(s_lo, s_hi, BLOCK_N):
++        offs_n = start + tl.arange(0, BLOCK_N)
++        n_valid = offs_n < s_hi
++        loc = tl.load(KvIndices + kv_start + offs_n, mask=n_valid, other=0).to(tl.int64)
++        k = tl.load(K + loc[None, :] * sk_t + kvh * sk_h + offs_d[:, None], mask=n_valid[None, :], other=0.0)
++        s = tl.dot(q, k.to(q.dtype)) * scale
++        dist = pos - offs_n
++        in_ext = n_valid & (dist < EXTENT)
++        b = tl.load(bias_row + tl.where(in_ext, dist, 0)[None, :], mask=r_valid[:, None] & in_ext[None, :], other=0.0).to(tl.float32)
++        s = tl.where(n_valid[None, :], s + b, float("-inf"))
++        m_new = tl.maximum(m_i, tl.max(s, 1))
++        m_safe = tl.where(m_new == float("-inf"), 0.0, m_new)
++        alpha = tl.exp(m_i - m_safe)
++        p = tl.exp(s - m_safe[:, None])
++        l_i = l_i * alpha + tl.sum(p, 1)
++        v = tl.load(V + loc[:, None] * sk_t + kvh * sk_h + offs_d[None, :], mask=n_valid[:, None], other=0.0)
++        acc = acc * alpha[:, None] + tl.dot(p.to(q.dtype), v.to(q.dtype))
++        m_i = m_new
++    tl.store(OP + split * so_s + seq * so_t + heads[:, None] * so_h + offs_d[None, :], acc, mask=r_valid[:, None])
++    tl.store(MP + split * sm_s + seq * sm_t + heads, m_i, mask=r_valid)
++    tl.store(LP + split * sm_s + seq * sm_t + heads, l_i, mask=r_valid)
++
++
++@triton.jit
++def _rel_bias_extend_grouped(
++    Q, K, V, Bias, KvIndices,
++    QStart, QLen, KvStart, KvLen, KvFirst,
++    BlockSeq, BlockQ0,
++    OP, MP, LP,
++    scale,
++    sq_t, sq_h, sk_t, sk_h, sb_t, sb_h,
++    so_s, so_t, so_h, sm_s, sm_t,
++    GROUP: tl.constexpr, ROWS: tl.constexpr, BLOCK_T: tl.constexpr, D: tl.constexpr,
++    EXTENT: tl.constexpr, WINDOW: tl.constexpr, BLOCK_N: tl.constexpr, NUM_SPLITS: tl.constexpr,
++):
++    """Extend: one program per (query block of BLOCK_T tokens, KV head, split). Row r is
++    token q0 + r // GROUP of query head kvh * GROUP + r % GROUP, so each K/V tile serves
++    all GROUP heads of its KV head."""
++    blk = tl.program_id(0)
++    kvh = tl.program_id(1)
++    split = tl.program_id(2)
++    seq = tl.load(BlockSeq + blk)
++    q0 = tl.load(BlockQ0 + blk)
++    q_start = tl.load(QStart + seq)
++    q_len = tl.load(QLen + seq)
++    kv_start = tl.load(KvStart + seq)
++    kv_len = tl.load(KvLen + seq)
++    kv_first = tl.load(KvFirst + seq)
++    rows = tl.arange(0, ROWS)
++    t_off = rows // GROUP
++    heads = kvh * GROUP + rows % GROUP
++    tok = q0 + t_off
++    r_valid = (t_off < BLOCK_T) & (tok < q_len)
++    pos = kv_len - q_len + tok
++    offs_d = tl.arange(0, D)
++    q = tl.load(Q + (q_start + tok)[:, None] * sq_t + heads[:, None] * sq_h + offs_d[None, :],
++                mask=r_valid[:, None], other=0.0)
++    hi = tl.minimum(kv_len, kv_len - q_len + q0 + BLOCK_T)
++    lo = kv_first
++    if WINDOW > 0:
++        lo = tl.maximum(lo, kv_len - q_len + q0 - WINDOW + 1)
++    span = hi - lo
++    per = tl.cdiv(tl.cdiv(span, NUM_SPLITS), BLOCK_N) * BLOCK_N
++    s_lo = lo + split * per
++    s_hi = tl.minimum(hi, s_lo + per)
++    m_i = tl.full([ROWS], float("-inf"), tl.float32)
++    l_i = tl.zeros([ROWS], tl.float32)
++    acc = tl.zeros([ROWS, D], tl.float32)
++    bias_row = Bias + (q_start + tok)[:, None] * sb_t + heads[:, None] * sb_h
++    for start in range(s_lo, s_hi, BLOCK_N):
++        offs_n = start + tl.arange(0, BLOCK_N)
++        n_valid = offs_n < s_hi
++        loc = tl.load(KvIndices + kv_start + offs_n, mask=n_valid, other=0).to(tl.int64)
++        k = tl.load(K + loc[None, :] * sk_t + kvh * sk_h + offs_d[:, None], mask=n_valid[None, :], other=0.0)
++        s = tl.dot(q, k.to(q.dtype)) * scale
++        dist = pos[:, None] - offs_n[None, :]
++        visible = n_valid[None, :] & r_valid[:, None] & (dist >= 0)
++        if WINDOW > 0:
++            visible = visible & (dist < WINDOW)
++        in_ext = visible & (dist < EXTENT)
++        b = tl.load(bias_row + tl.where(in_ext, dist, 0), mask=in_ext, other=0.0).to(tl.float32)
++        s = tl.where(visible, s + b, float("-inf"))
++        m_new = tl.maximum(m_i, tl.max(s, 1))
++        m_safe = tl.where(m_new == float("-inf"), 0.0, m_new)
++        alpha = tl.exp(m_i - m_safe)
++        p = tl.exp(s - m_safe[:, None])
++        l_i = l_i * alpha + tl.sum(p, 1)
++        v = tl.load(V + loc[:, None] * sk_t + kvh * sk_h + offs_d[None, :], mask=n_valid[:, None], other=0.0)
++        acc = acc * alpha[:, None] + tl.dot(p.to(q.dtype), v.to(q.dtype))
++        m_i = m_new
++    out_rows = q_start + tok
++    tl.store(OP + split * so_s + out_rows[:, None] * so_t + heads[:, None] * so_h + offs_d[None, :], acc, mask=r_valid[:, None])
++    tl.store(MP + split * sm_s + out_rows * sm_t + heads, m_i, mask=r_valid)
++    tl.store(LP + split * sm_s + out_rows * sm_t + heads, l_i, mask=r_valid)
++
++
++@triton.jit
 +def _merge_partials(OP, MP, LP, O, LSE, so_s, so_t, so_h, sm_s, sm_t, s_ot, s_oh, s_lt,
 +                    D: tl.constexpr, NUM_SPLITS: tl.constexpr, SPLITS_P2: tl.constexpr):
 +    t = tl.program_id(0)
@@ -358,7 +489,7 @@ index 0000000000..7914a7a8d5
 +
 +
 +def rel_bias_attention(q, k_buf, v_buf, rel_bias, kv_indices, q_start, q_len, kv_start, kv_len,
-+                       q_len_cpu, *, scale, window=0, num_splits=None, block_m=None, block_n=64, kv_first=None, out_dtype=None):
++                       q_len_cpu, *, scale, window=0, num_splits=None, block_m=None, block_n=64, kv_first=None, out_dtype=None, decode=False, allow_grouped=True):
 +    """q [T, H, D]; k_buf / v_buf [slots, Hkv, D] (the layer's pool, new tokens already written);
 +    rel_bias [T, H, extent]; per-sequence int32 tensors q_start / q_len / kv_start / kv_len
 +    (kv_len counts the new tokens); q_len_cpu: host list of q_len. Position p of sequence s lives at
@@ -370,20 +501,52 @@ index 0000000000..7914a7a8d5
 +    max_q = max(int(x) for x in q_len_cpu) if len(q_len_cpu) else 0
 +    if block_m is None:
 +        block_m = 16 if max_q <= 16 else 64
-+    seqs, q0s = build_blocks(q_len_cpu, block_m)
 +    dev = q.device
++    grouped_extend, rows = False, 0
++    if decode:
++        # one query per sequence: block tables built on device (CUDA-graph safe)
++        n_blocks = len(q_len_cpu)
++        block_seq = torch.arange(n_blocks, dtype=torch.int32, device=dev)
++        block_q0 = torch.zeros(n_blocks, dtype=torch.int32, device=dev)
++    else:
++        grouped_extend = allow_grouped and H % hkv == 0 and H // hkv > 1
++        rows = 128 if max_q > 16 else 64
++        if grouped_extend:
++            block_m = rows // (H // hkv)
++        seqs, q0s = build_blocks(q_len_cpu, block_m)
++        n_blocks = len(seqs)
++        block_seq = torch.tensor(seqs, dtype=torch.int32, device=dev)
++        block_q0 = torch.tensor(q0s, dtype=torch.int32, device=dev)
 +    if kv_first is None:
 +        kv_first = torch.zeros_like(kv_len)
 +    if num_splits is None:
 +        # decode / short turns: split long sequences across SMs; long prefills have enough blocks
-+        num_splits = 1 if len(seqs) * H >= 2 * 82 else 16
-+    block_seq = torch.tensor(seqs, dtype=torch.int32, device=dev)
-+    block_q0 = torch.tensor(q0s, dtype=torch.int32, device=dev)
++        num_splits = (48 if not window else 8) if decode else (1 if n_blocks * H >= 2 * 82 else 16)
 +    op = torch.empty((num_splits, T, H, D), dtype=torch.float32, device=dev)
 +    mp = torch.empty((num_splits, T, H), dtype=torch.float32, device=dev)
 +    lp = torch.empty((num_splits, T, H), dtype=torch.float32, device=dev)
-+    if len(seqs):
-+        _rel_bias_attn_partials[(len(seqs), H, num_splits)](
++    if decode and n_blocks:
++        group = H // hkv
++        _rel_bias_decode_grouped[(n_blocks, hkv, num_splits)](
++            q, k_buf, v_buf, rel_bias, kv_indices, kv_start, kv_len, kv_first,
++            op, mp, lp, scale,
++            q.stride(0), q.stride(1), k_buf.stride(0), k_buf.stride(1), rel_bias.stride(0), rel_bias.stride(1),
++            op.stride(0), op.stride(1), op.stride(2), mp.stride(0), mp.stride(1),
++            GROUP=group, ROWS=max(16, triton.next_power_of_2(group)), D=D, EXTENT=extent,
++            WINDOW=int(window or 0), BLOCK_N=block_n, NUM_SPLITS=num_splits, num_warps=4, num_stages=3,
++        )
++    elif n_blocks and grouped_extend:
++        group = H // hkv
++        _rel_bias_extend_grouped[(n_blocks, hkv, num_splits)](
++            q, k_buf, v_buf, rel_bias, kv_indices, q_start, q_len, kv_start, kv_len, kv_first, block_seq, block_q0,
++            op, mp, lp, scale,
++            q.stride(0), q.stride(1), k_buf.stride(0), k_buf.stride(1), rel_bias.stride(0), rel_bias.stride(1),
++            op.stride(0), op.stride(1), op.stride(2), mp.stride(0), mp.stride(1),
++            GROUP=group, ROWS=rows, BLOCK_T=rows // group, D=D, EXTENT=extent, WINDOW=int(window or 0),
++            BLOCK_N=block_n, NUM_SPLITS=num_splits, num_warps=8 if rows >= 128 else 4, num_stages=2,
++        )
++    elif n_blocks:
++        _rel_bias_attn_partials[(n_blocks, H, num_splits)](
 +            q, k_buf, v_buf, rel_bias, kv_indices, q_start, q_len, kv_start, kv_len, kv_first, block_seq, block_q0,
 +            op, mp, lp, scale,
 +            q.stride(0), q.stride(1), k_buf.stride(0), k_buf.stride(1), rel_bias.stride(0), rel_bias.stride(1),
@@ -791,10 +954,10 @@ index feadfccb0c..1522b5f60a 100644
          )
 diff --git a/python/sglang/srt/models/inkling_common/inkling2_attn_ampere.py b/python/sglang/srt/models/inkling_common/inkling2_attn_ampere.py
 new file mode 100644
-index 0000000000..36e7c4c2da
+index 0000000000..433742d0ec
 --- /dev/null
 +++ b/python/sglang/srt/models/inkling_common/inkling2_attn_ampere.py
-@@ -0,0 +1,111 @@
+@@ -0,0 +1,112 @@
 +"""[3090 inkling2-ampere] Inkling 2 attention on the Triton backend for GPUs without FA4.
 +
 +The layer's K/V are written through the Triton backend's write locations (window sub-pool aware),
@@ -904,6 +1067,7 @@ index 0000000000..36e7c4c2da
 +        window=window,
 +        kv_first=kv_first,
 +        out_dtype=torch.float32,
++        decode=forward_batch.forward_mode.is_decode_or_idle(),
 +    )
 +    return o.reshape(tokens, -1), lse
 diff --git a/python/sglang/srt/models/inkling_common/inkling2_attn_res.py b/python/sglang/srt/models/inkling_common/inkling2_attn_res.py

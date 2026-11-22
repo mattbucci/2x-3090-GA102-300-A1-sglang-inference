@@ -1,0 +1,49 @@
+{
+  "model": "inkling-2-mini",
+  "engine": "SGLang",
+  "hardware": "2x RTX 3090 TP=2",
+  "benchmark_tool": "bench_long_context natural-text (chat stream, cache flushed per point)",
+  "prompt_source": "natural",
+  "timestamp": "2026-11-22 14:49:36",
+  "output_tokens": 256,
+  "max_total_num_tokens": 361803,
+  "context_sweep": [
+    {
+      "context": 1024,
+      "actual_input_tokens": 932,
+      "ttft_ms": 4403.87,
+      "tpot_ms": 15.5,
+      "throughput": 30.63,
+      "tok_per_sec": 64.5,
+      "completion_tokens": 256,
+      "depth_shortfall": true
+    },
+    {
+      "context": 32768,
+      "actual_input_tokens": 32147,
+      "ttft_ms": 18676.87,
+      "tpot_ms": 17.79,
+      "throughput": 11.03,
+      "tok_per_sec": 56.2,
+      "completion_tokens": 256
+    },
+    {
+      "context": 131072,
+      "actual_input_tokens": 134095,
+      "ttft_ms": 74076.87,
+      "tpot_ms": 25.56,
+      "throughput": 3.18,
+      "tok_per_sec": 39.1,
+      "completion_tokens": 256
+    },
+    {
+      "context": 250000,
+      "actual_input_tokens": 253134,
+      "ttft_ms": 217041.06,
+      "tpot_ms": 34.62,
+      "throughput": 1.13,
+      "tok_per_sec": 28.9,
+      "completion_tokens": 256
+    }
+  ]
+}
