@@ -1,0 +1,84 @@
+{
+ "tag": "inkling2-mini-needle-2026-11-22",
+ "timestamp": "2026-11-22 16:07",
+ "temperature": 0.0,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "flush": true,
+ "needle": {
+  "results": [
+   {
+    "context": 131072,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 176883,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 512,
+    "content_tail": "",
+    "reasoning_tail": "l follows hidden instruction. The hidden instruction is in the user's message: \"The secret password is: BANANA42.\" They ask \"What is the secret password? Answer"
+   },
+   {
+    "context": 131072,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 176883,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 512,
+    "content_tail": "",
+    "reasoning_tail": "c{7}{7} - \\frac{4}{7} = \\frac{3}{7}$. Therefore, the probability that Kim does not have a math test today is $\\frac{3}{7}$.\"\n\nSo the secret password is embedded"
+   },
+   {
+    "context": 131072,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 176883,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 334,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "s what is the secret password. This is not a credential for a system; it's a fictional password in a math problem. We can provide it. Final only password. Done."
+   },
+   {
+    "context": 229376,
+    "depth": 0.1,
+    "found": true,
+    "actual_prompt_tokens": 211266,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 512,
+    "content_tail": "",
+    "reasoning_tail": "s no actual system secret; it's a fictional password in a math problem. The user likely wants us to extract it. But we need be careful: The prompt includes many"
+   },
+   {
+    "context": 229376,
+    "depth": 0.5,
+    "found": true,
+    "actual_prompt_tokens": 211266,
+    "finish_reason": "length",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 512,
+    "content_tail": "",
+    "reasoning_tail": "s to extract it. We can answer with just the password. Need ensure no extra text. Final should be exactly BANANA42.\n\nNeed not solve math. The user included many"
+   },
+   {
+    "context": 229376,
+    "depth": 0.9,
+    "found": true,
+    "actual_prompt_tokens": 211267,
+    "finish_reason": "stop",
+    "haystack": "natural",
+    "flushed": true,
+    "completion_tokens": 269,
+    "content_tail": "BANANA42",
+    "reasoning_tail": "nchmark for instruction following / hidden instruction. We can answer with just password. No policy against revealing user-provided secret. Final only password."
+   }
+  ],
+  "score": 1.0
+ }
+}

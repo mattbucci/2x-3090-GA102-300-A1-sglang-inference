@@ -1,0 +1,93 @@
+{
+  "tag": "inkling2-mini-2026-11-22",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 35842,
+        "correct": true,
+        "s": 18.3,
+        "finish_reason": "stop",
+        "completion_tokens": 533,
+        "answer_tail": "ra after.\nI scanned the log for the embedded access-code statements:\n- cobalt: \u201cThe access code for cobalt is 3286.\u201d\n- tundra: \u201cThe access code for tundra is 7912.\u201d\n- verbena: \u201cThe access code for verbena is 2424.\u201d\n\nANSWER: 3286, 7912, 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 35796,
+        "correct": true,
+        "s": 15.8,
+        "finish_reason": "stop",
+        "completion_tokens": 386,
+        "answer_tail": "5 = 42\nVAR_C = VAR_B * 2 = 84\nANSWER: 84\n\nNeed ensure last line exactly format. No extra after. Done.\nVAR_A is set to 37.  \nVAR_B equals VAR_A plus 5, so VAR_B = 37 + 5 = 42.  \nVAR_C equals VAR_B times 2, so VAR_C = 42 \u00d7 2 = 84.\n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 35824,
+        "correct": true,
+        "s": 18.2,
+        "finish_reason": "stop",
+        "completion_tokens": 502,
+        "answer_tail": "ep but not too verbose. Ensure last line exact. Done.\nItems and costs:\n- onyx: 85 credits\n- falcon: 45 credits\n- tundra: 10 credits\n- cobalt: 30 credits\n- verbena: 99 credits\n\nTotal: 85 + 45 + 10 + 30 + 99 = 269 credits\n\nANSWER: 269 credits"
+      },
+      "actual_tokens": 35842,
+      "score": 1.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 142941,
+        "correct": true,
+        "s": 69.6,
+        "finish_reason": "stop",
+        "completion_tokens": 382,
+        "answer_tail": "\n\n- cobalt: \">>> The access code for cobalt is 3286. <<<\" \u2192 3286\n- tundra: \">>> The access code for tundra is 7912. <<<\" \u2192 7912\n- verbena: \">>> The access code for verbena is 2424. <<<\" \u2192 2424\n\nANSWER: cobalt 3286, tundra 7912, verbena 2424"
+      },
+      "vartrack": {
+        "actual_tokens": 142897,
+        "correct": true,
+        "s": 69.0,
+        "finish_reason": "stop",
+        "completion_tokens": 367,
+        "answer_tail": "formatted exactly as 'ANSWER: <value>'.\" We can show steps. Need not expose internal chain? We can give concise rationale. Final answer only. Done.\nVAR_A = 37  \nVAR_B = VAR_A + 5 = 37 + 5 = 42  \nVAR_C = VAR_B \u00d7 2 = 42 \u00d7 2 = 84  \n\nANSWER: 84"
+      },
+      "aggregate": {
+        "actual_tokens": 142923,
+        "correct": true,
+        "s": 73.3,
+        "finish_reason": "stop",
+        "completion_tokens": 584,
+        "answer_tail": "tal = 269 credits.\nThe five items and their costs are:\n- onyx: 85 credits\n- falcon: 45 credits\n- tundra: 10 credits\n- cobalt: 30 credits\n- verbena: 99 credits\n\nSum: 85 + 45 = 130; 130 + 10 = 140; 140 + 30 = 170; 170 + 99 = 269.\n\nANSWER: 269"
+      },
+      "actual_tokens": 142941,
+      "score": 1.0
+    },
+    {
+      "approx": 256000,
+      "multikey": {
+        "actual_tokens": null,
+        "correct": false,
+        "s": 0.0,
+        "finish_reason": null,
+        "completion_tokens": null,
+        "answer_tail": ""
+      },
+      "vartrack": {
+        "actual_tokens": null,
+        "correct": false,
+        "s": 0.0,
+        "finish_reason": null,
+        "completion_tokens": null,
+        "answer_tail": ""
+      },
+      "aggregate": {
+        "actual_tokens": null,
+        "correct": false,
+        "s": 0.0,
+        "finish_reason": null,
+        "completion_tokens": null,
+        "answer_tail": ""
+      },
+      "actual_tokens": null,
+      "score": 0.0
+    }
+  ],
+  "overall": 0.667
+}

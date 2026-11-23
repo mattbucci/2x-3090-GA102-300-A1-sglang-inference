@@ -755,6 +755,28 @@ apply_preset() {
                     --mamba-radix-cache-strategy extra_buffer"
             fi
             ;;
+        inkling2-mini)
+            # thinkingmachines/Inkling-2-Mini (Inkling2LoopForConditionalGeneration, 2026-11):
+            # 26.4B / 3.4B-active MoE (128 experts top-8), layers 6-17 looped x3, 20 SWA(1024) +
+            # 4 global layers with a compact relative bias + per-token sinks, text + image.
+            # Shipped checkpoint only: NVFP4 / MXFP8 experts (ModelOpt), BF16 elsewhere.
+            # Runs on UPSTREAM MAIN + PR 51926 (Mini support, Hopper/Blackwell only) with our
+            # Ampere port patches/inkling2-main/001 -- tree /data/sglang-main-inkling, env
+            # sglang-main; the v0.5.23 production tree has no Inkling 2 (issue #32).
+            #  * triton attention: the port's rel-bias Triton kernels replace FA4.
+            #  * decode CUDA graphs (65 -> 47 tok/s 1K -> 250K); prefill graphs off.
+            #  * --enable-multimodal: upstream leaves Inkling 2 text-only by default.
+            ENV_NAME="${INKLING_ENV:-sglang-main}"
+            MODEL="${MODEL:-$MODELS_DIR/hf-3rdparty/Inkling-2-Mini}"
+            QUANT=""
+            DTYPE="${_ENV_DTYPE:-bfloat16}"
+            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            CTX="${_ENV_CTX:-262144}"; MEM="${_ENV_MEM:-0.80}"; MAX_RUNNING=1; CHUNKED="${_ENV_CHUNKED:-4096}"
+            WATCHDOG=1800
+            REASONING="--reasoning-parser inkling"
+            CUDA_GRAPH="--cuda-graph-max-bs-decode 1 --cuda-graph-backend-prefill disabled"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --attention-backend triton --tool-call-parser inkling2 --enable-multimodal"
+            ;;
         flint)
             # RecursiveSI/flint (FlintForCausalLM, 2026-10): 49-layer MoE, 256
             # experts top-6 sigmoid + ungated shared expert, 35 SWA(513) + 14

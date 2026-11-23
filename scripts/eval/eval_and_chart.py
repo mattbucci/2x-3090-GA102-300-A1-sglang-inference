@@ -187,7 +187,13 @@ def humaneval_eval(url, n_samples=30, max_workers=4, max_tokens=4096):
             blocks = re.findall(r"```(?:python)?\s*\n(.*?)```", content, re.DOTALL)
             code = blocks[-1] if blocks else content
             full = code if re.search(rf"def\s+{re.escape(entry)}\b", code) else prompt + code
-            return _he_exec_check(full, test, entry, timeout=10)
+            # A model that re-emits the function without the prompt's `from typing import
+            # List` lines failed every typed task on a NameError (Inkling-2-Mini 17/30 ->
+            # 29/30 with them, 2026-11-22). Prepending the prompt's imports cannot fail a
+            # correct answer, so the score now measures the code, not the import echo.
+            imports = "\n".join(l for l in prompt.splitlines()
+                                 if re.match(r"\s*(from\s+\S+\s+import|import)\s", l))
+            return _he_exec_check(imports + "\n" + full, test, entry, timeout=10)
         except Exception:
             return False
 
